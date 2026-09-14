@@ -1,12 +1,17 @@
 {
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "AgentResolver",
+    "identifier": "agentresolver.vercel.app",
+    "documentationUrl": "https://agentresolver.vercel.app"
+  },
   "entries": [
     {
-      "@context": "https://agenticresourcediscovery.org/context/v1",
-      "identifier": "urn:air:agentresolver.vercel.app:api:capability-resolver",
+      "identifier": "urn:air:agentresolver.vercel.app:mcp:agentresolver",
       "displayName": "AgentResolver",
-      "type": "application/vnd.oai.openapi+json",
-      "url": "https://agentresolver.vercel.app/openapi.json",
-      "description": "Free machine-first capability resolver for autonomous agents. Discover AgentResolver-owned capabilities and live x402 services from a single natural-language request.",
+      "type": "application/mcp-server-card+json",
+      "url": "https://agentresolver.vercel.app/mcp/server-card",
+      "description": "Free machine-first capability resolver for autonomous agents with live x402 service discovery.",
       "capabilities": [
         "CapabilityResolver",
         "ToolDiscovery",
