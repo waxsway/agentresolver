@@ -75,3 +75,12 @@ export async function GET(req: Request) {
 export async function DELETE(req: Request) {
   return handler.fetch(req);
 }
+
+export async function HEAD() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      "cache-control": "public, max-age=60"
+    }
+  });
+}
