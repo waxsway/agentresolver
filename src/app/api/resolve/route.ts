@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHash, randomUUID } from "node:crypto";
-import { resolveCapabilities } from "@/lib/catalog";
+import { resolveGoal } from "@/lib/resolver";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,9 @@ export async function POST(req: Request) {
   const goal = String(body?.goal || "").trim();
   const url = typeof body?.url === "string" ? body.url.trim() : undefined;
   const parsedLimit = Number(body?.limit || 3);
-  const limit = Number.isFinite(parsedLimit) ? parsedLimit : 3;
+  const limit = Number.isFinite(parsedLimit)
+    ? Math.max(1, Math.min(parsedLimit, 10))
+    : 3;
 
   if (!goal) {
     return NextResponse.json(
@@ -26,7 +28,7 @@ export async function POST(req: Request) {
   }
 
   const requestId = randomUUID();
-  const matches = resolveCapabilities(`${goal}${url ? ` ${url}` : ""}`, limit);
+  const resolution = await resolveGoal(goal, url, limit);
   const baseUrl = (
     process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin
   ).replace(/\/$/, "");
@@ -46,10 +48,20 @@ export async function POST(req: Request) {
       goalHash: shortHash(goal),
       goalLength: goal.length,
       hasUrl: Boolean(url),
-      topCapability: matches[0]?.id || null,
-      matchCount: matches.length
+      topOwnedCapability: resolution.owned[0]?.id || null,
+      marketplaceMatchCount: resolution.marketplace.length
     })
   );
+
+  const owned = resolution.owned.map((match) => ({
+    ...match,
+    execute:
+      match.priceUsd > 0
+        ? `${baseUrl}/api/execute`
+        : match.endpoint
+          ? `${baseUrl}${match.endpoint}`
+          : null
+  }));
 
   return NextResponse.json(
     {
@@ -58,18 +70,14 @@ export async function POST(req: Request) {
       goal,
       url: url || null,
       free: true,
-      matches: matches.map((match) => ({
-        ...match,
-        execute:
-          match.priceUsd > 0
-            ? `${baseUrl}/api/execute`
-            : match.endpoint
-              ? `${baseUrl}${match.endpoint}`
-              : null
-      })),
-      next: matches[0]
-        ? `Use capability '${matches[0].id}' if it fits. Paid execution is only attempted when explicitly requested by the calling agent.`
-        : "No suitable capability found yet."
+      owned,
+      marketplace: resolution.marketplace,
+      next:
+        resolution.marketplace.length > 0
+          ? "Review marketplace payment requirements and input schema before calling a provider. Only pay under the calling agent's own authorization and budget policy."
+          : owned[0]
+            ? `Use capability '${owned[0].id}' if it fits. Paid AgentResolver execution is only attempted when explicitly requested.`
+            : "No suitable live marketplace or owned capability was found."
     },
     {
       headers: {
