@@ -1,6 +1,7 @@
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { CAPABILITIES, resolveCapabilities } from "@/lib/catalog";
+import { CAPABILITIES } from "@/lib/catalog";
+import { resolveGoal } from "@/lib/resolver";
 
 const handler = createMcpHandler(() => {
   const server = new McpServer(
@@ -15,7 +16,7 @@ const handler = createMcpHandler(() => {
     "resolve",
     {
       description:
-        "Free universal capability resolver. Describe an external task and receive ranked machine services with price and execution metadata.",
+        "Free universal capability resolver. Searches AgentResolver capabilities plus live x402 marketplace services and returns machine-readable price and invocation metadata.",
       inputSchema: z.object({
         goal: z.string().min(1),
         url: z.string().url().optional(),
@@ -23,19 +24,22 @@ const handler = createMcpHandler(() => {
       })
     },
     async ({ goal, url, limit }) => {
-      const matches = resolveCapabilities(
-        `${goal}${url ? ` ${url}` : ""}`,
-        limit || 3
-      );
+      const resolution = await resolveGoal(goal, url, limit || 3);
+      const output = {
+        goal,
+        url: url || null,
+        owned: resolution.owned,
+        marketplace: resolution.marketplace
+      };
 
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({ goal, url: url || null, matches }, null, 2)
+            text: JSON.stringify(output, null, 2)
           }
         ],
-        structuredContent: { goal, url: url || null, matches }
+        structuredContent: output
       };
     }
   );
@@ -43,7 +47,7 @@ const handler = createMcpHandler(() => {
   server.registerTool(
     "list_capabilities",
     {
-      description: "List AgentResolver capabilities and current prices/status.",
+      description: "List AgentResolver-owned capabilities and current prices/status.",
       inputSchema: z.object({})
     },
     async () => ({
