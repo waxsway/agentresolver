@@ -47,6 +47,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1
     },
     {
+      url: `${base}/.well-known/ai-catalog.json`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9
+    },
+    {
       url: `${base}/.well-known/mcp.json`,
       lastModified: now,
       changeFrequency: "weekly",
