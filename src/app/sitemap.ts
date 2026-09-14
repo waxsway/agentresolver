@@ -47,6 +47,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1
     },
     {
+      url: `${base}/.well-known/mcp.json`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9
+    },
+    {
+      url: `${base}/.well-known/mcp/server-card.json`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9
+    },
+    {
       url: `${base}/mcp/server-card`,
       lastModified: now,
       changeFrequency: "weekly",
