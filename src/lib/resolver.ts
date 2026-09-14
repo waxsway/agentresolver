@@ -3,9 +3,14 @@ import {
   discoverCircleResources,
   type MarketplaceMatch
 } from "@/lib/circleDiscovery";
+import {
+  discoverMcpServers,
+  type McpDirectoryMatch
+} from "@/lib/mcpDiscovery";
 
 export type Resolution = {
   owned: ReturnType<typeof resolveCapabilities>;
+  mcp: McpDirectoryMatch[];
   marketplace: MarketplaceMatch[];
 };
 
@@ -16,7 +21,8 @@ export async function resolveGoal(
 ): Promise<Resolution> {
   const safeLimit = Math.max(1, Math.min(limit, 10));
 
-  const [marketplace] = await Promise.all([
+  const [mcp, marketplace] = await Promise.all([
+    discoverMcpServers(goal, safeLimit),
     discoverCircleResources(goal, safeLimit)
   ]);
 
@@ -25,6 +31,7 @@ export async function resolveGoal(
       `${goal}${url ? ` ${url}` : ""}`,
       safeLimit
     ),
+    mcp,
     marketplace
   };
 }

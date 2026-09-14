@@ -4,6 +4,13 @@
 
 AgentResolver helps an agent discover which external capability can satisfy a task. Resolution is free and requires no account, API key, or wallet.
 
+The resolver returns three result groups:
+- owned: AgentResolver-owned capabilities
+- mcp: live MCP directory matches
+- marketplace: x402 marketplace services
+
+For MCP directory lookup, AgentResolver derives a generic capability keyword locally and does not forward arbitrary goal text to third-party MCP registries.
+
 ## Machine interfaces
 
 - MCP: https://agentresolver.vercel.app/mcp
@@ -21,4 +28,4 @@ Content-Type: application/json
 
 {"goal":"Describe the external capability needed","url":"https://optional.example"}
 
-Paid execution is optional and must only be attempted under the calling agent's own authorization, budget, and safety policy.
+Resolution never spends money. Generic paid execution is disabled. Any future paid capability must use its own verified payment route and may only be attempted under the calling agent's own authorization, budget, and safety policy.
