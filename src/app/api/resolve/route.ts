@@ -33,6 +33,17 @@ function classifyIntent(goal: string): string[] {
   return matched.length > 0 ? matched.slice(0, 4) : ["other"];
 }
 
+function referrerHost(req: Request): string | null {
+  const raw = req.headers.get("referer");
+  if (!raw) return null;
+
+  try {
+    return new URL(raw).hostname.slice(0, 120);
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
     | { goal?: unknown; url?: unknown; limit?: unknown }
@@ -90,11 +101,13 @@ export async function POST(req: Request) {
       at: new Date().toISOString(),
       callerHash: shortHash(ip),
       userAgent: (req.headers.get("user-agent") || "unknown").slice(0, 160),
+      referrerHost: referrerHost(req),
       goalHash: shortHash(goal),
       goalLength: goal.length,
       intentTags: classifyIntent(goal),
       hasUrl: Boolean(url),
       topOwnedCapability: resolution.owned[0]?.id || null,
+      mcpMatchCount: resolution.mcp.length,
       marketplaceMatchCount: resolution.marketplace.length
     })
   );
@@ -117,13 +130,16 @@ export async function POST(req: Request) {
       url: url || null,
       free: true,
       owned,
+      mcp: resolution.mcp,
       marketplace: resolution.marketplace,
       next:
         resolution.marketplace.length > 0
           ? "Review marketplace payment requirements and input schema before calling a provider. Only pay under the calling agent's own authorization and budget policy."
-          : owned[0]
-            ? `Use capability '${owned[0].id}' if it fits. Paid AgentResolver execution is only attempted when explicitly requested.`
-            : "No suitable live marketplace or owned capability was found."
+          : resolution.mcp.length > 0
+            ? "Review the MCP server metadata and connect only if it fits the calling agent's trust and authorization policy."
+            : owned[0]
+              ? `Use capability '${owned[0].id}' if it fits. Paid AgentResolver execution is only attempted when explicitly requested.`
+              : "No suitable live marketplace, MCP server, or owned capability was found."
     },
     {
       headers: {
