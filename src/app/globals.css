@@ -1,0 +1,15 @@
+:root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #090b0f; color: #f4f7fb; }
+main { max-width: 980px; margin: 0 auto; padding: 10vh 24px; }
+.eyebrow { opacity: .6; letter-spacing: .13em; font-size: 12px; }
+h1 { font-family: ui-sans-serif, system-ui, sans-serif; font-size: clamp(44px, 7vw, 82px); line-height: .95; letter-spacing: -.055em; max-width: 900px; margin: 28px 0; }
+.lead { max-width: 760px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 20px; line-height: 1.55; color: #aeb6c3; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 48px 0 24px; }
+section { border: 1px solid #242a33; border-radius: 12px; padding: 20px; background: #0d1016; }
+section h2 { margin-top: 0; font-size: 16px; }
+section p { color: #929baa; line-height: 1.5; }
+pre { overflow-x: auto; background: #11151c; border: 1px solid #242a33; padding: 18px; border-radius: 12px; line-height: 1.5; }
+a { color: inherit; }
+.links { color: #aeb6c3; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
