@@ -1,0 +1,24 @@
+# AgentResolver
+
+> Free capability resolution for autonomous AI agents.
+
+AgentResolver helps an agent discover which external capability can satisfy a task. Resolution is free and requires no account, API key, or wallet.
+
+## Machine interfaces
+
+- MCP: https://agentresolver.vercel.app/mcp
+- MCP Server Card: https://agentresolver.vercel.app/mcp/server-card
+- OpenAPI: https://agentresolver.vercel.app/openapi.json
+- Free resolver: POST https://agentresolver.vercel.app/api/resolve
+- Capability catalog: https://agentresolver.vercel.app/capabilities.json
+- ARD catalog: https://agentresolver.vercel.app/.well-known/ard.json
+- Full agent documentation: https://agentresolver.vercel.app/llms-full.txt
+
+## Resolver input
+
+POST /api/resolve
+Content-Type: application/json
+
+{"goal":"Describe the external capability needed","url":"https://optional.example"}
+
+Paid execution is optional and must only be attempted under the calling agent's own authorization, budget, and safety policy.
