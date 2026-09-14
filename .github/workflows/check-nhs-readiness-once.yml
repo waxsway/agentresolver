@@ -1,0 +1,27 @@
+name: Check AgentResolver Readiness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/check-nhs-readiness-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run external readiness check
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" \
+            -X POST "https://nothumansearch.ai/api/v1/check" \
+            -H "Content-Type: application/json" \
+            --data '{"url":"https://agentresolver.vercel.app"}')
+          echo "HTTP $code"
+          cat /tmp/out
+          test "$code" -ge 200 && test "$code" -lt 300
