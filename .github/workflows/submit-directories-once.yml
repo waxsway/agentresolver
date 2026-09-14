@@ -1,0 +1,44 @@
+name: Submit AgentResolver to Free Directories
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-directories-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Submit to AgentNDX
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/agentndx.out -w "%{http_code}" \
+            -X POST "https://agentndx.ai/api/submit" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "name=AgentResolver" \
+            --data-urlencode "github_url=https://github.com/waxsway/agentresolver" \
+            --data-urlencode "homepage_url=https://agentresolver.vercel.app" \
+            --data-urlencode "protocols=MCP" \
+            --data-urlencode "description=Free capability resolver for AI agents with MCP, API, and x402 service discovery." \
+            --data-urlencode "contact=waxsway@gmail.com")
+          echo "AgentNDX HTTP $code"
+          cat /tmp/agentndx.out
+          test "$code" -ge 200 && test "$code" -lt 300
+
+      - name: Submit to MCP.Directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/mcpdirectory.out -w "%{http_code}" \
+            -X POST "https://mcp.directory/api/submit-server" \
+            -H "Content-Type: application/json" \
+            --data '{"githubUrl":"https://github.com/waxsway/agentresolver","description":"Free capability resolver for AI agents with MCP, API, and x402 discovery.","email":"waxsway@gmail.com"}')
+          echo "MCP.Directory HTTP $code"
+          cat /tmp/mcpdirectory.out
+          test "$code" -ge 200 && test "$code" -lt 300
