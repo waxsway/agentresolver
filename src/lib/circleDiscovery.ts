@@ -46,13 +46,69 @@ function estimateUsdPrice(accepts: CirclePayment[] | undefined): number | null {
   return atomic / 1_000_000;
 }
 
-export async function discoverCircleResources(
-  goal: string,
-  limit = 5
-): Promise<MarketplaceMatch[]> {
+function normalize(item: CircleResource): MarketplaceMatch | null {
+  if (typeof item?.resource !== "string") return null;
+
+  return {
+    source: "circle-x402",
+    provider: item.metadata?.provider?.name || null,
+    category: item.metadata?.provider?.category || null,
+    description:
+      item.metadata?.description ||
+      item.metadata?.provider?.description ||
+      item.description ||
+      null,
+    resource: item.resource,
+    type: item.type || null,
+    estimatedUsdPrice: estimateUsdPrice(item.accepts),
+    accepts: Array.isArray(item.accepts) ? item.accepts : [],
+    input: item.metadata?.input ?? null,
+    supportsVanillax402:
+      typeof item.metadata?.supportsVanillax402 === "boolean"
+        ? item.metadata.supportsVanillax402
+        : null,
+    supportsCircleGateway:
+      typeof item.metadata?.supportsCircleGateway === "boolean"
+        ? item.metadata.supportsCircleGateway
+        : null
+  };
+}
+
+function tokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 1);
+}
+
+function scoreMatch(goal: string, item: MarketplaceMatch): number {
+  const query = new Set(tokens(goal));
+  if (query.size === 0) return 0;
+
+  const haystack = tokens(
+    [
+      item.provider,
+      item.category,
+      item.description,
+      item.resource,
+      item.type
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  return haystack.reduce(
+    (score, token) => score + (query.has(token) ? 1 : 0),
+    0
+  );
+}
+
+async function getCachedCatalog(): Promise<MarketplaceMatch[]> {
   const endpoint = new URL("https://api.circle.com/v2/x402/discovery/resources");
-  endpoint.searchParams.set("query", goal);
-  endpoint.searchParams.set("limit", String(Math.max(1, Math.min(limit, 10))));
+  endpoint.searchParams.set("limit", "50");
+  endpoint.searchParams.set("offset", "0");
 
   try {
     const response = await fetch(endpoint, {
@@ -62,7 +118,7 @@ export async function discoverCircleResources(
         "user-agent": "AgentResolver/0.1"
       },
       signal: AbortSignal.timeout(3000),
-      next: { revalidate: 60 }
+      next: { revalidate: 300 }
     });
 
     if (!response.ok) return [];
@@ -79,32 +135,29 @@ export async function discoverCircleResources(
             : [];
 
     return raw
-      .filter((item) => typeof item?.resource === "string")
-      .slice(0, Math.max(1, Math.min(limit, 10)))
-      .map((item) => ({
-        source: "circle-x402" as const,
-        provider: item.metadata?.provider?.name || null,
-        category: item.metadata?.provider?.category || null,
-        description:
-          item.metadata?.description ||
-          item.metadata?.provider?.description ||
-          item.description ||
-          null,
-        resource: item.resource as string,
-        type: item.type || null,
-        estimatedUsdPrice: estimateUsdPrice(item.accepts),
-        accepts: Array.isArray(item.accepts) ? item.accepts : [],
-        input: item.metadata?.input ?? null,
-        supportsVanillax402:
-          typeof item.metadata?.supportsVanillax402 === "boolean"
-            ? item.metadata.supportsVanillax402
-            : null,
-        supportsCircleGateway:
-          typeof item.metadata?.supportsCircleGateway === "boolean"
-            ? item.metadata.supportsCircleGateway
-            : null
-      }));
+      .map(normalize)
+      .filter((item): item is MarketplaceMatch => Boolean(item));
   } catch {
     return [];
   }
+}
+
+export async function discoverCircleResources(
+  goal: string,
+  limit = 5
+): Promise<MarketplaceMatch[]> {
+  const safeLimit = Math.max(1, Math.min(limit, 10));
+  const catalog = await getCachedCatalog();
+
+  return catalog
+    .map((item) => ({ item, score: scoreMatch(goal, item) }))
+    .filter(({ score }) => score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        (a.item.estimatedUsdPrice ?? Number.POSITIVE_INFINITY) -
+          (b.item.estimatedUsdPrice ?? Number.POSITIVE_INFINITY)
+    )
+    .slice(0, safeLimit)
+    .map(({ item }) => item);
 }
