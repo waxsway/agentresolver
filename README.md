@@ -18,6 +18,8 @@ Agents should not need dozens of hard-coded integrations just to figure out what
 - `/capabilities.json` — runtime-generated capability metadata
 - `server.json` — MCP Registry publisher metadata; update its remote URL after deployment
 
+The resolver currently augments AgentResolver-owned capabilities with Circle's public, keyless x402 Discovery API so a new deployment can return live machine-payable services immediately. The natural-language `goal` is sent to that discovery service; the optional target URL is not.
+
 A2A metadata is intentionally **not** advertised until AgentResolver implements an actual A2A transport endpoint.
 
 ## Local development
@@ -41,9 +43,13 @@ The current version does **not** fake or bypass x402 verification. `/api/execute
 
 This keeps discovery testable immediately without risking unpaid executions or pretending that a client payment is valid.
 
+## Telemetry
+
+Resolver calls emit structured server logs with a one-way hash of the caller IP and goal, the user-agent, goal length, URL-presence flag, and match counts. Raw goals, raw IP addresses, and target URLs are not written to application logs.
+
 ## Launch checklist
 
-1. CI build passes.
+1. CI build passes on Node 24.
 2. Import this repository into Vercel.
 3. Set `NEXT_PUBLIC_BASE_URL` to the production origin.
 4. Replace the placeholder remote URL in `server.json` with the deployed `/mcp` URL.
