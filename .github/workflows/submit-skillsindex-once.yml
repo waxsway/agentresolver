@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           code=$(curl -sS -o /tmp/out -w "%{http_code}" \
-            -X POST "https://skillsindex.dev/api/mcp/submit" \
+            -X POST "https://skillsindex.dev/api/mcp/submit/" \
             -H "Content-Type: application/json" \
             --data '{"name":"AgentResolver","github_url":"https://github.com/waxsway/agentresolver","description":"Free capability resolver for AI agents with MCP, API, and x402 service discovery.","ecosystem":"mcp_server","category":"ai-llm"}')
           echo "HTTP $code"
