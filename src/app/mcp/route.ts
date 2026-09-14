@@ -3,6 +3,17 @@ import * as z from "zod/v4";
 import { CAPABILITIES } from "@/lib/catalog";
 import { resolveGoal } from "@/lib/resolver";
 
+function logToolCall(tool: string, extra: Record<string, unknown> = {}) {
+  console.log(
+    JSON.stringify({
+      event: "mcp_tool_call",
+      tool,
+      at: new Date().toISOString(),
+      ...extra
+    })
+  );
+}
+
 const handler = createMcpHandler(() => {
   const server = new McpServer(
     { name: "agentresolver", version: "0.1.0" },
@@ -31,6 +42,14 @@ const handler = createMcpHandler(() => {
     },
     async ({ goal, url, limit }) => {
       const resolution = await resolveGoal(goal, url, limit || 3);
+
+      logToolCall("resolve", {
+        hasUrl: Boolean(url),
+        requestedLimit: limit || 3,
+        ownedMatches: resolution.owned.length,
+        marketplaceMatches: resolution.marketplace.length
+      });
+
       const output = {
         goal,
         url: url || null,
@@ -62,15 +81,21 @@ const handler = createMcpHandler(() => {
         openWorldHint: false
       }
     },
-    async () => ({
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(CAPABILITIES, null, 2)
-        }
-      ],
-      structuredContent: { capabilities: CAPABILITIES }
-    })
+    async () => {
+      logToolCall("list_capabilities", {
+        capabilityCount: CAPABILITIES.length
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(CAPABILITIES, null, 2)
+          }
+        ],
+        structuredContent: { capabilities: CAPABILITIES }
+      };
+    }
   );
 
   return server;
