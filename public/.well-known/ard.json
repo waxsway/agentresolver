@@ -1,0 +1,36 @@
+{
+  "entries": [
+    {
+      "@context": "https://agenticresourcediscovery.org/context/v1",
+      "identifier": "urn:air:agentresolver.vercel.app:api:capability-resolver",
+      "displayName": "AgentResolver",
+      "type": "application/vnd.oai.openapi+json",
+      "url": "https://agentresolver.vercel.app/openapi.json",
+      "description": "Free machine-first capability resolver for autonomous agents. Discover AgentResolver-owned capabilities and live x402 services from a single natural-language request.",
+      "capabilities": [
+        "CapabilityResolver",
+        "ToolDiscovery",
+        "MCPDiscovery",
+        "X402Discovery",
+        "APISelection",
+        "MachineServiceRouting"
+      ],
+      "tags": [
+        "agents",
+        "mcp",
+        "x402",
+        "tool-discovery",
+        "api-discovery",
+        "routing"
+      ],
+      "version": "0.1.0",
+      "representativeQueries": [
+        "find a tool or API that can complete this task",
+        "find an MCP server for this capability",
+        "find a machine-payable x402 service for this job",
+        "compare external services that can satisfy my goal",
+        "what tool should my agent use next"
+      ]
+    }
+  ]
+}
