@@ -17,6 +17,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1
     },
     {
+      url: `${base}/docs`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9
+    },
+    {
       url: `${base}/llms.txt`,
       lastModified: now,
       changeFrequency: "weekly",
@@ -50,6 +56,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${base}/.well-known/ai-catalog.json`,
       lastModified: now,
       changeFrequency: "daily",
+      priority: 0.9
+    },
+    {
+      url: `${base}/.well-known/ai-plugin.json`,
+      lastModified: now,
+      changeFrequency: "weekly",
       priority: 0.9
     },
     {
