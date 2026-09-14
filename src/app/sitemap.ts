@@ -7,12 +7,50 @@ export default function sitemap(): MetadataRoute.Sitemap {
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : "https://agentresolver.vercel.app");
 
+  const now = new Date();
+
   return [
     {
       url: base,
-      lastModified: new Date(),
+      lastModified: now,
       changeFrequency: "daily",
       priority: 1
+    },
+    {
+      url: `${base}/llms.txt`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9
+    },
+    {
+      url: `${base}/llms-full.txt`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8
+    },
+    {
+      url: `${base}/openapi.json`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9
+    },
+    {
+      url: `${base}/capabilities.json`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9
+    },
+    {
+      url: `${base}/.well-known/ard.json`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 1
+    },
+    {
+      url: `${base}/mcp/server-card`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9
     }
   ];
 }
