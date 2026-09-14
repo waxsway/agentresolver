@@ -1,0 +1,27 @@
+name: Submit AgentResolver to mcpub
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-mcpub-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Submit AgentResolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" \
+            -X POST "https://mcpub.dev/mcp" \
+            -H "Content-Type: application/json" \
+            --data '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"submit","arguments":{"url":"https://agentresolver.vercel.app","description":"Free capability resolver for AI agents with MCP, API, and x402 service discovery."}}}')
+          echo "HTTP $code"
+          cat /tmp/out
+          test "$code" -ge 200 && test "$code" -lt 300
