@@ -14,6 +14,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="ard" href="/.well-known/ard.json" />
+        <link rel="describedby" href="/llms.txt" type="text/markdown" />
       </head>
       <body>{children}</body>
     </html>
