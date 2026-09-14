@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { resolveCapabilities } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
+
+function shortHash(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 16);
+}
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
@@ -23,7 +27,29 @@ export async function POST(req: Request) {
 
   const requestId = randomUUID();
   const matches = resolveCapabilities(`${goal}${url ? ` ${url}` : ""}`, limit);
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin).replace(/\/$/, "");
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin
+  ).replace(/\/$/, "");
+
+  const ip =
+    req.headers.get("x-real-ip") ||
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+
+  console.log(
+    JSON.stringify({
+      event: "resolver_call",
+      requestId,
+      at: new Date().toISOString(),
+      callerHash: shortHash(ip),
+      userAgent: (req.headers.get("user-agent") || "unknown").slice(0, 160),
+      goalHash: shortHash(goal),
+      goalLength: goal.length,
+      hasUrl: Boolean(url),
+      topCapability: matches[0]?.id || null,
+      matchCount: matches.length
+    })
+  );
 
   return NextResponse.json(
     {
