@@ -1,9 +1,0 @@
-{
-  "name": "AgentResolver",
-  "description": "Free capability resolver for AI agents with MCP, API, and x402 service discovery.",
-  "url": "https://agentresolver.vercel.app/mcp",
-  "transport": "streamable-http",
-  "registry": "io.github.waxsway/agentresolver",
-  "serverCard": "https://agentresolver.vercel.app/mcp/server-card",
-  "openapi": "https://agentresolver.vercel.app/openapi.json"
-}
