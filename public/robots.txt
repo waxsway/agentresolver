@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Agentmap: https://agentresolver.vercel.app/.well-known/ard.json
