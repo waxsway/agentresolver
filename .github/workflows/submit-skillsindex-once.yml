@@ -1,0 +1,27 @@
+name: Submit AgentResolver to SkillsIndex
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-skillsindex-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Submit to SkillsIndex
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" \
+            -X POST "https://skillsindex.dev/api/mcp/submit" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"AgentResolver","github_url":"https://github.com/waxsway/agentresolver","description":"Free capability resolver for AI agents with MCP, API, and x402 service discovery.","ecosystem":"mcp_server","category":"ai-llm"}')
+          echo "HTTP $code"
+          cat /tmp/out
+          test "$code" -ge 200 && test "$code" -lt 300
