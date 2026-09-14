@@ -21,7 +21,13 @@ const handler = createMcpHandler(() => {
         goal: z.string().min(1),
         url: z.string().url().optional(),
         limit: z.number().int().min(1).max(10).optional()
-      })
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
     },
     async ({ goal, url, limit }) => {
       const resolution = await resolveGoal(goal, url, limit || 3);
@@ -48,7 +54,13 @@ const handler = createMcpHandler(() => {
     "list_capabilities",
     {
       description: "List AgentResolver-owned capabilities and current prices/status.",
-      inputSchema: z.object({})
+      inputSchema: z.object({}),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
     },
     async () => ({
       content: [
