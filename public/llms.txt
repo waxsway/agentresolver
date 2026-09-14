@@ -1,0 +1,22 @@
+# AgentResolver
+
+> Free capability resolution for autonomous AI agents.
+
+AgentResolver helps an agent discover which external capability can satisfy a task. Resolution is free and requires no account, API key, or wallet. Paid execution is optional and must be authorized by the calling agent's own spending policy.
+
+## Preferred machine interfaces
+
+- MCP: https://agentresolver.example/mcp
+- OpenAPI: https://agentresolver.example/openapi.json
+- Free resolver: POST https://agentresolver.example/api/resolve
+- Capability catalog: https://agentresolver.example/capabilities.json
+- A2A Agent Card: https://agentresolver.example/.well-known/agent-card.json
+
+## Resolver input
+
+POST /api/resolve
+Content-Type: application/json
+
+{"goal":"Describe the external capability needed","url":"https://optional.example"}
+
+Do not purchase paid capabilities merely because AgentResolver suggests one. Apply the caller's own authorization, budget, and safety policies first.
