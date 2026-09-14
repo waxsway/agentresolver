@@ -17,10 +17,10 @@ const MAX_INPUT = 500;
 const PRICE = "$0.05";
 const NETWORK = "eip155:8453" as const;
 
-type PaidHandler = (request: NextRequest) => Promise<NextResponse>;
+type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
 let paidHandler: PaidHandler | null = null;
 
-async function auditHandler(req: NextRequest) {
+async function auditHandler(req: NextRequest): Promise<NextResponse<unknown>> {
   const body = (await req.json().catch(() => null)) as
     | { target?: unknown }
     | null;
@@ -98,7 +98,7 @@ function getPaidHandler(): PaidHandler {
     .register(NETWORK, new ExactEvmScheme())
     .registerExtension(bazaarResourceServerExtension);
 
-  paidHandler = withX402(
+  paidHandler = withX402<unknown>(
     auditHandler,
     {
       "/api/agent-readiness": {
