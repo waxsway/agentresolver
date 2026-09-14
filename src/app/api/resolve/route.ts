@@ -4,8 +4,33 @@ import { resolveGoal } from "@/lib/resolver";
 
 export const dynamic = "force-dynamic";
 
+const MAX_GOAL_LENGTH = 1000;
+const MAX_URL_LENGTH = 2048;
+
 function shortHash(value: string): string {
   return createHash("sha256").update(value).digest("hex").slice(0, 16);
+}
+
+function classifyIntent(goal: string): string[] {
+  const text = goal.toLowerCase();
+  const groups: Array<[string, string[]]> = [
+    ["web", ["web", "website", "url", "scrape", "crawl", "browser", "page"]],
+    ["documents", ["pdf", "document", "invoice", "file", "table", "ocr"]],
+    ["search", ["search", "find", "research", "lookup", "discover"]],
+    ["code", ["code", "github", "repository", "repo", "compile", "debug"]],
+    ["data", ["database", "sql", "data", "csv", "json", "analytics"]],
+    ["commerce", ["price", "product", "buy", "purchase", "commerce", "shop"]],
+    ["payments", ["pay", "payment", "x402", "usdc", "wallet", "transaction"]],
+    ["crypto-risk", ["crypto", "ethereum", "tron", "aml", "compliance", "wallet risk"]],
+    ["communications", ["email", "message", "slack", "sms", "notify"]],
+    ["media", ["image", "video", "audio", "photo", "transcribe"]]
+  ];
+
+  const matched = groups
+    .filter(([, terms]) => terms.some((term) => text.includes(term)))
+    .map(([name]) => name);
+
+  return matched.length > 0 ? matched.slice(0, 4) : ["other"];
 }
 
 export async function POST(req: Request) {
@@ -23,6 +48,26 @@ export async function POST(req: Request) {
   if (!goal) {
     return NextResponse.json(
       { error: "MISSING_GOAL", message: "Provide a natural-language goal." },
+      { status: 400 }
+    );
+  }
+
+  if (goal.length > MAX_GOAL_LENGTH) {
+    return NextResponse.json(
+      {
+        error: "GOAL_TOO_LONG",
+        message: `Goal must be ${MAX_GOAL_LENGTH} characters or fewer.`
+      },
+      { status: 400 }
+    );
+  }
+
+  if (url && url.length > MAX_URL_LENGTH) {
+    return NextResponse.json(
+      {
+        error: "URL_TOO_LONG",
+        message: `URL must be ${MAX_URL_LENGTH} characters or fewer.`
+      },
       { status: 400 }
     );
   }
@@ -47,6 +92,7 @@ export async function POST(req: Request) {
       userAgent: (req.headers.get("user-agent") || "unknown").slice(0, 160),
       goalHash: shortHash(goal),
       goalLength: goal.length,
+      intentTags: classifyIntent(goal),
       hasUrl: Boolean(url),
       topOwnedCapability: resolution.owned[0]?.id || null,
       marketplaceMatchCount: resolution.marketplace.length
