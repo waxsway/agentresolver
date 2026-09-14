@@ -1,0 +1,66 @@
+{
+  "service": "AgentResolver",
+  "version": "0.1.0",
+  "resolver": {
+    "method": "POST",
+    "url": "https://agentresolver.vercel.app/api/resolve",
+    "priceUsd": 0
+  },
+  "capabilities": [
+    {
+      "id": "capability-search",
+      "name": "Capability Search",
+      "description": "Find the best external tool, API, MCP server, or machine service for a goal.",
+      "tags": ["tool discovery", "api discovery", "mcp", "x402", "routing", "search"],
+      "priceUsd": 0,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/resolve"
+    },
+    {
+      "id": "web-extract",
+      "name": "Web Extract",
+      "description": "Turn a public webpage into clean structured text or JSON.",
+      "tags": ["web", "scrape", "extract", "url", "html", "crawl", "research"],
+      "priceUsd": 0.02,
+      "mode": "owned",
+      "status": "planned"
+    },
+    {
+      "id": "js-render",
+      "name": "JavaScript Render",
+      "description": "Render a JavaScript-heavy webpage and return machine-readable content.",
+      "tags": ["javascript", "browser", "render", "web", "url", "scrape"],
+      "priceUsd": 0.04,
+      "mode": "owned",
+      "status": "planned"
+    },
+    {
+      "id": "pdf-parse",
+      "name": "PDF Parse",
+      "description": "Extract structured text, tables, and metadata from a PDF.",
+      "tags": ["pdf", "document", "parse", "extract", "table", "ocr"],
+      "priceUsd": 0.03,
+      "mode": "owned",
+      "status": "planned"
+    },
+    {
+      "id": "vendor-check",
+      "name": "Vendor Check",
+      "description": "Assess a domain or vendor for basic legitimacy and risk signals.",
+      "tags": ["vendor", "company", "domain", "risk", "trust", "verify"],
+      "priceUsd": 0.08,
+      "mode": "owned",
+      "status": "planned"
+    },
+    {
+      "id": "wallet-risk",
+      "name": "Wallet Risk",
+      "description": "Analyze an EVM or Tron wallet and return a machine-readable risk verdict.",
+      "tags": ["wallet", "crypto", "aml", "risk", "ethereum", "tron", "compliance"],
+      "priceUsd": 0.25,
+      "mode": "partner",
+      "status": "planned"
+    }
+  ]
+}
