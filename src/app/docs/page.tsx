@@ -1,6 +1,6 @@
 const resolveExample = `curl -X POST https://agentresolver.vercel.app/api/resolve \
   -H "content-type: application/json" \
-  -d '{"goal":"find a service that can extract structured data from a webpage"}'`;
+  -d '{"goal":"find a GitHub MCP server"}'`;
 
 export default function DocsPage() {
   return (
@@ -17,10 +17,21 @@ export default function DocsPage() {
         <h2>REST resolver</h2>
         <p>
           Send a natural-language goal to <code>POST /api/resolve</code>. The
-          response includes AgentResolver capabilities and matching marketplace
-          services with machine-readable invocation and price metadata.
+          response contains three independent result groups: AgentResolver-owned
+          capabilities, live MCP directory matches, and x402 marketplace services.
         </p>
         <pre><code>{resolveExample}</code></pre>
+      </section>
+
+      <section>
+        <h2>Privacy-safe MCP search</h2>
+        <p>
+          AgentResolver does not forward arbitrary goal text to MCP directories.
+          It derives a generic capability term locally, such as{" "}
+          <code>github</code>, <code>browser</code>, or <code>database</code>,
+          and only that generic term can be used for third-party MCP discovery.
+          Slow or unavailable registries fail open instead of blocking the resolver.
+        </p>
       </section>
 
       <section>
@@ -48,9 +59,10 @@ export default function DocsPage() {
       <section>
         <h2>Payments</h2>
         <p>
-          Resolution does not spend money. Any paid capability must use its own
-          verified payment route, and the calling agent remains responsible for
-          its authorization and spending policy.
+          Resolution does not spend money. Generic paid execution is intentionally
+          disabled. A paid capability must expose its own verified payment route,
+          and the calling agent remains responsible for its authorization and
+          spending policy.
         </p>
       </section>
     </main>
