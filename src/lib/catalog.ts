@@ -1,0 +1,97 @@
+export type Capability = {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  priceUsd: number;
+  mode: "owned" | "partner" | "discovery";
+  status: "live" | "planned";
+  endpoint?: string;
+};
+
+export const CAPABILITIES: Capability[] = [
+  {
+    id: "capability-search",
+    name: "Capability Search",
+    description: "Find the best external tool, API, MCP server, or machine service for a goal.",
+    tags: ["tool discovery", "api discovery", "mcp", "x402", "routing", "search"],
+    priceUsd: 0,
+    mode: "owned",
+    status: "live",
+    endpoint: "/api/resolve"
+  },
+  {
+    id: "web-extract",
+    name: "Web Extract",
+    description: "Turn a public webpage into clean structured text or JSON.",
+    tags: ["web", "scrape", "extract", "url", "html", "crawl", "research"],
+    priceUsd: 0.02,
+    mode: "owned",
+    status: "planned"
+  },
+  {
+    id: "js-render",
+    name: "JavaScript Render",
+    description: "Render a JavaScript-heavy webpage and return machine-readable content.",
+    tags: ["javascript", "browser", "render", "web", "url", "scrape"],
+    priceUsd: 0.04,
+    mode: "owned",
+    status: "planned"
+  },
+  {
+    id: "pdf-parse",
+    name: "PDF Parse",
+    description: "Extract structured text, tables, and metadata from a PDF.",
+    tags: ["pdf", "document", "parse", "extract", "table", "ocr"],
+    priceUsd: 0.03,
+    mode: "owned",
+    status: "planned"
+  },
+  {
+    id: "vendor-check",
+    name: "Vendor Check",
+    description: "Assess a domain or vendor for basic legitimacy and risk signals.",
+    tags: ["vendor", "company", "domain", "risk", "trust", "verify"],
+    priceUsd: 0.08,
+    mode: "owned",
+    status: "planned"
+  },
+  {
+    id: "wallet-risk",
+    name: "Wallet Risk",
+    description: "Analyze an EVM or Tron wallet and return a machine-readable risk verdict.",
+    tags: ["wallet", "crypto", "aml", "risk", "ethereum", "tron", "compliance"],
+    priceUsd: 0.25,
+    mode: "partner",
+    status: "planned"
+  }
+];
+
+function tokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+export function resolveCapabilities(goal: string, limit = 3) {
+  const q = new Set(tokens(goal));
+
+  return CAPABILITIES
+    .map((capability) => {
+      const haystack = tokens(`${capability.name} ${capability.description} ${capability.tags.join(" ")}`);
+      const overlap = haystack.reduce((score, token) => score + (q.has(token) ? 1 : 0), 0);
+      const phraseBonus = capability.tags.some((tag) => goal.toLowerCase().includes(tag)) ? 3 : 0;
+      const liveBonus = capability.status === "live" ? 0.25 : 0;
+      return { capability, score: overlap + phraseBonus + liveBonus };
+    })
+    .sort((a, b) => b.score - a.score || a.capability.priceUsd - b.capability.priceUsd)
+    .slice(0, Math.max(1, Math.min(limit, 10)))
+    .map(({ capability, score }, index) => ({
+      rank: index + 1,
+      score,
+      ...capability
+    }));
+}
