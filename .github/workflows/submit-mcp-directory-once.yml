@@ -1,0 +1,27 @@
+name: Submit AgentResolver to MCP Directory
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-mcp-directory-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Submit to MCP.Directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" \
+            -X POST "https://mcp.directory/api/submit-server" \
+            -H "Content-Type: application/json" \
+            --data '{"githubUrl":"https://github.com/waxsway/agentresolver","description":"Free capability resolver for AI agents with MCP, API, and x402 discovery.","email":"waxsway@gmail.com"}')
+          echo "HTTP $code"
+          cat /tmp/out
+          test "$code" -ge 200 && test "$code" -lt 300
