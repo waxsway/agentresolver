@@ -6,6 +6,18 @@ export const dynamic = "force-dynamic";
 const MAX_INPUT = 500;
 
 export async function POST(req: Request) {
+  if (process.env.AGENT_READINESS_ENABLED !== "true") {
+    return NextResponse.json(
+      {
+        error: "CAPABILITY_NOT_LIVE",
+        capabilityId: "agent-readiness",
+        message:
+          "Agent Readiness Audit is staged but disabled until payment verification and cost controls are approved."
+      },
+      { status: 503 }
+    );
+  }
+
   const body = (await req.json().catch(() => null)) as
     | { target?: unknown }
     | null;
