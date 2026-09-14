@@ -1,0 +1,59 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AgentResolver API",
+    "version": "0.1.0",
+    "description": "Free capability resolution and x402-ready execution for autonomous agents."
+  },
+  "servers": [{ "url": "https://agentresolver.example" }],
+  "paths": {
+    "/api/resolve": {
+      "post": {
+        "operationId": "resolveCapability",
+        "summary": "Resolve a natural-language goal to ranked machine capabilities",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["goal"],
+                "properties": {
+                  "goal": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Ranked capabilities" } }
+      }
+    },
+    "/api/execute": {
+      "post": {
+        "operationId": "executeCapability",
+        "summary": "Execute a selected capability; paid resources use x402",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["capabilityId"],
+                "properties": {
+                  "capabilityId": { "type": "string" },
+                  "input": {}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Execution result" },
+          "402": { "description": "Payment required via x402" }
+        }
+      }
+    }
+  }
+}
