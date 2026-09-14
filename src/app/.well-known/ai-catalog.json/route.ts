@@ -1,0 +1,53 @@
+import { NextResponse } from "next/server";
+
+const catalog = {
+  specVersion: "1.0",
+  host: {
+    displayName: "AgentResolver",
+    identifier: "agentresolver.vercel.app",
+    documentationUrl: "https://agentresolver.vercel.app"
+  },
+  entries: [
+    {
+      identifier: "urn:air:agentresolver.vercel.app:mcp:agentresolver",
+      displayName: "AgentResolver",
+      type: "application/mcp-server-card+json",
+      url: "https://agentresolver.vercel.app/mcp/server-card",
+      description:
+        "Free machine-first capability resolver for autonomous agents with live x402 service discovery.",
+      capabilities: [
+        "CapabilityResolver",
+        "ToolDiscovery",
+        "MCPDiscovery",
+        "X402Discovery",
+        "APISelection",
+        "MachineServiceRouting"
+      ],
+      tags: [
+        "agents",
+        "mcp",
+        "x402",
+        "tool-discovery",
+        "api-discovery",
+        "routing"
+      ],
+      version: "0.1.0",
+      representativeQueries: [
+        "find a tool or API that can complete this task",
+        "find an MCP server for this capability",
+        "find a machine-payable x402 service for this job",
+        "compare external services that can satisfy my goal",
+        "what tool should my agent use next"
+      ]
+    }
+  ]
+};
+
+export function GET() {
+  return NextResponse.json(catalog, {
+    headers: {
+      "cache-control": "public, max-age=300",
+      "access-control-allow-origin": "*"
+    }
+  });
+}
