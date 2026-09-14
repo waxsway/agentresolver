@@ -81,13 +81,29 @@ export function resolveCapabilities(goal: string, limit = 3) {
 
   return CAPABILITIES
     .map((capability) => {
-      const haystack = tokens(`${capability.name} ${capability.description} ${capability.tags.join(" ")}`);
-      const overlap = haystack.reduce((score, token) => score + (q.has(token) ? 1 : 0), 0);
-      const phraseBonus = capability.tags.some((tag) => goal.toLowerCase().includes(tag)) ? 3 : 0;
-      const liveBonus = capability.status === "live" ? 0.25 : 0;
-      return { capability, score: overlap + phraseBonus + liveBonus };
+      const haystack = tokens(
+        `${capability.name} ${capability.description} ${capability.tags.join(" ")}`
+      );
+      const overlap = haystack.reduce(
+        (score, token) => score + (q.has(token) ? 1 : 0),
+        0
+      );
+      const phraseBonus = capability.tags.some((tag) =>
+        goal.toLowerCase().includes(tag)
+      )
+        ? 3
+        : 0;
+      const semanticScore = overlap + phraseBonus;
+      const liveBonus =
+        semanticScore > 0 && capability.status === "live" ? 0.25 : 0;
+
+      return { capability, score: semanticScore + liveBonus };
     })
-    .sort((a, b) => b.score - a.score || a.capability.priceUsd - b.capability.priceUsd)
+    .filter((item) => item.score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score || a.capability.priceUsd - b.capability.priceUsd
+    )
     .slice(0, Math.max(1, Math.min(limit, 10)))
     .map(({ capability, score }, index) => ({
       rank: index + 1,
