@@ -23,7 +23,11 @@ const handler = createMcpHandler(() => {
       })
     },
     async ({ goal, url, limit }) => {
-      const matches = resolveCapabilities(`${goal}${url ? ` ${url}` : ""}`, limit || 3);
+      const matches = resolveCapabilities(
+        `${goal}${url ? ` ${url}` : ""}`,
+        limit || 3
+      );
+
       return {
         content: [
           {
@@ -43,7 +47,12 @@ const handler = createMcpHandler(() => {
       inputSchema: z.object({})
     },
     async () => ({
-      content: [{ type: "text", text: JSON.stringify(CAPABILITIES, null, 2) }],
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(CAPABILITIES, null, 2)
+        }
+      ],
       structuredContent: { capabilities: CAPABILITIES }
     })
   );
@@ -52,5 +61,13 @@ const handler = createMcpHandler(() => {
 });
 
 export async function POST(req: Request) {
+  return handler.fetch(req);
+}
+
+export async function GET(req: Request) {
+  return handler.fetch(req);
+}
+
+export async function DELETE(req: Request) {
   return handler.fetch(req);
 }
