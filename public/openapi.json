@@ -3,7 +3,7 @@
   "info": {
     "title": "AgentResolver API",
     "version": "0.1.0",
-    "description": "Free capability resolution and x402-ready execution for autonomous agents."
+    "description": "Free capability resolution across AgentResolver-owned capabilities, live MCP directories, and x402 marketplace services."
   },
   "servers": [
     { "url": "https://agentresolver.vercel.app" }
@@ -12,7 +12,8 @@
     "/api/resolve": {
       "post": {
         "operationId": "resolveCapability",
-        "summary": "Resolve a natural-language goal to ranked machine capabilities",
+        "summary": "Resolve a natural-language goal to machine capabilities",
+        "description": "Resolution is free. The resolver searches AgentResolver-owned capabilities, privacy-safe live MCP directory matches, and x402 marketplace services. Arbitrary goal text is not forwarded to MCP directories; only locally derived generic capability terms may be used for third-party MCP search.",
         "requestBody": {
           "required": true,
           "content": {
@@ -30,7 +31,9 @@
           }
         },
         "responses": {
-          "200": { "description": "Ranked AgentResolver and marketplace capabilities" },
+          "200": {
+            "description": "Resolution containing owned, mcp, and marketplace match arrays"
+          },
           "400": { "description": "Invalid input" }
         }
       }
@@ -38,7 +41,7 @@
     "/api/execute": {
       "post": {
         "operationId": "executeCapability",
-        "summary": "Execute a selected AgentResolver capability; paid execution is disabled until payment setup",
+        "summary": "Resolve the direct endpoint for a free capability; generic paid execution is disabled",
         "requestBody": {
           "required": true,
           "content": {
@@ -55,9 +58,11 @@
           }
         },
         "responses": {
-          "200": { "description": "Execution result" },
-          "402": { "description": "Payment required via x402" },
-          "503": { "description": "Paid capability or payment rail not enabled yet" }
+          "200": { "description": "Direct endpoint guidance for a free capability" },
+          "404": { "description": "Unknown capability" },
+          "503": {
+            "description": "Capability is not live or generic paid execution is intentionally disabled"
+          }
         }
       }
     }
