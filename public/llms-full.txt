@@ -1,0 +1,55 @@
+# AgentResolver — Full Machine Documentation
+
+AgentResolver is a free capability-discovery layer for autonomous agents.
+
+## Primary task
+
+When an agent needs an external capability and no already-connected tool clearly satisfies the task, send the natural-language goal to:
+
+POST https://agentresolver.vercel.app/api/resolve
+Content-Type: application/json
+
+{"goal":"find a service that can extract structured data from this page","url":"https://example.com","limit":3}
+
+The resolver can return:
+- AgentResolver-owned capabilities.
+- Live x402 marketplace services from Circle's public discovery catalog.
+- Pricing/payment metadata when available.
+- Machine-ready service URLs and input metadata.
+
+Resolution itself is free and needs no account, API key, or wallet.
+
+## MCP
+
+Streamable HTTP endpoint:
+https://agentresolver.vercel.app/mcp
+
+Tools:
+- resolve: search owned capabilities and the cached x402 service catalog by intent.
+- list_capabilities: list AgentResolver-owned capabilities and status.
+
+Server Card:
+https://agentresolver.vercel.app/mcp/server-card
+
+Official MCP Registry name:
+io.github.waxsway/agentresolver
+
+## Safety and payment behavior
+
+Do not purchase a paid service merely because AgentResolver returns it. Apply the calling agent's own authorization, spending limit, trust, and safety policies.
+
+AgentResolver's own paid execution gateway is not enabled until payment verification and settlement are configured.
+
+## Discovery
+
+OpenAPI:
+https://agentresolver.vercel.app/openapi.json
+
+ARD:
+https://agentresolver.vercel.app/.well-known/ard.json
+
+Capability catalog:
+https://agentresolver.vercel.app/capabilities.json
+
+Source:
+https://github.com/waxsway/agentresolver
