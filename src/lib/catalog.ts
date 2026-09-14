@@ -21,6 +21,27 @@ export const CAPABILITIES: Capability[] = [
     endpoint: "/api/resolve"
   },
   {
+    id: "agent-readiness",
+    name: "Agent Readiness Audit",
+    description:
+      "Audit a public website for agent discoverability, llms.txt, ARD, OpenAPI, sitemap, MCP metadata, and baseline headers.",
+    tags: [
+      "agent readiness",
+      "agent accessibility",
+      "llms.txt",
+      "ard",
+      "openapi",
+      "mcp",
+      "robots",
+      "sitemap",
+      "website audit",
+      "domain"
+    ],
+    priceUsd: 0.05,
+    mode: "owned",
+    status: "planned"
+  },
+  {
     id: "web-extract",
     name: "Web Extract",
     description: "Turn a public webpage into clean structured text or JSON.",
