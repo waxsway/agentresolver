@@ -1,0 +1,10 @@
+{
+  "service": "AgentResolver",
+  "version": "0.1.0",
+  "resolver": {
+    "method": "POST",
+    "url": "https://agentresolver.example/api/resolve",
+    "priceUsd": 0
+  },
+  "categories": ["tool-discovery", "web", "documents", "vendor-risk", "crypto-risk", "mcp", "x402"]
+}
