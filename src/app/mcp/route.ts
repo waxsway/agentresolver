@@ -27,7 +27,7 @@ const handler = createMcpHandler(() => {
     "resolve",
     {
       description:
-        "Free universal capability resolver. Searches AgentResolver capabilities plus live x402 marketplace services and returns machine-readable price and invocation metadata.",
+        "Free universal capability resolver. Searches AgentResolver-owned capabilities, live MCP directories, and x402 marketplace services and returns machine-readable connection, price, and invocation metadata.",
       inputSchema: z.object({
         goal: z.string().min(1),
         url: z.string().url().optional(),
@@ -47,6 +47,7 @@ const handler = createMcpHandler(() => {
         hasUrl: Boolean(url),
         requestedLimit: limit || 3,
         ownedMatches: resolution.owned.length,
+        mcpMatches: resolution.mcp.length,
         marketplaceMatches: resolution.marketplace.length
       });
 
@@ -54,6 +55,7 @@ const handler = createMcpHandler(() => {
         goal,
         url: url || null,
         owned: resolution.owned,
+        mcp: resolution.mcp,
         marketplace: resolution.marketplace
       };
 
