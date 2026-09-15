@@ -12,33 +12,71 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
-      - name: Inspect public submit page
+      - name: Inspect public submit page and client chunks
         shell: bash
         run: |
           set -euo pipefail
-          for u in "https://mcpservers.org/submit" "https://mcpservers.org/en/submit"; do
-            echo "===== $u ====="
-            code=$(curl -sS -L -o /tmp/page.html -w "%{http_code}" "$u")
-            echo "HTTP $code"
-            python3 - <<'PY'
+          curl -sS -L "https://mcpservers.org/submit" -o /tmp/page.html
+
+          echo "=== category options ==="
+          python3 - <<'PY'
           from pathlib import Path
-          import re
+          import re, html
           s=Path("/tmp/page.html").read_text(errors="ignore")
-          for pat in [
-              r'<form[^>]*>',
-              r'<input[^>]+>',
-              r'<textarea[^>]+>',
-              r'<select[^>]+>',
-              r'/api/[A-Za-z0-9_./?=-]+',
-              r'fetch\([^;]{0,1200}',
-              r'axios[^;]{0,1200}',
-              r'JSON\.stringify\([^;]{0,800}',
-          ]:
-              print("\nPATTERN", pat)
-              for m in list(re.finditer(pat,s,re.I|re.S))[:30]:
-                  x=re.sub(r'\s+',' ',m.group(0))
-                  print(x[:1800])
+          m=re.search(r'<select[^>]*name="category"[^>]*>(.*?)</select>',s,re.I|re.S)
+          if m:
+              for value,label in re.findall(r'<option[^>]*value="([^"]*)"[^>]*>(.*?)</option>',m.group(1),re.I|re.S):
+                  print(value, re.sub(r'<[^>]+>','',html.unescape(label)).strip())
+          print("BUILD ID")
+          m=re.search(r'"buildId":"([^"]+)"',s)
+          print(m.group(1) if m else "not-found")
           PY
-          done
+
+          echo "=== scripts ==="
+          python3 - <<'PY' > /tmp/scripts.txt
+          from pathlib import Path
+          import re, html
+          s=Path("/tmp/page.html").read_text(errors="ignore")
+          for src in dict.fromkeys(re.findall(r'<script[^>]+src="([^"]+)"',s,re.I)):
+              print(html.unescape(src))
+          PY
+          cat /tmp/scripts.txt
+
+          : > /tmp/all.js
+          while read -r src; do
+            [ -z "$src" ] && continue
+            case "$src" in
+              http*) u="$src" ;;
+              *) u="https://mcpservers.org$src" ;;
+            esac
+            echo "FETCH $u"
+            curl -sS -L "$u" >> /tmp/all.js || true
+            echo >> /tmp/all.js
+          done < /tmp/scripts.txt
+
+          echo "=== relevant client code ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("/tmp/all.js").read_text(errors="ignore")
+          needles=[
+              "registryName","hasRemote","premium-submit","free-submit",
+              "server-category","submitServer","server submission","plan",
+              "contact-email","server-name","formAction","useActionState",
+              "premium","payment","stripe"
+          ]
+          for needle in needles:
+              print("\n###",needle)
+              start=0
+              count=0
+              while count<12:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  print(s[max(0,i-900):min(len(s),i+2200)].replace("\n"," ")[:3200])
+                  start=i+len(needle)
+                  count+=1
+          PY
+
+          echo "=== forms/hidden action fields ==="
+          grep -Eo '<input[^>]+name="\$ACTION_[^"]+"[^>]*>' /tmp/page.html | head -20 || true
