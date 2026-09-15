@@ -1,0 +1,40 @@
+name: Verify MCP Funnel Telemetry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/test-mcp-funnel-telemetry-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Initialize and list tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://agentresolver.vercel.app/mcp"
+          init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"agentresolver-telemetry-check","version":"1.0"}}}'
+          code=$(curl -sS -o /tmp/init.out -w "%{http_code}" -X POST "$base" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -H "User-Agent: AgentResolver-Telemetry-Verification/1.0" \
+            --data "$init")
+          echo "INIT HTTP $code"
+          cat /tmp/init.out
+          test "$code" -ge 200 && test "$code" -lt 300
+
+          list='{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+          code=$(curl -sS -o /tmp/list.out -w "%{http_code}" -X POST "$base" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -H "User-Agent: AgentResolver-Telemetry-Verification/1.0" \
+            --data "$list")
+          echo "LIST HTTP $code"
+          cat /tmp/list.out
+          test "$code" -ge 200 && test "$code" -lt 300
