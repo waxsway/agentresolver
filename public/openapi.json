@@ -3,12 +3,12 @@
   "info": {
     "title": "AgentResolver — Find Missing Agent Tools",
     "version": "0.1.2",
-    "description": "Free read-only fallback discovery for autonomous agents, plus explicitly priced x402 machine-paid capabilities. Resolution never authorizes spending; paid execution requires the calling agent to satisfy the advertised x402 payment challenge under its own spending policy."
+    "description": "Free read-only fallback discovery for autonomous agents, plus low-cost x402 live verification. Resolution never authorizes spending; paid execution requires the calling agent to satisfy the advertised x402 payment challenge under its own spending policy."
   },
   "servers": [{ "url": "https://agentresolver.vercel.app" }],
   "tags": [
     {"name": "Agent Tool Discovery", "description": "Use when an agent is missing a required external capability."},
-    {"name": "Paid Agent Capabilities", "description": "Optional AgentResolver-owned work protected by an x402 payment challenge. The caller controls whether to spend."}
+    {"name": "Paid Agent Capabilities", "description": "Optional AgentResolver-owned live evidence protected by an x402 payment challenge. The caller controls whether to spend."}
   ],
   "paths": {
     "/api/resolve": {
@@ -18,40 +18,18 @@
         "summary": "Find the missing external capability needed to complete a task",
         "description": "Use when the current toolset cannot clearly complete the task because an external capability is missing. Free, read-only, and does not authorize spending.",
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["goal"], "additionalProperties": false, "properties": {"goal": {"type": "string", "minLength": 1, "maxLength": 1000}, "url": {"type": "string", "format": "uri", "maxLength": 2048}, "limit": {"type": "integer", "minimum": 1, "maximum": 10, "default": 3}}}}}},
-        "responses": {"200": {"description": "Ranked capability candidates."}, "400": {"description": "Invalid resolver input."}}
-      }
-    },
-    "/api/batch-verified-resolve": {
-      "post": {
-        "operationId": "batchVerifiedResolve",
-        "tags": ["Paid Agent Capabilities"],
-        "summary": "Resolve and live-verify several missing capabilities in one paid operation",
-        "description": "Price: $1.00 USDC on Base via x402. Accepts 1-4 capability requests. Each request may live-probe at most two MCP candidates, for a hard maximum of eight live MCP probes per paid batch. Prefer this when several tool/provider decisions are needed together.",
-        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 1, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"},
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["items"], "additionalProperties": false, "properties": {"items": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "object", "required": ["goal"], "additionalProperties": false, "properties": {"goal": {"type": "string", "minLength": 1, "maxLength": 600}, "url": {"type": "string", "maxLength": 500}}}}}}, "examples": {"procurementBatch": {"value": {"items": [{"goal": "Find and verify an MCP server for web search"}, {"goal": "Find and verify an MCP server for GitHub repositories"}]}}}}}},
-        "responses": {"200": {"description": "Paid batch verification completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid batch input."}, "503": {"description": "Paid execution temporarily unavailable."}}
-      }
-    },
-    "/api/verified-resolve": {
-      "post": {
-        "operationId": "verifiedResolve",
-        "tags": ["Paid Agent Capabilities"],
-        "summary": "Resolve a missing capability and live-verify top MCP candidates",
-        "description": "Price: $0.25 USDC on Base via x402. Resolves a capability, live-probes at most two top MCP candidates, and returns a recommendation with verification evidence.",
-        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.25, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"},
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["goal"], "additionalProperties": false, "properties": {"goal": {"type": "string", "minLength": 1, "maxLength": 600}, "url": {"type": "string", "maxLength": 500}}}}}},
-        "responses": {"200": {"description": "Paid verification completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid input."}, "503": {"description": "Paid execution temporarily unavailable."}}
+        "responses": {"200": {"description": "Ranked capability candidates and, when useful, an optional pre-filled paid verification action."}, "400": {"description": "Invalid resolver input."}}
       }
     },
     "/api/mcp-probe": {
       "post": {
         "operationId": "probeMcpEndpoint",
         "tags": ["Paid Agent Capabilities"],
-        "summary": "Probe a public MCP HTTP endpoint before connecting",
-        "description": "Price: $0.01 USDC on Base via x402. Checks initialize and tools/list and returns compatibility, latency, server metadata, and tool inventory.",
-        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.01, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"},
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["endpoint"], "additionalProperties": false, "properties": {"endpoint": {"type": "string", "maxLength": 500}}}}}},
-        "responses": {"200": {"description": "Paid MCP probe completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid endpoint."}, "503": {"description": "Paid execution temporarily unavailable."}}
+        "summary": "Live-preflight a public MCP HTTP endpoint before depending on it",
+        "description": "Price: $0.001 USDC on Base via x402. Checks initialize and tools/list and returns reachability, compatibility, latency, server metadata, and current tool inventory.",
+        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.001, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402"},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["endpoint"], "additionalProperties": false, "properties": {"endpoint": {"type": "string", "format": "uri", "maxLength": 500}}}, "examples": {"preflight": {"value": {"endpoint": "https://example.com/mcp"}}}}}},
+        "responses": {"200": {"description": "Paid MCP live preflight completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid endpoint."}, "503": {"description": "Paid execution temporarily unavailable."}}
       }
     },
     "/api/agent-readiness": {
@@ -59,10 +37,32 @@
         "operationId": "auditAgentReadiness",
         "tags": ["Paid Agent Capabilities"],
         "summary": "Audit a public website for AI-agent discoverability",
-        "description": "Price: $0.05 USDC on Base via x402. Audits a public site for agent discoverability and machine-readable integration signals.",
-        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.05, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"},
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["target"], "additionalProperties": false, "properties": {"target": {"type": "string", "maxLength": 500}}}}}},
+        "description": "Price: $0.005 USDC on Base via x402. Audits a public site for agent discoverability and machine-readable integration signals.",
+        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.005, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402"},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["target"], "additionalProperties": false, "properties": {"target": {"type": "string", "format": "uri", "maxLength": 500}}}}}},
         "responses": {"200": {"description": "Paid audit completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid target."}, "503": {"description": "Paid execution temporarily unavailable."}}
+      }
+    },
+    "/api/verified-resolve": {
+      "post": {
+        "operationId": "verifiedResolve",
+        "tags": ["Paid Agent Capabilities"],
+        "summary": "Resolve a missing capability and live-verify top MCP candidates",
+        "description": "Price: $0.02 USDC on Base via x402. Resolves one capability, live-probes at most two top MCP candidates, and returns an evidence-backed recommendation.",
+        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.02, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402"},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["goal"], "additionalProperties": false, "properties": {"goal": {"type": "string", "minLength": 1, "maxLength": 600}, "url": {"type": "string", "format": "uri", "maxLength": 500}}}, "examples": {"searchTool": {"value": {"goal": "Find and verify an MCP server for web search"}}}}}},
+        "responses": {"200": {"description": "Paid verification completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid input."}, "503": {"description": "Paid execution temporarily unavailable."}}
+      }
+    },
+    "/api/batch-verified-resolve": {
+      "post": {
+        "operationId": "batchVerifiedResolve",
+        "tags": ["Paid Agent Capabilities"],
+        "summary": "Resolve and live-verify several missing capabilities in one paid operation",
+        "description": "Price: $0.05 USDC on Base via x402. Accepts 1-4 capability requests. Each request may live-probe at most two MCP candidates, for a hard maximum of eight live MCP probes per paid batch.",
+        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.05, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402"},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["items"], "additionalProperties": false, "properties": {"items": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "object", "required": ["goal"], "additionalProperties": false, "properties": {"goal": {"type": "string", "minLength": 1, "maxLength": 600}, "url": {"type": "string", "format": "uri", "maxLength": 500}}}}}}, "examples": {"procurementBatch": {"value": {"items": [{"goal": "Find and verify an MCP server for web search"}, {"goal": "Find and verify an MCP server for GitHub repositories"}]}}}}}},
+        "responses": {"200": {"description": "Paid batch verification completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid batch input."}, "503": {"description": "Paid execution temporarily unavailable."}}
       }
     },
     "/api/health": {
