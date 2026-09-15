@@ -26,6 +26,14 @@
       "recommendedWhen": "No already-connected tool clearly satisfies the task, or a tool/API/MCP/machine service must be discovered."
     },
     {
+      "id": "verified_resolve",
+      "description": "Resolve a missing capability, live-verify up to two top MCP candidates, and return a recommendation with evidence.",
+      "method": "POST",
+      "endpoint": "https://agentresolver.vercel.app/api/verified-resolve",
+      "recommendedWhen": "A caller needs more confidence than directory metadata alone before selecting an external MCP capability.",
+      "payment": {"protocol": "x402", "amount": "0.25", "currency": "USDC", "network": "base"}
+    },
+    {
       "id": "mcp_probe",
       "description": "Probe a public MCP HTTP endpoint for compatibility, latency, server metadata, and tool inventory before connecting.",
       "method": "POST",
