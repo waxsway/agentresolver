@@ -5,10 +5,6 @@ import {
   x402ResourceServer
 } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
-import {
-  bazaarResourceServerExtension,
-  declareDiscoveryExtension
-} from "@x402/extensions/bazaar";
 import { auditAgentReadiness } from "@/lib/agentReadiness";
 import {
   X402_FACILITATOR_URL,
@@ -100,9 +96,10 @@ function getPaidHandler(): PaidHandler {
     timeoutMs: 10_000
   });
 
-  const resourceServer = new x402ResourceServer(facilitatorClient)
-    .register(X402_NETWORK, new ExactEvmScheme())
-    .registerExtension(bazaarResourceServerExtension);
+  const resourceServer = new x402ResourceServer(facilitatorClient).register(
+    X402_NETWORK,
+    new ExactEvmScheme()
+  );
 
   paidHandler = withX402<unknown>(
     auditHandler,
@@ -116,35 +113,7 @@ function getPaidHandler(): PaidHandler {
         },
         description:
           "Audit a public website for AI-agent discoverability and machine-readable integration signals.",
-        mimeType: "application/json",
-        extensions: {
-          ...declareDiscoveryExtension({
-            input: {
-              target: "https://example.com"
-            },
-            inputSchema: {
-              properties: {
-                target: {
-                  type: "string",
-                  description:
-                    "Public HTTP or HTTPS domain/URL to audit for agent readiness."
-                }
-              },
-              required: ["target"]
-            },
-            bodyType: "json",
-            output: {
-              example: {
-                target: "https://example.com/",
-                score: 75,
-                grade: "B",
-                checks: [],
-                issues: [],
-                recommendations: []
-              }
-            }
-          })
-        }
+        mimeType: "application/json"
       }
     },
     resourceServer
