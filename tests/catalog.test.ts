@@ -29,6 +29,21 @@ test("ranks capability search for tool discovery", () => {
   assert.equal(matches[0]?.id, "capability-search");
 });
 
+test("returns the live paid MCP probe with executable payment metadata", () => {
+  const matches = resolveCapabilities(
+    "verify this MCP endpoint and list its tools",
+    3
+  );
+
+  assert.equal(matches[0]?.id, "mcp-probe");
+  assert.equal(matches[0]?.status, "live");
+  assert.equal(matches[0]?.endpoint, "/api/mcp-probe");
+  assert.equal(matches[0]?.priceUsd, 0.01);
+  assert.equal(matches[0]?.payment?.protocol, "x402");
+  assert.equal(matches[0]?.payment?.network, "eip155:8453");
+  assert.equal(matches[0]?.payment?.asset, "USDC");
+});
+
 test("returns the live paid readiness audit with executable payment metadata", () => {
   const matches = resolveCapabilities(
     "audit this website for agent readiness llms.txt and OpenAPI",
