@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { resolveGoal } from "@/lib/resolver";
+import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import {
   callerHash,
   classifyIntent,
@@ -19,7 +20,7 @@ function formatUsd(value: number) {
 }
 
 type PaidRecommendation = {
-  capabilityId: "mcp-probe" | "verified-resolve" | "batch-verified-resolve";
+  capabilityId: PaidCapabilityId;
   reason: string;
   method: "POST";
   execute: string;
@@ -28,8 +29,29 @@ type PaidRecommendation = {
   network: "eip155:8453";
   protocol: "x402";
   spendingAuthorizationRequired: true;
-  input?: Record<string, string>;
+  input?: Record<string, unknown>;
 };
+
+function paidRecommendation(
+  baseUrl: string,
+  capabilityId: PaidCapabilityId,
+  reason: string,
+  input?: Record<string, unknown>
+): PaidRecommendation {
+  const product = getPaidCapability(capabilityId);
+  return {
+    capabilityId,
+    reason,
+    method: "POST",
+    execute: `${baseUrl}${product.endpoint}`,
+    priceUsd: product.priceUsd,
+    asset: "USDC",
+    network: "eip155:8453",
+    protocol: "x402",
+    spendingAuthorizationRequired: true,
+    ...(input ? { input } : {})
+  };
+}
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
@@ -61,34 +83,54 @@ export async function POST(req: Request) {
     : null;
   const ambiguousDiscovery = candidateCount > 1;
 
-  const recommendedPaidAction: PaidRecommendation | null = singleProbeableMcp
-    ? {
-        capabilityId: "mcp-probe",
-        reason: "Free discovery found one concrete MCP endpoint. A $0.001 live preflight is the lowest-friction way to confirm reachability, MCP compatibility, and current tool inventory before depending on it.",
-        method: "POST",
-        execute: `${baseUrl}/api/mcp-probe`,
-        priceUsd: 0.001,
-        asset: "USDC",
-        network: "eip155:8453",
-        protocol: "x402",
-        spendingAuthorizationRequired: true,
-        input: { endpoint: singleProbeableMcp.endpoint as string }
-      }
-    : resolution.mcp.length > 0 || ambiguousDiscovery
-      ? {
-          capabilityId: "verified-resolve",
-          reason: resolution.mcp.length > 0
-            ? `Discovery found ${resolution.mcp.length} MCP candidates. Verified Resolve live-probes up to two top candidates and returns comparative evidence for $0.02.`
-            : `Discovery found ${candidateCount} external candidates. Verified Resolve adds bounded live verification so the caller can choose with stronger evidence than catalog metadata alone.`,
-          method: "POST",
-          execute: `${baseUrl}/api/verified-resolve`,
-          priceUsd: 0.02,
-          asset: "USDC",
-          network: "eip155:8453",
-          protocol: "x402",
-          spendingAuthorizationRequired: true
-        }
-      : null;
+  const topDirectOwned = owned.find(
+    (match) => match.rank === 1 && match.status === "live" && match.priceUsd > 0 && match.endpoint
+  );
+  const directOwnedId = topDirectOwned?.id && topDirectOwned.id in {
+    "http-inspect": true,
+    "tool-contract": true,
+    "mcp-probe": true,
+    "agent-readiness": true,
+    "verified-resolve": true,
+    "batch-verified-resolve": true
+  }
+    ? topDirectOwned.id as PaidCapabilityId
+    : null;
+
+  const directInput = directOwnedId === "http-inspect" && url
+    ? { url }
+    : directOwnedId === "agent-readiness" && url
+      ? { url }
+      : directOwnedId === "mcp-probe" && singleProbeableMcp?.endpoint
+        ? { endpoint: singleProbeableMcp.endpoint }
+        : directOwnedId === "verified-resolve"
+          ? { goal, ...(url ? { url } : {}) }
+          : undefined;
+
+  const recommendedPaidAction: PaidRecommendation | null = directOwnedId
+    ? paidRecommendation(
+        baseUrl,
+        directOwnedId,
+        "The highest-ranked live AgentResolver capability directly matches this goal. Use this owned endpoint before paying for a broader discovery or verification step.",
+        directInput
+      )
+    : singleProbeableMcp
+      ? paidRecommendation(
+          baseUrl,
+          "mcp-probe",
+          "Free discovery found one concrete MCP endpoint. Live-preflight it before depending on it.",
+          { endpoint: singleProbeableMcp.endpoint as string }
+        )
+      : resolution.mcp.length > 0 || ambiguousDiscovery
+        ? paidRecommendation(
+            baseUrl,
+            "verified-resolve",
+            resolution.mcp.length > 0
+              ? `Discovery found ${resolution.mcp.length} MCP candidates. Verified Resolve live-probes up to two top candidates and returns comparative evidence.`
+              : `Discovery found ${candidateCount} external candidates. Verified Resolve adds bounded live verification before selection.`,
+            { goal, ...(url ? { url } : {}) }
+          )
+        : null;
 
   console.log(JSON.stringify({
     event: "resolver_call", requestId, at: new Date().toISOString(), callerHash: callerHash(req),
