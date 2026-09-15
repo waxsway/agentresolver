@@ -81,6 +81,26 @@ export const PAID_CAPABILITIES = {
       description: "Quote a $0.005 USDC/Base audit of a public website for agent discoverability and machine-readable integration signals. Returns the exact x402 action; never spends."
     }
   },
+  "openapi-select": {
+    id: "openapi-select",
+    name: "OpenAPI Operation Select",
+    operationId: "selectOpenApiOperation",
+    endpoint: "/api/openapi-select",
+    price: "$0.005",
+    priceUsd: 0.005,
+    atomicAmount: "5000",
+    description: "Fetch a public JSON OpenAPI spec, rank its operations against a natural-language goal, and return one compact execution-ready operation contract with request parameters, body schema, auth requirements, alternatives, and confidence.",
+    useWhen: "An agent has a public OpenAPI spec but needs to choose the right operation without loading the entire API surface into model context.",
+    costClass: "bounded-network",
+    tags: ["openapi", "api operation", "operation selection", "operationid", "endpoint selection", "request schema", "agent tool", "x402"],
+    inputSchema: { type: "object", required: ["specUrl", "goal"], additionalProperties: false, properties: { specUrl: { type: "string", format: "uri", maxLength: 500 }, goal: { type: "string", minLength: 1, maxLength: 600 } } },
+    example: { specUrl: "https://example.com/openapi.json", goal: "find a customer order by id" },
+    quoteTool: {
+      name: "openapi_select",
+      title: "Quote OpenAPI operation selection — $0.005",
+      description: "Quote a $0.005 USDC/Base deterministic selection of the best operation from one public JSON OpenAPI spec for a stated goal. Returns a compact execution-ready contract; never spends."
+    }
+  },
   "verified-resolve": {
     id: "verified-resolve",
     name: "Verified Resolve",

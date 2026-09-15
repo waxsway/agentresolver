@@ -91,6 +91,7 @@ export async function POST(req: Request) {
     "tool-contract": true,
     "mcp-probe": true,
     "agent-readiness": true,
+    "openapi-select": true,
     "verified-resolve": true,
     "batch-verified-resolve": true
   }
@@ -103,7 +104,9 @@ export async function POST(req: Request) {
       ? { url }
       : directOwnedId === "mcp-probe" && singleProbeableMcp?.endpoint
         ? { endpoint: singleProbeableMcp.endpoint }
-        : directOwnedId === "verified-resolve"
+        : directOwnedId === "openapi-select" && url
+          ? { specUrl: url, goal }
+          : directOwnedId === "verified-resolve"
           ? { goal, ...(url ? { url } : {}) }
           : undefined;
 
@@ -151,7 +154,13 @@ export async function POST(req: Request) {
       callerHash: callerHash(req),
       capabilityId: recommendedPaidAction.capabilityId,
       priceUsd: recommendedPaidAction.priceUsd,
-      reason: singleProbeableMcp ? "single_mcp_probe" : resolution.mcp.length > 0 ? "mcp_live_verification" : "multiple_external_candidates"
+      reason: directOwnedId
+        ? "direct_owned_match"
+        : singleProbeableMcp
+          ? "single_mcp_probe"
+          : resolution.mcp.length > 0
+            ? "mcp_live_verification"
+            : "multiple_external_candidates"
     }));
   }
 

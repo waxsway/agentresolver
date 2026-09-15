@@ -13,6 +13,7 @@ export const X402_PRICING = {
   toolContract: getPaidCapability("tool-contract").price,
   mcpProbe: getPaidCapability("mcp-probe").price,
   agentReadiness: getPaidCapability("agent-readiness").price,
+  openapiSelect: getPaidCapability("openapi-select").price,
   verifiedResolve: getPaidCapability("verified-resolve").price,
   batchVerifiedResolve: getPaidCapability("batch-verified-resolve").price
 } as const;

@@ -25,6 +25,7 @@ const httpInspectProduct = getPaidCapability("http-inspect");
 const toolContractProduct = getPaidCapability("tool-contract");
 const mcpProbeProduct = getPaidCapability("mcp-probe");
 const readinessProduct = getPaidCapability("agent-readiness");
+const openApiSelectProduct = getPaidCapability("openapi-select");
 const verifiedResolveProduct = getPaidCapability("verified-resolve");
 const batchVerifiedResolveProduct = getPaidCapability("batch-verified-resolve");
 function formatUsd(value: number) { return value < 0.01 ? value.toFixed(3) : value.toFixed(2); }
@@ -42,7 +43,7 @@ async function logMcpRequest(req: Request) {
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
-    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. For paid direct work, call the matching quote tool: `http_inspect`, `tool_contract`, `mcp_preflight`, `agent_readiness`, `verified_resolve`, or `batch_verified_resolve`. Quote tools are free/read-only: they return an exact executable x402 action and never spend. If your host independently authorizes the displayed USDC/Base price, execute that returned action; otherwise stop."
+    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. For paid direct work, call the matching quote tool: `http_inspect`, `tool_contract`, `openapi_select`, `mcp_preflight`, `agent_readiness`, `verified_resolve`, or `batch_verified_resolve`. Quote tools are free/read-only: they return an exact executable x402 action and never spend. If your host independently authorizes the displayed USDC/Base price, execute that returned action; otherwise stop."
   });
 
   server.registerTool("resolve", {
@@ -87,6 +88,20 @@ const handler = createMcpHandler(() => {
   }, async ({ producerOutputSchema, consumerInputSchema }) => {
     logToolCall("tool_contract", { quotedPriceUsd: toolContractProduct.priceUsd });
     const action = paid("tool-contract", { producerOutputSchema, consumerInputSchema });
+    return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action };
+  });
+
+  server.registerTool("openapi_select", {
+    title: openApiSelectProduct.quoteTool.title,
+    description: openApiSelectProduct.quoteTool.description,
+    inputSchema: z.object({
+      specUrl: z.string().url(),
+      goal: z.string().min(1).max(600)
+    }),
+    annotations: { title: openApiSelectProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  }, async ({ specUrl, goal }) => {
+    logToolCall("openapi_select", { quotedPriceUsd: openApiSelectProduct.priceUsd, goalHash: shortHash(goal) });
+    const action = paid("openapi-select", { specUrl, goal });
     return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action };
   });
 
