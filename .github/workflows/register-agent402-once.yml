@@ -1,0 +1,68 @@
+name: Register Agent402 Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-agent402-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify canonical x402 seller surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..24}; do
+            manifest_ok=0
+            challenge_ok=0
+
+            if curl -fsS https://agentresolver.vercel.app/.well-known/x402 > /tmp/x402.json; then
+              if jq -e '
+                .x402Version == 2 and
+                (.resources | type == "array" and length >= 7)
+              ' /tmp/x402.json >/dev/null; then
+                manifest_ok=1
+              fi
+            fi
+
+            code="$(curl -sS -o /tmp/http-inspect.json -w '%{http_code}' https://agentresolver.vercel.app/api/http-inspect || true)"
+            if [ "$code" = "402" ] && jq -e '
+              .accepts[0].amount == "1000" and
+              .accepts[0].network == "eip155:8453"
+            ' /tmp/http-inspect.json >/dev/null; then
+              challenge_ok=1
+            fi
+
+            if [ "$manifest_ok" = "1" ] && [ "$challenge_ok" = "1" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Canonical x402 seller surface was not ready." >&2
+          exit 1
+
+      - name: Register AgentResolver origin with Agent402
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST https://agent402.tools/api/index/register \
+            -H 'content-type: application/json' \
+            -d '{"origin":"https://agentresolver.vercel.app"}')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|204|409) ;;
+            *)
+              echo "Agent402 registration failed with HTTP $code" >&2
+              exit 1
+              ;;
+          esac
