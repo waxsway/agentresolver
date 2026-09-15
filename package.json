@@ -1,8 +1,8 @@
 {
   "name": "agentresolver",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
-  "description": "Universal capability resolver for AI agents. Discover tools, APIs, MCP servers, and x402 machine services through one free remote MCP endpoint.",
+  "description": "Free fallback capability resolver for AI agents. Discover tools, APIs, MCP servers, data sources, web services, automations, and machine services through one remote MCP endpoint.",
   "homepage": "https://agentresolver.vercel.app",
   "repository": {
     "type": "git",
@@ -16,6 +16,7 @@
     "tool-discovery",
     "api-discovery",
     "capability-discovery",
+    "machine-services",
     "x402"
   ],
   "mcpName": "io.github.waxsway/agentresolver",
