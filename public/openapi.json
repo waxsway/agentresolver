@@ -80,6 +80,18 @@
         "tags": ["Paid Agent Capabilities"],
         "summary": "Audit a public website for AI-agent discoverability",
         "description": "Paid AgentResolver-owned capability. Price: $0.05 USDC on Base via x402. A request without payment returns HTTP 402 and payment requirements; execution occurs only after the caller independently authorizes and supplies a valid x402 payment. AgentResolver does not authorize spending on the caller's behalf.",
+        "x-payment-info": {
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "USDC",
+          "priceUsd": 0.05,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"
+        },
         "requestBody": {
           "required": true,
           "content": {

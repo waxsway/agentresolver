@@ -41,8 +41,14 @@ export async function POST(req: Request) {
 
   const owned = resolution.owned.map((match) => ({
     ...match,
-    execute: match.status !== "live" ? null : match.priceUsd > 0 ? `${baseUrl}/api/execute` : match.endpoint ? `${baseUrl}${match.endpoint}` : null
+    execute:
+      match.status === "live" && match.endpoint
+        ? `${baseUrl}${match.endpoint}`
+        : null,
+    spendingAuthorizationRequired: match.priceUsd > 0
   }));
+
+  const topLiveOwned = owned.find((match) => match.status === "live");
 
   return NextResponse.json({
     requestId,
@@ -67,9 +73,11 @@ export async function POST(req: Request) {
       ? "Review marketplace payment requirements and input schema before calling a provider. Only pay under the calling agent's own authorization and budget policy."
       : resolution.mcp.length > 0
         ? "Review the MCP server metadata and connect only if it fits the calling agent's trust and authorization policy."
-        : owned.find((match) => match.status === "live")
-          ? "Use the highest-ranked live AgentResolver capability if it fits."
-          : "No suitable live marketplace, MCP server, or owned capability was found."
+        : topLiveOwned?.priceUsd && topLiveOwned.priceUsd > 0
+          ? `A live AgentResolver capability is available at $${topLiveOwned.priceUsd.toFixed(2)} per call. Call its execute URL only if the calling agent is authorized to spend.`
+          : topLiveOwned
+            ? "Use the highest-ranked live AgentResolver capability if it fits."
+            : "No suitable live marketplace, MCP server, or owned capability was found."
   }, { headers: { "cache-control": "no-store", "access-control-allow-origin": "*" } });
 }
 

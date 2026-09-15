@@ -29,6 +29,21 @@ test("ranks capability search for tool discovery", () => {
   assert.equal(matches[0]?.id, "capability-search");
 });
 
+test("returns the live paid readiness audit with executable payment metadata", () => {
+  const matches = resolveCapabilities(
+    "audit this website for agent readiness llms.txt and OpenAPI",
+    3
+  );
+
+  assert.equal(matches[0]?.id, "agent-readiness");
+  assert.equal(matches[0]?.status, "live");
+  assert.equal(matches[0]?.endpoint, "/api/agent-readiness");
+  assert.equal(matches[0]?.priceUsd, 0.05);
+  assert.equal(matches[0]?.payment?.protocol, "x402");
+  assert.equal(matches[0]?.payment?.network, "eip155:8453");
+  assert.equal(matches[0]?.payment?.asset, "USDC");
+});
+
 test("never returns more than ten owned matches", () => {
   const matches = resolveCapabilities(
     "tool api mcp search web extract javascript render pdf document vendor domain wallet crypto risk",
