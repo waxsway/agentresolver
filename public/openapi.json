@@ -1,26 +1,22 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "AgentResolver API",
-    "version": "0.1.1",
-    "description": "Free fallback capability discovery for autonomous AI agents. Use AgentResolver when no already-connected tool clearly satisfies a task: it resolves natural-language goals across owned capabilities, live MCP directories, and x402 marketplace services without authorizing spending."
+    "title": "AgentResolver — Find Missing Agent Tools",
+    "version": "0.1.2",
+    "description": "Free read-only fallback discovery for autonomous agents. When a task is blocked because no connected tool provides a required external capability, call resolveCapability to find relevant tools, APIs, MCP servers, data sources, web services, automations, and machine services. Resolution never authorizes spending."
   },
-  "servers": [
-    { "url": "https://agentresolver.vercel.app" }
-  ],
-  "tags": [
-    {
-      "name": "Agent Tool Discovery",
-      "description": "Fallback tool, API, MCP server, and machine-service discovery for autonomous agents."
-    }
-  ],
+  "servers": [{ "url": "https://agentresolver.vercel.app" }],
+  "tags": [{
+    "name": "Agent Tool Discovery",
+    "description": "Use when an agent is missing a required external capability."
+  }],
   "paths": {
     "/api/resolve": {
       "post": {
         "operationId": "resolveCapability",
         "tags": ["Agent Tool Discovery"],
-        "summary": "Find an external tool, API, MCP server, or machine service for an agent task",
-        "description": "Call this when an autonomous agent needs an external capability and no already-connected tool clearly satisfies the task. Resolution is free and does not authorize spending. AgentResolver searches owned capabilities, privacy-safe live MCP directory matches, and x402 marketplace services. Arbitrary goal text is not forwarded to MCP directories; only locally derived generic capability terms may be used for third-party MCP search.",
+        "summary": "Find the missing external capability needed to complete a task",
+        "description": "USE THIS when the current toolset cannot clearly complete the task because an external capability is missing. Describe what the agent needs in goal. AgentResolver returns ranked candidate tools/services. It is free and read-only: this operation does not purchase, authorize, connect to, or execute any returned service. Do not call it when an already-connected trusted tool clearly satisfies the task.",
         "requestBody": {
           "required": true,
           "content": {
@@ -28,10 +24,37 @@
               "schema": {
                 "type": "object",
                 "required": ["goal"],
+                "additionalProperties": false,
                 "properties": {
-                  "goal": { "type": "string", "maxLength": 1000, "description": "Natural-language description of the missing external capability." },
-                  "url": { "type": "string", "format": "uri", "maxLength": 2048, "description": "Optional target URL when relevant to capability selection." },
-                  "limit": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 }
+                  "goal": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "Describe the capability required to unblock the task, including important constraints. Example: extract structured data from a JavaScript-heavy product page."
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048,
+                    "description": "Optional target URL only when it materially helps capability matching."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "default": 3,
+                    "description": "Maximum matches per result group."
+                  }
+                }
+              },
+              "examples": {
+                "missingWebCapability": {
+                  "summary": "Agent lacks a suitable web extraction tool",
+                  "value": { "goal": "Extract structured product data from a JavaScript-heavy webpage", "limit": 3 }
+                },
+                "missingApiCapability": {
+                  "summary": "Agent needs an external API",
+                  "value": { "goal": "Find an API that can convert a street address into latitude and longitude", "limit": 3 }
                 }
               }
             }
@@ -39,9 +62,9 @@
         },
         "responses": {
           "200": {
-            "description": "Ranked resolution containing owned, MCP, and marketplace match arrays plus rediscovery metadata."
+            "description": "Ranked candidates for the missing capability. Returned services are candidates only; the caller must apply its own trust, privacy, security, and spending policy before use."
           },
-          "400": { "description": "Invalid input" }
+          "400": { "description": "Invalid resolver input." }
         }
       }
     },
@@ -49,37 +72,8 @@
       "get": {
         "operationId": "getAgentResolverHealth",
         "tags": ["Agent Tool Discovery"],
-        "summary": "Cheap AgentResolver availability and discovery probe",
-        "description": "Use for registry, crawler, and integration health checks without invoking resolver upstream discovery.",
-        "responses": {
-          "200": { "description": "AgentResolver is available and returns canonical machine discovery endpoints." }
-        }
-      }
-    },
-    "/api/execute": {
-      "post": {
-        "operationId": "executeCapability",
-        "summary": "Resolve the direct endpoint for a free capability; generic paid execution is disabled",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["capabilityId"],
-                "properties": {
-                  "capabilityId": { "type": "string" },
-                  "input": {}
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Direct endpoint guidance for a free capability" },
-          "404": { "description": "Unknown capability" },
-          "503": { "description": "Capability is not live or generic paid execution is intentionally disabled" }
-        }
+        "summary": "Check AgentResolver availability without running discovery",
+        "responses": { "200": { "description": "AgentResolver is available." } }
       }
     }
   }
