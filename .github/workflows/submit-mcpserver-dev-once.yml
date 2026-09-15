@@ -69,6 +69,20 @@ jobs:
             timeout: 60000
           });
 
+          const opened = await page.evaluate(() => {
+            const nodes = Array.from(document.querySelectorAll("button, a"));
+            const trigger = nodes.find(el => {
+              const rect = el.getBoundingClientRect();
+              return rect.width > 0 && rect.height > 0 &&
+                /submit server/i.test((el.textContent || "").trim());
+            });
+            if (!trigger) return false;
+            trigger.click();
+            return true;
+          });
+          if (!opened) throw new Error("Submit server modal trigger not found");
+          await new Promise(r => setTimeout(r, 750));
+
           const visibleHandle = async selector => {
             const els = await page.$$(selector);
             for (const el of els) {
