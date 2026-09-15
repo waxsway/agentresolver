@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://agentresolver.vercel.app/</loc></url>
+  <url><loc>https://agentresolver.vercel.app/docs</loc></url>
+  <url><loc>https://agentresolver.vercel.app/providers</loc></url>
+  <url><loc>https://agentresolver.vercel.app/llms.txt</loc></url>
+  <url><loc>https://agentresolver.vercel.app/llms-full.txt</loc></url>
+  <url><loc>https://agentresolver.vercel.app/agents.txt</loc></url>
+  <url><loc>https://agentresolver.vercel.app/agents.json</loc></url>
+  <url><loc>https://agentresolver.vercel.app/openapi.json</loc></url>
+  <url><loc>https://agentresolver.vercel.app/capabilities.json</loc></url>
+  <url><loc>https://agentresolver.vercel.app/integrations.json</loc></url>
+  <url><loc>https://agentresolver.vercel.app/agentresolver.md</loc></url>
+  <url><loc>https://agentresolver.vercel.app/.well-known/agent.json</loc></url>
+  <url><loc>https://agentresolver.vercel.app/.well-known/mcp.json</loc></url>
+  <url><loc>https://agentresolver.vercel.app/.well-known/ard.json</loc></url>
+  <url><loc>https://agentresolver.vercel.app/.well-known/ai-catalog.json</loc></url>
+  <url><loc>https://agentresolver.vercel.app/mcp/server-card</loc></url>
+</urlset>

@@ -1,0 +1,44 @@
+# AgentResolver agent capabilities
+# Machine-first capability resolver and x402 utility provider.
+
+Origin: https://agentresolver.vercel.app
+MCP: https://agentresolver.vercel.app/mcp
+OpenAPI: https://agentresolver.vercel.app/openapi.json
+Protocols: MCP, x402
+
+# Free discovery
+Capability: resolve
+Endpoint: POST https://agentresolver.vercel.app/api/resolve
+Price: free
+Read-only: true
+Spending-authorized: false
+Description: Resolve a missing external capability into ranked AgentResolver-owned tools, MCP services, and machine-service candidates. Use when no already-connected tool clearly satisfies the task.
+
+# Paid machine utilities
+Capability: mcp_probe
+Endpoint: POST https://agentresolver.vercel.app/api/mcp-probe
+Price: 0.01 USDC
+Network: Base
+Payment: x402
+Description: Probe a public MCP HTTP endpoint for compatibility, latency, server metadata, and tool inventory before connecting.
+
+Capability: agent_readiness_audit
+Endpoint: POST https://agentresolver.vercel.app/api/agent-readiness
+Price: 0.05 USDC
+Network: Base
+Payment: x402
+Description: Audit a public website for AI-agent discoverability and machine-readable integration signals.
+
+# Discovery companions
+Agents-JSON: https://agentresolver.vercel.app/agents.json
+LLMs: https://agentresolver.vercel.app/llms.txt
+LLMs-Full: https://agentresolver.vercel.app/llms-full.txt
+Agent-Card: https://agentresolver.vercel.app/.well-known/agent.json
+MCP-Server-Card: https://agentresolver.vercel.app/mcp/server-card
+MCP-Well-Known: https://agentresolver.vercel.app/.well-known/mcp.json
+Capability-Catalog: https://agentresolver.vercel.app/capabilities.json
+Integration-Recipes: https://agentresolver.vercel.app/integrations.json
+ARD: https://agentresolver.vercel.app/.well-known/ard.json
+AI-Catalog: https://agentresolver.vercel.app/.well-known/ai-catalog.json
+
+Policy: Discovery and resolve are free and never authorize spending. Paid operations return HTTP 402 before execution. A caller must independently authorize payment under its own trust, budget, privacy, and safety policy.
