@@ -21,6 +21,27 @@ export const CAPABILITIES: Capability[] = [
     endpoint: "/api/resolve"
   },
   {
+    id: "mcp-probe",
+    name: "MCP Probe",
+    description:
+      "Verify a remote MCP endpoint is alive and inspect compatibility, latency, server metadata, and tool inventory before connecting.",
+    tags: [
+      "mcp probe",
+      "mcp health",
+      "mcp server",
+      "mcp endpoint",
+      "verify mcp",
+      "test mcp",
+      "tools list",
+      "compatibility",
+      "latency",
+      "server check"
+    ],
+    priceUsd: 0.01,
+    mode: "owned",
+    status: "planned"
+  },
+  {
     id: "agent-readiness",
     name: "Agent Readiness Audit",
     description:
