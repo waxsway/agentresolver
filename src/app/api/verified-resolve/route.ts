@@ -4,6 +4,7 @@ import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { verifiedResolve } from "@/lib/verifiedResolve";
 import { logPaidCapabilityAttempt } from "@/lib/telemetry";
+import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +47,7 @@ async function paidRequest(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) { return paidRequest(req); }
-export async function GET(req: NextRequest) { return paidRequest(req); }
+export async function GET() { return x402DiscoveryChallenge("verified-resolve"); }
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response" } });
 }
