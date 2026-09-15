@@ -1,4 +1,4 @@
-name: Probe ServerHub Free Submission
+name: Probe ServerHub Listing Edit Path
 
 on:
   push:
@@ -14,28 +14,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - name: Inspect ServerHub submit flow
+      - name: Inspect read-only listing APIs and client edit code
         shell: bash
         run: |
           set -euo pipefail
+          for u in \
+            "https://www.serverhub.digital/api/servers/agentresolver" \
+            "https://www.serverhub.digital/api/servers/ce03a4de-9546-428b-8fb7-46d11f0b2bc4" \
+            "https://www.serverhub.digital/api/server/agentresolver" \
+            "https://www.serverhub.digital/api/servers?slug=agentresolver" \
+            "https://www.serverhub.digital/api/servers?id=ce03a4de-9546-428b-8fb7-46d11f0b2bc4"; do
+            echo "===== $u ====="
+            code=$(curl -sS -L -o /tmp/out -w "%{http_code}" "$u" || true)
+            echo "HTTP $code"
+            head -c 5000 /tmp/out || true
+            echo
+          done
+
           curl -sS -L "https://www.serverhub.digital/submit" -o /tmp/page.html
-          echo "=== endpoint/form hints ==="
-          python3 - <<'PY'
+          python3 - <<'PY' > /tmp/scripts.txt
           from pathlib import Path
           import re, html
           s=Path("/tmp/page.html").read_text(errors="ignore")
-          pats=[
-            r'<form[^>]*>',r'<input[^>]+>',r'<textarea[^>]+>',r'<select[^>]+>',
-            r'/api/[A-Za-z0-9_./?=&-]+',r'https://[^"\' ]+/api/[A-Za-z0-9_./?=&-]+'
-          ]
-          for pat in pats:
-              print("\nPAT",pat)
-              for m in list(re.finditer(pat,s,re.I|re.S))[:80]:
-                  print(re.sub(r'\s+',' ',html.unescape(m.group(0)))[:1800])
-          scripts=list(dict.fromkeys(re.findall(r'<script[^>]+src="([^"]+)"',s,re.I)))
-          print("\nSCRIPTS")
-          for x in scripts: print(html.unescape(x))
-          Path("/tmp/scripts.txt").write_text("\n".join(html.unescape(x) for x in scripts))
+          for src in dict.fromkeys(re.findall(r'<script[^>]+src="([^"]+)"',s,re.I)):
+              print(html.unescape(src))
           PY
           : >/tmp/all.js
           while read -r src; do
@@ -47,16 +49,21 @@ jobs:
             curl -sS -L "$u" >> /tmp/all.js || true
             echo >> /tmp/all.js
           done </tmp/scripts.txt
-          echo "=== relevant js ==="
+
           python3 - <<'PY'
           from pathlib import Path
           s=Path("/tmp/all.js").read_text(errors="ignore")
-          for needle in ["submit","github","fetch","api/","repository","serverhub","createServer","quality"]:
+          needles=[
+            "install_config_claude","install_config_cursor","install_config_vscode",
+            "/api/servers","/api/server","PATCH","PUT","author dashboard",
+            "Suggest Edit","update server","remoteUrl","remote_url"
+          ]
+          for needle in needles:
               print("\n###",needle)
               start=0
-              for _ in range(15):
+              for _ in range(20):
                   i=s.lower().find(needle.lower(),start)
                   if i<0: break
-                  print(s[max(0,i-600):min(len(s),i+1700)].replace("\n"," ")[:2300])
+                  print(s[max(0,i-800):min(len(s),i+2200)].replace("\n"," ")[:3000])
                   start=i+len(needle)
           PY
