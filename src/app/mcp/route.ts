@@ -4,6 +4,12 @@ import { resolveGoal } from "@/lib/resolver";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { inspectHttpResource } from "@/lib/httpInspect";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
+import { evaluateToolContract } from "@/lib/toolContract";
+import { selectOpenApiOperation } from "@/lib/openapiSelect";
+import { probeMcpEndpoint } from "@/lib/mcpProbe";
+import { auditAgentReadiness } from "@/lib/agentReadiness";
+import { verifiedResolve } from "@/lib/verifiedResolve";
+import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
 const CANONICAL = "https://agentresolver.vercel.app";
@@ -64,7 +70,7 @@ async function logMcpRequest(req: Request) {
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
-    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. `http_inspect` is a directly payable $0.001 x402 MCP tool: an x402-aware client can receive the payment challenge, apply its own spending policy, and retry the same tools/call with payment. Other priced tools currently return free HTTP x402 purchase actions and never authorize spending themselves. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
+    instructions: "AgentResolver is a machine-first capability discovery and paid execution service. Use `resolve` for free whenever an external capability is missing. Every priced MCP tool is directly payable with x402: an x402-aware client can receive the payment challenge, apply its own spending policy, and retry the same tools/call with payment. Existing HTTP x402 endpoints remain available as fallback. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
   });
 
   server.registerTool("resolve", {
@@ -117,11 +123,22 @@ const handler = createMcpHandler(() => {
       consumerInputSchema: z.record(z.string(), z.unknown())
     }),
     annotations: { title: toolContractProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
-  }, async ({ producerOutputSchema, consumerInputSchema }) => {
-    logToolCall("tool_contract", { quotedPriceUsd: toolContractProduct.priceUsd });
-    const action = paid("tool-contract", { producerOutputSchema, consumerInputSchema });
-    return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action };
-  });
+  }, createLazyPaidMcpTool<{
+    producerOutputSchema: Record<string, unknown>;
+    consumerInputSchema: Record<string, unknown>;
+  }>("tool-contract", async ({ producerOutputSchema, consumerInputSchema }) => {
+    logToolCall("tool_contract", { priceUsd: toolContractProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = evaluateToolContract(producerOutputSchema, consumerInputSchema);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "tool-contract",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      verdict: report.verdict,
+      mappingCount: report.normalizedMappings.length
+    }));
+    return { content: [{ type: "text", text: JSON.stringify(report) }], structuredContent: report };
+  }));
 
   server.registerTool("openapi_select", {
     title: openApiSelectProduct.quoteTool.title,
@@ -131,31 +148,89 @@ const handler = createMcpHandler(() => {
       goal: z.string().min(1).max(600)
     }),
     annotations: { title: openApiSelectProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ specUrl, goal }) => {
-    logToolCall("openapi_select", { quotedPriceUsd: openApiSelectProduct.priceUsd, goalHash: shortHash(goal) });
-    const action = paid("openapi-select", { specUrl, goal });
-    return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action };
-  });
+  }, createLazyPaidMcpTool<{ specUrl: string; goal: string }>("openapi-select", async ({ specUrl, goal }) => {
+    logToolCall("openapi_select", { priceUsd: openApiSelectProduct.priceUsd, mode: "direct_paid_mcp", goalHash: shortHash(goal) });
+    const report = await selectOpenApiOperation(specUrl, goal);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "openapi-select",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      operationCount: report.api.operationCount,
+      confidence: report.confidence,
+      selectedOperationId: report.selected?.operationId || null
+    }));
+    return { content: [{ type: "text", text: JSON.stringify(report) }], structuredContent: report };
+  }));
 
   server.registerTool("mcp_preflight", {
     title: mcpProbeProduct.quoteTool.title, description: mcpProbeProduct.quoteTool.description,
     inputSchema: z.object({ endpoint: z.string().url() }), annotations: { title: mcpProbeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ endpoint }) => { logToolCall("mcp_preflight", { quotedPriceUsd: mcpProbeProduct.priceUsd }); const action = paid("mcp-probe", { endpoint }); return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action }; });
+  }, createLazyPaidMcpTool<{ endpoint: string }>("mcp-probe", async ({ endpoint }) => {
+    logToolCall("mcp_preflight", { priceUsd: mcpProbeProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await probeMcpEndpoint(endpoint);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "mcp-probe",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      reachable: report.reachable,
+      mcpCompatible: report.mcpCompatible,
+      toolCount: report.tools.count
+    }));
+    return { content: [{ type: "text", text: JSON.stringify(report) }], structuredContent: report };
+  }));
 
   server.registerTool("agent_readiness", {
     title: readinessProduct.quoteTool.title, description: readinessProduct.quoteTool.description,
     inputSchema: z.object({ url: z.string().url() }), annotations: { title: readinessProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ url }) => { logToolCall("agent_readiness", { quotedPriceUsd: readinessProduct.priceUsd }); const action = paid("agent-readiness", { url }); return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action }; });
+  }, createLazyPaidMcpTool<{ url: string }>("agent-readiness", async ({ url }) => {
+    logToolCall("agent_readiness", { priceUsd: readinessProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await auditAgentReadiness(url);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "agent-readiness",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      score: report.score,
+      grade: report.grade,
+      issueCount: report.issues.length
+    }));
+    return { content: [{ type: "text", text: JSON.stringify(report) }], structuredContent: report };
+  }));
 
   server.registerTool("verified_resolve", {
     title: verifiedResolveProduct.quoteTool.title, description: verifiedResolveProduct.quoteTool.description,
     inputSchema: z.object({ goal: z.string().min(1), url: z.string().url().optional() }), annotations: { title: verifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ goal, url }) => { logToolCall("verified_resolve", { goalHash: shortHash(goal), quotedPriceUsd: verifiedResolveProduct.priceUsd }); const action = paid("verified-resolve", { goal, ...(url ? { url } : {}) }); return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action }; });
+  }, createLazyPaidMcpTool<{ goal: string; url?: string }>("verified-resolve", async ({ goal, url }) => {
+    logToolCall("verified_resolve", { goalHash: shortHash(goal), priceUsd: verifiedResolveProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await verifiedResolve(goal, url);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "verified-resolve",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      mcpVerified: report.liveVerification.filter((item) => item.mcpCompatible).length,
+      marketplaceVerified: report.liveMarketplaceVerification.filter((item) => item.x402Compatible).length
+    }));
+    return { content: [{ type: "text", text: JSON.stringify(report) }], structuredContent: report };
+  }));
 
   server.registerTool("batch_verified_resolve", {
     title: batchVerifiedResolveProduct.quoteTool.title, description: batchVerifiedResolveProduct.quoteTool.description,
     inputSchema: z.object({ items: z.array(z.object({ goal: z.string().min(1), url: z.string().url().optional() })).min(2).max(4) }), annotations: { title: batchVerifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ items }) => { logToolCall("batch_verified_resolve", { itemCount: items.length, quotedPriceUsd: batchVerifiedResolveProduct.priceUsd }); const action = paid("batch-verified-resolve", { items }); return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action }; });
+  }, createLazyPaidMcpTool<{ items: Array<{ goal: string; url?: string }> }>("batch-verified-resolve", async ({ items }) => {
+    logToolCall("batch_verified_resolve", { itemCount: items.length, priceUsd: batchVerifiedResolveProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await batchVerifiedResolve(items);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "batch-verified-resolve",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      itemCount: report.count
+    }));
+    return { content: [{ type: "text", text: JSON.stringify(report) }], structuredContent: report };
+  }));
 
   return server;
 });
