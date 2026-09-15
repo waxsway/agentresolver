@@ -6,5 +6,5 @@
     "https://agentresolver.vercel.app/api/verified-resolve",
     "https://agentresolver.vercel.app/api/batch-verified-resolve"
   ],
-  "instructions": "AgentResolver paid machine capabilities use x402 with USDC on Base. Unpaid requests return a 402 challenge; callers must independently authorize any payment under their own spending policy."
+  "instructions": "AgentResolver paid machine capabilities use x402 with USDC on Base (eip155:8453). Unpaid requests return a 402 challenge; callers must independently authorize any payment under their own spending policy."
 }
