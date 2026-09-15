@@ -87,7 +87,7 @@ jobs:
           const remote = await page.$("#has-remote");
           if (remote) {
             const checked = await page.$eval("#has-remote", el => el.checked);
-            if (!checked) await page.click("#has-remote");
+            if (!checked) await page.$eval("#has-remote", el => el.click());
             await new Promise(r => setTimeout(r, 500));
           }
 
@@ -111,7 +111,7 @@ jobs:
           const freeRadio = await page.$("#free-submit");
           if (!freeRadio) throw new Error("Free plan radio not found");
           const freeChecked = await page.$eval("#free-submit", el => el.checked);
-          if (!freeChecked) await page.click("#free-submit");
+          if (!freeChecked) await page.$eval("#free-submit", el => el.click());
 
           const plan = await page.$eval('input[name="plan"]', el => el.value);
           if (plan !== "free") {
