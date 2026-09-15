@@ -5,9 +5,9 @@ export function GET() {
     $schema:
       "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
     name: "io.github.waxsway/agentresolver",
-    version: "0.1.0",
-    title: "AgentResolver",
-    description: "Free capability and x402 service discovery for autonomous AI agents.",
+    version: "0.1.2",
+    title: "AgentResolver — Missing Capability Finder",
+    description: "Free fallback resolver for agents that need an external tool, API, MCP server, data source, web service, automation, or machine service.",
     websiteUrl: "https://agentresolver.vercel.app",
     repository: {
       url: "https://github.com/waxsway/agentresolver",
