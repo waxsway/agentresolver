@@ -9,11 +9,12 @@ export type DiscoveryCapability = PaidCapabilityId;
 export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
   const config = getPaidCapability(capabilityId);
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
+  const resourceUrl = `https://agentresolver.vercel.app${config.endpoint}`;
   const body = {
     x402Version: 2,
     error: "PAYMENT-SIGNATURE header is required",
     resource: {
-      url: `https://agentresolver.vercel.app${config.endpoint}`,
+      url: resourceUrl,
       description: config.description,
       mimeType: "application/json",
       serviceName: "AgentResolver",
@@ -24,8 +25,10 @@ export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
         scheme: "exact",
         network: X402_NETWORK,
         amount: config.atomicAmount,
+        maxAmountRequired: config.atomicAmount,
         asset: BASE_USDC,
         payTo,
+        resource: resourceUrl,
         maxTimeoutSeconds: 60,
         extra: { name: "USDC", version: "2" }
       }
