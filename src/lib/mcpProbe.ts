@@ -358,7 +358,9 @@ export async function probeMcpEndpoint(input: string): Promise<McpProbeReport> {
   let toolCount: number | null = null;
 
   if (initialized) {
-    const sessionHeaders = sessionId ? { "Mcp-Session-Id": sessionId } : {};
+    const sessionHeaders: Record<string, string> = sessionId
+      ? { "Mcp-Session-Id": sessionId }
+      : {};
 
     // Best-effort initialized notification. Some servers reply 202/204; others
     // tolerate tools/list directly after initialize.
