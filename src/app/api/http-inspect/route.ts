@@ -42,7 +42,9 @@ function getPaidHandler(): PaidHandler {
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
   const facilitatorUrl = (process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
   const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
-  const server = new x402ResourceServer(client)\n    .register(X402_NETWORK, new ExactEvmScheme())\n    .registerExtension(bazaarResourceServerExtension);
+  const server = new x402ResourceServer(client)
+    .register(X402_NETWORK, new ExactEvmScheme())
+    .registerExtension(bazaarResourceServerExtension);
   paidHandler = withX402<unknown>(inspectHandler, {
     "/api/http-inspect": {
       accepts: {
