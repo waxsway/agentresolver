@@ -61,3 +61,49 @@ export function logPaidCapabilityAttempt(req: Request, capabilityId: string) {
     phase: hasPaymentSignature ? "paid_retry" : "challenge_request"
   }));
 }
+
+export type X402SettlementReceipt = {
+  success: boolean;
+  transaction: string | null;
+  network: string | null;
+  payer: string | null;
+  amount: string | null;
+  errorReason: string | null;
+};
+
+export function parseX402SettlementHeader(value: string | null): X402SettlementReceipt | null {
+  if (!value) return null;
+  try {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const parsed = JSON.parse(Buffer.from(normalized, "base64").toString("utf8")) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      success: parsed.success === true,
+      transaction: typeof parsed.transaction === "string" && parsed.transaction ? parsed.transaction : null,
+      network: typeof parsed.network === "string" ? parsed.network.slice(0, 80) : null,
+      payer: typeof parsed.payer === "string" && parsed.payer ? parsed.payer : null,
+      amount: typeof parsed.amount === "string" ? parsed.amount.slice(0, 80) : null,
+      errorReason: typeof parsed.errorReason === "string" ? parsed.errorReason.slice(0, 160) : null
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function logX402Settlement(response: Response, capabilityId: string) {
+  const receipt = parseX402SettlementHeader(response.headers.get("payment-response"));
+  if (!receipt) return;
+  const settled = receipt.success && Boolean(receipt.transaction);
+  console.log(JSON.stringify({
+    event: settled ? "paid_capability_settled" : "paid_capability_settlement_unconfirmed",
+    at: new Date().toISOString(),
+    capabilityId,
+    responseStatus: response.status,
+    success: receipt.success,
+    network: receipt.network,
+    amount: receipt.amount,
+    transactionHash: receipt.transaction ? shortHash(receipt.transaction) : null,
+    payerHash: receipt.payer ? shortHash(receipt.payer) : null,
+    errorReason: receipt.errorReason
+  }));
+}
