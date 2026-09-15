@@ -7,7 +7,8 @@ export const X402_FACILITATOR_URL = "https://facilitator.xpay.sh" as const;
 // that perform paid AgentResolver-owned work. Never gate /api/resolve or MCP
 // discovery behind payment.
 export const X402_PRICING = {
-  agentReadiness: "$0.05",
+  mcpProbe: "$0.01",
+  agentReadiness: "$0.05"
 } as const;
 
 export const X402_POLICY = {
@@ -17,5 +18,5 @@ export const X402_POLICY = {
   settlementAsset: X402_ASSET,
   facilitator: "xpay",
   facilitatorUrl: X402_FACILITATOR_URL,
-  payTo: X402_PAY_TO,
+  payTo: X402_PAY_TO
 } as const;
