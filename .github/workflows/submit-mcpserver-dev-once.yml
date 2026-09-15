@@ -117,15 +117,19 @@ jobs:
           });
           console.log("FORM_SNAPSHOT", JSON.stringify(snapshot));
 
-          const form = await page.evaluateHandle(() =>
-            Array.from(document.querySelectorAll("form")).find(form =>
-              form.querySelector('input[placeholder*="github.com/modelcontextprotocol"]')
-            )
-          );
-          const button = await form.asElement().$("button[type=submit]");
-          if (!button) throw new Error("Submit button not found");
-
-          await button.click();
+          const submitted = await page.evaluate(() => {
+            const forms = Array.from(document.querySelectorAll("form"));
+            const form = forms.find(form => {
+              const input = form.querySelector('input[placeholder*="github.com/modelcontextprotocol"]');
+              return input && input.value.includes("waxsway/agentresolver");
+            });
+            if (!form) return false;
+            const button = form.querySelector('button[type="submit"]');
+            if (!button) return false;
+            button.click();
+            return true;
+          });
+          if (!submitted) throw new Error("Populated submit form not found");
           await Promise.race([
             page.waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 }).catch(() => null),
             new Promise(r => setTimeout(r, 9000))
