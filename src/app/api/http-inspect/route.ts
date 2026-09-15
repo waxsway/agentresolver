@@ -5,6 +5,7 @@ import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { logPaidCapabilityAttempt } from "@/lib/telemetry";
+import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
 export const dynamic = "force-dynamic";
@@ -43,4 +44,5 @@ function getPaidHandler(): PaidHandler {
 }
 async function paidRequest(req:NextRequest){logPaidCapabilityAttempt(req,"http-inspect");try{return await getPaidHandler()(req);}catch(error){console.error(JSON.stringify({event:"paid_capability_configuration_error",capabilityId:"http-inspect",at:new Date().toISOString(),message:error instanceof Error?error.message:"Unknown error"}));return NextResponse.json({error:"PAYMENTS_NOT_CONFIGURED"},{status:503});}}
 export async function POST(req:NextRequest){return paidRequest(req);}
-export async function OPTIONS(){return new NextResponse(null,{status:204,headers:{"access-control-allow-origin":"*","access-control-allow-methods":"POST, OPTIONS","access-control-allow-headers":"content-type, payment-signature, payment-required, payment-response"}});}
+export async function GET(){return x402DiscoveryChallenge("http-inspect");}
+export async function OPTIONS(){return new NextResponse(null,{status:204,headers:{"access-control-allow-origin":"*","access-control-allow-methods":"GET, POST, OPTIONS","access-control-allow-headers":"content-type, payment-signature, payment-required, payment-response"}});}
