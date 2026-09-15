@@ -1,0 +1,71 @@
+name: Register Verified Resolve 402 Index Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/register-verified-resolve-402index-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Wait for Verified Resolve on canonical production
+        shell: bash
+        env:
+          URL: https://agentresolver.vercel.app/api/verified-resolve
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            status="$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H 'content-type: application/json' \
+              --data '{"goal":"find and verify an MCP server for search"}' \
+              "$URL" || true)"
+            if [ "$status" = "402" ]; then
+              echo 'Verified Resolve is live with an x402 challenge.'
+              exit 0
+            fi
+            echo "Waiting for Verified Resolve to return 402 (attempt $attempt/24, got $status)..."
+            sleep 10
+          done
+          echo 'Verified Resolve did not become payable in time.'
+          exit 1
+
+      - name: Register Verified Resolve with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl -sS \
+            -o /tmp/verified-resolve-register.json \
+            -w '%{http_code}' \
+            -X POST 'https://402index.io/api/v1/register' \
+            -H 'content-type: application/json' \
+            --data-binary @- <<'JSON'
+          {
+            "url": "https://agentresolver.vercel.app/api/verified-resolve",
+            "name": "AgentResolver Verified Resolve",
+            "description": "Resolve a missing capability, live-verify up to two top MCP candidates, and return a recommendation with verification evidence.",
+            "protocol": "x402",
+            "http_method": "POST",
+            "probe_body": "{\"goal\":\"find and verify an MCP server for search\"}",
+            "price_usd": 0.25,
+            "payment_asset": "USDC",
+            "payment_network": "Base",
+            "category": "agent-tools/discovery",
+            "provider": "AgentResolver"
+          }
+          JSON
+          )"
+          cat /tmp/verified-resolve-register.json
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "402 Index Verified Resolve registration failed with HTTP $status"
+            exit 1
+          fi
+
+      - name: Registration complete
+        run: echo 'Submitted AgentResolver Verified Resolve to 402 Index without paid placement.'
