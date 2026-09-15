@@ -1,0 +1,28 @@
+name: Test Live AgentResolver
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/test-live-resolver-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Test resolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" \
+            -X POST "https://agentresolver.vercel.app/api/resolve" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: AgentResolver-Deployment-Test/1.0" \
+            --data '{"goal":"find a GitHub MCP server","limit":3}')
+          echo "HTTP $code"
+          cat /tmp/out
+          test "$code" -eq 200
