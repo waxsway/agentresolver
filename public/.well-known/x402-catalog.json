@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "service": "AgentResolver",
+  "canonical": "https://agentresolver.vercel.app",
+  "protocol": "x402",
+  "protocolVersion": 2,
+  "resources": [
+    {
+      "id": "agent-readiness",
+      "name": "Agent Readiness Audit",
+      "description": "Audit a public website for AI-agent discoverability, llms.txt, ARD, OpenAPI, sitemap, MCP metadata, and baseline headers.",
+      "method": "POST",
+      "url": "https://agentresolver.vercel.app/api/agent-readiness",
+      "contentType": "application/json",
+      "input": {
+        "type": "object",
+        "required": ["target"],
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Public HTTP or HTTPS domain or URL to audit."
+          }
+        }
+      },
+      "price": {
+        "amountUsd": 0.05,
+        "asset": "USDC",
+        "network": "eip155:8453",
+        "scheme": "exact"
+      },
+      "payment": {
+        "challengeStatus": 402,
+        "challengeHeader": "PAYMENT-REQUIRED",
+        "authorizationHeader": "PAYMENT-SIGNATURE",
+        "settlementHeader": "PAYMENT-RESPONSE"
+      },
+      "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
+    }
+  ],
+  "discovery": {
+    "openapi": "https://agentresolver.vercel.app/openapi.json",
+    "capabilities": "https://agentresolver.vercel.app/capabilities.json",
+    "llms": "https://agentresolver.vercel.app/llms.txt",
+    "resolver": "https://agentresolver.vercel.app/api/resolve"
+  }
+}
