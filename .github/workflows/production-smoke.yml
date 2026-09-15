@@ -133,3 +133,33 @@ jobs:
           check_402 'Batch Verified Resolve' '/api/batch-verified-resolve' '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}' 'batch-verified-resolve' '50000'
 
           echo 'All POST and GET x402 challenges verified without sending payment.'
+
+      - name: Verify direct paid MCP challenge without spending
+        shell: bash
+        env:
+          MCP_URL: https://agentresolver.vercel.app/mcp
+        run: |
+          set -euo pipefail
+
+          request='{"jsonrpc":"2.0","id":91,"method":"tools/call","params":{"name":"http_inspect","arguments":{"url":"https://example.com"}}}'
+          code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS             -o /tmp/mcp-paid.out             -w '%{http_code}'             -X POST "$MCP_URL"             -H 'content-type: application/json'             -H 'accept: application/json, text/event-stream'             -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0'             --data "$request")
+
+          test "$code" -ge 200 && test "$code" -lt 300
+
+          if ! grep -F 'x402Version' /tmp/mcp-paid.out >/dev/null; then
+            echo 'Unpaid http_inspect MCP call did not return an x402 payment challenge.'
+            cat /tmp/mcp-paid.out
+            exit 1
+          fi
+          if ! grep -F '1000' /tmp/mcp-paid.out >/dev/null; then
+            echo 'Unpaid http_inspect MCP challenge did not advertise the expected $0.001 atomic amount.'
+            cat /tmp/mcp-paid.out
+            exit 1
+          fi
+          if grep -F 'latencyMs' /tmp/mcp-paid.out >/dev/null; then
+            echo 'SECURITY FAILURE: unpaid MCP call exposed HTTP inspection output before settlement.'
+            cat /tmp/mcp-paid.out
+            exit 1
+          fi
+
+          echo 'Direct paid MCP challenge verified without signing or spending.'

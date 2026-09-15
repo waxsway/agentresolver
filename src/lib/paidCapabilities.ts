@@ -17,8 +17,8 @@ export const PAID_CAPABILITIES = {
     example: { url: "https://example.com" },
     quoteTool: {
       name: "http_inspect",
-      title: "Quote HTTP inspection — $0.001",
-      description: "Quote a $0.001 USDC/Base inspection of one public HTTPS resource for status, latency, response metadata, cache validators and baseline security headers. Returns the exact x402 action; never spends."
+      title: "HTTP inspection — $0.001",
+      description: "Paid $0.001 USDC/Base inspection of one public HTTPS resource for status, latency, response metadata, cache validators and baseline security headers. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "tool-contract": {

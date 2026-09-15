@@ -2,6 +2,8 @@ import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { resolveGoal } from "@/lib/resolver";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
+import { inspectHttpResource } from "@/lib/httpInspect";
+import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
 const CANONICAL = "https://agentresolver.vercel.app";
@@ -33,17 +35,36 @@ function logToolCall(tool: string, extra: Record<string, unknown> = {}) { consol
 async function logMcpRequest(req: Request) {
   const base = { event: "mcp_request", at: new Date().toISOString(), callerHash: callerHash(req), userAgent: safeUserAgent(req) };
   try {
-    const body = (await req.clone().json()) as { method?: unknown; params?: { name?: unknown; arguments?: { goal?: unknown } | null } | null };
+    const body = (await req.clone().json()) as {
+      method?: unknown;
+      params?: {
+        name?: unknown;
+        arguments?: { goal?: unknown } | null;
+        _meta?: Record<string, unknown> | null;
+      } | null;
+    };
     const method = typeof body?.method === "string" ? body.method : "unknown";
     const tool = method === "tools/call" && typeof body?.params?.name === "string" ? body.params.name : null;
-    const goal = method === "tools/call" && tool === "resolve" && typeof body?.params?.arguments?.goal === "string" ? body.params.arguments.goal.trim() : "";
-    console.log(JSON.stringify({ ...base, method, tool, ...(goal ? { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal) } : {}) }));
-  } catch { console.log(JSON.stringify({ ...base, method: "unparsed", tool: null })); }
+    const goal = method === "tools/call" && tool === "resolve" && typeof body?.params?.arguments?.goal === "string"
+      ? body.params.arguments.goal.trim()
+      : "";
+    const hasMcpPayment = Boolean(body?.params?._meta?.["x402/payment"]);
+    console.log(JSON.stringify({
+      ...base,
+      method,
+      tool,
+      hasMcpPayment,
+      phase: tool ? (hasMcpPayment ? "paid_retry" : "tool_call") : null,
+      ...(goal ? { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal) } : {})
+    }));
+  } catch {
+    console.log(JSON.stringify({ ...base, method: "unparsed", tool: null, hasMcpPayment: false }));
+  }
 }
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
-    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. For paid direct work, call the matching quote tool: `http_inspect`, `tool_contract`, `openapi_select`, `mcp_preflight`, `agent_readiness`, `verified_resolve`, or `batch_verified_resolve`. Quote tools are free/read-only: they return an exact executable x402 action and never spend. If your host independently authorizes the displayed USDC/Base price, execute that returned action; otherwise stop."
+    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. `http_inspect` is a directly payable $0.001 x402 MCP tool: an x402-aware client can receive the payment challenge, apply its own spending policy, and retry the same tools/call with payment. Other priced tools currently return free HTTP x402 purchase actions and never authorize spending themselves. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
   });
 
   server.registerTool("resolve", {
@@ -71,11 +92,22 @@ const handler = createMcpHandler(() => {
     description: httpInspectProduct.quoteTool.description,
     inputSchema: z.object({ url: z.string().url() }),
     annotations: { title: httpInspectProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ url }) => {
-    logToolCall("http_inspect", { quotedPriceUsd: httpInspectProduct.priceUsd });
-    const action = paid("http-inspect", { url });
-    return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action };
-  });
+  }, createLazyPaidMcpTool<{ url: string }>("http-inspect", async ({ url }) => {
+    logToolCall("http_inspect", { priceUsd: httpInspectProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await inspectHttpResource(url);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "http-inspect",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      status: report.status,
+      latencyMs: report.latencyMs
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report
+    };
+  }));
 
   server.registerTool("tool_contract", {
     title: toolContractProduct.quoteTool.title,
