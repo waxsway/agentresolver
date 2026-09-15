@@ -7,6 +7,12 @@ export type Capability = {
   mode: "owned" | "partner" | "discovery";
   status: "live" | "planned";
   endpoint?: string;
+  payment?: {
+    protocol: "x402";
+    scheme: "exact";
+    network: string;
+    asset: string;
+  };
 };
 
 export const CAPABILITIES: Capability[] = [
@@ -56,11 +62,19 @@ export const CAPABILITIES: Capability[] = [
       "robots",
       "sitemap",
       "website audit",
-      "domain"
+      "domain",
+      "x402"
     ],
     priceUsd: 0.05,
     mode: "owned",
-    status: "planned"
+    status: "live",
+    endpoint: "/api/agent-readiness",
+    payment: {
+      protocol: "x402",
+      scheme: "exact",
+      network: "eip155:8453",
+      asset: "USDC"
+    }
   },
   {
     id: "web-extract",
