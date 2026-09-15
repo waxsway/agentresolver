@@ -10,12 +10,16 @@ import {
   declareDiscoveryExtension
 } from "@x402/extensions/bazaar";
 import { auditAgentReadiness } from "@/lib/agentReadiness";
+import {
+  X402_FACILITATOR_URL,
+  X402_NETWORK,
+  X402_PAY_TO,
+  X402_PRICING
+} from "@/lib/x402Config";
 
 export const dynamic = "force-dynamic";
 
 const MAX_INPUT = 500;
-const PRICE = "$0.05";
-const NETWORK = "eip155:8453" as const;
 
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
 let paidHandler: PaidHandler | null = null;
@@ -78,15 +82,17 @@ async function auditHandler(req: NextRequest): Promise<NextResponse<unknown>> {
 function getPaidHandler(): PaidHandler {
   if (paidHandler) return paidHandler;
 
-  const payTo = (process.env.AGENTRESOLVER_PAY_TO || "").trim();
-  const facilitatorUrl = (process.env.X402_FACILITATOR_URL || "").trim();
+  const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
+  const facilitatorUrl = (
+    process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL
+  ).trim();
 
   if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) {
-    throw new Error("AGENTRESOLVER_PAY_TO is not configured.");
+    throw new Error("AGENTRESOLVER_PAY_TO is invalid.");
   }
 
   if (!/^https:\/\//i.test(facilitatorUrl)) {
-    throw new Error("X402_FACILITATOR_URL is not configured.");
+    throw new Error("X402_FACILITATOR_URL is invalid.");
   }
 
   const facilitatorClient = new HTTPFacilitatorClient({
@@ -95,7 +101,7 @@ function getPaidHandler(): PaidHandler {
   });
 
   const resourceServer = new x402ResourceServer(facilitatorClient)
-    .register(NETWORK, new ExactEvmScheme())
+    .register(X402_NETWORK, new ExactEvmScheme())
     .registerExtension(bazaarResourceServerExtension);
 
   paidHandler = withX402<unknown>(
@@ -104,8 +110,8 @@ function getPaidHandler(): PaidHandler {
       "/api/agent-readiness": {
         accepts: {
           scheme: "exact",
-          price: PRICE,
-          network: NETWORK,
+          price: X402_PRICING.agentReadiness,
+          network: X402_NETWORK,
           payTo: payTo as `0x${string}`
         },
         description:
@@ -148,13 +154,12 @@ function getPaidHandler(): PaidHandler {
 }
 
 export async function POST(req: NextRequest) {
-  if (process.env.AGENT_READINESS_ENABLED !== "true") {
+  if (process.env.AGENT_READINESS_ENABLED === "false") {
     return NextResponse.json(
       {
         error: "CAPABILITY_NOT_LIVE",
         capabilityId: "agent-readiness",
-        message:
-          "Agent Readiness Audit is staged but disabled until payment verification and cost controls are approved."
+        message: "Agent Readiness Audit is temporarily disabled."
       },
       { status: 503 }
     );
@@ -175,8 +180,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "PAYMENTS_NOT_CONFIGURED",
-        message:
-          "Paid execution is unavailable until the approved x402 facilitator and receiving address are configured."
+        message: "Paid execution is temporarily unavailable."
       },
       { status: 503 }
     );
