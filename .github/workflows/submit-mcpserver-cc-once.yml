@@ -1,0 +1,33 @@
+name: Submit AgentResolver to mcpserver.cc
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-mcpserver-cc-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Submit AgentResolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" \
+            -X POST "https://mcpserver.cc/api/submit-server" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"AgentResolver","url":"https://github.com/waxsway/agentresolver","description":"Free remote MCP capability resolver for AI agents. Discovers and compares tools, APIs, MCP servers, and x402 machine services, with a no-auth Streamable HTTP endpoint at https://agentresolver.vercel.app/mcp."}')
+          echo "HTTP $code"
+          cat /tmp/out
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/out"))
+          if d.get("code") != 0:
+              raise SystemExit(f"submission rejected: {d}")
+          PY
+          test "$code" -ge 200 && test "$code" -lt 300
