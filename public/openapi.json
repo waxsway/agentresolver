@@ -3,13 +3,19 @@
   "info": {
     "title": "AgentResolver — Find Missing Agent Tools",
     "version": "0.1.2",
-    "description": "Free read-only fallback discovery for autonomous agents. When a task is blocked because no connected tool provides a required external capability, call resolveCapability to find relevant tools, APIs, MCP servers, data sources, web services, automations, and machine services. Resolution never authorizes spending."
+    "description": "Free read-only fallback discovery for autonomous agents, plus explicitly priced machine-paid capabilities. Resolution never authorizes spending; paid execution requires the calling agent to satisfy the advertised x402 payment challenge under its own spending policy."
   },
   "servers": [{ "url": "https://agentresolver.vercel.app" }],
-  "tags": [{
-    "name": "Agent Tool Discovery",
-    "description": "Use when an agent is missing a required external capability."
-  }],
+  "tags": [
+    {
+      "name": "Agent Tool Discovery",
+      "description": "Use when an agent is missing a required external capability."
+    },
+    {
+      "name": "Paid Agent Capabilities",
+      "description": "Optional AgentResolver-owned work protected by an x402 payment challenge. The caller controls whether to spend."
+    }
+  ],
   "paths": {
     "/api/resolve": {
       "post": {
@@ -65,6 +71,44 @@
             "description": "Ranked candidates for the missing capability. Returned services are candidates only; the caller must apply its own trust, privacy, security, and spending policy before use."
           },
           "400": { "description": "Invalid resolver input." }
+        }
+      }
+    },
+    "/api/agent-readiness": {
+      "post": {
+        "operationId": "auditAgentReadiness",
+        "tags": ["Paid Agent Capabilities"],
+        "summary": "Audit a public website for AI-agent discoverability",
+        "description": "Paid AgentResolver-owned capability. Price: $0.05 USDC on Base via x402. A request without payment returns HTTP 402 and payment requirements; execution occurs only after the caller independently authorizes and supplies a valid x402 payment. AgentResolver does not authorize spending on the caller's behalf.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["target"],
+                "additionalProperties": false,
+                "properties": {
+                  "target": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Public HTTP or HTTPS domain or URL to audit."
+                  }
+                }
+              },
+              "examples": {
+                "website": {
+                  "value": { "target": "https://example.com" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Paid audit completed successfully." },
+          "402": { "description": "x402 payment required. Inspect the PAYMENT-REQUIRED response header and retry only if the caller's spending policy authorizes payment." },
+          "400": { "description": "Invalid or unsupported target." },
+          "503": { "description": "Paid execution is temporarily unavailable." }
         }
       }
     },

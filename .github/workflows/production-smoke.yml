@@ -1,6 +1,11 @@
 name: Production Smoke
 
 on:
+  workflow_run:
+    workflows:
+      - Deploy Production
+    types:
+      - completed
   repository_dispatch:
     types:
       - vercel.deployment.success
@@ -16,6 +21,7 @@ concurrency:
 
 jobs:
   verify-production:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -36,4 +42,25 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/mcp/server-card" | grep -F '0.1.2' >/dev/null
 
-          echo 'Production smoke checks passed.'
+          echo 'Production discovery checks passed.'
+
+      - name: Verify x402 payment challenge without spending
+        shell: bash
+        env:
+          BASE_URL: https://agentresolver.vercel.app
+        run: |
+          set -euo pipefail
+
+          status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -D /tmp/x402-headers.txt \
+            -o /tmp/x402-body.json \
+            -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            --data '{"target":"https://example.com"}' \
+            "$BASE_URL/api/agent-readiness")"
+
+          test "$status" = "402"
+          grep -Eiq '^payment-required:' /tmp/x402-headers.txt
+          grep -F '"x402Version"' /tmp/x402-body.json >/dev/null || grep -F '"accepts"' /tmp/x402-body.json >/dev/null
+
+          echo 'x402 challenge verified: HTTP 402 returned before execution; no payment was sent.'

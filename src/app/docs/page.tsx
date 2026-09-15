@@ -1,12 +1,16 @@
 export const metadata = {
   title: "AgentResolver Docs — Install and API",
-  description: "Install AgentResolver as a persistent MCP fallback or use the free capability resolver API.",
+  description: "Install AgentResolver as a persistent MCP fallback, use the free resolver, or call explicitly priced x402 capabilities.",
   alternates: { canonical: "https://agentresolver.vercel.app/docs" }
 };
 
 const resolveExample = `curl -X POST https://agentresolver.vercel.app/api/resolve \
   -H "content-type: application/json" \
   -d '{"goal":"find a GitHub MCP server"}'`;
+
+const paidAuditExample = `curl -X POST https://agentresolver.vercel.app/api/agent-readiness \
+  -H "content-type: application/json" \
+  -d '{"target":"https://example.com"}'`;
 
 const mcpConfig = `{
   "servers": {
@@ -72,6 +76,23 @@ export default function DocsPage() {
       </section>
 
       <section>
+        <h2>Paid capability: Agent Readiness Audit</h2>
+        <p>
+          <code>POST /api/agent-readiness</code> audits a public website for
+          agent discoverability signals including llms.txt, ARD, OpenAPI,
+          sitemap, MCP metadata, robots, and baseline headers. It costs{" "}
+          <strong>$0.05 USDC on Base per completed call</strong> using x402.
+        </p>
+        <p>
+          A request without payment returns <code>HTTP 402</code> with machine-readable
+          payment requirements. The calling agent decides whether its spending policy
+          permits payment, then retries with a valid x402 payment. AgentResolver never
+          authorizes spending for the caller.
+        </p>
+        <pre><code>{paidAuditExample}</code></pre>
+      </section>
+
+      <section>
         <h2>Discovery</h2>
         <p>
           <a href="/agentresolver.md">agent guide</a> ·{" "}
@@ -87,10 +108,11 @@ export default function DocsPage() {
       <section>
         <h2>Payments</h2>
         <p>
-          Resolution does not spend money. Generic paid execution is intentionally
-          disabled. A paid capability must expose its own verified payment route,
-          and the calling agent remains responsible for its authorization and
-          spending policy.
+          Capability discovery remains free. Paid AgentResolver-owned resources
+          advertise their price and payment network before execution. A caller can
+          always stop at the <code>402 Payment Required</code> response without spending.
+          Generic paid execution remains disabled; only individually verified paid
+          capability routes can settle payments.
         </p>
       </section>
 
