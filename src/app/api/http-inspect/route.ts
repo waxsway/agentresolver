@@ -42,7 +42,7 @@ function getPaidHandler(): PaidHandler {
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
   const facilitatorUrl = (process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
   const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
-  const server = new x402ResourceServer(client).register(X402_NETWORK, new ExactEvmScheme());
+  const server = new x402ResourceServer(client)\n    .register(X402_NETWORK, new ExactEvmScheme())\n    .registerExtension(bazaarResourceServerExtension);
   paidHandler = withX402<unknown>(inspectHandler, {
     "/api/http-inspect": {
       accepts: {
@@ -51,8 +51,48 @@ function getPaidHandler(): PaidHandler {
         network: X402_NETWORK,
         payTo: payTo as `0x${string}`
       },
-      description: "Inspect a public HTTPS resource for current status, latency, response metadata, cache validators and baseline security headers.",
-      mimeType: "application/json"
+      description: "Inspect a public HTTPS resource for current status, latency, response metadata, cache validators, TLS/certificate evidence and baseline security headers.",
+      mimeType: "application/json",
+      extensions: {
+        ...declareDiscoveryExtension({
+          input: { url: "https://example.com" },
+          inputSchema: {
+            type: "object",
+            properties: { url: { type: "string", format: "uri" } },
+            required: ["url"]
+          },
+          bodyType: "json",
+          output: {
+            example: {
+              url: "https://example.com/",
+              status: 200,
+              ok: true,
+              latencyMs: 85,
+              contentType: "text/html",
+              cacheControl: "max-age=3600",
+              redirect: { isRedirect: false, location: null },
+              dns: { family: 4 },
+              tls: {
+                protocol: "TLSv1.3",
+                authorized: true,
+                validFrom: "Jan 1 00:00:00 2026 GMT",
+                validTo: "Jan 1 00:00:00 2027 GMT",
+                daysRemaining: 108,
+                subjectCn: "example.com",
+                issuerCn: "Example CA"
+              },
+              security: {
+                hsts: true,
+                csp: false,
+                xContentTypeOptions: true,
+                xFrameOptions: true,
+                referrerPolicy: true,
+                permissionsPolicy: false
+              }
+            }
+          }
+        })
+      }
     }
   }, server) as PaidHandler;
   return paidHandler;
