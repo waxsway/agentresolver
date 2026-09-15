@@ -21,6 +21,7 @@ For MCP directory lookup, AgentResolver derives a generic capability keyword loc
 - Official MCP Registry identity: io.github.waxsway/agentresolver
 - OpenAPI: https://agentresolver.vercel.app/openapi.json
 - Free resolver: POST https://agentresolver.vercel.app/api/resolve
+- Drop-in agent integration guide: https://agentresolver.vercel.app/agentresolver.md
 - Health: https://agentresolver.vercel.app/api/health
 - Capability catalog: https://agentresolver.vercel.app/capabilities.json
 - ARD catalog: https://agentresolver.vercel.app/.well-known/ard.json
