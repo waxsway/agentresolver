@@ -47,6 +47,33 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/mcp/server-card" | grep -F '0.1.3' >/dev/null
 
+          resolve_check() {
+            local slug="$1" goal="$2" url="$3" expected_id="$4" expected_price="$5"
+            local body
+            if [ -n "$url" ]; then
+              body=$(jq -n --arg goal "$goal" --arg url "$url" '{goal:$goal,url:$url,limit:3}')
+            else
+              body=$(jq -n --arg goal "$goal" '{goal:$goal,limit:3}')
+            fi
+            curl --retry 5 --retry-delay 2 --retry-all-errors -fsS \
+              -H 'content-type: application/json' \
+              --data "$body" \
+              "$BASE_URL/api/resolve" > "/tmp/$slug.json"
+            jq -e --arg id "$expected_id" --argjson price "$expected_price" '
+              .owned[0].id == $id and
+              .owned[0].priceUsd == $price and
+              .recommendedPaidAction.capabilityId == $id and
+              .recommendedPaidAction.priceUsd == $price
+            ' "/tmp/$slug.json" >/dev/null
+          }
+
+          resolve_check 'resolve-http-inspect' \
+            'inspect this HTTPS URL for status latency cache headers and security headers' \
+            'https://example.com' 'http-inspect' 0.001
+          resolve_check 'resolve-tool-contract' \
+            'check tool contract JSON schema workflow compatibility mapping' \
+            '' 'tool-contract' 0.005
+
           echo 'Production discovery checks passed.'
 
       - name: Verify x402 payment challenges without spending
@@ -61,6 +88,7 @@ jobs:
             local path="$2"
             local body="$3"
             local slug="$4"
+            local expected_amount="$5"
 
             status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
               -D "/tmp/${slug}-headers.txt" \
@@ -82,16 +110,22 @@ jobs:
               exit 1
             fi
 
-            get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS -o /dev/null -w '%{http_code}' "$BASE_URL$path")"
+            get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS -o "/tmp/${slug}-get.json" -w '%{http_code}' "$BASE_URL$path")"
             if [ "$get_status" != "402" ]; then
               echo "Expected $name GET discovery probe to receive 402, got $get_status"
               exit 1
             fi
+            jq -e --arg amount "$expected_amount" '
+              .accepts[0].amount == $amount and
+              .accepts[0].maxAmountRequired == $amount
+            ' "/tmp/${slug}-get.json" >/dev/null
           }
 
-          check_402 'Verified Resolve' '/api/verified-resolve' '{"goal":"find and verify an MCP server for search"}' 'verified-resolve'
-          check_402 'Agent Readiness Audit' '/api/agent-readiness' '{"target":"https://example.com"}' 'readiness'
-          check_402 'MCP Live Preflight' '/api/mcp-probe' '{"endpoint":"https://agentresolver.vercel.app/mcp"}' 'mcp-probe'
-          check_402 'Batch Verified Resolve' '/api/batch-verified-resolve' '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}' 'batch-verified-resolve'
+          check_402 'HTTP Inspect' '/api/http-inspect' '{"url":"https://example.com"}' 'http-inspect' '1000'
+          check_402 'Tool Contract Fit' '/api/tool-contract' '{"producerOutputSchema":{"type":"object"},"consumerInputSchema":{"type":"object"}}' 'tool-contract' '5000'
+          check_402 'Verified Resolve' '/api/verified-resolve' '{"goal":"find and verify an MCP server for search"}' 'verified-resolve' '20000'
+          check_402 'Agent Readiness Audit' '/api/agent-readiness' '{"url":"https://example.com"}' 'readiness' '5000'
+          check_402 'MCP Live Preflight' '/api/mcp-probe' '{"endpoint":"https://agentresolver.vercel.app/mcp"}' 'mcp-probe' '1000'
+          check_402 'Batch Verified Resolve' '/api/batch-verified-resolve' '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}' 'batch-verified-resolve' '50000'
 
           echo 'All POST and GET x402 challenges verified without sending payment.'
