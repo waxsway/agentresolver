@@ -3,7 +3,7 @@ import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
-import { logPaidCapabilityAttempt } from "@/lib/telemetry";
+import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
@@ -40,7 +40,7 @@ function getPaidHandler(): PaidHandler {
 
 async function paidRequest(req: NextRequest) {
   if (process.env.BATCH_VERIFIED_RESOLVE_ENABLED === "false") return NextResponse.json({ error: "CAPABILITY_NOT_LIVE", capabilityId: "batch-verified-resolve", message: "Batch Verified Resolve is temporarily disabled." }, { status: 503 });
-  try { logPaidCapabilityAttempt(req, "batch-verified-resolve"); return await getPaidHandler()(req); }
+  try { logPaidCapabilityAttempt(req, "batch-verified-resolve"); const response = await getPaidHandler()(req); logX402Settlement(response, "batch-verified-resolve"); return response; }
   catch (error) {
     console.error(JSON.stringify({ event: "paid_capability_configuration_error", capabilityId: "batch-verified-resolve", at: new Date().toISOString(), message: error instanceof Error ? error.message : "Unknown error" }));
     return NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED", message: "Paid execution is temporarily unavailable." }, { status: 503 });

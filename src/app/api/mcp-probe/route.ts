@@ -3,7 +3,7 @@ import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { probeMcpEndpoint } from "@/lib/mcpProbe";
-import { logPaidCapabilityAttempt } from "@/lib/telemetry";
+import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
@@ -41,7 +41,7 @@ function getPaidHandler(): PaidHandler {
 async function paidRequest(req: NextRequest) {
   logPaidCapabilityAttempt(req, "mcp-probe");
   if (process.env.MCP_PROBE_ENABLED === "false") return NextResponse.json({ error: "CAPABILITY_NOT_LIVE", capabilityId: "mcp-probe", message: "MCP Probe is temporarily disabled." }, { status: 503 });
-  try { return await getPaidHandler()(req); }
+  try { const response = await getPaidHandler()(req); logX402Settlement(response, "mcp-probe"); return response; }
   catch (error) {
     console.error(JSON.stringify({ event: "paid_capability_configuration_error", capabilityId: "mcp-probe", at: new Date().toISOString(), message: error instanceof Error ? error.message : "Unknown error" }));
     return NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED", message: "Paid execution is temporarily unavailable." }, { status: 503 });

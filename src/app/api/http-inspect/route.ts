@@ -4,7 +4,7 @@ import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { logPaidCapabilityAttempt } from "@/lib/telemetry";
+import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
@@ -42,7 +42,7 @@ function getPaidHandler(): PaidHandler {
   const client=new HTTPFacilitatorClient({url:facilitatorUrl,timeoutMs:10000}); const server=new x402ResourceServer(client).register(X402_NETWORK,new ExactEvmScheme());
   paidHandler=withX402<unknown>(inspectHandler,{"/api/http-inspect":{accepts:{scheme:"exact",price:X402_PRICING.httpInspect,network:X402_NETWORK,payTo:payTo as `0x${string}`},description:"Inspect a public HTTPS resource for current status, latency, response metadata, cache validators and baseline security headers.",mimeType:"application/json"}},server) as PaidHandler; return paidHandler;
 }
-async function paidRequest(req:NextRequest){logPaidCapabilityAttempt(req,"http-inspect");try{return await getPaidHandler()(req);}catch(error){console.error(JSON.stringify({event:"paid_capability_configuration_error",capabilityId:"http-inspect",at:new Date().toISOString(),message:error instanceof Error?error.message:"Unknown error"}));return NextResponse.json({error:"PAYMENTS_NOT_CONFIGURED"},{status:503});}}
+async function paidRequest(req:NextRequest){logPaidCapabilityAttempt(req,"http-inspect");try{const response=await getPaidHandler()(req);logX402Settlement(response,"http-inspect");return response;}catch(error){console.error(JSON.stringify({event:"paid_capability_configuration_error",capabilityId:"http-inspect",at:new Date().toISOString(),message:error instanceof Error?error.message:"Unknown error"}));return NextResponse.json({error:"PAYMENTS_NOT_CONFIGURED"},{status:503});}}
 export async function POST(req:NextRequest){return paidRequest(req);}
 export async function GET(){return x402DiscoveryChallenge("http-inspect");}
 export async function OPTIONS(){return new NextResponse(null,{status:204,headers:{"access-control-allow-origin":"*","access-control-allow-methods":"GET, POST, OPTIONS","access-control-allow-headers":"content-type, payment-signature, payment-required, payment-response"}});}
