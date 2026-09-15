@@ -177,4 +177,37 @@ jobs:
             exit 1
           fi
 
-          echo 'Direct paid MCP challenge verified without signing or spending.'
+          echo 'Direct paid HTTP Inspect MCP challenge verified without signing or spending.'
+
+          openapi_resolve='{"jsonrpc":"2.0","id":92,"method":"tools/call","params":{"name":"resolve","arguments":{"goal":"select the best OpenAPI operation endpoint for this API goal","url":"https://agentresolver.vercel.app/openapi.json","limit":3}}}'
+          openapi_resolve_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -o /tmp/mcp-openapi-resolve.out \
+            -w '%{http_code}' \
+            -X POST "$MCP_URL" \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
+            --data "$openapi_resolve")
+          test "$openapi_resolve_code" -ge 200 && test "$openapi_resolve_code" -lt 300
+          grep -F 'openapi_select' /tmp/mcp-openapi-resolve.out >/dev/null
+          grep -F '"surface":"mcp"' /tmp/mcp-openapi-resolve.out >/dev/null || grep -F '\\"surface\\":\\"mcp\\"' /tmp/mcp-openapi-resolve.out >/dev/null
+
+          openapi_request='{"jsonrpc":"2.0","id":93,"method":"tools/call","params":{"name":"openapi_select","arguments":{"specUrl":"https://agentresolver.vercel.app/openapi.json","goal":"select the resolve operation"}}}'
+          openapi_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -o /tmp/mcp-openapi-paid.out \
+            -w '%{http_code}' \
+            -X POST "$MCP_URL" \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
+            --data "$openapi_request")
+          test "$openapi_code" -ge 200 && test "$openapi_code" -lt 300
+          grep -F 'x402Version' /tmp/mcp-openapi-paid.out >/dev/null
+          grep -F '5000' /tmp/mcp-openapi-paid.out >/dev/null
+          if grep -F 'operationCount' /tmp/mcp-openapi-paid.out >/dev/null; then
+            echo 'SECURITY FAILURE: unpaid OpenAPI Select MCP call exposed paid output before settlement.'
+            cat /tmp/mcp-openapi-paid.out
+            exit 1
+          fi
+
+          echo 'Direct paid MCP challenges verified without signing, spending, or paid execution egress.'
