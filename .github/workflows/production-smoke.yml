@@ -40,6 +40,7 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/integrations.json" | grep -F "$BASE_URL/mcp" >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'resolveCapability' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'probeMcpEndpoint' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/capabilities.json" | grep -F 'verified-resolve' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402-catalog.json" | grep -F 'mcp-probe' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/mcp/server-card" | grep -F '0.1.2' >/dev/null
@@ -81,6 +82,12 @@ jobs:
           }
 
           check_402 \
+            'Verified Resolve' \
+            '/api/verified-resolve' \
+            '{"goal":"find and verify an MCP server for search"}' \
+            'verified-resolve'
+
+          check_402 \
             'Agent Readiness Audit' \
             '/api/agent-readiness' \
             '{"target":"https://example.com"}' \
@@ -92,4 +99,4 @@ jobs:
             '{"endpoint":"https://agentresolver.vercel.app/mcp"}' \
             'mcp-probe'
 
-          echo 'Both x402 challenges verified without sending payment.'
+          echo 'All x402 challenges verified without sending payment.'
