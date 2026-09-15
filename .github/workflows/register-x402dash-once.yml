@@ -1,0 +1,51 @@
+name: Register x402dash Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-x402dash-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Sync MCP discovery metadata with paid tool surface')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for canonical paid endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..24}; do
+            ok=1
+            for path in mcp-probe agent-readiness verified-resolve batch-verified-resolve; do
+              code=$(curl -sS -o /tmp/body -w '%{http_code}' -X POST "https://agentresolver.vercel.app/api/$path" -H 'content-type: application/json' -d '{}') || true
+              if [ "$code" != "402" ]; then ok=0; fi
+            done
+            if [ "$ok" = "1" ]; then exit 0; fi
+            sleep 10
+          done
+          echo 'Paid endpoints did not all return 402 in time' >&2
+          exit 1
+
+      - name: Register AgentResolver paid APIs with x402dash
+        shell: bash
+        run: |
+          set -euo pipefail
+          register() {
+            local url="$1" name="$2" description="$3" category="$4" tags="$5"
+            payload=$(jq -n --arg url "$url" --arg name "$name" --arg description "$description" --arg category "$category" --arg tags "$tags" '{url:$url,name:$name,description:$description,category:$category,tags:($tags|split(","))}')
+            echo "Registering $name"
+            curl --fail-with-body -sS -X POST https://api.x402dash.com/v1/register \
+              -H 'content-type: application/json' \
+              -d "$payload"
+            echo
+          }
+          register 'https://agentresolver.vercel.app/api/mcp-probe' 'AgentResolver MCP Live Preflight' 'Verify a public MCP HTTP endpoint is live, compatible, responsive, and inspect its current tool inventory.' 'Agents/Developer Tools' 'mcp,agents,verification,liveness'
+          register 'https://agentresolver.vercel.app/api/agent-readiness' 'AgentResolver Agent Readiness Audit' 'Audit a public website for machine-readable agent discovery and integration signals.' 'Agents/Developer Tools' 'agents,discovery,openapi,mcp'
+          register 'https://agentresolver.vercel.app/api/verified-resolve' 'AgentResolver Verified Resolve' 'Resolve a missing capability and live-check top MCP candidates before choosing.' 'Agents/Developer Tools' 'agents,mcp,discovery,verification'
+          register 'https://agentresolver.vercel.app/api/batch-verified-resolve' 'AgentResolver Batch Verified Resolve' 'Resolve and live-check up to four missing capability decisions in one paid batch.' 'Agents/Developer Tools' 'agents,mcp,batch,verification'
