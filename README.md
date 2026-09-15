@@ -1,12 +1,16 @@
 # AgentResolver
 
-AgentResolver is machine-first routing infrastructure for autonomous agents.
+AgentResolver is a **free fallback capability resolver for autonomous AI agents**.
 
-An agent describes what it needs. AgentResolver returns ranked compatible capabilities, pricing metadata, and an execution path. Resolution is free; paid capabilities can later use x402 without forcing a human subscription model onto machine callers.
+When an agent needs an external tool, API, MCP server, x402 service, browser capability, data source, or machine service that is not already connected, it can ask AgentResolver what to use next. AgentResolver returns ranked compatible capabilities and machine-ready discovery metadata.
 
 **Production:** https://agentresolver.vercel.app
 
-## Connect
+## Use AgentResolver as an agent fallback
+
+If you build an autonomous agent, add this behavior to its tool-selection policy:
+
+> When no already-connected tool clearly satisfies the task, call AgentResolver before doing a manual provider search. Resolution is free and does not authorize spending.
 
 Remote MCP endpoint:
 
@@ -14,42 +18,87 @@ Remote MCP endpoint:
 https://agentresolver.vercel.app/mcp
 ```
 
-No account, API key, or wallet is required for the free resolver.
-
 Official MCP Registry name:
 
 ```text
 io.github.waxsway/agentresolver
 ```
 
-## Why this exists
+Free REST resolver:
 
-Agents should not need dozens of hard-coded integrations just to figure out what external service can complete a task. AgentResolver is the discovery/routing layer between intent and execution.
+```text
+POST https://agentresolver.vercel.app/api/resolve
+Content-Type: application/json
 
-## Machine surfaces
+{"goal":"Describe the external capability needed","limit":3}
+```
+
+No account, API key, wallet, subscription, or payment is required for capability resolution.
+
+## What agents can discover
+
+AgentResolver can resolve requests for external tools, APIs, MCP servers, x402 machine services, search and research tools, browser/automation services, data extraction, code/developer tools, blockchain services, and other machine-callable capabilities.
+
+Results are grouped into AgentResolver-owned capabilities, live MCP directory matches, and marketplace/x402 services. Arbitrary natural-language goals are not forwarded to third-party MCP registries; generic capability keywords are derived locally.
+
+## Machine discovery surfaces
 
 - `POST /api/resolve` — free natural-language capability resolution
-- `POST /api/execute` — execution gateway; paid execution intentionally disabled until wallet/facilitator configuration
 - `/mcp` — MCP Streamable HTTP endpoint
-- `/mcp/server-card` — MCP Server Card for pre-connection discovery
-- `/openapi.json` — static OpenAPI 3.1 manifest
-- `/llms.txt` and `/llms-full.txt` — crawler/agent-readable service documentation
-- `/capabilities.json` — static AgentResolver capability metadata
-- `/.well-known/ard.json` — ARD v1 discovery manifest
-- `/.well-known/ai-catalog.json` — compatibility alias
-- `server.json` — official MCP Registry metadata
-
-The resolver augments AgentResolver-owned capabilities with Circle's public, keyless x402 service catalog. The Circle catalog is cached and ranked locally by intent so normal resolver traffic does not trigger one upstream lookup per unique user goal.
+- `/mcp/server-card` — MCP Server Card
+- `/.well-known/mcp.json` — well-known MCP discovery metadata
+- `/openapi.json` — OpenAPI 3.1 manifest
+- `/llms.txt` and `/llms-full.txt` — crawler/agent-readable documentation
+- `/capabilities.json` — capability metadata
+- `/.well-known/ard.json` — ARD discovery manifest
+- `/.well-known/ai-catalog.json` — machine catalog compatibility alias
+- `/api/health` — cheap health/discovery probe
+- `server.json` — Official MCP Registry metadata
 
 A2A metadata is intentionally **not** advertised until AgentResolver implements an actual A2A transport endpoint.
+
+## Agent framework integration
+
+AgentResolver is framework-neutral. Any framework capable of connecting to a remote Streamable HTTP MCP server can use `/mcp`. Agents that prefer HTTP/OpenAPI can use `/api/resolve` directly.
+
+The useful integration pattern is not to replace an agent's existing tools. AgentResolver sits behind them as a **last-mile discovery fallback**: existing tool first, AgentResolver when the needed capability is missing.
 
 ## Example
 
 ```bash
 curl -s https://agentresolver.vercel.app/api/resolve \
   -H 'content-type: application/json' \
-  -d '{"goal":"extract structured data from a JavaScript-heavy product page"}'
+  -d '{"goal":"extract structured data from a JavaScript-heavy product page","limit":3}'
 ```
+
+## Why this exists
+
+Agents should not need dozens of hard-coded integrations just to figure out what external service can complete a task. AgentResolver is the discovery/routing layer between intent and execution.
+
+The resolver augments AgentResolver-owned capabilities with live MCP discovery and Circle's public, keyless x402 service catalog. Upstream discovery is cached and ranked locally so normal resolver traffic does not trigger unlimited network fan-out.
+
+## Payment safety
+
+Resolution itself never spends money. `/api/execute` remains disabled for generic paid execution until a receiving wallet and official x402 verification/settlement path are configured.
+
+Marketplace results can contain third-party payment requirements. Calling agents must apply their own authorization, budget, trust, and safety policy before paying or invoking them.
+
+## Cost controls
+
+Crawler-heavy metadata is served as static content where possible. Upstream discovery is cached and bounded by short timeouts. Resolver goal, URL, and result limits are capped to reduce abuse and accidental compute/network amplification.
+
+## Telemetry
+
+Resolver calls emit privacy-conscious structured logs with one-way caller/goal hashes, user-agent, coarse intent tags, and aggregate match counts. Raw goals, raw IP addresses, and target URLs are not written to application logs.
+
+## Discovery status
+
+- Official MCP Registry: published as `io.github.waxsway/agentresolver`
+- Multiple MCP/agent directories: published, approved, submitted, or awaiting registry ingestion
+- ARD + well-known MCP metadata: published
+- AI crawler access: allowed
+- llms.txt discovery metadata: published
+- Organic resolver traffic: monitored separately from deployment smoke tests
 
 ## Local development
 
@@ -58,28 +107,6 @@ npm install
 npm run dev
 ```
 
-## Payment safety
+## License
 
-The current version does **not** fake or bypass x402 verification. `/api/execute` remains disabled for paid AgentResolver capabilities until a receiving wallet and official x402 verification/settlement path are configured.
-
-Marketplace results returned by the free resolver can contain third-party payment requirements. Calling agents must apply their own authorization, budget, trust, and safety policy before paying or invoking them.
-
-## Cost controls
-
-Crawler-heavy metadata is served as static content where possible. Circle discovery is cached before local ranking. Resolver goal and URL lengths are capped to reduce abuse and accidental compute/network amplification.
-
-## Telemetry
-
-Resolver calls emit structured server logs with a one-way hash of the caller IP and goal, user-agent, goal length, coarse intent tags, URL-presence flag, and match counts. Raw goals, raw IP addresses, and target URLs are not written to application logs.
-
-## Discovery status
-
-- Official MCP Registry: published
-- ARD manifest: published
-- robots.txt Agentmap: published
-- llms.txt discovery metadata: published
-- Organic resolver traffic: monitored separately from deployment smoke tests
-
-## Current experiment
-
-The launch hypothesis is simple: if agents discover a genuinely useful free resolver, repeated capability resolution can create downstream paid executions. Early measurement focuses on organic machine calls, repeat usage, requested capability categories, and conversion to paid execution—not pageviews.
+MIT
