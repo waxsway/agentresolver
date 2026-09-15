@@ -24,13 +24,31 @@ jobs:
       VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
       VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - name: Checkout validated commit
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+
+      - name: Require validated SHA to still be main
+        id: initial_freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          echo "validated_sha=$VALIDATED_SHA"
+          echo "current_main=$current_main"
+          if [ "$current_main" != "$VALIDATED_SHA" ]; then
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping stale CI result: main advanced before production build started."
+          else
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Require merge commit release
+        if: steps.initial_freshness.outputs.fresh == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -44,6 +62,7 @@ jobs:
           esac
 
       - name: Require Vercel deployment credential
+        if: steps.initial_freshness.outputs.fresh == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -53,15 +72,18 @@ jobs:
           fi
 
       - name: Setup Node
+        if: steps.initial_freshness.outputs.fresh == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: '22'
           package-manager-cache: false
 
       - name: Install Vercel CLI
+        if: steps.initial_freshness.outputs.fresh == 'true'
         run: npm install --global vercel@48.8.0 --no-audit --no-fund
 
       - name: Reset Vercel project link
+        if: steps.initial_freshness.outputs.fresh == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -70,10 +92,37 @@ jobs:
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
 
       - name: Pull production configuration
+        if: steps.initial_freshness.outputs.fresh == 'true'
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build validated production artifact
+        if: steps.initial_freshness.outputs.fresh == 'true'
         run: vercel build --prod --token="$VERCEL_TOKEN"
 
+      - name: Recheck main immediately before deploy
+        if: steps.initial_freshness.outputs.fresh == 'true'
+        id: predeploy_freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          echo "validated_sha=$VALIDATED_SHA"
+          echo "current_main=$current_main"
+          if [ "$current_main" != "$VALIDATED_SHA" ]; then
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "Built artifact is now stale; refusing to deploy it."
+          else
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy prebuilt artifact to production
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.predeploy_freshness.outputs.fresh == 'true'
         run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Report stale deploy suppression
+        if: >-
+          steps.initial_freshness.outputs.fresh != 'true' ||
+          steps.predeploy_freshness.outputs.fresh == 'false'
+        run: echo "No production deployment occurred because this CI result was no longer the tip of main."
