@@ -1,0 +1,51 @@
+name: Submit Paid Products to Market402
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-market402-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Self-test and submit paid endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          submit() {
+            local path="$1" price="$2"
+            local url="https://agentresolver.vercel.app/api/$path"
+
+            echo "Self-testing $url"
+            code=$(curl -sS -o /tmp/selftest.json -w "%{http_code}" \
+              -X POST "https://market402.com/selftest" \
+              -H "content-type: application/json" \
+              -d "$(jq -n --arg url "$url" '{url:$url}')")
+            cat /tmp/selftest.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+
+            echo "Submitting $url at $price USD"
+            code=$(curl -sS -o /tmp/submit.json -w "%{http_code}" \
+              -X POST "https://market402.com/submit" \
+              -H "content-type: application/json" \
+              -d "$(jq -n --arg resource "$url" --argjson price "$price" '{resource:$resource,declared_price_usd:$price}')")
+            cat /tmp/submit.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          }
+
+          submit "http-inspect" 0.001
+          submit "mcp-probe" 0.001
+          submit "agent-readiness" 0.005
+          submit "tool-contract" 0.005
+          submit "verified-resolve" 0.02
+          submit "batch-verified-resolve" 0.05
