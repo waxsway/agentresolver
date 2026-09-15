@@ -11,6 +11,7 @@ export function GET() {
     serverCard: `${base}/mcp/server-card`,
     openapi: `${base}/openapi.json`,
     resolve: `${base}/api/resolve`,
+    skill: `${base}/skill.md`,
     paidManifest: `${base}/.well-known/x402`,
     tools: [
       { name: "resolve", priceUsd: 0, purpose: "Find a missing external capability." },
@@ -23,6 +24,7 @@ export function GET() {
     discovery: {
       llms: `${base}/llms.txt`,
       llmsFull: `${base}/llms-full.txt`,
+      skill: `${base}/skill.md`,
       capabilities: `${base}/capabilities.json`,
       ard: `${base}/.well-known/ard.json`,
       aiCatalog: `${base}/.well-known/ai-catalog.json`,
