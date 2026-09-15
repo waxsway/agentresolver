@@ -33,7 +33,7 @@ Official MCP Registry name:
 io.github.waxsway/agentresolver
 ```
 
-The MCP server exposes one read-only tool: `resolve`.
+The MCP server exposes the free `resolve` tool plus read-only quote tools for AgentResolver's paid capabilities. Quote tools return exact x402 purchase actions but never authorize or initiate spending.
 
 ## Use AgentResolver as an agent fallback
 
@@ -61,6 +61,13 @@ Results are grouped into AgentResolver-owned capabilities, live MCP directory ma
 ## Machine discovery surfaces
 
 - `POST /api/resolve` — free natural-language capability resolution
+- `POST /api/http-inspect` — $0.001 live HTTPS status/latency/header inspection
+- `POST /api/mcp-probe` — $0.001 live MCP endpoint preflight
+- `POST /api/agent-readiness` — $0.005 agent-discoverability audit
+- `POST /api/tool-contract` — $0.005 deterministic tool schema compatibility check
+- `POST /api/verified-resolve` — $0.02 resolve plus live MCP verification
+- `POST /api/batch-verified-resolve` — $0.05 bounded multi-request verified resolve
+- `/.well-known/x402` — machine-readable payment manifest
 - `/mcp` — MCP Streamable HTTP endpoint
 - `/mcp/server-card` — MCP Server Card
 - `/.well-known/mcp.json` — well-known MCP discovery metadata
@@ -106,9 +113,9 @@ The resolver augments AgentResolver-owned capabilities with live MCP discovery a
 
 ## Payment safety
 
-Resolution itself never spends money. `/api/execute` remains disabled for generic paid execution until a receiving wallet and official x402 verification/settlement path are configured.
+Resolution and MCP quote tools never spend money. AgentResolver's six direct paid endpoints use x402 USDC on Base and execute only after a caller supplies a valid payment authorization; successful revenue is counted only from confirmed settlement receipts. `/api/execute` remains disabled for generic third-party execution.
 
-Marketplace results can contain third-party payment requirements. Calling agents must apply their own authorization, budget, trust, and safety policy before paying or invoking them.
+Marketplace results can contain third-party payment requirements. Calling agents must apply their own authorization, budget, trust, and safety policy before paying or invoking any third-party service.
 
 ## Cost controls
 
