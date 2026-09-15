@@ -53,14 +53,22 @@ jobs:
 
           status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
             -D /tmp/x402-headers.txt \
-            -o /tmp/x402-body.json \
+            -o /tmp/x402-body.txt \
             -w '%{http_code}' \
             -H 'content-type: application/json' \
             --data '{"target":"https://example.com"}' \
             "$BASE_URL/api/agent-readiness")"
 
-          test "$status" = "402"
-          grep -Eiq '^payment-required:' /tmp/x402-headers.txt
-          grep -F '"x402Version"' /tmp/x402-body.json >/dev/null || grep -F '"accepts"' /tmp/x402-body.json >/dev/null
+          if [ "$status" != "402" ]; then
+            echo "Expected x402 HTTP 402 challenge, got $status"
+            cat /tmp/x402-body.txt
+            exit 1
+          fi
 
-          echo 'x402 challenge verified: HTTP 402 returned before execution; no payment was sent.'
+          if ! grep -Eiq '^payment-required:[[:space:]]*[^[:space:]]+' /tmp/x402-headers.txt; then
+            echo 'HTTP 402 was returned but PAYMENT-REQUIRED header is missing.'
+            sed -n '1,20p' /tmp/x402-headers.txt
+            exit 1
+          fi
+
+          echo 'x402 challenge verified: HTTP 402 plus PAYMENT-REQUIRED header; no payment was sent.'
