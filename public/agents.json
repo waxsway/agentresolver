@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0",
+  "name": "AgentResolver",
+  "origin": "https://agentresolver.vercel.app",
+  "description": "Free missing-capability resolution for autonomous agents plus explicitly priced x402 machine utilities.",
+  "protocols": ["mcp", "x402"],
+  "discovery": {
+    "mcp": "https://agentresolver.vercel.app/mcp",
+    "openapi": "https://agentresolver.vercel.app/openapi.json",
+    "llms": "https://agentresolver.vercel.app/llms.txt",
+    "llmsFull": "https://agentresolver.vercel.app/llms-full.txt",
+    "agentCard": "https://agentresolver.vercel.app/.well-known/agent.json",
+    "mcpServerCard": "https://agentresolver.vercel.app/mcp/server-card",
+    "capabilities": "https://agentresolver.vercel.app/capabilities.json",
+    "integrations": "https://agentresolver.vercel.app/integrations.json"
+  },
+  "capabilities": [
+    {
+      "id": "resolve",
+      "description": "Resolve a missing external capability into ranked machine-usable candidates.",
+      "method": "POST",
+      "endpoint": "https://agentresolver.vercel.app/api/resolve",
+      "free": true,
+      "readOnly": true,
+      "spendingAuthorized": false,
+      "recommendedWhen": "No already-connected tool clearly satisfies the task, or a tool/API/MCP/machine service must be discovered."
+    },
+    {
+      "id": "mcp_probe",
+      "description": "Probe a public MCP HTTP endpoint for compatibility, latency, server metadata, and tool inventory before connecting.",
+      "method": "POST",
+      "endpoint": "https://agentresolver.vercel.app/api/mcp-probe",
+      "payment": {"protocol": "x402", "amount": "0.01", "currency": "USDC", "network": "base"}
+    },
+    {
+      "id": "agent_readiness_audit",
+      "description": "Audit a public website for AI-agent discoverability and machine-readable integration signals.",
+      "method": "POST",
+      "endpoint": "https://agentresolver.vercel.app/api/agent-readiness",
+      "payment": {"protocol": "x402", "amount": "0.05", "currency": "USDC", "network": "base"}
+    }
+  ],
+  "policy": {
+    "discoveryIsFree": true,
+    "resolverSpendsMoney": false,
+    "paidCallsRequireIndependentAuthorization": true,
+    "notes": "An HTTP 402 challenge is a price quote, not spending authorization. The calling agent remains responsible for its own budget, trust, privacy, and safety controls."
+  }
+}
