@@ -1,0 +1,53 @@
+name: Verify Live AgentResolver Discovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/verify-live-discovery-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify public discovery endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          urls=(
+            "https://agentresolver.vercel.app/"
+            "https://agentresolver.vercel.app/api/health"
+            "https://agentresolver.vercel.app/.well-known/ard.json"
+            "https://agentresolver.vercel.app/.well-known/mcp.json"
+            "https://agentresolver.vercel.app/.well-known/mcp/server-card.json"
+            "https://agentresolver.vercel.app/.well-known/ai-catalog.json"
+            "https://agentresolver.vercel.app/.well-known/ai-plugin.json"
+            "https://agentresolver.vercel.app/mcp/server-card"
+            "https://agentresolver.vercel.app/openapi.json"
+            "https://agentresolver.vercel.app/llms.txt"
+            "https://agentresolver.vercel.app/capabilities.json"
+            "https://agentresolver.vercel.app/robots.txt"
+            "https://agentresolver.vercel.app/sitemap.xml"
+          )
+          for url in "${urls[@]}"; do
+            code=$(curl -sS -L -o /tmp/out -w "%{http_code}" "$url")
+            echo "$code $url"
+            test "$code" -eq 200
+          done
+
+      - name: Verify free resolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/resolver.out -w "%{http_code}" \
+            -X POST "https://agentresolver.vercel.app/api/resolve" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: AgentResolver-External-Verification/1.0" \
+            --data '{"goal":"find an MCP tool for GitHub repository search","limit":3}')
+          echo "HTTP $code"
+          cat /tmp/resolver.out
+          test "$code" -eq 200
