@@ -29,7 +29,9 @@ test("generated machine surfaces contain every registered paid capability", () =
     const x402Resource = x402.resources.find((item: any) => item.resource === `POST ${product.endpoint}`);
     assert.ok(x402Resource, `missing x402 resource for ${product.id}`);
     assert.equal(x402Resource.price, product.price);
+    assert.equal(x402Resource.accepts?.[0]?.amount, product.atomicAmount);
     assert.equal(x402Resource.accepts?.[0]?.maxAmountRequired, product.atomicAmount);
+    assert.equal(x402Resource.accepts?.[0]?.resource, `${CANONICAL_ORIGIN}${product.endpoint}`);
 
     const capability = capabilities.capabilities.find((item: any) => item.id === product.id);
     assert.ok(capability, `missing capabilities.json entry for ${product.id}`);

@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/register-x402dash-once.yml'
+      - 'src/lib/x402DiscoveryChallenge.ts'
 
 permissions:
   contents: read
@@ -13,26 +14,40 @@ permissions:
 jobs:
   register:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
-      - name: Wait for canonical GET and POST x402 challenges
+      - name: Wait for directory-compatible production challenges
         shell: bash
         run: |
           set -euo pipefail
-          for i in {1..30}; do
+          paths=(http-inspect mcp-probe agent-readiness tool-contract verified-resolve)
+          for i in {1..36}; do
             ok=1
-            for path in mcp-probe agent-readiness verified-resolve batch-verified-resolve; do
-              get_code=$(curl -sS -o /tmp/get-body -w '%{http_code}' "https://agentresolver.vercel.app/api/$path") || true
-              post_code=$(curl -sS -o /tmp/post-body -w '%{http_code}' -X POST "https://agentresolver.vercel.app/api/$path" -H 'content-type: application/json' -d '{}') || true
-              if [ "$get_code" != "402" ] || [ "$post_code" != "402" ]; then ok=0; fi
+            for path in "${paths[@]}"; do
+              code=$(curl -sS -o /tmp/challenge.json -w '%{http_code}' "https://agentresolver.vercel.app/api/$path") || true
+              if [ "$code" != "402" ]; then
+                ok=0
+                continue
+              fi
+              if ! jq -e '
+                .x402Version == 2 and
+                (.accepts | type == "array" and length > 0) and
+                (.accepts[0].maxAmountRequired | type == "string" and length > 0) and
+                (.accepts[0].resource | type == "string" and startswith("https://agentresolver.vercel.app/api/"))
+              ' /tmp/challenge.json >/dev/null; then
+                ok=0
+              fi
             done
-            if [ "$ok" = "1" ]; then exit 0; fi
+            if [ "$ok" = "1" ]; then
+              echo "Production challenges are directory-compatible."
+              exit 0
+            fi
             sleep 10
           done
-          echo 'Paid endpoints did not all return GET+POST 402 in time' >&2
+          echo 'Directory-compatible paid challenges did not reach production in time.' >&2
           exit 1
 
-      - name: Register AgentResolver paid APIs with x402dash
+      - name: Register five highest-priority paid APIs with x402dash
         shell: bash
         run: |
           set -euo pipefail
@@ -40,12 +55,13 @@ jobs:
             local url="$1" name="$2" description="$3" category="$4" tags="$5"
             payload=$(jq -n --arg url "$url" --arg name "$name" --arg description "$description" --arg category "$category" --arg tags "$tags" '{url:$url,name:$name,description:$description,category:$category,tags:($tags|split(","))}')
             echo "Registering $name"
-            curl --fail-with-body -sS -X POST https://api.x402dash.com/v1/register \
-              -H 'content-type: application/json' \
-              -d "$payload"
+            curl --fail-with-body -sS -X POST https://api.x402dash.com/v1/register               -H 'content-type: application/json'               -d "$payload"
             echo
           }
+          # x402dash currently limits registration calls per source IP. Keep this
+          # list to five high-signal products in one run rather than retrying.
+          register 'https://agentresolver.vercel.app/api/http-inspect' 'AgentResolver HTTP Inspect' 'Inspect current HTTPS status, latency, response metadata, cache validators, and baseline security headers.' 'Agents/Developer Tools' 'http,agents,latency,headers'
           register 'https://agentresolver.vercel.app/api/mcp-probe' 'AgentResolver MCP Live Preflight' 'Verify a public MCP HTTP endpoint is live, compatible, responsive, and inspect its current tool inventory.' 'Agents/Developer Tools' 'mcp,agents,verification,liveness'
           register 'https://agentresolver.vercel.app/api/agent-readiness' 'AgentResolver Agent Readiness Audit' 'Audit a public website for machine-readable agent discovery and integration signals.' 'Agents/Developer Tools' 'agents,discovery,openapi,mcp'
+          register 'https://agentresolver.vercel.app/api/tool-contract' 'AgentResolver Tool Contract Fit' 'Check deterministic JSON-schema compatibility between one tool output and the next tool input.' 'Agents/Developer Tools' 'agents,schema,workflow,compatibility'
           register 'https://agentresolver.vercel.app/api/verified-resolve' 'AgentResolver Verified Resolve' 'Resolve a missing capability and live-check top MCP candidates before choosing.' 'Agents/Developer Tools' 'agents,mcp,discovery,verification'
-          register 'https://agentresolver.vercel.app/api/batch-verified-resolve' 'AgentResolver Batch Verified Resolve' 'Resolve and live-check up to four missing capability decisions in one paid batch.' 'Agents/Developer Tools' 'agents,mcp,batch,verification'

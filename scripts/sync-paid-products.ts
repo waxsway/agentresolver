@@ -27,6 +27,8 @@ writeJson("public/.well-known/x402", {
       network: NETWORK,
       asset: BASE_USDC,
       payTo: PAY_TO,
+      resource: `${CANONICAL_ORIGIN}${product.endpoint}`,
+      amount: product.atomicAmount,
       maxAmountRequired: product.atomicAmount,
       extra: { name: "USD Coin", version: "2" }
     }]
