@@ -212,8 +212,8 @@ async function fetchSpec(url: URL, redirects = 0): Promise<string> {
 
 function tokens(value: string) {
   return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .toLowerCase()
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
     .split(/\s+/)
