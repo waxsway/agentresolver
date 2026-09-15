@@ -73,16 +73,63 @@ const handler = createMcpHandler(() => {
     annotations: { title: "Resolve a missing capability", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   }, async ({ goal, url, limit }) => {
     const resolution = await resolveGoal(goal, url, limit || 3);
-    const candidateCount = resolution.mcp.length + resolution.marketplace.length;
-    const singleMcp = resolution.mcp.length === 1 && candidateCount === 1 ? resolution.mcp[0] : null;
-    const singleMcpEndpoint = singleMcp && typeof singleMcp.endpoint === "string" && /^https?:\/\//i.test(singleMcp.endpoint) ? singleMcp.endpoint : null;
-    const rec = singleMcpEndpoint ? { ...paid("mcp-probe", { endpoint: singleMcpEndpoint }), reason: "One MCP candidate found; live-preflight it before depending on it." }
-      : resolution.mcp.length > 0 || candidateCount > 1 ? { ...paid("verified-resolve", { goal, ...(url ? { url } : {}) }), reason: "Candidates found; add live comparative evidence before choosing." } : null;
-    logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal), mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null });
-    if (rec) console.log(JSON.stringify({ event: "paid_recommendation_shown", surface: "mcp", at: new Date().toISOString(), capabilityId: rec.capabilityId, priceUsd: rec.priceUsd, goalHash: shortHash(goal) }));
     const owned = resolution.owned.map((match) => ({ ...match, execute: match.status === "live" && match.endpoint ? `${CANONICAL}${match.endpoint}` : null, spendingAuthorizationRequired: match.priceUsd > 0 }));
+    const candidateCount = resolution.mcp.length + resolution.marketplace.length;
+    const singleMcp = resolution.mcp.length === 1 ? resolution.mcp[0] : null;
+    const singleMcpEndpoint = singleMcp && typeof singleMcp.endpoint === "string" && /^https?:\/\//i.test(singleMcp.endpoint) ? singleMcp.endpoint : null;
+    const topOwned = owned.find((match) => match.rank === 1 && match.status === "live" && match.priceUsd > 0);
+    const directOwnedId = topOwned?.id && topOwned.id in {
+      "http-inspect": true,
+      "tool-contract": true,
+      "mcp-probe": true,
+      "agent-readiness": true,
+      "openapi-select": true,
+      "verified-resolve": true,
+      "batch-verified-resolve": true
+    } ? topOwned.id as PaidCapabilityId : null;
+
+    const directInput = directOwnedId === "http-inspect" && url
+      ? { url }
+      : directOwnedId === "agent-readiness" && url
+        ? { url }
+        : directOwnedId === "openapi-select" && url
+          ? { specUrl: url, goal }
+          : directOwnedId === "mcp-probe" && singleMcpEndpoint
+            ? { endpoint: singleMcpEndpoint }
+            : directOwnedId === "verified-resolve"
+              ? { goal, ...(url ? { url } : {}) }
+              : null;
+
+    const directMcpRec = directOwnedId === "http-inspect" && directInput
+      ? {
+          capabilityId: "http-inspect" as const,
+          surface: "mcp" as const,
+          tool: "http_inspect" as const,
+          execute: `${CANONICAL}/mcp`,
+          input: directInput,
+          priceUsd: httpInspectProduct.priceUsd,
+          asset: "USDC" as const,
+          network: "eip155:8453" as const,
+          protocol: "x402" as const,
+          spendingAuthorizationRequired: true as const,
+          spendingAuthorized: false as const,
+          reason: "The highest-ranked live AgentResolver capability directly matches this goal and is payable inside MCP. Call http_inspect with the prefilled input; execute only if the host independently authorizes the x402 price."
+        }
+      : null;
+
+    const directHttpRec = directOwnedId && directInput && directOwnedId !== "http-inspect"
+      ? { ...paid(directOwnedId, directInput), surface: "http" as const, reason: "The highest-ranked live AgentResolver capability directly matches this goal. Use this owned product before broader verification." }
+      : null;
+
+    const rec = directMcpRec
+      || directHttpRec
+      || (singleMcpEndpoint ? { ...paid("mcp-probe", { endpoint: singleMcpEndpoint }), surface: "http" as const, reason: "One MCP candidate found; live-preflight it before depending on it." }
+      : resolution.mcp.length > 0 || candidateCount > 1 ? { ...paid("verified-resolve", { goal, ...(url ? { url } : {}) }), surface: "http" as const, reason: "Candidates found; add live comparative evidence before choosing." } : null);
+
+    logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal), mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null, paidRecommendationSurface: rec?.surface || null });
+    if (rec) console.log(JSON.stringify({ event: "paid_recommendation_shown", surface: "mcp", executionSurface: rec.surface, at: new Date().toISOString(), capabilityId: rec.capabilityId, priceUsd: rec.priceUsd, goalHash: shortHash(goal) }));
     const output = { goal, url: url || null, free: true, readOnly: true, spendingAuthorized: false, owned, mcp: resolution.mcp, marketplace: resolution.marketplace, recommendedPaidAction: rec,
-      nextAction: rec ? `Optional live evidence costs $${formatUsd(rec.priceUsd)} USDC on Base. The executable request is prefilled. Execute only if your existing spending policy independently authorizes it.` : "Choose the best relevant result; refine the goal and resolve again if needed.",
+      nextAction: rec ? (rec.surface === "mcp" ? `Optional direct MCP execution costs ${formatUsd(rec.priceUsd)} USDC on Base. Call ${rec.tool} with the prefilled input only if your existing spending policy independently authorizes it.` : `Optional live evidence costs ${formatUsd(rec.priceUsd)} USDC on Base. The executable request is prefilled. Execute only if your existing spending policy independently authorizes it.`) : "Choose the best relevant result; refine the goal and resolve again if needed.",
       rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, paidManifest: `${CANONICAL}/.well-known/x402` } };
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
   });
