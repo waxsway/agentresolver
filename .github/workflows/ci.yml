@@ -12,20 +12,50 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: '24'
           package-manager-cache: false
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
       - name: Typecheck
         run: npm run typecheck
+
       - name: Test
         run: npm test
+
       - name: Build
         run: npm run build
+
+      - name: Smoke test built app
+        shell: bash
+        run: |
+          set -euo pipefail
+          PORT=3001 npm run start -- --hostname 127.0.0.1 --port 3001 > /tmp/agentresolver-next.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true; cat /tmp/agentresolver-next.log || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3001/api/health >/tmp/health.json; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:3001/agentresolver.md | grep -F 'AgentResolver' >/dev/null
+          curl -fsS http://127.0.0.1:3001/integrations.json | grep -F 'https://agentresolver.vercel.app/mcp' >/dev/null
+          curl -fsS http://127.0.0.1:3001/openapi.json | grep -F 'resolveCapability' >/dev/null
+          grep -F '"ok":true' /tmp/health.json >/dev/null
+          grep -F '"version":"0.1.2"' /tmp/health.json >/dev/null
+
+          kill "$app_pid"
+          wait "$app_pid" || true
+          trap - EXIT
