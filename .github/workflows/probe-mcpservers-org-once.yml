@@ -1,0 +1,44 @@
+name: Probe mcpservers.org Free Submit Form
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/probe-mcpservers-org-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect public submit page
+        shell: bash
+        run: |
+          set -euo pipefail
+          for u in "https://mcpservers.org/submit" "https://mcpservers.org/en/submit"; do
+            echo "===== $u ====="
+            code=$(curl -sS -L -o /tmp/page.html -w "%{http_code}" "$u")
+            echo "HTTP $code"
+            python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("/tmp/page.html").read_text(errors="ignore")
+          for pat in [
+              r'<form[^>]*>',
+              r'<input[^>]+>',
+              r'<textarea[^>]+>',
+              r'<select[^>]+>',
+              r'/api/[A-Za-z0-9_./?=-]+',
+              r'fetch\([^;]{0,1200}',
+              r'axios[^;]{0,1200}',
+              r'JSON\.stringify\([^;]{0,800}',
+          ]:
+              print("\nPATTERN", pat)
+              for m in list(re.finditer(pat,s,re.I|re.S))[:30]:
+                  x=re.sub(r'\s+',' ',m.group(0))
+                  print(x[:1800])
+          PY
+          done
