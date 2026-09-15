@@ -1,0 +1,159 @@
+name: Submit AgentResolver to mcpservers.org Free Review
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-mcpservers-org-free-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Locate browser
+        id: chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "No system Chrome found"
+            exit 1
+          fi
+          echo "path=$CHROME" >> "$GITHUB_OUTPUT"
+          "$CHROME" --version
+
+      - name: Install lightweight browser driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/browser
+          cd /tmp/browser
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund puppeteer-core@24.22.0
+
+      - name: Submit free listing
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/browser/submit.mjs <<'JS'
+          import puppeteer from "puppeteer-core";
+
+          const browser = await puppeteer.launch({
+            executablePath: process.env.CHROME_PATH,
+            headless: true,
+            args: ["--no-sandbox", "--disable-setuid-sandbox"]
+          });
+
+          const page = await browser.newPage();
+          const responses = [];
+          page.on("response", async (response) => {
+            const req = response.request();
+            if (req.method() !== "GET") {
+              let body = "";
+              try { body = (await response.text()).slice(0, 2500); } catch {}
+              responses.push({
+                method: req.method(),
+                url: response.url(),
+                status: response.status(),
+                postData: (req.postData() || "").slice(0, 2500),
+                body
+              });
+            }
+          });
+
+          await page.goto("https://mcpservers.org/submit", {
+            waitUntil: "networkidle2",
+            timeout: 60000
+          });
+
+          await page.type("#server-name", "AgentResolver");
+          await page.type(
+            "#server-description",
+            "Free capability resolver for AI agents. Discovers and compares tools, APIs, MCP servers, and x402 machine services through a no-auth remote MCP endpoint."
+          );
+          await page.type("#server-url", "https://agentresolver.vercel.app");
+          await page.type("#registry-name", "io.github.waxsway/agentresolver");
+          await page.select("#server-category", "development");
+          await page.type("#contact-email", "waxsway@gmail.com");
+
+          // Select the remote-server option if the UI exposes one.
+          const remote = await page.$("#has-remote");
+          if (remote) {
+            const checked = await page.$eval("#has-remote", el => el.checked);
+            if (!checked) await page.click("#has-remote");
+            await new Promise(r => setTimeout(r, 500));
+          }
+
+          // Fill any remote endpoint field revealed by the toggle.
+          const remoteCandidates = [
+            'input[name="remoteUrl"]',
+            'input[name="remoteURL"]',
+            'input[name="remote"]',
+            'input[id*="remote-url"]',
+            'input[placeholder*="/mcp"]'
+          ];
+          for (const selector of remoteCandidates) {
+            const el = await page.$(selector);
+            if (el) {
+              const current = await page.$eval(selector, e => e.value || "");
+              if (!current) await page.type(selector, "https://agentresolver.vercel.app/mcp");
+              break;
+            }
+          }
+
+          const freeRadio = await page.$("#free-submit");
+          if (!freeRadio) throw new Error("Free plan radio not found");
+          const freeChecked = await page.$eval("#free-submit", el => el.checked);
+          if (!freeChecked) await page.click("#free-submit");
+
+          const plan = await page.$eval('input[name="plan"]', el => el.value);
+          if (plan !== "free") {
+            throw new Error(`Refusing submission because plan is ${plan}`);
+          }
+
+          const snapshot = await page.evaluate(() => {
+            const form = document.querySelector("form");
+            if (!form) return null;
+            return Object.fromEntries(new FormData(form).entries());
+          });
+          if (!snapshot || snapshot.plan !== "free") {
+            throw new Error("Free-plan assertion failed");
+          }
+          console.log("FORM", JSON.stringify(snapshot));
+
+          const submit = await page.$('form button[type="submit"]');
+          if (!submit) throw new Error("Submit button not found");
+          await submit.click();
+
+          await Promise.race([
+            page.waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 }).catch(() => null),
+            new Promise(r => setTimeout(r, 8000))
+          ]);
+
+          const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 8000));
+          console.log("FINAL_URL", page.url());
+          console.log("BODY", bodyText);
+          console.log("NON_GET_RESPONSES", JSON.stringify(responses, null, 2));
+
+          const lower = bodyText.toLowerCase();
+          const success =
+            lower.includes("reviewed within") ||
+            lower.includes("submitted") ||
+            lower.includes("submission") && lower.includes("review") ||
+            lower.includes("thank you");
+
+          if (!success) {
+            throw new Error("No success confirmation detected");
+          }
+
+          await browser.close();
+          JS
+          cd /tmp/browser
+          node submit.mjs
