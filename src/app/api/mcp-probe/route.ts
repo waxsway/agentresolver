@@ -1,23 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
-import {
-  HTTPFacilitatorClient,
-  x402ResourceServer
-} from "@x402/core/server";
+import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { probeMcpEndpoint } from "@/lib/mcpProbe";
 import { logPaidCapabilityAttempt } from "@/lib/telemetry";
-import {
-  X402_FACILITATOR_URL,
-  X402_NETWORK,
-  X402_PAY_TO,
-  X402_PRICING
-} from "@/lib/x402Config";
+import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
+import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
 export const dynamic = "force-dynamic";
-
 const MAX_INPUT = 500;
-
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
 let paidHandler: PaidHandler | null = null;
 
@@ -58,9 +49,7 @@ async function paidRequest(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) { return paidRequest(req); }
-// Registry/discovery services such as x402dash probe resource URLs with GET. Unpaid GET receives the same 402 quote; paid execution remains POST-oriented by the published schema.
-export async function GET(req: NextRequest) { return paidRequest(req); }
-
+export async function GET() { return x402DiscoveryChallenge("mcp-probe"); }
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response" } });
 }
