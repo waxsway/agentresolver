@@ -1,0 +1,48 @@
+name: Claim 402 Index Domain Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/claim-402index-domain-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Claim canonical AgentResolver hostname
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          status="$(curl -sS \
+            -o /tmp/claim.json \
+            -w '%{http_code}' \
+            -X POST 'https://402index.io/api/v1/claim' \
+            -H 'content-type: application/json' \
+            --data '{"domain":"agentresolver.vercel.app"}')"
+
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "402 Index domain claim failed with HTTP $status"
+            jq '{error, message, status}' /tmp/claim.json || true
+            exit 1
+          fi
+
+          token="$(jq -r '.verification_token // empty' /tmp/claim.json)"
+          hash="$(jq -r '.verification_hash // empty' /tmp/claim.json)"
+          verification_url="$(jq -r '.verification_url // empty' /tmp/claim.json)"
+
+          if [ -z "$token" ] || [ -z "$hash" ] || [ -z "$verification_url" ]; then
+            echo 'Claim response did not include required verification fields.'
+            exit 1
+          fi
+
+          echo "::add-mask::$token"
+          echo "verification_hash=$hash"
+          echo "verification_url=$verification_url"
+          echo 'The raw verification token was masked and is intentionally not printed.'
