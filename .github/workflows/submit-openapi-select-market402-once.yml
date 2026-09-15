@@ -1,0 +1,58 @@
+name: Submit OpenAPI Select to Market402 Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-openapi-select-market402-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Wait for canonical OpenAPI Select challenge
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://agentresolver.vercel.app/api/openapi-select'
+          for attempt in $(seq 1 30); do
+            code=$(curl -sS -o /tmp/challenge.json -w '%{http_code}' "$url" || true)
+            if [ "$code" = "402" ] && jq -e '
+              .accepts[0].amount == "5000" and
+              .accepts[0].maxAmountRequired == "5000"
+            ' /tmp/challenge.json >/dev/null; then
+              echo 'OpenAPI Select is live at the expected $0.005 price.'
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'OpenAPI Select did not reach canonical production at the expected price.' >&2
+          exit 1
+
+      - name: Self-test with Market402
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://agentresolver.vercel.app/api/openapi-select'
+          code=$(curl -sS -o /tmp/selftest.json -w '%{http_code}'             -X POST 'https://market402.com/selftest'             -H 'content-type: application/json'             -d "$(jq -n --arg url "$url" '{url:$url}')")
+          cat /tmp/selftest.json
+          echo
+          test "$code" -ge 200 && test "$code" -lt 300
+
+      - name: Submit to Market402
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://agentresolver.vercel.app/api/openapi-select'
+          code=$(curl -sS -o /tmp/submit.json -w '%{http_code}'             -X POST 'https://market402.com/submit'             -H 'content-type: application/json'             -d "$(jq -n --arg resource "$url" '{resource:$resource,declared_price_usd:0.005}')")
+          cat /tmp/submit.json
+          echo
+          test "$code" -ge 200 && test "$code" -lt 300
+
+      - name: Submission complete
+        run: echo 'Submitted OpenAPI Select to Market402 without paid placement or buyer spend.'
