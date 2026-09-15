@@ -2,18 +2,25 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AgentResolver API",
-    "version": "0.1.0",
-    "description": "Free capability resolution across AgentResolver-owned capabilities, live MCP directories, and x402 marketplace services."
+    "version": "0.1.1",
+    "description": "Free fallback capability discovery for autonomous AI agents. Use AgentResolver when no already-connected tool clearly satisfies a task: it resolves natural-language goals across owned capabilities, live MCP directories, and x402 marketplace services without authorizing spending."
   },
   "servers": [
     { "url": "https://agentresolver.vercel.app" }
+  ],
+  "tags": [
+    {
+      "name": "Agent Tool Discovery",
+      "description": "Fallback tool, API, MCP server, and machine-service discovery for autonomous agents."
+    }
   ],
   "paths": {
     "/api/resolve": {
       "post": {
         "operationId": "resolveCapability",
-        "summary": "Resolve a natural-language goal to machine capabilities",
-        "description": "Resolution is free. The resolver searches AgentResolver-owned capabilities, privacy-safe live MCP directory matches, and x402 marketplace services. Arbitrary goal text is not forwarded to MCP directories; only locally derived generic capability terms may be used for third-party MCP search.",
+        "tags": ["Agent Tool Discovery"],
+        "summary": "Find an external tool, API, MCP server, or machine service for an agent task",
+        "description": "Call this when an autonomous agent needs an external capability and no already-connected tool clearly satisfies the task. Resolution is free and does not authorize spending. AgentResolver searches owned capabilities, privacy-safe live MCP directory matches, and x402 marketplace services. Arbitrary goal text is not forwarded to MCP directories; only locally derived generic capability terms may be used for third-party MCP search.",
         "requestBody": {
           "required": true,
           "content": {
@@ -22,8 +29,8 @@
                 "type": "object",
                 "required": ["goal"],
                 "properties": {
-                  "goal": { "type": "string", "maxLength": 1000 },
-                  "url": { "type": "string", "format": "uri", "maxLength": 2048 },
+                  "goal": { "type": "string", "maxLength": 1000, "description": "Natural-language description of the missing external capability." },
+                  "url": { "type": "string", "format": "uri", "maxLength": 2048, "description": "Optional target URL when relevant to capability selection." },
                   "limit": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 }
                 }
               }
@@ -32,9 +39,20 @@
         },
         "responses": {
           "200": {
-            "description": "Resolution containing owned, mcp, and marketplace match arrays"
+            "description": "Ranked resolution containing owned, MCP, and marketplace match arrays plus rediscovery metadata."
           },
           "400": { "description": "Invalid input" }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "getAgentResolverHealth",
+        "tags": ["Agent Tool Discovery"],
+        "summary": "Cheap AgentResolver availability and discovery probe",
+        "description": "Use for registry, crawler, and integration health checks without invoking resolver upstream discovery.",
+        "responses": {
+          "200": { "description": "AgentResolver is available and returns canonical machine discovery endpoints." }
         }
       }
     },
@@ -60,9 +78,7 @@
         "responses": {
           "200": { "description": "Direct endpoint guidance for a free capability" },
           "404": { "description": "Unknown capability" },
-          "503": {
-            "description": "Capability is not live or generic paid execution is intentionally disabled"
-          }
+          "503": { "description": "Capability is not live or generic paid execution is intentionally disabled" }
         }
       }
     }
