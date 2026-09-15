@@ -3,6 +3,7 @@ import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
+import { logPaidCapabilityAttempt } from "@/lib/telemetry";
 import {
   X402_FACILITATOR_URL,
   X402_NETWORK,
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    logPaidCapabilityAttempt(req, "batch-verified-resolve");
     return await getPaidHandler()(req);
   } catch (error) {
     console.error(
