@@ -8,7 +8,8 @@ export const X402_FACILITATOR_URL = "https://facilitator.xpay.sh" as const;
 // discovery behind payment.
 export const X402_PRICING = {
   mcpProbe: "$0.01",
-  agentReadiness: "$0.05"
+  agentReadiness: "$0.05",
+  verifiedResolve: "$0.25"
 } as const;
 
 export const X402_POLICY = {
