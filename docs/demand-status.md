@@ -9,7 +9,8 @@ This ledger separates machine discovery traffic from actual resolver usage. It i
 - **External MCP `resolve` use observed:** 2026-09-15 14:39 UTC.
 - A Deno-based external client completed two full MCP sessions: `initialize` → `notifications/initialized` → `tools/list` → `tools/call` for `resolve`.
 - Both resolver calls returned successful HTTP 200 responses and non-empty owned/marketplace result groups.
-- These calls are materially stronger evidence than crawler handshakes or `tools/list`, but they do **not** by themselves prove a unique human user, provider conversion, or revenue.
+- **Repeat external use observed:** the same one-way caller identity returned at 15:27 UTC after the new production deployment and made two more successful `resolve` tool calls for distinct hashed goals. This proves repeat machine usage by at least one external caller, not a unique human user or provider conversion.
+- These calls are materially stronger evidence than crawler handshakes or `tools/list`, but they do **not** by themselves prove a provider referral or revenue.
 
 ## Measurement rules
 
@@ -24,6 +25,7 @@ This ledger separates machine discovery traffic from actual resolver usage. It i
 - [x] Production resolver and MCP server live.
 - [x] Official MCP Registry listing published.
 - [x] External MCP `resolve` calls observed.
+- [x] At least one repeat external resolver caller identified.
 - [x] Founding Provider offer exists at `$250/month` with organic inclusion preserved.
 - [ ] Three repeat external callers identified.
 - [ ] First attributable provider referral.
