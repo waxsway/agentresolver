@@ -1,0 +1,67 @@
+name: Register true402 Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'public/.well-known/x402-service.json'
+      - '.github/workflows/register-true402-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for canonical true402 manifest and paid route
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..30}; do
+            manifest_ok=0
+            challenge_ok=0
+
+            if curl -fsS https://agentresolver.vercel.app/.well-known/x402-service.json > /tmp/manifest.json; then
+              if jq -e '
+                .name == "agentresolver-http-inspect" and
+                .pricing.base == "0.001" and
+                .endpoint == "https://agentresolver.vercel.app/api/http-inspect"
+              ' /tmp/manifest.json >/dev/null; then
+                manifest_ok=1
+              fi
+            fi
+
+            code="$(curl -sS -o /tmp/challenge.json -w '%{http_code}' https://agentresolver.vercel.app/api/http-inspect || true)"
+            if [ "$code" = "402" ] && jq -e '
+              .accepts[0].amount == "1000" and
+              .accepts[0].payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            ' /tmp/challenge.json >/dev/null; then
+              challenge_ok=1
+            fi
+
+            if [ "$manifest_ok" = "1" ] && [ "$challenge_ok" = "1" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Canonical manifest or HTTP Inspect x402 challenge did not become ready." >&2
+          exit 1
+
+      - name: Register AgentResolver with true402
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST https://true402.dev/api/v1/services             -H 'content-type: application/json'             -d '{"url":"https://agentresolver.vercel.app"}')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *)
+              echo "true402 registration failed with HTTP $code" >&2
+              exit 1
+              ;;
+          esac
