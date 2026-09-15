@@ -1,6 +1,6 @@
 {
   "service": "AgentResolver",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "resolver": {
     "method": "POST",
     "url": "https://agentresolver.vercel.app/api/resolve",
@@ -30,10 +30,18 @@
       "id": "agent-readiness",
       "name": "Agent Readiness Audit",
       "description": "Audit a public website for agent discoverability, llms.txt, ARD, OpenAPI, sitemap, MCP metadata, and baseline headers.",
-      "tags": ["agent readiness", "agent accessibility", "llms.txt", "ard", "openapi", "mcp", "robots", "sitemap", "website audit", "domain"],
+      "tags": ["agent readiness", "agent accessibility", "llms.txt", "ard", "openapi", "mcp", "robots", "sitemap", "website audit", "domain", "x402"],
       "priceUsd": 0.05,
       "mode": "owned",
-      "status": "planned"
+      "status": "live",
+      "endpoint": "/api/agent-readiness",
+      "method": "POST",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "asset": "USDC"
+      }
     },
     {
       "id": "web-extract",
