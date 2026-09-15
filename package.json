@@ -1,8 +1,8 @@
 {
   "name": "agentresolver",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
-  "description": "Free fallback capability resolver for AI agents. Discover tools, APIs, MCP servers, data sources, web services, automations, and machine services through one remote MCP endpoint.",
+  "description": "Machine-first capability discovery and live-evidence utilities for AI agents, with free resolve and optional x402-paid verification on Base.",
   "homepage": "https://agentresolver.vercel.app",
   "repository": {
     "type": "git",
