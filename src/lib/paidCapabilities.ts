@@ -97,8 +97,8 @@ export const PAID_CAPABILITIES = {
     example: { specUrl: "https://example.com/openapi.json", goal: "find a customer order by id" },
     quoteTool: {
       name: "openapi_select",
-      title: "Quote OpenAPI operation selection — $0.005",
-      description: "Quote a $0.005 USDC/Base deterministic selection of the best operation from one public JSON OpenAPI spec for a stated goal. Returns a compact execution-ready contract; never spends."
+      title: "OpenAPI operation selection — $0.005",
+      description: "Paid $0.005 USDC/Base selection of the best operation from one public JSON OpenAPI spec for a stated goal. Returns a compact execution-ready contract. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "verified-resolve": {

@@ -3,6 +3,7 @@ import * as z from "zod/v4";
 import { resolveGoal } from "@/lib/resolver";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { inspectHttpResource } from "@/lib/httpInspect";
+import { selectOpenApiOperation } from "@/lib/openapiSelect";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
@@ -100,24 +101,34 @@ const handler = createMcpHandler(() => {
               ? { goal, ...(url ? { url } : {}) }
               : null;
 
-    const directMcpRec = directOwnedId === "http-inspect" && directInput
+    const directMcpTool = directOwnedId === "http-inspect"
+      ? "http_inspect"
+      : directOwnedId === "openapi-select"
+        ? "openapi_select"
+        : null;
+    const directMcpProduct = directOwnedId === "http-inspect"
+      ? httpInspectProduct
+      : directOwnedId === "openapi-select"
+        ? openApiSelectProduct
+        : null;
+    const directMcpRec = directMcpTool && directMcpProduct && directInput
       ? {
-          capabilityId: "http-inspect" as const,
+          capabilityId: directOwnedId as "http-inspect" | "openapi-select",
           surface: "mcp" as const,
-          tool: "http_inspect" as const,
+          tool: directMcpTool,
           execute: `${CANONICAL}/mcp`,
           input: directInput,
-          priceUsd: httpInspectProduct.priceUsd,
+          priceUsd: directMcpProduct.priceUsd,
           asset: "USDC" as const,
           network: "eip155:8453" as const,
           protocol: "x402" as const,
           spendingAuthorizationRequired: true as const,
           spendingAuthorized: false as const,
-          reason: "The highest-ranked live AgentResolver capability directly matches this goal and is payable inside MCP. Call http_inspect with the prefilled input; execute only if the host independently authorizes the x402 price."
+          reason: `The highest-ranked live AgentResolver capability directly matches this goal and is payable inside MCP. Call ${directMcpTool} with the prefilled input; execute only if the host independently authorizes the x402 price.`
         }
       : null;
 
-    const directHttpRec = directOwnedId && directInput && directOwnedId !== "http-inspect"
+    const directHttpRec = directOwnedId && directInput && !directMcpTool
       ? { ...paid(directOwnedId, directInput), surface: "http" as const, reason: "The highest-ranked live AgentResolver capability directly matches this goal. Use this owned product before broader verification." }
       : null;
 
@@ -178,11 +189,23 @@ const handler = createMcpHandler(() => {
       goal: z.string().min(1).max(600)
     }),
     annotations: { title: openApiSelectProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ specUrl, goal }) => {
-    logToolCall("openapi_select", { quotedPriceUsd: openApiSelectProduct.priceUsd, goalHash: shortHash(goal) });
-    const action = paid("openapi-select", { specUrl, goal });
-    return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action };
-  });
+  }, createLazyPaidMcpTool<{ specUrl: string; goal: string }>("openapi-select", async ({ specUrl, goal }) => {
+    logToolCall("openapi_select", { priceUsd: openApiSelectProduct.priceUsd, mode: "direct_paid_mcp", goalHash: shortHash(goal) });
+    const report = await selectOpenApiOperation(specUrl, goal);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "openapi-select",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      confidence: report.confidence,
+      operationCount: report.api.operationCount,
+      selectedOperationId: report.selected?.operationId || null
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
 
   server.registerTool("mcp_preflight", {
     title: mcpProbeProduct.quoteTool.title, description: mcpProbeProduct.quoteTool.description,
