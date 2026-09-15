@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.waxsway/agentresolver",
   "title": "AgentResolver",
-  "description": "Free capability resolver for AI agents with MCP, API, and x402 service discovery.",
-  "version": "0.1.1",
+  "description": "Free fallback capability resolver for AI agents. Discover external tools, APIs, MCP servers, and x402 machine services when no connected tool satisfies a task.",
+  "version": "0.1.2",
   "repository": {
     "url": "https://github.com/waxsway/agentresolver",
     "source": "github"
