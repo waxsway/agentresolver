@@ -6,6 +6,37 @@
   "protocolVersion": 2,
   "resources": [
     {
+      "id": "mcp-probe",
+      "name": "MCP Probe",
+      "description": "Probe a public MCP HTTP endpoint for protocol compatibility, latency, server metadata, and tool inventory.",
+      "method": "POST",
+      "url": "https://agentresolver.vercel.app/api/mcp-probe",
+      "contentType": "application/json",
+      "input": {
+        "type": "object",
+        "required": ["endpoint"],
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "Public HTTP or HTTPS MCP endpoint to probe."
+          }
+        }
+      },
+      "price": {
+        "amountUsd": 0.01,
+        "asset": "USDC",
+        "network": "eip155:8453",
+        "scheme": "exact"
+      },
+      "payment": {
+        "challengeStatus": 402,
+        "challengeHeader": "PAYMENT-REQUIRED",
+        "authorizationHeader": "PAYMENT-SIGNATURE",
+        "settlementHeader": "PAYMENT-RESPONSE"
+      },
+      "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
+    },
+    {
       "id": "agent-readiness",
       "name": "Agent Readiness Audit",
       "description": "Audit a public website for AI-agent discoverability, llms.txt, ARD, OpenAPI, sitemap, MCP metadata, and baseline headers.",
