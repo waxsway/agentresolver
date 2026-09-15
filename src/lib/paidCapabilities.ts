@@ -109,16 +109,16 @@ export const PAID_CAPABILITIES = {
     price: "$0.02",
     priceUsd: 0.02,
     atomicAmount: "20000",
-    description: "Resolve one missing capability, live-check up to two top MCP candidates, and return evidence-backed selection data.",
-    useWhen: "Discovery returns candidates but stale, dead or incompatible MCP endpoints would make a blind selection costly.",
+    description: "Resolve one missing capability and perform up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates before returning evidence-backed selection data.",
+    useWhen: "Discovery returns external candidates but stale, dead, MCP-incompatible, or non-payment-ready endpoints would make a blind selection costly.",
     costClass: "bounded-network",
-    tags: ["capability", "discovery", "mcp", "verification", "selection", "x402"],
+    tags: ["capability", "discovery", "mcp", "http", "x402", "verification", "selection"],
     inputSchema: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", format: "uri", maxLength: 500 } } },
     example: { goal: "Find and verify an MCP server for web search" },
     quoteTool: {
       name: "verified_resolve",
       title: "Quote live verified resolve — $0.02",
-      description: "Quote a $0.02 USDC/Base resolve plus live verification of top MCP candidates. Returns the exact x402 action; never spends."
+      description: "Quote a $0.02 USDC/Base resolve plus up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates. Returns the exact x402 action; never spends."
     }
   },
   "batch-verified-resolve": {
@@ -129,8 +129,8 @@ export const PAID_CAPABILITIES = {
     price: "$0.05",
     priceUsd: 0.05,
     atomicAmount: "50000",
-    description: "Resolve and live-verify up to four missing capability decisions in one bounded call.",
-    useWhen: "An agent has multiple missing capability decisions and wants one bounded purchase with live MCP evidence.",
+    description: "Resolve and live-verify up to four missing capability decisions in one bounded call, using unpaid MCP and x402/HTTP evidence.",
+    useWhen: "An agent has multiple missing capability decisions and wants one bounded purchase with live external-candidate evidence.",
     costClass: "bounded-network",
     tags: ["batch", "capability", "discovery", "mcp", "verification", "x402"],
     inputSchema: { type: "object", required: ["items"], additionalProperties: false, properties: { items: { type: "array", minItems: 1, maxItems: 4, items: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", format: "uri", maxLength: 500 } } } } } },
@@ -138,7 +138,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "batch_verified_resolve",
       title: "Quote batch verified resolve — $0.05",
-      description: "Quote a $0.05 USDC/Base batch live verification for up to four capability decisions. Returns the exact x402 action; never spends."
+      description: "Quote a $0.05 USDC/Base batch live verification for up to four capability decisions using unpaid MCP and x402/HTTP evidence. Returns the exact x402 action; never spends."
     }
   }
 } as const;
