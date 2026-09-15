@@ -1,3 +1,5 @@
+import { PAID_CAPABILITY_LIST } from "@/lib/paidCapabilities";
+
 export type Capability = {
   id: string;
   name: string;
@@ -15,7 +17,7 @@ export type Capability = {
   };
 };
 
-export const CAPABILITIES: Capability[] = [
+const FREE_CAPABILITIES: Capability[] = [
   {
     id: "capability-search",
     name: "Capability Search",
@@ -25,122 +27,27 @@ export const CAPABILITIES: Capability[] = [
     mode: "owned",
     status: "live",
     endpoint: "/api/resolve"
-  },
-  {
-    id: "batch-verified-resolve",
-    name: "Batch Verified Resolve",
-    description:
-      "Resolve and live-verify up to four capability requests in one batch, probing up to two MCP candidates per request and returning recommendations with evidence.",
-    tags: [
-      "batch verified resolve",
-      "batch verification",
-      "tool procurement",
-      "agent procurement",
-      "mcp verification",
-      "capability verification",
-      "tool selection",
-      "provider selection",
-      "multi tool",
-      "recommendation",
-      "x402"
-    ],
-    priceUsd: 1,
-    mode: "owned",
-    status: "live",
-    endpoint: "/api/batch-verified-resolve",
-    payment: {
-      protocol: "x402",
-      scheme: "exact",
-      network: "eip155:8453",
-      asset: "USDC"
-    }
-  },
-  {
-    id: "verified-resolve",
-    name: "Verified Resolve",
-    description:
-      "Resolve a missing capability, live-probe up to two top MCP candidates, and return a recommendation with verification evidence.",
-    tags: [
-      "verified resolve",
-      "verified tool",
-      "tool verification",
-      "mcp verification",
-      "capability verification",
-      "tool selection",
-      "provider selection",
-      "live check",
-      "recommendation",
-      "x402"
-    ],
-    priceUsd: 0.25,
-    mode: "owned",
-    status: "live",
-    endpoint: "/api/verified-resolve",
-    payment: {
-      protocol: "x402",
-      scheme: "exact",
-      network: "eip155:8453",
-      asset: "USDC"
-    }
-  },
-  {
-    id: "mcp-probe",
-    name: "MCP Probe",
-    description:
-      "Verify a remote MCP endpoint is alive and inspect compatibility, latency, server metadata, and tool inventory before connecting.",
-    tags: [
-      "mcp probe",
-      "mcp health",
-      "mcp server",
-      "mcp endpoint",
-      "verify mcp",
-      "test mcp",
-      "tools list",
-      "compatibility",
-      "latency",
-      "server check",
-      "x402"
-    ],
-    priceUsd: 0.01,
-    mode: "owned",
-    status: "live",
-    endpoint: "/api/mcp-probe",
-    payment: {
-      protocol: "x402",
-      scheme: "exact",
-      network: "eip155:8453",
-      asset: "USDC"
-    }
-  },
-  {
-    id: "agent-readiness",
-    name: "Agent Readiness Audit",
-    description:
-      "Audit a public website for agent discoverability, llms.txt, ARD, OpenAPI, sitemap, MCP metadata, and baseline headers.",
-    tags: [
-      "agent readiness",
-      "agent accessibility",
-      "llms.txt",
-      "ard",
-      "openapi",
-      "mcp",
-      "robots",
-      "sitemap",
-      "website audit",
-      "domain",
-      "x402"
-    ],
-    priceUsd: 0.05,
-    mode: "owned",
-    status: "live",
-    endpoint: "/api/agent-readiness",
-    payment: {
-      protocol: "x402",
-      scheme: "exact",
-      network: "eip155:8453",
-      asset: "USDC"
-    }
-  },
+  }
+];
+
+const LIVE_PAID_CAPABILITIES: Capability[] = PAID_CAPABILITY_LIST.map((product) => ({
+  id: product.id,
+  name: product.name,
+  description: product.description,
+  tags: [...product.tags],
+  priceUsd: product.priceUsd,
+  mode: "owned",
+  status: "live",
+  endpoint: product.endpoint,
+  payment: {
+    protocol: "x402",
+    scheme: "exact",
+    network: "eip155:8453",
+    asset: "USDC"
+  }
+}));
+
+const PLANNED_CAPABILITIES: Capability[] = [
   {
     id: "web-extract",
     name: "Web Extract",
@@ -186,6 +93,12 @@ export const CAPABILITIES: Capability[] = [
     mode: "partner",
     status: "planned"
   }
+];
+
+export const CAPABILITIES: Capability[] = [
+  ...FREE_CAPABILITIES,
+  ...LIVE_PAID_CAPABILITIES,
+  ...PLANNED_CAPABILITIES
 ];
 
 function tokens(value: string): string[] {
