@@ -101,3 +101,12 @@ test("ranks tool contract fit for structured workflow compatibility", () => {
   assert.equal(matches[0]?.id, "tool-contract");
   assert.equal(matches[0]?.priceUsd, 0.005);
 });
+
+test("ranks OpenAPI operation selection for API operation choice goals", () => {
+  const matches = resolveCapabilities(
+    "select the best OpenAPI operation endpoint for this API goal",
+    3
+  );
+  assert.equal(matches[0]?.id, "openapi-select");
+  assert.equal(matches[0]?.priceUsd, 0.005);
+});
