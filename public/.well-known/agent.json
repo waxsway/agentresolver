@@ -17,6 +17,13 @@
   },
   "intents": [
     {
+      "name": "verified_resolve",
+      "description": "Resolve a missing capability, live-verify up to two top MCP candidates, and return a recommendation with evidence.",
+      "endpoint": "/api/verified-resolve",
+      "method": "POST",
+      "price": { "amount": 0.25, "currency": "USDC" }
+    },
+    {
       "name": "mcp_probe",
       "description": "Probe a public MCP HTTP endpoint for compatibility, latency, server metadata, and tool inventory before connecting.",
       "endpoint": "/api/mcp-probe",
