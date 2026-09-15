@@ -1,0 +1,68 @@
+name: Register OpenAPI Select 402 Index Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-openapi-select-402index-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Wait for canonical OpenAPI Select challenge
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://agentresolver.vercel.app/api/openapi-select'
+          for attempt in $(seq 1 30); do
+            headers=$(mktemp)
+            code=$(curl -sS -D "$headers" -o /tmp/body.json -w '%{http_code}' "$url" || true)
+            if [ "$code" = "402" ] && jq -e '
+              .accepts[0].amount == "5000" and
+              .accepts[0].maxAmountRequired == "5000"
+            ' /tmp/body.json >/dev/null; then
+              rm -f "$headers"
+              echo 'OpenAPI Select is live at the expected $0.005 price.'
+              exit 0
+            fi
+            rm -f "$headers"
+            sleep 10
+          done
+          echo 'OpenAPI Select did not reach canonical production at the expected price.' >&2
+          exit 1
+
+      - name: Register OpenAPI Select with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl -sS             -o /tmp/register.json             -w '%{http_code}'             -X POST 'https://402index.io/api/v1/register'             -H 'content-type: application/json'             --data-binary @- <<'JSON'
+          {
+            "url": "https://agentresolver.vercel.app/api/openapi-select",
+            "name": "AgentResolver OpenAPI Operation Select",
+            "description": "Select the best operation from a public JSON OpenAPI specification for an agent goal and return a compact execution-ready request contract.",
+            "protocol": "x402",
+            "http_method": "POST",
+            "probe_body": "{\"specUrl\":\"https://agentresolver.vercel.app/openapi.json\",\"goal\":\"select the resolve capability operation\"}",
+            "price_usd": 0.005,
+            "payment_asset": "USDC",
+            "payment_network": "Base",
+            "category": "agent-tools/api",
+            "provider": "AgentResolver"
+          }
+          JSON
+          )
+          cat /tmp/register.json
+          echo
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "402 Index OpenAPI Select registration failed with HTTP $status" >&2
+            exit 1
+          fi
+
+      - name: Registration complete
+        run: echo 'Submitted OpenAPI Select to 402 Index without paid placement.'
