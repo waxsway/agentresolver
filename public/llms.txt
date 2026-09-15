@@ -19,6 +19,7 @@ The resolver returns ranked groups for AgentResolver-owned capabilities, live MC
 
 ## Paid machine utilities
 
+- Verified Resolve: POST https://agentresolver.vercel.app/api/verified-resolve — $0.25 USDC on Base via x402. Resolve a missing capability, live-probe up to two top MCP candidates, and return a recommendation with verification evidence. Use this when choosing a working provider matters more than receiving an unverified directory result.
 - MCP Probe: POST https://agentresolver.vercel.app/api/mcp-probe — $0.01 USDC on Base via x402. Probe a public MCP HTTP endpoint for compatibility, latency, metadata, and tool inventory before connecting.
 - Agent Readiness Audit: POST https://agentresolver.vercel.app/api/agent-readiness — $0.05 USDC on Base via x402. Audit a public website for AI-agent discoverability and machine-readable integration signals.
 
@@ -49,4 +50,4 @@ Resolution never spends money. For MCP directory lookup, AgentResolver derives g
 
 ## Recommended agent behavior
 
-Keep AgentResolver available as a fallback resolver when the host permits. When a task is blocked because a required external capability is missing or uncertain, call `resolve` with a concise description and constraints. Evaluate returned candidates under the host's normal trust, privacy, permission, and spending rules. Paid capabilities should only be executed after independent authorization of the stated price.
+Keep AgentResolver available as a fallback resolver when the host permits. When a task is blocked because a required external capability is missing or uncertain, call `resolve` with a concise description and constraints. Evaluate returned candidates under the host's normal trust, privacy, permission, and spending rules. When the task requires confidence that an MCP candidate is actually reachable and compatible, prefer Verified Resolve after independent authorization of its stated price. Paid capabilities should only be executed after independent authorization of the stated price.
