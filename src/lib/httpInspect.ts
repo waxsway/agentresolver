@@ -1,4 +1,5 @@
 import https from "node:https";
+import type { TLSSocket } from "node:tls";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
@@ -17,10 +18,35 @@ export type HttpInspectReport = {
   lastModified: string | null;
   location: string | null;
   server: string | null;
+  response: {
+    allow: string | null;
+    vary: string | null;
+    age: string | null;
+    contentEncoding: string | null;
+  };
+  redirect: {
+    isRedirect: boolean;
+    location: string | null;
+  };
+  dns: {
+    family: 4 | 6;
+  };
+  tls: {
+    protocol: string | null;
+    authorized: boolean;
+    validFrom: string | null;
+    validTo: string | null;
+    daysRemaining: number | null;
+    subjectCn: string | null;
+    issuerCn: string | null;
+  };
   security: {
     hsts: boolean;
     csp: boolean;
     xContentTypeOptions: boolean;
+    xFrameOptions: boolean;
+    referrerPolicy: boolean;
+    permissionsPolicy: boolean;
   };
 };
 
@@ -158,6 +184,19 @@ export async function inspectHttpResource(input: string): Promise<HttpInspectRep
       const headers = res.headers;
       res.resume();
 
+      const socket = res.socket as TLSSocket;
+      const certificate = typeof socket.getPeerCertificate === "function"
+        ? socket.getPeerCertificate()
+        : null;
+      const validTo = certificate && typeof certificate.valid_to === "string"
+        ? certificate.valid_to
+        : null;
+      const validToMs = validTo ? Date.parse(validTo) : Number.NaN;
+      const daysRemaining = Number.isFinite(validToMs)
+        ? Math.ceil((validToMs - Date.now()) / 86_400_000)
+        : null;
+      const location = headerValue(headers.location);
+
       finish(() => resolve({
         url: url.toString(),
         status,
@@ -168,12 +207,37 @@ export async function inspectHttpResource(input: string): Promise<HttpInspectRep
         cacheControl: headerValue(headers["cache-control"]),
         etag: headerValue(headers.etag),
         lastModified: headerValue(headers["last-modified"]),
-        location: headerValue(headers.location),
+        location,
         server: headerValue(headers.server),
+        response: {
+          allow: headerValue(headers.allow),
+          vary: headerValue(headers.vary),
+          age: headerValue(headers.age),
+          contentEncoding: headerValue(headers["content-encoding"])
+        },
+        redirect: {
+          isRedirect: status >= 300 && status < 400 && Boolean(location),
+          location
+        },
+        dns: {
+          family: resolved.family === 6 ? 6 : 4
+        },
+        tls: {
+          protocol: typeof socket.getProtocol === "function" ? socket.getProtocol() : null,
+          authorized: socket.authorized === true,
+          validFrom: certificate && typeof certificate.valid_from === "string" ? certificate.valid_from : null,
+          validTo,
+          daysRemaining,
+          subjectCn: certificate?.subject && typeof certificate.subject.CN === "string" ? certificate.subject.CN : null,
+          issuerCn: certificate?.issuer && typeof certificate.issuer.CN === "string" ? certificate.issuer.CN : null
+        },
         security: {
           hsts: Boolean(headers["strict-transport-security"]),
           csp: Boolean(headers["content-security-policy"]),
-          xContentTypeOptions: Boolean(headers["x-content-type-options"])
+          xContentTypeOptions: Boolean(headers["x-content-type-options"]),
+          xFrameOptions: Boolean(headers["x-frame-options"]),
+          referrerPolicy: Boolean(headers["referrer-policy"]),
+          permissionsPolicy: Boolean(headers["permissions-policy"])
         }
       }));
     });

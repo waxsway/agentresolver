@@ -6,7 +6,10 @@
     "http",
     "inspection",
     "latency",
-    "headers"
+    "headers",
+    "tls",
+    "certificate",
+    "security"
   ],
   "pricing": {
     "currency": "USDC",

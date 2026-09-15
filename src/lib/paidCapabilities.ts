@@ -9,16 +9,16 @@ export const PAID_CAPABILITIES = {
     price: "$0.001",
     priceUsd: 0.001,
     atomicAmount: "1000",
-    description: "Inspect a public HTTPS resource for current status, latency, response metadata, cache validators and baseline security headers.",
-    useWhen: "Current HTTP reachability, redirect, cache, latency or baseline security-header evidence is needed before an agent depends on a public HTTPS resource.",
+    description: "Inspect a public HTTPS resource for current status, latency, response metadata, cache validators, TLS/certificate evidence and baseline security headers.",
+    useWhen: "Current HTTP reachability, redirect, cache, latency, TLS/certificate or baseline security-header evidence is needed before an agent depends on a public HTTPS resource.",
     costClass: "bounded-network",
-    tags: ["http", "https", "status", "latency", "headers", "cache", "security", "x402"],
+    tags: ["http", "https", "status", "latency", "headers", "cache", "tls", "certificate", "security", "x402"],
     inputSchema: { type: "object", required: ["url"], additionalProperties: false, properties: { url: { type: "string", format: "uri", maxLength: 500 } } },
     example: { url: "https://example.com" },
     quoteTool: {
       name: "http_inspect",
       title: "HTTP inspection — $0.001",
-      description: "Paid $0.001 USDC/Base inspection of one public HTTPS resource for status, latency, response metadata, cache validators and baseline security headers. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.001 USDC/Base inspection of one public HTTPS resource for status, latency, response metadata, cache validators, TLS/certificate evidence and baseline security headers. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "tool-contract": {
