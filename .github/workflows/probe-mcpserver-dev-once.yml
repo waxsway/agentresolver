@@ -1,0 +1,58 @@
+name: Probe mcpserver.dev Free Submission
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/probe-mcpserver-dev-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect public submit page and client code
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS -L "https://mcpserver.dev/" -o /tmp/page.html
+          echo "=== form fields ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, html
+          s=Path("/tmp/page.html").read_text(errors="ignore")
+          for pat in [r'<form[^>]*>',r'<input[^>]+>',r'<textarea[^>]+>',r'<select[^>]+>',r'/api/[A-Za-z0-9_./?=&-]+']:
+              print("\nPAT",pat)
+              for m in list(re.finditer(pat,s,re.I|re.S))[:80]:
+                  print(re.sub(r'\s+',' ',html.unescape(m.group(0)))[:1800])
+          scripts=list(dict.fromkeys(re.findall(r'<script[^>]+src="([^"]+)"',s,re.I)))
+          print("\nSCRIPTS")
+          for x in scripts: print(html.unescape(x))
+          Path("/tmp/scripts.txt").write_text("\n".join(html.unescape(x) for x in scripts))
+          PY
+          : >/tmp/all.js
+          while read -r src; do
+            [ -z "$src" ] && continue
+            case "$src" in
+              http*) u="$src" ;;
+              *) u="https://mcpserver.dev$src" ;;
+            esac
+            curl -sS -L "$u" >> /tmp/all.js || true
+            echo >> /tmp/all.js
+          done </tmp/scripts.txt
+          echo "=== submit code ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("/tmp/all.js").read_text(errors="ignore")
+          for needle in ["submit","server","keywords","category","FormData","fetch(","/api/","payment","backlink","stripe"]:
+              print("\n###",needle)
+              start=0
+              for _ in range(18):
+                  i=s.lower().find(needle.lower(),start)
+                  if i<0: break
+                  print(s[max(0,i-700):min(len(s),i+2100)].replace("\n"," ")[:2800])
+                  start=i+len(needle)
+          PY
