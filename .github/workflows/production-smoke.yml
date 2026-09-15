@@ -141,7 +141,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          request='{"jsonrpc":"2.0","id":91,"method":"tools/call","params":{"name":"http_inspect","arguments":{"url":"https://example.com"}}}'
+          resolve_request='{"jsonrpc":"2.0","id":90,"method":"tools/call","params":{"name":"resolve","arguments":{"goal":"inspect this HTTPS URL for status latency cache headers and security headers","url":"https://example.com","limit":3}}}'
+          resolve_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -o /tmp/mcp-resolve.out \
+            -w '%{http_code}' \
+            -X POST "$MCP_URL" \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
+            --data "$resolve_request")
+
+          test "$resolve_code" -ge 200 && test "$resolve_code" -lt 300
+          grep -F 'recommendedPaidAction' /tmp/mcp-resolve.out >/dev/null
+          grep -F 'http_inspect' /tmp/mcp-resolve.out >/dev/null
+          grep -F '"surface":"mcp"' /tmp/mcp-resolve.out >/dev/null || grep -F '\\"surface\\":\\"mcp\\"' /tmp/mcp-resolve.out >/dev/null
+
+                    request='{"jsonrpc":"2.0","id":91,"method":"tools/call","params":{"name":"http_inspect","arguments":{"url":"https://example.com"}}}'
           code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS             -o /tmp/mcp-paid.out             -w '%{http_code}'             -X POST "$MCP_URL"             -H 'content-type: application/json'             -H 'accept: application/json, text/event-stream'             -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0'             --data "$request")
 
           test "$code" -ge 200 && test "$code" -lt 300
