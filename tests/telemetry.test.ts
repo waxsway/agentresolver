@@ -5,7 +5,8 @@ import {
   classifyIntent,
   referrerHost,
   safeUserAgent,
-  shortHash
+  shortHash,
+  parseX402SettlementHeader
 } from "../src/lib/telemetry";
 
 test("shortHash is stable and does not expose the original value", () => {
@@ -33,4 +34,25 @@ test("request telemetry uses hashed caller identity and bounded metadata", () =>
   assert.equal(callerHash(req), shortHash("203.0.113.10"));
   assert.equal(safeUserAgent(req), "ExampleAgent/1.0");
   assert.equal(referrerHost(req), "example.com");
+});
+
+test("x402 settlement parsing requires an explicit success receipt and preserves transaction evidence", () => {
+  const payload = {
+    success: true,
+    transaction: "0xabc123",
+    network: "eip155:8453",
+    payer: "0xdef456",
+    amount: "1000"
+  };
+  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64");
+  assert.deepEqual(parseX402SettlementHeader(encoded), {
+    success: true,
+    transaction: "0xabc123",
+    network: "eip155:8453",
+    payer: "0xdef456",
+    amount: "1000",
+    errorReason: null
+  });
+  assert.equal(parseX402SettlementHeader(null), null);
+  assert.equal(parseX402SettlementHeader("not-base64-json"), null);
 });
