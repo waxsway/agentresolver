@@ -1,11 +1,12 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "name": "AgentResolver",
   "origin": "https://agentresolver.vercel.app",
-  "description": "Free missing-capability resolution for autonomous agents plus explicitly priced x402 machine utilities.",
+  "description": "Free missing-capability resolution for autonomous agents plus low-cost x402 live verification.",
   "protocols": ["mcp", "x402"],
   "discovery": {
     "mcp": "https://agentresolver.vercel.app/mcp",
+    "x402": "https://agentresolver.vercel.app/.well-known/x402",
     "openapi": "https://agentresolver.vercel.app/openapi.json",
     "llms": "https://agentresolver.vercel.app/llms.txt",
     "llmsFull": "https://agentresolver.vercel.app/llms-full.txt",
@@ -26,34 +27,35 @@
       "recommendedWhen": "No already-connected tool clearly satisfies the task, or a tool/API/MCP/machine service must be discovered."
     },
     {
-      "id": "batch_verified_resolve",
-      "description": "Resolve and live-verify up to four capability requests in one batch, probing up to two MCP candidates per request.",
-      "method": "POST",
-      "endpoint": "https://agentresolver.vercel.app/api/batch-verified-resolve",
-      "recommendedWhen": "An agent needs several external capabilities selected and live-verified in one procurement step.",
-      "limits": {"maxGoals": 4, "maxLiveMcpProbesPerGoal": 2},
-      "payment": {"protocol": "x402", "amount": "1.00", "currency": "USDC", "network": "base"}
-    },
-    {
-      "id": "verified_resolve",
-      "description": "Resolve a missing capability, live-verify up to two top MCP candidates, and return a recommendation with evidence.",
-      "method": "POST",
-      "endpoint": "https://agentresolver.vercel.app/api/verified-resolve",
-      "recommendedWhen": "A caller needs more confidence than directory metadata alone before selecting an external MCP capability.",
-      "payment": {"protocol": "x402", "amount": "0.25", "currency": "USDC", "network": "base"}
-    },
-    {
-      "id": "mcp_probe",
-      "description": "Probe a public MCP HTTP endpoint for compatibility, latency, server metadata, and tool inventory before connecting.",
+      "id": "mcp_live_preflight",
+      "description": "Live-preflight a public MCP HTTP endpoint for reachability, compatibility, latency, server metadata, and tool inventory before depending on it.",
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/mcp-probe",
-      "payment": {"protocol": "x402", "amount": "0.01", "currency": "USDC", "network": "base"}
+      "recommendedWhen": "Free discovery found one concrete MCP endpoint and fresh runtime evidence matters.",
+      "payment": {"protocol": "x402", "amount": "0.001", "currency": "USDC", "network": "base"}
     },
     {
       "id": "agent_readiness_audit",
       "description": "Audit a public website for AI-agent discoverability and machine-readable integration signals.",
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/agent-readiness",
+      "payment": {"protocol": "x402", "amount": "0.005", "currency": "USDC", "network": "base"}
+    },
+    {
+      "id": "verified_resolve",
+      "description": "Resolve one missing capability, live-verify up to two top MCP candidates, and return an evidence-backed recommendation.",
+      "method": "POST",
+      "endpoint": "https://agentresolver.vercel.app/api/verified-resolve",
+      "recommendedWhen": "A caller needs more confidence than directory metadata alone before selecting an external MCP capability.",
+      "payment": {"protocol": "x402", "amount": "0.02", "currency": "USDC", "network": "base"}
+    },
+    {
+      "id": "batch_verified_resolve",
+      "description": "Resolve and live-verify up to four capability requests in one bounded batch.",
+      "method": "POST",
+      "endpoint": "https://agentresolver.vercel.app/api/batch-verified-resolve",
+      "recommendedWhen": "An agent needs several external capabilities selected and live-verified in one procurement step.",
+      "limits": {"maxGoals": 4, "maxLiveMcpProbesPerGoal": 2},
       "payment": {"protocol": "x402", "amount": "0.05", "currency": "USDC", "network": "base"}
     }
   ],
