@@ -1,6 +1,6 @@
 # AgentResolver
 
-> Free capability resolution for autonomous AI agents.
+> Free capability resolution for autonomous AI agents, plus explicitly priced x402 machine services.
 
 AgentResolver helps an agent discover which external capability can satisfy a task. Resolution is free and requires no account, API key, or wallet.
 
@@ -21,6 +21,7 @@ For MCP directory lookup, AgentResolver derives a generic capability keyword loc
 - Official MCP Registry identity: io.github.waxsway/agentresolver
 - OpenAPI: https://agentresolver.vercel.app/openapi.json
 - Free resolver: POST https://agentresolver.vercel.app/api/resolve
+- Paid Agent Readiness Audit: POST https://agentresolver.vercel.app/api/agent-readiness — $0.05 USDC on Base via x402
 - Machine-readable integration recipes: https://agentresolver.vercel.app/integrations.json
 - Drop-in agent integration guide: https://agentresolver.vercel.app/agentresolver.md
 - Health: https://agentresolver.vercel.app/api/health
@@ -36,4 +37,13 @@ Content-Type: application/json
 
 {"goal":"Describe the external capability needed","url":"https://optional.example"}
 
-Resolution never spends money. Generic paid execution is disabled. Any future paid capability must use its own verified payment route and may only be attempted under the calling agent's own authorization, budget, and safety policy.
+Resolution never spends money.
+
+## Paid capability input
+
+POST /api/agent-readiness
+Content-Type: application/json
+
+{"target":"https://example.com"}
+
+An unpaid request returns HTTP 402 with x402 payment requirements. The price is $0.05 USDC on Base. The calling agent must independently authorize any spend under its own budget and safety policy before retrying with payment. AgentResolver does not authorize spending for the caller.
