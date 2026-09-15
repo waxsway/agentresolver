@@ -1,4 +1,5 @@
 import { verifiedResolve } from "@/lib/verifiedResolve";
+import { getPaidCapability } from "@/lib/paidCapabilities";
 
 const MAX_GOALS = 4;
 
@@ -10,6 +11,7 @@ export type BatchVerifiedResolveInput = {
 export async function batchVerifiedResolve(items: BatchVerifiedResolveInput[]) {
   const safeItems = items.slice(0, MAX_GOALS);
   const startedAt = Date.now();
+  const product = getPaidCapability("batch-verified-resolve");
 
   const results = await Promise.all(
     safeItems.map(async (item) => {
@@ -26,14 +28,14 @@ export async function batchVerifiedResolve(items: BatchVerifiedResolveInput[]) {
     generatedAt: new Date().toISOString(),
     pricing: {
       model: "flat",
-      priceUsd: 1,
+      priceUsd: product.priceUsd,
       asset: "USDC",
       network: "Base"
     },
     limits: {
       maxGoals: MAX_GOALS,
-      maxLiveMcpProbesPerGoal: 2,
-      maxLiveMcpProbesTotal: MAX_GOALS * 2
+      maxLiveProbesPerGoal: 2,
+      maxLiveProbesTotal: MAX_GOALS * 2
     },
     callerSpendingAuthorized: false,
     durationMs: Date.now() - startedAt,
