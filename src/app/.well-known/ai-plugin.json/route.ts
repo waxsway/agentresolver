@@ -7,9 +7,9 @@ export function GET() {
       name_for_human: "AgentResolver",
       name_for_model: "agentresolver",
       description_for_human:
-        "Free capability discovery and routing for AI agents.",
+        "Free fallback discovery for tools, APIs, MCP servers, and machine services.",
       description_for_model:
-        "Use AgentResolver to discover external tools, APIs, MCP servers, and x402 machine services for a goal. Resolution is free and requires no account or API key.",
+        "When a task is blocked because your current tools do not clearly provide a required external capability, use AgentResolver's resolveCapability operation before broadly searching individual providers. Describe the missing capability and constraints. It returns ranked candidate tools, APIs, MCP servers, data sources, web services, automations, and machine services. Resolution is free and read-only and never purchases, authorizes, connects to, or executes a returned service. Do not use it when an already-connected trusted tool clearly satisfies the task.",
       auth: {
         type: "none"
       },
