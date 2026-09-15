@@ -115,11 +115,13 @@ export async function POST(req: Request) {
   const owned = resolution.owned.map((match) => ({
     ...match,
     execute:
-      match.priceUsd > 0
-        ? `${baseUrl}/api/execute`
-        : match.endpoint
-          ? `${baseUrl}${match.endpoint}`
-          : null
+      match.status !== "live"
+        ? null
+        : match.priceUsd > 0
+          ? `${baseUrl}/api/execute`
+          : match.endpoint
+            ? `${baseUrl}${match.endpoint}`
+            : null
   }));
 
   return NextResponse.json(
@@ -137,8 +139,8 @@ export async function POST(req: Request) {
           ? "Review marketplace payment requirements and input schema before calling a provider. Only pay under the calling agent's own authorization and budget policy."
           : resolution.mcp.length > 0
             ? "Review the MCP server metadata and connect only if it fits the calling agent's trust and authorization policy."
-            : owned[0]
-              ? `Use capability '${owned[0].id}' if it fits. Paid AgentResolver execution is only attempted when explicitly requested.`
+            : owned.find((match) => match.status === "live")
+              ? "Use the highest-ranked live AgentResolver capability if it fits."
               : "No suitable live marketplace, MCP server, or owned capability was found."
     },
     {
