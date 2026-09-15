@@ -27,6 +27,34 @@ export const CAPABILITIES: Capability[] = [
     endpoint: "/api/resolve"
   },
   {
+    id: "verified-resolve",
+    name: "Verified Resolve",
+    description:
+      "Resolve a missing capability, live-probe up to two top MCP candidates, and return a recommendation with verification evidence.",
+    tags: [
+      "verified resolve",
+      "verified tool",
+      "tool verification",
+      "mcp verification",
+      "capability verification",
+      "tool selection",
+      "provider selection",
+      "live check",
+      "recommendation",
+      "x402"
+    ],
+    priceUsd: 0.25,
+    mode: "owned",
+    status: "live",
+    endpoint: "/api/verified-resolve",
+    payment: {
+      protocol: "x402",
+      scheme: "exact",
+      network: "eip155:8453",
+      asset: "USDC"
+    }
+  },
+  {
     id: "mcp-probe",
     name: "MCP Probe",
     description:
