@@ -15,7 +15,7 @@ const MAX_GOAL_LENGTH = 1000;
 const MAX_URL_LENGTH = 2048;
 
 type PaidRecommendation = {
-  capabilityId: "verified-resolve" | "batch-verified-resolve";
+  capabilityId: "mcp-probe" | "verified-resolve" | "batch-verified-resolve";
   reason: string;
   method: "POST";
   execute: string;
@@ -24,6 +24,7 @@ type PaidRecommendation = {
   network: "eip155:8453";
   protocol: "x402";
   spendingAuthorizationRequired: true;
+  input?: Record<string, string>;
 };
 
 export async function POST(req: Request) {
@@ -51,15 +52,29 @@ export async function POST(req: Request) {
 
   const topLiveOwned = owned.find((match) => match.status === "live");
   const candidateCount = resolution.mcp.length + resolution.marketplace.length;
-  const mcpNeedsLiveVerification = resolution.mcp.length > 0;
+  const singleProbeableMcp = resolution.mcp.length === 1 && Boolean(resolution.mcp[0]?.endpoint)
+    ? resolution.mcp[0]
+    : null;
   const ambiguousDiscovery = candidateCount > 1;
 
-  const recommendedPaidAction: PaidRecommendation | null =
-    mcpNeedsLiveVerification || ambiguousDiscovery
+  const recommendedPaidAction: PaidRecommendation | null = singleProbeableMcp
+    ? {
+        capabilityId: "mcp-probe",
+        reason: "Free discovery found one concrete MCP endpoint. A one-cent probe is the lowest-friction way to confirm that endpoint is reachable, protocol-compatible, and exposes tools before connecting.",
+        method: "POST",
+        execute: `${baseUrl}/api/mcp-probe`,
+        priceUsd: 0.01,
+        asset: "USDC",
+        network: "eip155:8453",
+        protocol: "x402",
+        spendingAuthorizationRequired: true,
+        input: { endpoint: singleProbeableMcp.endpoint as string }
+      }
+    : resolution.mcp.length > 0 || ambiguousDiscovery
       ? {
           capabilityId: "verified-resolve",
-          reason: mcpNeedsLiveVerification
-            ? `Discovery found ${resolution.mcp.length} MCP candidate${resolution.mcp.length === 1 ? "" : "s"}, but free discovery does not establish current protocol compatibility or liveness. Verified Resolve live-probes up to two top MCP candidates and returns evidence.`
+          reason: resolution.mcp.length > 0
+            ? `Discovery found ${resolution.mcp.length} MCP candidates. Verified Resolve live-probes up to two top candidates and returns comparative evidence.`
             : `Discovery found ${candidateCount} external candidates. Verified Resolve adds bounded live verification so the caller can choose with stronger evidence than catalog metadata alone.`,
           method: "POST",
           execute: `${baseUrl}/api/verified-resolve`,
@@ -90,7 +105,7 @@ export async function POST(req: Request) {
       callerHash: callerHash(req),
       capabilityId: recommendedPaidAction.capabilityId,
       priceUsd: recommendedPaidAction.priceUsd,
-      reason: mcpNeedsLiveVerification ? "mcp_live_verification" : "multiple_external_candidates"
+      reason: singleProbeableMcp ? "single_mcp_probe" : resolution.mcp.length > 0 ? "mcp_live_verification" : "multiple_external_candidates"
     }));
   }
 
@@ -115,7 +130,7 @@ export async function POST(req: Request) {
     marketplace: resolution.marketplace,
     recommendedPaidAction,
     next: recommendedPaidAction
-      ? `Free discovery found candidates but cannot establish all live runtime properties. Optional verification is available for $${recommendedPaidAction.priceUsd.toFixed(2)} USDC on Base. The 402 challenge is a quote only; call it only under the calling agent's independent spending policy.`
+      ? `Free discovery found a concrete next verification step. Optional verification is available for $${recommendedPaidAction.priceUsd.toFixed(2)} USDC on Base. The 402 challenge is a quote only; call it only under the calling agent's independent spending policy.`
       : resolution.marketplace.length > 0
         ? "Review marketplace payment requirements and input schema before calling a provider. Only pay under the calling agent's own authorization and budget policy."
         : resolution.mcp.length > 0
