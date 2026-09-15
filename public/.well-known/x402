@@ -1,10 +1,44 @@
 {
-  "version": 1,
+  "x402Version": 2,
+  "name": "AgentResolver",
+  "description": "Free capability discovery plus tiny pay-per-call live verification for autonomous agents. No signup or API key.",
   "resources": [
-    "https://agentresolver.vercel.app/api/mcp-probe",
-    "https://agentresolver.vercel.app/api/agent-readiness",
-    "https://agentresolver.vercel.app/api/verified-resolve",
-    "https://agentresolver.vercel.app/api/batch-verified-resolve"
+    {
+      "resource": "POST /api/mcp-probe",
+      "description": "Live-preflight one public MCP endpoint for reachability, protocol compatibility, latency, server metadata, and tool inventory.",
+      "price": "$0.001",
+      "inputSchema": {"type":"object","required":["endpoint"],"properties":{"endpoint":{"type":"string","format":"uri"}}},
+      "examples": [{"endpoint":"https://example.com/mcp"}],
+      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"1000","extra":{"name":"USD Coin","version":"2"}}]
+    },
+    {
+      "resource": "POST /api/agent-readiness",
+      "description": "Audit a public site for machine-readable agent discoverability and integration signals.",
+      "price": "$0.005",
+      "inputSchema": {"type":"object","required":["target"],"properties":{"target":{"type":"string","format":"uri"}}},
+      "examples": [{"target":"https://example.com"}],
+      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"5000","extra":{"name":"USD Coin","version":"2"}}]
+    },
+    {
+      "resource": "POST /api/verified-resolve",
+      "description": "Resolve one missing capability, live-check up to two top MCP candidates, and return an evidence-backed recommendation.",
+      "price": "$0.02",
+      "inputSchema": {"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"url":{"type":"string","format":"uri"}}},
+      "examples": [{"goal":"Find and verify an MCP server for web search"}],
+      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"20000","extra":{"name":"USD Coin","version":"2"}}]
+    },
+    {
+      "resource": "POST /api/batch-verified-resolve",
+      "description": "Resolve and live-verify up to four missing capabilities in one bounded call.",
+      "price": "$0.05",
+      "inputSchema": {"type":"object","required":["items"],"properties":{"items":{"type":"array","minItems":1,"maxItems":4,"items":{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"url":{"type":"string","format":"uri"}}}}}},
+      "examples": [{"items":[{"goal":"Find an MCP server for search"},{"goal":"Find an MCP server for browser automation"}]}],
+      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"50000","extra":{"name":"USD Coin","version":"2"}}]
+    }
   ],
-  "instructions": "AgentResolver paid machine capabilities use x402 with USDC on Base (eip155:8453). Unpaid requests return a 402 challenge; callers must independently authorize any payment under their own spending policy."
+  "freeDiscovery": {
+    "mcp": "https://agentresolver.vercel.app/mcp",
+    "resolve": "https://agentresolver.vercel.app/api/resolve"
+  },
+  "instructions": "Use free resolve first. Pay only when live evidence materially helps the current task. A 402 is a quote, never spending authorization."
 }
