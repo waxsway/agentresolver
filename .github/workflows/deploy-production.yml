@@ -61,6 +61,14 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@48.8.0 --no-audit --no-fund
 
+      - name: Reset Vercel project link
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
       - name: Pull production configuration
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
