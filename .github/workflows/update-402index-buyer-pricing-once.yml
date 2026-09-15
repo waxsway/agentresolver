@@ -1,0 +1,70 @@
+name: Update 402 Index Buyer Pricing Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/update-402index-buyer-pricing-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for canonical launch pricing
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_price() {
+            local url="$1"
+            local body="$2"
+            local expected="$3"
+            for attempt in $(seq 1 30); do
+              headers="$(mktemp)"
+              status="$(curl -sS -D "$headers" -o /tmp/body -w '%{http_code}' -H 'content-type: application/json' --data "$body" "$url" || true)"
+              if [ "$status" = "402" ]; then
+                value="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]+:[[:space:]]*/, ""); gsub(/\r/, ""); print; exit}' "$headers")"
+                if [ -n "$value" ]; then
+                  decoded="$(printf '%s' "$value" | base64 -d 2>/dev/null || true)"
+                  if printf '%s' "$decoded" | grep -F "$expected" >/dev/null 2>&1; then
+                    rm -f "$headers"
+                    return 0
+                  fi
+                fi
+              fi
+              rm -f "$headers"
+              sleep 10
+            done
+            echo "Canonical resource did not expose expected price marker $expected at $url" >&2
+            return 1
+          }
+          check_price 'https://agentresolver.vercel.app/api/mcp-probe' '{"endpoint":"https://agentresolver.vercel.app/mcp"}' '1000'
+          check_price 'https://agentresolver.vercel.app/api/agent-readiness' '{"target":"https://agentresolver.vercel.app"}' '5000'
+          check_price 'https://agentresolver.vercel.app/api/verified-resolve' '{"goal":"find and verify an MCP server for search"}' '20000'
+          check_price 'https://agentresolver.vercel.app/api/batch-verified-resolve' '{"items":[{"goal":"find and verify an MCP server for search"}]}' '50000'
+
+      - name: Update all AgentResolver resources in 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          register() {
+            local payload="$1"
+            local label="$2"
+            status="$(curl -sS -o /tmp/register.json -w '%{http_code}' -X POST 'https://402index.io/api/v1/register' -H 'content-type: application/json' --data "$payload")"
+            cat /tmp/register.json
+            if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+              echo "$label registration update failed with HTTP $status" >&2
+              exit 1
+            fi
+          }
+          register '{"url":"https://agentresolver.vercel.app/api/mcp-probe","name":"AgentResolver MCP Live Preflight","description":"Live-preflight one public MCP endpoint for reachability, protocol compatibility, latency, server metadata, and current tool inventory before depending on it.","protocol":"x402","http_method":"POST","probe_body":"{\"endpoint\":\"https://agentresolver.vercel.app/mcp\"}","price_usd":0.001,"payment_asset":"USDC","payment_network":"Base","category":"agent-tools/verification","provider":"AgentResolver"}' 'MCP Live Preflight'
+          register '{"url":"https://agentresolver.vercel.app/api/agent-readiness","name":"AgentResolver Agent Readiness Audit","description":"Audit a public website for machine-readable agent discoverability and integration signals.","protocol":"x402","http_method":"POST","probe_body":"{\"target\":\"https://agentresolver.vercel.app\"}","price_usd":0.005,"payment_asset":"USDC","payment_network":"Base","category":"agent-tools/verification","provider":"AgentResolver"}' 'Agent Readiness'
+          register '{"url":"https://agentresolver.vercel.app/api/verified-resolve","name":"AgentResolver Verified Resolve","description":"Resolve one missing capability, live-check up to two top MCP candidates, and return an evidence-backed recommendation.","protocol":"x402","http_method":"POST","probe_body":"{\"goal\":\"find and verify an MCP server for search\"}","price_usd":0.02,"payment_asset":"USDC","payment_network":"Base","category":"agent-tools/discovery","provider":"AgentResolver"}' 'Verified Resolve'
+          register '{"url":"https://agentresolver.vercel.app/api/batch-verified-resolve","name":"AgentResolver Batch Verified Resolve","description":"Resolve and live-verify up to four missing capabilities in one bounded purchase.","protocol":"x402","http_method":"POST","probe_body":"{\"items\":[{\"goal\":\"find and verify an MCP server for search\"}]}","price_usd":0.05,"payment_asset":"USDC","payment_network":"Base","category":"agent-tools/discovery","provider":"AgentResolver"}' 'Batch Verified Resolve'
+
+      - name: Update complete
+        run: echo 'Updated AgentResolver 402 Index listings to current launch pricing without paid placement.'

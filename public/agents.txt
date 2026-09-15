@@ -1,9 +1,10 @@
 # AgentResolver agent capabilities
-# Machine-first capability resolver and x402 utility provider.
+# Free capability discovery plus low-cost x402 live evidence for autonomous agents.
 
 Origin: https://agentresolver.vercel.app
 MCP: https://agentresolver.vercel.app/mcp
 OpenAPI: https://agentresolver.vercel.app/openapi.json
+X402-Manifest: https://agentresolver.vercel.app/.well-known/x402
 Protocols: MCP, x402
 
 # Free discovery
@@ -15,25 +16,40 @@ Spending-authorized: false
 Description: Resolve a missing external capability into ranked AgentResolver-owned tools, MCP services, and machine-service candidates. Use when no already-connected tool clearly satisfies the task.
 
 # Paid machine utilities
-Capability: mcp_probe
+Capability: mcp_live_preflight
 Endpoint: POST https://agentresolver.vercel.app/api/mcp-probe
-Price: 0.01 USDC
+Price: 0.001 USDC
 Network: Base
 Payment: x402
-Description: Probe a public MCP HTTP endpoint for compatibility, latency, server metadata, and tool inventory before connecting.
+Description: Live-preflight one public MCP HTTP endpoint for reachability, compatibility, latency, server metadata, and current tool inventory before depending on it.
 
 Capability: agent_readiness_audit
 Endpoint: POST https://agentresolver.vercel.app/api/agent-readiness
-Price: 0.05 USDC
+Price: 0.005 USDC
 Network: Base
 Payment: x402
 Description: Audit a public website for AI-agent discoverability and machine-readable integration signals.
+
+Capability: verified_resolve
+Endpoint: POST https://agentresolver.vercel.app/api/verified-resolve
+Price: 0.02 USDC
+Network: Base
+Payment: x402
+Description: Resolve one missing capability, live-check up to two top MCP candidates, and return an evidence-backed recommendation.
+
+Capability: batch_verified_resolve
+Endpoint: POST https://agentresolver.vercel.app/api/batch-verified-resolve
+Price: 0.05 USDC
+Network: Base
+Payment: x402
+Description: Resolve and live-verify up to four missing capabilities in one bounded purchase.
 
 # Discovery companions
 Agents-JSON: https://agentresolver.vercel.app/agents.json
 LLMs: https://agentresolver.vercel.app/llms.txt
 LLMs-Full: https://agentresolver.vercel.app/llms-full.txt
 Agent-Card: https://agentresolver.vercel.app/.well-known/agent.json
+X402-Catalog: https://agentresolver.vercel.app/.well-known/x402-catalog.json
 MCP-Server-Card: https://agentresolver.vercel.app/mcp/server-card
 MCP-Well-Known: https://agentresolver.vercel.app/.well-known/mcp.json
 Capability-Catalog: https://agentresolver.vercel.app/capabilities.json
@@ -41,4 +57,4 @@ Integration-Recipes: https://agentresolver.vercel.app/integrations.json
 ARD: https://agentresolver.vercel.app/.well-known/ard.json
 AI-Catalog: https://agentresolver.vercel.app/.well-known/ai-catalog.json
 
-Policy: Discovery and resolve are free and never authorize spending. Paid operations return HTTP 402 before execution. A caller must independently authorize payment under its own trust, budget, privacy, and safety policy.
+Policy: Discovery and resolve are free and never authorize spending. Paid operations return HTTP 402 before execution. Pay only when fresh live evidence materially helps the current task, and only under the calling agent's independent trust, budget, privacy, and safety policy.
