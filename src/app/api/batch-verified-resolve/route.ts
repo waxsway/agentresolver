@@ -22,7 +22,7 @@ async function batchHandler(req: NextRequest): Promise<NextResponse<unknown>> {
   if (items.some((item) => !item.goal)) return NextResponse.json({ error: "MISSING_GOAL", message: "Every item must include a non-empty goal." }, { status: 400 });
   if (items.some((item) => item.goal.length > MAX_GOAL_LENGTH || (item.url && item.url.length > MAX_URL_LENGTH))) return NextResponse.json({ error: "INPUT_TOO_LONG", message: "A goal or target URL exceeds the allowed length." }, { status: 400 });
   const report = await batchVerifiedResolve(items);
-  console.log(JSON.stringify({ event: "paid_capability_completed", capabilityId: "batch-verified-resolve", at: new Date().toISOString(), itemCount: report.count, maxProbeBudget: report.limits.maxLiveMcpProbesTotal }));
+  console.log(JSON.stringify({ event: "paid_capability_completed", capabilityId: "batch-verified-resolve", at: new Date().toISOString(), itemCount: report.count, maxProbeBudget: report.limits.maxLiveProbesTotal }));
   return NextResponse.json(report, { headers: { "cache-control": "no-store", "access-control-allow-origin": "*" } });
 }
 
@@ -34,7 +34,7 @@ function getPaidHandler(): PaidHandler {
   if (!/^https:\/\//i.test(facilitatorUrl)) throw new Error("X402_FACILITATOR_URL is invalid.");
   const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
   const resourceServer = new x402ResourceServer(facilitatorClient).register(X402_NETWORK, new ExactEvmScheme());
-  paidHandler = withX402<unknown>(batchHandler, { "/api/batch-verified-resolve": { accepts: { scheme: "exact", price: X402_PRICING.batchVerifiedResolve, network: X402_NETWORK, payTo: payTo as `0x${string}` }, description: "Resolve and live-verify up to four capability requests in one paid batch, probing up to two MCP candidates per request.", mimeType: "application/json" } }, resourceServer) as PaidHandler;
+  paidHandler = withX402<unknown>(batchHandler, { "/api/batch-verified-resolve": { accepts: { scheme: "exact", price: X402_PRICING.batchVerifiedResolve, network: X402_NETWORK, payTo: payTo as `0x${string}` }, description: "Resolve and live-verify up to four capability requests in one paid batch, with up to two unpaid live probes across MCP and x402/HTTP marketplace candidates per request.", mimeType: "application/json" } }, resourceServer) as PaidHandler;
   return paidHandler;
 }
 
