@@ -4,6 +4,7 @@ import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { auditAgentReadiness } from "@/lib/agentReadiness";
 import { logPaidCapabilityAttempt } from "@/lib/telemetry";
+import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,6 @@ let paidHandler: PaidHandler | null = null;
 
 async function auditHandler(req: NextRequest): Promise<NextResponse<unknown>> {
   const body = (await req.json().catch(() => null)) as { target?: unknown; url?: unknown } | null;
-  // `target` is canonical; accept `url` as a compatibility alias because the MCP quote tool
-  // historically emitted {url}. This prevents an authorized paid quote from failing after settlement.
   const target = String(body?.target || body?.url || "").trim();
   if (!target) return NextResponse.json({ error: "MISSING_TARGET", message: "Provide a public domain or URL." }, { status: 400 });
   if (target.length > MAX_INPUT) return NextResponse.json({ error: "TARGET_TOO_LONG", message: "Target must be 500 characters or fewer." }, { status: 400 });
@@ -50,7 +49,7 @@ async function paidRequest(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) { return paidRequest(req); }
-export async function GET(req: NextRequest) { return paidRequest(req); }
+export async function GET() { return x402DiscoveryChallenge("agent-readiness"); }
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response" } });
 }
