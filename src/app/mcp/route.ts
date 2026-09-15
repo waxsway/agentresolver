@@ -47,14 +47,14 @@ const handler = createMcpHandler(() => {
       const resolution = await resolveGoal(goal, url, limit || 3);
       const candidateCount = resolution.mcp.length + resolution.marketplace.length;
       const singleMcp = resolution.mcp.length === 1 && candidateCount === 1 ? resolution.mcp[0] : null;
-      const singleMcpEndpoint = singleMcp && typeof singleMcp.url === "string" && /^https?:\/\//i.test(singleMcp.url) ? singleMcp.url : null;
+      const singleMcpEndpoint = singleMcp && typeof singleMcp.endpoint === "string" && /^https?:\/\//i.test(singleMcp.endpoint) ? singleMcp.endpoint : null;
       const paidRecommendation = singleMcpEndpoint
         ? {
             capabilityId: "mcp-probe",
             reason: "Free discovery found one MCP candidate. A one-cent live probe can verify that exact endpoint is reachable and inspect its current MCP tool inventory before relying on it.",
             method: "POST" as const,
             execute: `${CANONICAL}/api/mcp-probe`,
-            body: { url: singleMcpEndpoint },
+            body: { endpoint: singleMcpEndpoint },
             priceUsd: 0.01,
             asset: "USDC" as const,
             network: "eip155:8453" as const,
