@@ -3,6 +3,7 @@ import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { verifiedResolve } from "@/lib/verifiedResolve";
+import { logPaidCapabilityAttempt } from "@/lib/telemetry";
 import {
   X402_FACILITATOR_URL,
   X402_NETWORK,
@@ -105,6 +106,8 @@ function getPaidHandler(): PaidHandler {
 }
 
 export async function POST(req: NextRequest) {
+  logPaidCapabilityAttempt(req, "verified-resolve");
+
   if (process.env.VERIFIED_RESOLVE_ENABLED === "false") {
     return NextResponse.json(
       {
