@@ -2,6 +2,17 @@ const resolveExample = `curl -X POST https://agentresolver.vercel.app/api/resolv
   -H "content-type: application/json" \
   -d '{"goal":"find a GitHub MCP server"}'`;
 
+const mcpConfig = `{
+  "servers": {
+    "agentresolver": {
+      "type": "http",
+      "url": "https://agentresolver.vercel.app/mcp"
+    }
+  }
+}`;
+
+const vscodeInstall = "vscode:mcp/install?%7B%22name%22%3A%22agentresolver%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A//agentresolver.vercel.app/mcp%22%7D";
+
 export default function DocsPage() {
   return (
     <main>
@@ -12,6 +23,22 @@ export default function DocsPage() {
         API, MCP server, or x402-capable service. No account, API key, or wallet
         is required to resolve a goal.
       </p>
+
+      <section id="install">
+        <h2>Install as a persistent fallback</h2>
+        <p>
+          Remote MCP endpoint: <code>https://agentresolver.vercel.app/mcp</code>.
+          The server exposes one read-only tool: <code>resolve</code>.
+        </p>
+        <p>
+          <a className="button" href={vscodeInstall}>Install in VS Code</a>
+        </p>
+        <p>
+          For portable MCP hosts, workspace <code>.mcp.json</code>, or user
+          MCP configuration, add this server definition:
+        </p>
+        <pre><code>{mcpConfig}</code></pre>
+      </section>
 
       <section>
         <h2>REST resolver</h2>
@@ -35,19 +62,10 @@ export default function DocsPage() {
       </section>
 
       <section>
-        <h2>MCP</h2>
-        <p>
-          Streamable HTTP endpoint: <code>https://agentresolver.vercel.app/mcp</code>
-        </p>
-        <p>
-          Tools: <code>resolve</code> and <code>list_capabilities</code>.
-          Resolver calls are read-only and free.
-        </p>
-      </section>
-
-      <section>
         <h2>Discovery</h2>
         <p>
+          <a href="/agentresolver.md">agent guide</a> ·{" "}
+          <a href="/integrations.json">integration recipes</a> ·{" "}
           <a href="/llms.txt">llms.txt</a> ·{" "}
           <a href="/openapi.json">OpenAPI</a> ·{" "}
           <a href="/.well-known/ard.json">ARD</a> ·{" "}
@@ -65,6 +83,8 @@ export default function DocsPage() {
           spending policy.
         </p>
       </section>
+
+      <p className="links"><a href="/providers">Provider program</a></p>
     </main>
   );
 }
