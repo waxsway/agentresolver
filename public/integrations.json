@@ -39,6 +39,23 @@
       "limit": 3
     }
   },
+  "paidVerification": {
+    "id": "verified-resolve",
+    "method": "POST",
+    "url": "https://agentresolver.vercel.app/api/verified-resolve",
+    "priceUsd": 0.25,
+    "payment": {
+      "protocol": "x402",
+      "scheme": "exact",
+      "network": "eip155:8453",
+      "asset": "USDC"
+    },
+    "useWhen": "Use after independent spending authorization when the agent needs a live-verified MCP recommendation rather than discovery-only candidates.",
+    "bodyExample": {
+      "goal": "Find and verify an MCP server for search"
+    },
+    "spendingAuthorized": false
+  },
   "discovery": {
     "llms": "https://agentresolver.vercel.app/llms.txt",
     "agentGuide": "https://agentresolver.vercel.app/agentresolver.md",
