@@ -7,12 +7,13 @@ export function GET() {
     {
       ok: true,
       service: "AgentResolver",
-      version: "0.1.2",
-      purpose: "Free fallback discovery for agents missing an external capability",
+      version: "0.1.3",
+      purpose: "Free capability discovery with optional x402-paid live evidence for AI agents",
       resolver: "/api/resolve",
       mcp: "/mcp",
       serverCard: "/mcp/server-card",
       openapi: "/openapi.json",
+      paidManifest: "/.well-known/x402",
       agentGuide: "/agentresolver.md",
       registry: "io.github.waxsway/agentresolver"
     },
