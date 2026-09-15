@@ -4,6 +4,16 @@ import { X402_NETWORK, X402_PAY_TO } from "@/lib/x402Config";
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 const resources = {
+  "http-inspect": {
+    path: "/api/http-inspect",
+    amount: "1000",
+    description: "Inspect a public HTTPS resource for current status, latency, response metadata, cache validators and baseline security headers."
+  },
+  "tool-contract": {
+    path: "/api/tool-contract",
+    amount: "5000",
+    description: "Deterministically check whether one tool's structured output can satisfy another tool's required input contract, with exact incompatibility reasons and safe normalized field mappings."
+  },
   "mcp-probe": {
     path: "/api/mcp-probe",
     amount: "1000",
