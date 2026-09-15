@@ -1,0 +1,167 @@
+import { NextRequest, NextResponse } from "next/server";
+import { withX402 } from "@x402/next";
+import {
+  HTTPFacilitatorClient,
+  x402ResourceServer
+} from "@x402/core/server";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { probeMcpEndpoint } from "@/lib/mcpProbe";
+import {
+  X402_FACILITATOR_URL,
+  X402_NETWORK,
+  X402_PAY_TO,
+  X402_PRICING
+} from "@/lib/x402Config";
+
+export const dynamic = "force-dynamic";
+
+const MAX_INPUT = 500;
+
+type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
+let paidHandler: PaidHandler | null = null;
+
+async function probeHandler(req: NextRequest): Promise<NextResponse<unknown>> {
+  const body = (await req.json().catch(() => null)) as
+    | { endpoint?: unknown }
+    | null;
+  const endpoint = String(body?.endpoint || "").trim();
+
+  if (!endpoint) {
+    return NextResponse.json(
+      { error: "MISSING_ENDPOINT", message: "Provide a public MCP HTTP endpoint." },
+      { status: 400 }
+    );
+  }
+
+  if (endpoint.length > MAX_INPUT) {
+    return NextResponse.json(
+      {
+        error: "ENDPOINT_TOO_LONG",
+        message: "Endpoint must be 500 characters or fewer."
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const report = await probeMcpEndpoint(endpoint);
+
+    console.log(
+      JSON.stringify({
+        event: "paid_capability_completed",
+        capabilityId: "mcp-probe",
+        at: new Date().toISOString(),
+        reachable: report.reachable,
+        mcpCompatible: report.mcpCompatible,
+        toolCount: report.tools.count
+      })
+    );
+
+    return NextResponse.json(report, {
+      headers: {
+        "cache-control": "no-store",
+        "access-control-allow-origin": "*"
+      }
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "INVALID_ENDPOINT",
+        message:
+          error instanceof Error ? error.message : "Invalid MCP endpoint."
+      },
+      { status: 400 }
+    );
+  }
+}
+
+function getPaidHandler(): PaidHandler {
+  if (paidHandler) return paidHandler;
+
+  const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
+  const facilitatorUrl = (
+    process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL
+  ).trim();
+
+  if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) {
+    throw new Error("AGENTRESOLVER_PAY_TO is invalid.");
+  }
+  if (!/^https:\/\//i.test(facilitatorUrl)) {
+    throw new Error("X402_FACILITATOR_URL is invalid.");
+  }
+
+  const facilitatorClient = new HTTPFacilitatorClient({
+    url: facilitatorUrl,
+    timeoutMs: 10_000
+  });
+  const resourceServer = new x402ResourceServer(facilitatorClient).register(
+    X402_NETWORK,
+    new ExactEvmScheme()
+  );
+
+  paidHandler = withX402<unknown>(
+    probeHandler,
+    {
+      "/api/mcp-probe": {
+        accepts: {
+          scheme: "exact",
+          price: X402_PRICING.mcpProbe,
+          network: X402_NETWORK,
+          payTo: payTo as `0x${string}`
+        },
+        description:
+          "Probe a public MCP HTTP endpoint for protocol compatibility, latency, server metadata, and tool inventory.",
+        mimeType: "application/json"
+      }
+    },
+    resourceServer
+  ) as PaidHandler;
+
+  return paidHandler;
+}
+
+export async function POST(req: NextRequest) {
+  if (process.env.MCP_PROBE_ENABLED === "false") {
+    return NextResponse.json(
+      {
+        error: "CAPABILITY_NOT_LIVE",
+        capabilityId: "mcp-probe",
+        message: "MCP Probe is temporarily disabled."
+      },
+      { status: 503 }
+    );
+  }
+
+  try {
+    return await getPaidHandler()(req);
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "paid_capability_configuration_error",
+        capabilityId: "mcp-probe",
+        at: new Date().toISOString(),
+        message: error instanceof Error ? error.message : "Unknown error"
+      })
+    );
+
+    return NextResponse.json(
+      {
+        error: "PAYMENTS_NOT_CONFIGURED",
+        message: "Paid execution is temporarily unavailable."
+      },
+      { status: 503 }
+    );
+  }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "POST, OPTIONS",
+      "access-control-allow-headers":
+        "content-type, payment-signature, payment-required, payment-response"
+    }
+  });
+}

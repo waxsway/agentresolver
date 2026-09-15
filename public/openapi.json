@@ -74,6 +74,56 @@
         }
       }
     },
+    "/api/mcp-probe": {
+      "post": {
+        "operationId": "probeMcpEndpoint",
+        "tags": ["Paid Agent Capabilities"],
+        "summary": "Probe a public MCP HTTP endpoint before connecting",
+        "description": "Paid AgentResolver-owned capability. Price: $0.01 USDC on Base via x402. Checks whether a public MCP endpoint completes initialize and tools/list, then returns compatibility, latency, server metadata, and tool inventory. A request without payment returns HTTP 402; the caller independently controls whether to spend.",
+        "x-payment-info": {
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "USDC",
+          "priceUsd": 0.01,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["endpoint"],
+                "additionalProperties": false,
+                "properties": {
+                  "endpoint": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Public HTTP or HTTPS MCP endpoint to probe."
+                  }
+                }
+              },
+              "examples": {
+                "remoteMcp": {
+                  "value": { "endpoint": "https://agentresolver.vercel.app/mcp" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Paid MCP probe completed, including compatibility and tool inventory findings." },
+          "402": { "description": "x402 payment required. Inspect PAYMENT-REQUIRED and retry only if the caller's spending policy authorizes payment." },
+          "400": { "description": "Invalid, private, reserved, or unsupported MCP endpoint." },
+          "503": { "description": "Paid execution is temporarily unavailable." }
+        }
+      }
+    },
     "/api/agent-readiness": {
       "post": {
         "operationId": "auditAgentReadiness",

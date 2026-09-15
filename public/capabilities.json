@@ -21,10 +21,18 @@
       "id": "mcp-probe",
       "name": "MCP Probe",
       "description": "Verify a remote MCP endpoint is alive and inspect compatibility, latency, server metadata, and tool inventory before connecting.",
-      "tags": ["mcp probe", "mcp health", "mcp server", "mcp endpoint", "verify mcp", "test mcp", "tools list", "compatibility", "latency", "server check"],
+      "tags": ["mcp probe", "mcp health", "mcp server", "mcp endpoint", "verify mcp", "test mcp", "tools list", "compatibility", "latency", "server check", "x402"],
       "priceUsd": 0.01,
       "mode": "owned",
-      "status": "planned"
+      "status": "live",
+      "endpoint": "/api/mcp-probe",
+      "method": "POST",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "asset": "USDC"
+      }
     },
     {
       "id": "agent-readiness",

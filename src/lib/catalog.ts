@@ -41,11 +41,19 @@ export const CAPABILITIES: Capability[] = [
       "tools list",
       "compatibility",
       "latency",
-      "server check"
+      "server check",
+      "x402"
     ],
     priceUsd: 0.01,
     mode: "owned",
-    status: "planned"
+    status: "live",
+    endpoint: "/api/mcp-probe",
+    payment: {
+      protocol: "x402",
+      scheme: "exact",
+      network: "eip155:8453",
+      asset: "USDC"
+    }
   },
   {
     id: "agent-readiness",
