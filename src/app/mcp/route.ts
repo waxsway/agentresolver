@@ -1,6 +1,5 @@
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { CAPABILITIES } from "@/lib/catalog";
 import { resolveGoal } from "@/lib/resolver";
 
 function logToolCall(tool: string, extra: Record<string, unknown> = {}) {
