@@ -6,6 +6,7 @@ import {
 } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { probeMcpEndpoint } from "@/lib/mcpProbe";
+import { logPaidCapabilityAttempt } from "@/lib/telemetry";
 import {
   X402_FACILITATOR_URL,
   X402_NETWORK,
@@ -121,6 +122,8 @@ function getPaidHandler(): PaidHandler {
 }
 
 export async function POST(req: NextRequest) {
+  logPaidCapabilityAttempt(req, "mcp-probe");
+
   if (process.env.MCP_PROBE_ENABLED === "false") {
     return NextResponse.json(
       {
