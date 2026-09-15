@@ -2,9 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  outputFileTracingIncludes: {
-    "/api/agent-readiness": ["./node_modules/@x402/extensions/**/*"]
-  },
   async headers() {
     return [
       {
