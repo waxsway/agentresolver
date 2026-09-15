@@ -18,6 +18,18 @@
       "endpoint": "/api/resolve"
     },
     {
+      "id": "batch-verified-resolve",
+      "name": "Batch Verified Resolve",
+      "description": "Resolve and live-verify up to four capability requests in one batch, probing up to two MCP candidates per request and returning recommendations with evidence.",
+      "tags": ["batch verified resolve", "batch verification", "tool procurement", "agent procurement", "mcp verification", "capability verification", "tool selection", "provider selection", "multi tool", "recommendation", "x402"],
+      "priceUsd": 1,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/batch-verified-resolve",
+      "method": "POST",
+      "payment": {"protocol": "x402", "scheme": "exact", "network": "eip155:8453", "asset": "USDC"}
+    },
+    {
       "id": "verified-resolve",
       "name": "Verified Resolve",
       "description": "Resolve a missing capability, live-probe up to two top MCP candidates, and return a recommendation with verification evidence.",
@@ -27,12 +39,7 @@
       "status": "live",
       "endpoint": "/api/verified-resolve",
       "method": "POST",
-      "payment": {
-        "protocol": "x402",
-        "scheme": "exact",
-        "network": "eip155:8453",
-        "asset": "USDC"
-      }
+      "payment": {"protocol": "x402", "scheme": "exact", "network": "eip155:8453", "asset": "USDC"}
     },
     {
       "id": "mcp-probe",
@@ -44,12 +51,7 @@
       "status": "live",
       "endpoint": "/api/mcp-probe",
       "method": "POST",
-      "payment": {
-        "protocol": "x402",
-        "scheme": "exact",
-        "network": "eip155:8453",
-        "asset": "USDC"
-      }
+      "payment": {"protocol": "x402", "scheme": "exact", "network": "eip155:8453", "asset": "USDC"}
     },
     {
       "id": "agent-readiness",
@@ -61,57 +63,7 @@
       "status": "live",
       "endpoint": "/api/agent-readiness",
       "method": "POST",
-      "payment": {
-        "protocol": "x402",
-        "scheme": "exact",
-        "network": "eip155:8453",
-        "asset": "USDC"
-      }
-    },
-    {
-      "id": "web-extract",
-      "name": "Web Extract",
-      "description": "Turn a public webpage into clean structured text or JSON.",
-      "tags": ["web", "scrape", "extract", "url", "html", "crawl", "research"],
-      "priceUsd": 0.02,
-      "mode": "owned",
-      "status": "planned"
-    },
-    {
-      "id": "js-render",
-      "name": "JavaScript Render",
-      "description": "Render a JavaScript-heavy webpage and return machine-readable content.",
-      "tags": ["javascript", "browser", "render", "web", "url", "scrape"],
-      "priceUsd": 0.04,
-      "mode": "owned",
-      "status": "planned"
-    },
-    {
-      "id": "pdf-parse",
-      "name": "PDF Parse",
-      "description": "Extract structured text, tables, and metadata from a PDF.",
-      "tags": ["pdf", "document", "parse", "extract", "table", "ocr"],
-      "priceUsd": 0.03,
-      "mode": "owned",
-      "status": "planned"
-    },
-    {
-      "id": "vendor-check",
-      "name": "Vendor Check",
-      "description": "Assess a domain or vendor for basic legitimacy and risk signals.",
-      "tags": ["vendor", "company", "domain", "risk", "trust", "verify"],
-      "priceUsd": 0.08,
-      "mode": "owned",
-      "status": "planned"
-    },
-    {
-      "id": "wallet-risk",
-      "name": "Wallet Risk",
-      "description": "Analyze an EVM or Tron wallet and return a machine-readable risk verdict.",
-      "tags": ["wallet", "crypto", "aml", "risk", "ethereum", "tron", "compliance"],
-      "priceUsd": 0.25,
-      "mode": "partner",
-      "status": "planned"
+      "payment": {"protocol": "x402", "scheme": "exact", "network": "eip155:8453", "asset": "USDC"}
     }
   ]
 }

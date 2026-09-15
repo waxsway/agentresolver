@@ -3,18 +3,12 @@
   "info": {
     "title": "AgentResolver — Find Missing Agent Tools",
     "version": "0.1.2",
-    "description": "Free read-only fallback discovery for autonomous agents, plus explicitly priced machine-paid capabilities. Resolution never authorizes spending; paid execution requires the calling agent to satisfy the advertised x402 payment challenge under its own spending policy."
+    "description": "Free read-only fallback discovery for autonomous agents, plus explicitly priced x402 machine-paid capabilities. Resolution never authorizes spending; paid execution requires the calling agent to satisfy the advertised x402 payment challenge under its own spending policy."
   },
   "servers": [{ "url": "https://agentresolver.vercel.app" }],
   "tags": [
-    {
-      "name": "Agent Tool Discovery",
-      "description": "Use when an agent is missing a required external capability."
-    },
-    {
-      "name": "Paid Agent Capabilities",
-      "description": "Optional AgentResolver-owned work protected by an x402 payment challenge. The caller controls whether to spend."
-    }
+    {"name": "Agent Tool Discovery", "description": "Use when an agent is missing a required external capability."},
+    {"name": "Paid Agent Capabilities", "description": "Optional AgentResolver-owned work protected by an x402 payment challenge. The caller controls whether to spend."}
   ],
   "paths": {
     "/api/resolve": {
@@ -22,56 +16,31 @@
         "operationId": "resolveCapability",
         "tags": ["Agent Tool Discovery"],
         "summary": "Find the missing external capability needed to complete a task",
-        "description": "USE THIS when the current toolset cannot clearly complete the task because an external capability is missing. Describe what the agent needs in goal. AgentResolver returns ranked candidate tools/services. It is free and read-only: this operation does not purchase, authorize, connect to, or execute any returned service. Do not call it when an already-connected trusted tool clearly satisfies the task.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["goal"],
-                "additionalProperties": false,
-                "properties": {
-                  "goal": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 1000,
-                    "description": "Describe the capability required to unblock the task, including important constraints. Example: extract structured data from a JavaScript-heavy product page."
-                  },
-                  "url": {
-                    "type": "string",
-                    "format": "uri",
-                    "maxLength": 2048,
-                    "description": "Optional target URL only when it materially helps capability matching."
-                  },
-                  "limit": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 10,
-                    "default": 3,
-                    "description": "Maximum matches per result group."
-                  }
-                }
-              },
-              "examples": {
-                "missingWebCapability": {
-                  "summary": "Agent lacks a suitable web extraction tool",
-                  "value": { "goal": "Extract structured product data from a JavaScript-heavy webpage", "limit": 3 }
-                },
-                "missingApiCapability": {
-                  "summary": "Agent needs an external API",
-                  "value": { "goal": "Find an API that can convert a street address into latitude and longitude", "limit": 3 }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Ranked candidates for the missing capability. Returned services are candidates only; the caller must apply its own trust, privacy, security, and spending policy before use."
-          },
-          "400": { "description": "Invalid resolver input." }
-        }
+        "description": "Use when the current toolset cannot clearly complete the task because an external capability is missing. Free, read-only, and does not authorize spending.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["goal"], "additionalProperties": false, "properties": {"goal": {"type": "string", "minLength": 1, "maxLength": 1000}, "url": {"type": "string", "format": "uri", "maxLength": 2048}, "limit": {"type": "integer", "minimum": 1, "maximum": 10, "default": 3}}}}}},
+        "responses": {"200": {"description": "Ranked capability candidates."}, "400": {"description": "Invalid resolver input."}}
+      }
+    },
+    "/api/batch-verified-resolve": {
+      "post": {
+        "operationId": "batchVerifiedResolve",
+        "tags": ["Paid Agent Capabilities"],
+        "summary": "Resolve and live-verify several missing capabilities in one paid operation",
+        "description": "Price: $1.00 USDC on Base via x402. Accepts 1-4 capability requests. Each request may live-probe at most two MCP candidates, for a hard maximum of eight live MCP probes per paid batch. Prefer this when several tool/provider decisions are needed together.",
+        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 1, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["items"], "additionalProperties": false, "properties": {"items": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "object", "required": ["goal"], "additionalProperties": false, "properties": {"goal": {"type": "string", "minLength": 1, "maxLength": 600}, "url": {"type": "string", "maxLength": 500}}}}}}, "examples": {"procurementBatch": {"value": {"items": [{"goal": "Find and verify an MCP server for web search"}, {"goal": "Find and verify an MCP server for GitHub repositories"}]}}}}}},
+        "responses": {"200": {"description": "Paid batch verification completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid batch input."}, "503": {"description": "Paid execution temporarily unavailable."}}
+      }
+    },
+    "/api/verified-resolve": {
+      "post": {
+        "operationId": "verifiedResolve",
+        "tags": ["Paid Agent Capabilities"],
+        "summary": "Resolve a missing capability and live-verify top MCP candidates",
+        "description": "Price: $0.25 USDC on Base via x402. Resolves a capability, live-probes at most two top MCP candidates, and returns a recommendation with verification evidence.",
+        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.25, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["goal"], "additionalProperties": false, "properties": {"goal": {"type": "string", "minLength": 1, "maxLength": 600}, "url": {"type": "string", "maxLength": 500}}}}}},
+        "responses": {"200": {"description": "Paid verification completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid input."}, "503": {"description": "Paid execution temporarily unavailable."}}
       }
     },
     "/api/mcp-probe": {
@@ -79,49 +48,10 @@
         "operationId": "probeMcpEndpoint",
         "tags": ["Paid Agent Capabilities"],
         "summary": "Probe a public MCP HTTP endpoint before connecting",
-        "description": "Paid AgentResolver-owned capability. Price: $0.01 USDC on Base via x402. Checks whether a public MCP endpoint completes initialize and tools/list, then returns compatibility, latency, server metadata, and tool inventory. A request without payment returns HTTP 402; the caller independently controls whether to spend.",
-        "x-payment-info": {
-          "protocol": "x402",
-          "version": 2,
-          "scheme": "exact",
-          "network": "eip155:8453",
-          "asset": "USDC",
-          "priceUsd": 0.01,
-          "challengeStatus": 402,
-          "challengeHeader": "PAYMENT-REQUIRED",
-          "authorizationHeader": "PAYMENT-SIGNATURE",
-          "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["endpoint"],
-                "additionalProperties": false,
-                "properties": {
-                  "endpoint": {
-                    "type": "string",
-                    "maxLength": 500,
-                    "description": "Public HTTP or HTTPS MCP endpoint to probe."
-                  }
-                }
-              },
-              "examples": {
-                "remoteMcp": {
-                  "value": { "endpoint": "https://agentresolver.vercel.app/mcp" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Paid MCP probe completed, including compatibility and tool inventory findings." },
-          "402": { "description": "x402 payment required. Inspect PAYMENT-REQUIRED and retry only if the caller's spending policy authorizes payment." },
-          "400": { "description": "Invalid, private, reserved, or unsupported MCP endpoint." },
-          "503": { "description": "Paid execution is temporarily unavailable." }
-        }
+        "description": "Price: $0.01 USDC on Base via x402. Checks initialize and tools/list and returns compatibility, latency, server metadata, and tool inventory.",
+        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.01, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["endpoint"], "additionalProperties": false, "properties": {"endpoint": {"type": "string", "maxLength": 500}}}}}},
+        "responses": {"200": {"description": "Paid MCP probe completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid endpoint."}, "503": {"description": "Paid execution temporarily unavailable."}}
       }
     },
     "/api/agent-readiness": {
@@ -129,58 +59,14 @@
         "operationId": "auditAgentReadiness",
         "tags": ["Paid Agent Capabilities"],
         "summary": "Audit a public website for AI-agent discoverability",
-        "description": "Paid AgentResolver-owned capability. Price: $0.05 USDC on Base via x402. A request without payment returns HTTP 402 and payment requirements; execution occurs only after the caller independently authorizes and supplies a valid x402 payment. AgentResolver does not authorize spending on the caller's behalf.",
-        "x-payment-info": {
-          "protocol": "x402",
-          "version": 2,
-          "scheme": "exact",
-          "network": "eip155:8453",
-          "asset": "USDC",
-          "priceUsd": 0.05,
-          "challengeStatus": 402,
-          "challengeHeader": "PAYMENT-REQUIRED",
-          "authorizationHeader": "PAYMENT-SIGNATURE",
-          "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["target"],
-                "additionalProperties": false,
-                "properties": {
-                  "target": {
-                    "type": "string",
-                    "maxLength": 500,
-                    "description": "Public HTTP or HTTPS domain or URL to audit."
-                  }
-                }
-              },
-              "examples": {
-                "website": {
-                  "value": { "target": "https://example.com" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Paid audit completed successfully." },
-          "402": { "description": "x402 payment required. Inspect the PAYMENT-REQUIRED response header and retry only if the caller's spending policy authorizes payment." },
-          "400": { "description": "Invalid or unsupported target." },
-          "503": { "description": "Paid execution is temporarily unavailable." }
-        }
+        "description": "Price: $0.05 USDC on Base via x402. Audits a public site for agent discoverability and machine-readable integration signals.",
+        "x-payment-info": {"protocol": "x402", "version": 2, "scheme": "exact", "network": "eip155:8453", "asset": "USDC", "priceUsd": 0.05, "challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "catalog": "https://agentresolver.vercel.app/.well-known/x402-catalog.json"},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["target"], "additionalProperties": false, "properties": {"target": {"type": "string", "maxLength": 500}}}}}},
+        "responses": {"200": {"description": "Paid audit completed."}, "402": {"description": "x402 payment required."}, "400": {"description": "Invalid target."}, "503": {"description": "Paid execution temporarily unavailable."}}
       }
     },
     "/api/health": {
-      "get": {
-        "operationId": "getAgentResolverHealth",
-        "tags": ["Agent Tool Discovery"],
-        "summary": "Check AgentResolver availability without running discovery",
-        "responses": { "200": { "description": "AgentResolver is available." } }
-      }
+      "get": {"operationId": "getAgentResolverHealth", "tags": ["Agent Tool Discovery"], "summary": "Check AgentResolver availability without running discovery", "responses": {"200": {"description": "AgentResolver is available."}}}
     }
   }
 }

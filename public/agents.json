@@ -26,6 +26,15 @@
       "recommendedWhen": "No already-connected tool clearly satisfies the task, or a tool/API/MCP/machine service must be discovered."
     },
     {
+      "id": "batch_verified_resolve",
+      "description": "Resolve and live-verify up to four capability requests in one batch, probing up to two MCP candidates per request.",
+      "method": "POST",
+      "endpoint": "https://agentresolver.vercel.app/api/batch-verified-resolve",
+      "recommendedWhen": "An agent needs several external capabilities selected and live-verified in one procurement step.",
+      "limits": {"maxGoals": 4, "maxLiveMcpProbesPerGoal": 2},
+      "payment": {"protocol": "x402", "amount": "1.00", "currency": "USDC", "network": "base"}
+    },
+    {
       "id": "verified_resolve",
       "description": "Resolve a missing capability, live-verify up to two top MCP candidates, and return a recommendation with evidence.",
       "method": "POST",

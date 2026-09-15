@@ -27,6 +27,35 @@ export const CAPABILITIES: Capability[] = [
     endpoint: "/api/resolve"
   },
   {
+    id: "batch-verified-resolve",
+    name: "Batch Verified Resolve",
+    description:
+      "Resolve and live-verify up to four capability requests in one batch, probing up to two MCP candidates per request and returning recommendations with evidence.",
+    tags: [
+      "batch verified resolve",
+      "batch verification",
+      "tool procurement",
+      "agent procurement",
+      "mcp verification",
+      "capability verification",
+      "tool selection",
+      "provider selection",
+      "multi tool",
+      "recommendation",
+      "x402"
+    ],
+    priceUsd: 1,
+    mode: "owned",
+    status: "live",
+    endpoint: "/api/batch-verified-resolve",
+    payment: {
+      protocol: "x402",
+      scheme: "exact",
+      network: "eip155:8453",
+      asset: "USDC"
+    }
+  },
+  {
     id: "verified-resolve",
     name: "Verified Resolve",
     description:
