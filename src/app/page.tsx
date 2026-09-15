@@ -3,7 +3,11 @@ Content-Type: application/json
 
 {"goal":"find a GitHub MCP server"}`;
 
-const vscodeInstall = "vscode:mcp/install?%7B%22name%22%3A%22agentresolver%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A//agentresolver.vercel.app/mcp%22%7D";
+const vscodeInstall = `vscode:mcp/install?${encodeURIComponent(JSON.stringify({
+  name: "agentresolver",
+  type: "http",
+  url: "https://agentresolver.vercel.app/mcp"
+}))}`;
 
 export default function Home() {
   return (

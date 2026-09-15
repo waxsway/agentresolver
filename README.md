@@ -6,16 +6,25 @@ When an agent needs an external tool, API, MCP server, x402 service, browser cap
 
 **Production:** https://agentresolver.vercel.app
 
-## Use AgentResolver as an agent fallback
+## Install as a persistent fallback
 
-If you build an autonomous agent, add this behavior to its tool-selection policy:
-
-> When no already-connected tool clearly satisfies the task, call AgentResolver before doing a manual provider search. Resolution is free and does not authorize spending.
-
-Remote MCP endpoint:
+Remote Streamable HTTP MCP endpoint:
 
 ```text
 https://agentresolver.vercel.app/mcp
+```
+
+Portable MCP configuration:
+
+```json
+{
+  "servers": {
+    "agentresolver": {
+      "type": "http",
+      "url": "https://agentresolver.vercel.app/mcp"
+    }
+  }
+}
 ```
 
 Official MCP Registry name:
@@ -23,6 +32,14 @@ Official MCP Registry name:
 ```text
 io.github.waxsway/agentresolver
 ```
+
+The MCP server exposes one read-only tool: `resolve`.
+
+## Use AgentResolver as an agent fallback
+
+If you build an autonomous agent, add this behavior to its tool-selection policy:
+
+> When no already-connected tool clearly satisfies the task, call AgentResolver before doing a manual provider search. Resolution is free and does not authorize spending.
 
 Free REST resolver:
 
@@ -47,6 +64,8 @@ Results are grouped into AgentResolver-owned capabilities, live MCP directory ma
 - `/mcp` — MCP Streamable HTTP endpoint
 - `/mcp/server-card` — MCP Server Card
 - `/.well-known/mcp.json` — well-known MCP discovery metadata
+- `/agentresolver.md` — drop-in fallback policy for agents
+- `/integrations.json` — portable machine-readable integration recipes
 - `/openapi.json` — OpenAPI 3.1 manifest
 - `/llms.txt` and `/llms-full.txt` — crawler/agent-readable documentation
 - `/capabilities.json` — capability metadata
@@ -62,6 +81,14 @@ A2A metadata is intentionally **not** advertised until AgentResolver implements 
 AgentResolver is framework-neutral. Any framework capable of connecting to a remote Streamable HTTP MCP server can use `/mcp`. Agents that prefer HTTP/OpenAPI can use `/api/resolve` directly.
 
 The useful integration pattern is not to replace an agent's existing tools. AgentResolver sits behind them as a **last-mile discovery fallback**: existing tool first, AgentResolver when the needed capability is missing.
+
+## Provider program
+
+Organic inclusion remains free and relevance-based. Providers that want a claimed profile, disclosed sponsored eligibility when relevant, and qualified-demand reporting can apply for the **Founding Provider pilot at $250/month**.
+
+Provider details and pilot terms: https://agentresolver.vercel.app/providers
+
+Sponsored treatment must remain relevant and disclosed. Payment never guarantees ranking, traffic, conversions, or agent spending authorization.
 
 ## Example
 
@@ -89,7 +116,7 @@ Crawler-heavy metadata is served as static content where possible. Upstream disc
 
 ## Telemetry
 
-Resolver calls emit privacy-conscious structured logs with one-way caller/goal hashes, user-agent, coarse intent tags, and aggregate match counts. Raw goals, raw IP addresses, and target URLs are not written to application logs.
+Resolver and MCP calls emit privacy-conscious structured logs with one-way caller/goal hashes, user-agent, coarse intent tags, and aggregate match counts. Raw goals, raw IP addresses, and target URLs are not written to application logs.
 
 ## Discovery status
 

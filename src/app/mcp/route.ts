@@ -1,19 +1,56 @@
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { resolveGoal } from "@/lib/resolver";
+import {
+  callerHash,
+  classifyIntent,
+  safeUserAgent,
+  shortHash
+} from "@/lib/telemetry";
 
 function logToolCall(tool: string, extra: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ event: "mcp_tool_call", tool, at: new Date().toISOString(), ...extra }));
 }
 
 async function logMcpRequest(req: Request) {
+  const base = {
+    event: "mcp_request",
+    at: new Date().toISOString(),
+    callerHash: callerHash(req),
+    userAgent: safeUserAgent(req)
+  };
+
   try {
-    const body = (await req.clone().json()) as { method?: unknown; params?: { name?: unknown } | null };
+    const body = (await req.clone().json()) as {
+      method?: unknown;
+      params?: {
+        name?: unknown;
+        arguments?: { goal?: unknown } | null;
+      } | null;
+    };
     const method = typeof body?.method === "string" ? body.method : "unknown";
     const tool = method === "tools/call" && typeof body?.params?.name === "string" ? body.params.name : null;
-    console.log(JSON.stringify({ event: "mcp_request", method, tool, at: new Date().toISOString(), userAgent: (req.headers.get("user-agent") || "").slice(0, 180) }));
+    const goal =
+      method === "tools/call" &&
+      tool === "resolve" &&
+      typeof body?.params?.arguments?.goal === "string"
+        ? body.params.arguments.goal.trim()
+        : "";
+
+    console.log(JSON.stringify({
+      ...base,
+      method,
+      tool,
+      ...(goal
+        ? {
+            goalHash: shortHash(goal),
+            goalLength: goal.length,
+            intentTags: classifyIntent(goal)
+          }
+        : {})
+    }));
   } catch {
-    console.log(JSON.stringify({ event: "mcp_request", method: "unparsed", tool: null, at: new Date().toISOString(), userAgent: (req.headers.get("user-agent") || "").slice(0, 180) }));
+    console.log(JSON.stringify({ ...base, method: "unparsed", tool: null }));
   }
 }
 
@@ -47,7 +84,16 @@ const handler = createMcpHandler(() => {
     },
     async ({ goal, url, limit }) => {
       const resolution = await resolveGoal(goal, url, limit || 3);
-      logToolCall("resolve", { hasUrl: Boolean(url), requestedLimit: limit || 3, ownedMatches: resolution.owned.length, mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length });
+      logToolCall("resolve", {
+        hasUrl: Boolean(url),
+        requestedLimit: limit || 3,
+        goalHash: shortHash(goal),
+        goalLength: goal.length,
+        intentTags: classifyIntent(goal),
+        ownedMatches: resolution.owned.length,
+        mcpMatches: resolution.mcp.length,
+        marketplaceMatches: resolution.marketplace.length
+      });
 
       const output = {
         goal,

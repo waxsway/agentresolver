@@ -1,6 +1,7 @@
 export const metadata = {
   title: "For Providers — AgentResolver",
-  description: "Get discovered by AI agents looking for external tools, APIs, MCP servers, and machine services."
+  description: "Get discovered by AI agents looking for external tools, APIs, MCP servers, and machine services.",
+  alternates: { canonical: "https://agentresolver.vercel.app/providers" }
 };
 
 export default function ProvidersPage() {

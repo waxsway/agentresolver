@@ -1,43 +1,18 @@
 import { NextResponse } from "next/server";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { resolveGoal } from "@/lib/resolver";
+import {
+  callerHash,
+  classifyIntent,
+  referrerHost,
+  safeUserAgent,
+  shortHash
+} from "@/lib/telemetry";
 
 export const dynamic = "force-dynamic";
 
 const MAX_GOAL_LENGTH = 1000;
 const MAX_URL_LENGTH = 2048;
-
-function shortHash(value: string): string {
-  return createHash("sha256").update(value).digest("hex").slice(0, 16);
-}
-
-function classifyIntent(goal: string): string[] {
-  const text = goal.toLowerCase();
-  const groups: Array<[string, string[]]> = [
-    ["web", ["web", "website", "url", "scrape", "crawl", "browser", "page"]],
-    ["documents", ["pdf", "document", "invoice", "file", "table", "ocr"]],
-    ["search", ["search", "find", "research", "lookup", "discover"]],
-    ["code", ["code", "github", "repository", "repo", "compile", "debug"]],
-    ["data", ["database", "sql", "data", "csv", "json", "analytics"]],
-    ["commerce", ["price", "product", "buy", "purchase", "commerce", "shop"]],
-    ["payments", ["pay", "payment", "x402", "usdc", "wallet", "transaction"]],
-    ["crypto-risk", ["crypto", "ethereum", "tron", "aml", "compliance", "wallet risk"]],
-    ["communications", ["email", "message", "slack", "sms", "notify"]],
-    ["media", ["image", "video", "audio", "photo", "transcribe"]]
-  ];
-
-  const matched = groups
-    .filter(([, terms]) => terms.some((term) => text.includes(term)))
-    .map(([name]) => name);
-
-  return matched.length > 0 ? matched.slice(0, 4) : ["other"];
-}
-
-function referrerHost(req: Request): string | null {
-  const raw = req.headers.get("referer");
-  if (!raw) return null;
-  try { return new URL(raw).hostname.slice(0, 120); } catch { return null; }
-}
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
@@ -55,11 +30,10 @@ export async function POST(req: Request) {
   const requestId = randomUUID();
   const resolution = await resolveGoal(goal, url, limit);
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin).replace(/\/$/, "");
-  const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
   console.log(JSON.stringify({
-    event: "resolver_call", requestId, at: new Date().toISOString(), callerHash: shortHash(ip),
-    userAgent: (req.headers.get("user-agent") || "unknown").slice(0, 160), referrerHost: referrerHost(req),
+    event: "resolver_call", requestId, at: new Date().toISOString(), callerHash: callerHash(req),
+    userAgent: safeUserAgent(req), referrerHost: referrerHost(req),
     goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal), hasUrl: Boolean(url),
     topOwnedCapability: resolution.owned[0]?.id || null, mcpMatchCount: resolution.mcp.length,
     marketplaceMatchCount: resolution.marketplace.length
