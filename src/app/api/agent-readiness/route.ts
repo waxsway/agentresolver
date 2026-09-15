@@ -6,6 +6,7 @@ import {
 } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { auditAgentReadiness } from "@/lib/agentReadiness";
+import { logPaidCapabilityAttempt } from "@/lib/telemetry";
 import {
   X402_FACILITATOR_URL,
   X402_NETWORK,
@@ -123,6 +124,8 @@ function getPaidHandler(): PaidHandler {
 }
 
 export async function POST(req: NextRequest) {
+  logPaidCapabilityAttempt(req, "agent-readiness");
+
   if (process.env.AGENT_READINESS_ENABLED === "false") {
     return NextResponse.json(
       {
