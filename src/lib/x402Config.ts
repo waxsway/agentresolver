@@ -6,11 +6,8 @@ export const X402_FACILITATOR_URL = "https://facilitator.xpay.sh" as const;
 // Keep capability discovery free. Monetization is attached only to resources
 // that perform paid AgentResolver-owned work. Never gate /api/resolve or MCP
 // discovery behind payment.
-//
-// These launch prices intentionally sit inside the low-value autonomous spend
-// range common in x402 agent tooling. Raise them only after real paid demand
-// proves the value and conversion path.
 export const X402_PRICING = {
+  httpInspect: "$0.001",
   mcpProbe: "$0.001",
   agentReadiness: "$0.005",
   verifiedResolve: "$0.02",
