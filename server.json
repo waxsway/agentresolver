@@ -3,7 +3,7 @@
   "name": "io.github.waxsway/agentresolver",
   "title": "AgentResolver",
   "description": "Free capability resolver for AI agents with MCP, API, and x402 service discovery.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": {
     "url": "https://github.com/waxsway/agentresolver",
     "source": "github"
