@@ -39,36 +39,57 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/agentresolver.md" | grep -F 'AgentResolver' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/integrations.json" | grep -F "$BASE_URL/mcp" >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'resolveCapability' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'probeMcpEndpoint' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402-catalog.json" | grep -F 'mcp-probe' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/mcp/server-card" | grep -F '0.1.2' >/dev/null
 
           echo 'Production discovery checks passed.'
 
-      - name: Verify x402 payment challenge without spending
+      - name: Verify x402 payment challenges without spending
         shell: bash
         env:
           BASE_URL: https://agentresolver.vercel.app
         run: |
           set -euo pipefail
 
-          status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-            -D /tmp/x402-headers.txt \
-            -o /tmp/x402-body.txt \
-            -w '%{http_code}' \
-            -H 'content-type: application/json' \
-            --data '{"target":"https://example.com"}' \
-            "$BASE_URL/api/agent-readiness")"
+          check_402() {
+            local name="$1"
+            local path="$2"
+            local body="$3"
+            local slug="$4"
 
-          if [ "$status" != "402" ]; then
-            echo "Expected x402 HTTP 402 challenge, got $status"
-            cat /tmp/x402-body.txt
-            exit 1
-          fi
+            status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+              -D "/tmp/${slug}-headers.txt" \
+              -o "/tmp/${slug}-body.txt" \
+              -w '%{http_code}' \
+              -H 'content-type: application/json' \
+              --data "$body" \
+              "$BASE_URL$path")"
 
-          if ! grep -Eiq '^payment-required:[[:space:]]*[^[:space:]]+' /tmp/x402-headers.txt; then
-            echo 'HTTP 402 was returned but PAYMENT-REQUIRED header is missing.'
-            sed -n '1,20p' /tmp/x402-headers.txt
-            exit 1
-          fi
+            if [ "$status" != "402" ]; then
+              echo "Expected $name x402 HTTP 402 challenge, got $status"
+              cat "/tmp/${slug}-body.txt"
+              exit 1
+            fi
 
-          echo 'x402 challenge verified: HTTP 402 plus PAYMENT-REQUIRED header; no payment was sent.'
+            if ! grep -Eiq '^payment-required:[[:space:]]*[^[:space:]]+' "/tmp/${slug}-headers.txt"; then
+              echo "$name returned HTTP 402 but PAYMENT-REQUIRED header is missing."
+              sed -n '1,20p' "/tmp/${slug}-headers.txt"
+              exit 1
+            fi
+          }
+
+          check_402 \
+            'Agent Readiness Audit' \
+            '/api/agent-readiness' \
+            '{"target":"https://example.com"}' \
+            'readiness'
+
+          check_402 \
+            'MCP Probe' \
+            '/api/mcp-probe' \
+            '{"endpoint":"https://agentresolver.vercel.app/mcp"}' \
+            'mcp-probe'
+
+          echo 'Both x402 challenges verified without sending payment.'
