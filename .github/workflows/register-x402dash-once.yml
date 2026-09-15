@@ -12,24 +12,24 @@ permissions:
 
 jobs:
   register:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Sync MCP discovery metadata with paid tool surface')
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
-      - name: Wait for canonical paid endpoints
+      - name: Wait for canonical GET and POST x402 challenges
         shell: bash
         run: |
           set -euo pipefail
-          for i in {1..24}; do
+          for i in {1..30}; do
             ok=1
             for path in mcp-probe agent-readiness verified-resolve batch-verified-resolve; do
-              code=$(curl -sS -o /tmp/body -w '%{http_code}' -X POST "https://agentresolver.vercel.app/api/$path" -H 'content-type: application/json' -d '{}') || true
-              if [ "$code" != "402" ]; then ok=0; fi
+              get_code=$(curl -sS -o /tmp/get-body -w '%{http_code}' "https://agentresolver.vercel.app/api/$path") || true
+              post_code=$(curl -sS -o /tmp/post-body -w '%{http_code}' -X POST "https://agentresolver.vercel.app/api/$path" -H 'content-type: application/json' -d '{}') || true
+              if [ "$get_code" != "402" ] || [ "$post_code" != "402" ]; then ok=0; fi
             done
             if [ "$ok" = "1" ]; then exit 0; fi
             sleep 10
           done
-          echo 'Paid endpoints did not all return 402 in time' >&2
+          echo 'Paid endpoints did not all return GET+POST 402 in time' >&2
           exit 1
 
       - name: Register AgentResolver paid APIs with x402dash
