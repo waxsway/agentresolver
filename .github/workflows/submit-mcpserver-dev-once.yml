@@ -69,39 +69,50 @@ jobs:
             timeout: 60000
           });
 
-          const fillByPlaceholder = async (needle, value) => {
-            const selector = `input[placeholder*="${needle}"], textarea[placeholder*="${needle}"]`;
+          const visibleHandle = async selector => {
             const els = await page.$$(selector);
-            if (!els.length) throw new Error(`Field not found: ${needle}`);
-            await els[0].type(value);
+            for (const el of els) {
+              const box = await el.boundingBox();
+              if (box && box.width > 0 && box.height > 0) return el;
+            }
+            throw new Error(`Visible field not found: ${selector}`);
           };
 
-          await fillByPlaceholder(
-            "github.com/modelcontextprotocol",
+          const typeVisible = async (selector, value) => {
+            const el = await visibleHandle(selector);
+            await el.click();
+            await el.type(value);
+          };
+
+          await typeVisible(
+            'input[placeholder*="github.com/modelcontextprotocol"]',
             "https://github.com/waxsway/agentresolver"
           );
-          await fillByPlaceholder(
-            "Web Search",
+          await typeVisible(
+            'input[placeholder*="Web Search"]',
             "AgentResolver"
           );
-          await fillByPlaceholder(
-            "What does your MCP server do?",
+          await typeVisible(
+            'textarea[placeholder*="What does your MCP server do?"]',
             "Free remote MCP capability resolver for AI agents. Discovers and compares tools, APIs, MCP servers, and x402 machine services through one no-auth endpoint."
           );
-          await fillByPlaceholder(
-            "mcp server, database, browser",
+          await typeVisible(
+            'textarea[placeholder*="mcp server, database, browser"]',
             "agent routing, tool discovery, api discovery, mcp, x402, developer tools"
           );
 
-          // Pick Developer Tools if the category dropdown exposes it; otherwise
-          // leave the site's documented auto-classification in control.
           const selects = await page.$$("select");
-          if (selects.length) {
-            const options = await page.$eval("select", el =>
+          for (const select of selects) {
+            const box = await select.boundingBox();
+            if (!box || box.width <= 0 || box.height <= 0) continue;
+            const options = await select.evaluate(el =>
               Array.from(el.options).map(o => ({ value: o.value, text: o.textContent || "" }))
             );
             const dev = options.find(o => /developer/i.test(o.text));
-            if (dev) await page.select("select", dev.value);
+            if (dev) {
+              await select.select(dev.value);
+              break;
+            }
           }
 
           const snapshot = await page.evaluate(() => {
@@ -120,8 +131,10 @@ jobs:
           const submitted = await page.evaluate(() => {
             const forms = Array.from(document.querySelectorAll("form"));
             const form = forms.find(form => {
+              const rect = form.getBoundingClientRect();
               const input = form.querySelector('input[placeholder*="github.com/modelcontextprotocol"]');
-              return input && input.value.includes("waxsway/agentresolver");
+              return rect.width > 0 && rect.height > 0 &&
+                input && input.value.includes("waxsway/agentresolver");
             });
             if (!form) return false;
             const button = form.querySelector('button[type="submit"]');
