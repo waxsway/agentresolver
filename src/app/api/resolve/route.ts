@@ -91,6 +91,7 @@ export async function POST(req: Request) {
     "tool-contract": true,
     "mcp-probe": true,
     "agent-readiness": true,
+    "openapi-select": true,
     "verified-resolve": true,
     "batch-verified-resolve": true
   }
@@ -103,7 +104,9 @@ export async function POST(req: Request) {
       ? { url }
       : directOwnedId === "mcp-probe" && singleProbeableMcp?.endpoint
         ? { endpoint: singleProbeableMcp.endpoint }
-        : directOwnedId === "verified-resolve"
+        : directOwnedId === "openapi-select" && url
+          ? { specUrl: url, goal }
+          : directOwnedId === "verified-resolve"
           ? { goal, ...(url ? { url } : {}) }
           : undefined;
 
