@@ -347,20 +347,13 @@ function scoreOperation(goal: string, choice: OpenApiOperationChoice, parameterN
   return Math.max(0, overlap + phraseBonus + methodBonus - (choice.deprecated ? 4 : 0));
 }
 
-export async function selectOpenApiOperation(specUrlInput: string, goal: string): Promise<OpenApiSelectionReport> {
-  const specUrl = validateSpecUrl(specUrlInput);
-  await resolvePublicAddress(specUrl.hostname);
-  const raw = await fetchSpec(specUrl);
-
-  let root: JsonObject;
-  try {
-    const parsed = JSON.parse(raw);
-    const parsedObject = object(parsed);
-    if (!parsedObject) throw new Error("root");
-    root = parsedObject;
-  } catch {
-    throw new Error("OpenAPI document must be valid JSON.");
-  }
+export function selectOpenApiOperationDocument(
+  document: unknown,
+  goal: string,
+  specUrlInput = "https://example.com/openapi.json"
+): OpenApiSelectionReport {
+  const root = object(document);
+  if (!root) throw new Error("OpenAPI document must be a JSON object.");
 
   const paths = object(root.paths);
   if (!paths) throw new Error("OpenAPI document has no paths object.");
@@ -376,19 +369,24 @@ export async function selectOpenApiOperation(specUrlInput: string, goal: string)
   for (const [path, rawPathItem] of Object.entries(paths)) {
     const pathItem = object(resolveRef(root, rawPathItem));
     if (!pathItem) continue;
+
     for (const method of HTTP_METHODS) {
       const operation = object(pathItem[method]);
       if (!operation) continue;
+
       const opId = typeof operation.operationId === "string" ? operation.operationId : null;
       if (!opId) warnings.push(`${method.toUpperCase()} ${path} has no operationId.`);
+
       const parameterNames = [
         ...(Array.isArray(pathItem.parameters) ? pathItem.parameters : []),
         ...(Array.isArray(operation.parameters) ? operation.parameters : [])
       ].map((rawParam) => parameterSummary(root, rawParam)?.name)
         .filter((name): name is string => typeof name === "string");
+
       const tags = Array.isArray(operation.tags)
         ? operation.tags.filter((tag): tag is string => typeof tag === "string").slice(0, 12)
         : [];
+
       const baseChoice: OpenApiOperationChoice = {
         operationId: opId,
         method: method.toUpperCase(),
@@ -399,6 +397,7 @@ export async function selectOpenApiOperation(specUrlInput: string, goal: string)
         deprecated: operation.deprecated === true,
         score: 0
       };
+
       baseChoice.score = scoreOperation(goal, baseChoice, parameterNames);
       candidates.push({ choice: baseChoice, operation, pathItem, parameterNames });
     }
@@ -418,11 +417,13 @@ export async function selectOpenApiOperation(specUrlInput: string, goal: string)
       ? "high"
       : "medium";
 
-  if (confidence === "low") warnings.push("No operation strongly matched the stated goal; review alternatives before execution.");
+  if (confidence === "low") {
+    warnings.push("No operation strongly matched the stated goal; review alternatives before execution.");
+  }
 
   const info = object(root.info);
   return {
-    specUrl: specUrl.toString(),
+    specUrl: new URL(specUrlInput).toString(),
     api: {
       title: typeof info?.title === "string" ? info.title : null,
       version: typeof info?.version === "string" ? info.version : null,
@@ -440,4 +441,22 @@ export async function selectOpenApiOperation(specUrlInput: string, goal: string)
     alternatives: candidates.slice(1, 4).map((item) => item.choice),
     warnings: [...new Set(warnings)].slice(0, 12)
   };
+}
+
+export async function selectOpenApiOperation(
+  specUrlInput: string,
+  goal: string
+): Promise<OpenApiSelectionReport> {
+  const specUrl = validateSpecUrl(specUrlInput);
+  await resolvePublicAddress(specUrl.hostname);
+  const raw = await fetchSpec(specUrl);
+
+  let document: unknown;
+  try {
+    document = JSON.parse(raw);
+  } catch {
+    throw new Error("OpenAPI document must be valid JSON.");
+  }
+
+  return selectOpenApiOperationDocument(document, goal, specUrl.toString());
 }
