@@ -1,0 +1,39 @@
+name: Production Smoke
+
+on:
+  repository_dispatch:
+    types:
+      - vercel.deployment.success
+      - vercel.deployment.promoted
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-smoke
+  cancel-in-progress: true
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify canonical production surfaces
+        shell: bash
+        env:
+          BASE_URL: https://agentresolver.vercel.app
+        run: |
+          set -euo pipefail
+
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/health" | tee /tmp/health.json
+          grep -F '"ok":true' /tmp/health.json >/dev/null
+          grep -F '"version":"0.1.2"' /tmp/health.json >/dev/null
+
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/agentresolver.md" | grep -F 'AgentResolver' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/integrations.json" | grep -F "$BASE_URL/mcp" >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'resolveCapability' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/mcp/server-card" | grep -F '0.1.2' >/dev/null
+
+          echo 'Production smoke checks passed.'
