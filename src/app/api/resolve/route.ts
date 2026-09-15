@@ -154,7 +154,13 @@ export async function POST(req: Request) {
       callerHash: callerHash(req),
       capabilityId: recommendedPaidAction.capabilityId,
       priceUsd: recommendedPaidAction.priceUsd,
-      reason: singleProbeableMcp ? "single_mcp_probe" : resolution.mcp.length > 0 ? "mcp_live_verification" : "multiple_external_candidates"
+      reason: directOwnedId
+        ? "direct_owned_match"
+        : singleProbeableMcp
+          ? "single_mcp_probe"
+          : resolution.mcp.length > 0
+            ? "mcp_live_verification"
+            : "multiple_external_candidates"
     }));
   }
 
