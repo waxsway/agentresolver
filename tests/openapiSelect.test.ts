@@ -90,7 +90,8 @@ test("selects the best OpenAPI operation for the stated goal", () => {
   assert.equal(report.selected?.path, "/orders/{orderId}");
   assert.equal(report.selected?.serverUrl, "https://api.example.com/v1");
   assert.equal(report.selected?.request.path[0]?.name, "orderId");
-  assert.equal(report.selected?.security[0]?.requiredSchemes?.[0], "bearerAuth");
+  const security = report.selected?.security[0] as { requiredSchemes?: string[] } | undefined;
+  assert.equal(security?.requiredSchemes?.[0], "bearerAuth");
   assert.ok(report.selected?.score && report.selected.score > 0);
 });
 
