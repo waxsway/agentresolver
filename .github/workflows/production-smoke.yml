@@ -73,6 +73,9 @@ jobs:
           resolve_check 'resolve-tool-contract' \
             'check tool contract JSON schema workflow compatibility mapping' \
             '' 'tool-contract' 0.005
+          resolve_check 'resolve-openapi-select' \
+            'select the best OpenAPI operation endpoint for this API goal' \
+            "$BASE_URL/openapi.json" 'openapi-select' 0.005
 
           echo 'Production discovery checks passed.'
 
@@ -123,6 +126,7 @@ jobs:
 
           check_402 'HTTP Inspect' '/api/http-inspect' '{"url":"https://example.com"}' 'http-inspect' '1000'
           check_402 'Tool Contract Fit' '/api/tool-contract' '{"producerOutputSchema":{"type":"object"},"consumerInputSchema":{"type":"object"}}' 'tool-contract' '5000'
+          check_402 'OpenAPI Operation Select' '/api/openapi-select' '{"specUrl":"https://agentresolver.vercel.app/openapi.json","goal":"select the resolve operation"}' 'openapi-select' '5000'
           check_402 'Verified Resolve' '/api/verified-resolve' '{"goal":"find and verify an MCP server for search"}' 'verified-resolve' '20000'
           check_402 'Agent Readiness Audit' '/api/agent-readiness' '{"url":"https://example.com"}' 'readiness' '5000'
           check_402 'MCP Live Preflight' '/api/mcp-probe' '{"endpoint":"https://agentresolver.vercel.app/mcp"}' 'mcp-probe' '1000'
