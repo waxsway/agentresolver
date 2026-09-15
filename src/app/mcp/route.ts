@@ -14,6 +14,40 @@ function logToolCall(tool: string, extra: Record<string, unknown> = {}) {
   );
 }
 
+async function logMcpRequest(req: Request) {
+  try {
+    const body = (await req.clone().json()) as {
+      method?: unknown;
+      params?: { name?: unknown } | null;
+    };
+    const method = typeof body?.method === "string" ? body.method : "unknown";
+    const tool =
+      method === "tools/call" && typeof body?.params?.name === "string"
+        ? body.params.name
+        : null;
+
+    console.log(
+      JSON.stringify({
+        event: "mcp_request",
+        method,
+        tool,
+        at: new Date().toISOString(),
+        userAgent: (req.headers.get("user-agent") || "").slice(0, 180)
+      })
+    );
+  } catch {
+    console.log(
+      JSON.stringify({
+        event: "mcp_request",
+        method: "unparsed",
+        tool: null,
+        at: new Date().toISOString(),
+        userAgent: (req.headers.get("user-agent") || "").slice(0, 180)
+      })
+    );
+  }
+}
+
 const handler = createMcpHandler(() => {
   const server = new McpServer(
     { name: "agentresolver", version: "0.1.0" },
@@ -104,6 +138,7 @@ const handler = createMcpHandler(() => {
 });
 
 export async function POST(req: Request) {
+  await logMcpRequest(req);
   return handler.fetch(req);
 }
 
