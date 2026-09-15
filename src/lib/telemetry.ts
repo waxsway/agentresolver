@@ -47,3 +47,17 @@ export function referrerHost(req: Request): string | null {
     return null;
   }
 }
+
+export function logPaidCapabilityAttempt(req: Request, capabilityId: string) {
+  const hasPaymentSignature = Boolean(req.headers.get("payment-signature"));
+  console.log(JSON.stringify({
+    event: "paid_capability_attempt",
+    at: new Date().toISOString(),
+    capabilityId,
+    callerHash: callerHash(req),
+    userAgent: safeUserAgent(req),
+    referrerHost: referrerHost(req),
+    hasPaymentSignature,
+    phase: hasPaymentSignature ? "paid_retry" : "challenge_request"
+  }));
+}
