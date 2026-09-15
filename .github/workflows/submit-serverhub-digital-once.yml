@@ -1,0 +1,27 @@
+name: Submit AgentResolver to ServerHub
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-serverhub-digital-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Submit free ServerHub listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" \
+            -X POST "https://www.serverhub.digital/api/submit" \
+            -H "Content-Type: application/json" \
+            --data '{"github_url":"https://github.com/waxsway/agentresolver","name":"AgentResolver","description":"Free capability resolver for AI agents. Discovers and compares tools, APIs, MCP servers, and x402 machine services through a no-auth remote MCP endpoint.","category":"ai-ml","author_name":"waxsway","author_email":"waxsway@gmail.com"}')
+          echo "HTTP $code"
+          cat /tmp/out
+          test "$code" -ge 200 && test "$code" -lt 300
