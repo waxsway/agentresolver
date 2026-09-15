@@ -220,7 +220,7 @@ export async function inspectHttpResource(input: string): Promise<HttpInspectRep
           location
         },
         dns: {
-          family: resolved.family
+          family: resolved.family === 6 ? 6 : 4
         },
         tls: {
           protocol: typeof socket.getProtocol === "function" ? socket.getProtocol() : null,
