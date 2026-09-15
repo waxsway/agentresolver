@@ -26,7 +26,7 @@ test("HTTP inspection rejects non-HTTPS, credentials, custom ports and local hos
   ];
 
   for (const target of rejected) {
-    assert.throws(() => validateHttpInspectTarget(target), undefined, target);
+    assert.throws(() => validateHttpInspectTarget(target), { name: "Error" }, target);
   }
 });
 
