@@ -1,0 +1,71 @@
+name: Register Batch Verified Resolve 402 Index Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/register-batch-verified-resolve-402index-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Wait for Batch Verified Resolve on canonical production
+        shell: bash
+        env:
+          URL: https://agentresolver.vercel.app/api/batch-verified-resolve
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            status="$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H 'content-type: application/json' \
+              --data '{"items":[{"goal":"find and verify an MCP server for search"}]}' \
+              "$URL" || true)"
+            if [ "$status" = "402" ]; then
+              echo 'Batch Verified Resolve is live with an x402 challenge.'
+              exit 0
+            fi
+            echo "Waiting for Batch Verified Resolve to return 402 (attempt $attempt/24, got $status)..."
+            sleep 10
+          done
+          echo 'Batch Verified Resolve did not become payable in time.'
+          exit 1
+
+      - name: Register Batch Verified Resolve with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl -sS \
+            -o /tmp/batch-verified-resolve-register.json \
+            -w '%{http_code}' \
+            -X POST 'https://402index.io/api/v1/register' \
+            -H 'content-type: application/json' \
+            --data-binary @- <<'JSON'
+          {
+            "url": "https://agentresolver.vercel.app/api/batch-verified-resolve",
+            "name": "AgentResolver Batch Verified Resolve",
+            "description": "Resolve and live-verify up to four capability requests in one machine-paid batch, returning verification evidence for each request.",
+            "protocol": "x402",
+            "http_method": "POST",
+            "probe_body": "{\"items\":[{\"goal\":\"find and verify an MCP server for search\"}]}",
+            "price_usd": 1.00,
+            "payment_asset": "USDC",
+            "payment_network": "Base",
+            "category": "agent-tools/discovery",
+            "provider": "AgentResolver"
+          }
+          JSON
+          )"
+          cat /tmp/batch-verified-resolve-register.json
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "402 Index Batch Verified Resolve registration failed with HTTP $status"
+            exit 1
+          fi
+
+      - name: Registration complete
+        run: echo 'Submitted AgentResolver Batch Verified Resolve to 402 Index without paid placement.'
