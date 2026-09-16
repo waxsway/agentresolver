@@ -2,7 +2,7 @@
   "version": "1.3",
   "origin": "agentresolver.vercel.app",
   "display_name": "AgentResolver",
-  "description": "Free machine-first capability discovery plus low-cost x402 trust, security and live-verification tools for autonomous agents.",
+  "description": "x402 payment-safety and seller-trust verification for autonomous agents before they spend, plus secondary machine utilities.",
   "payout_address": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
   "payments": {
     "x402": {
@@ -26,8 +26,8 @@
   },
   "intents": [
     {
-      "name": "api_trust_preflight",
-      "description": "Preflight one public HTTPS or x402 API before spending money on it. Returns a live 0-100 trust score, grade and weighted security evidence.",
+      "name": "x402_seller_trust_payment_preflight",
+      "description": "Before paying an unfamiliar x402 seller/API, verify live quoted USDC price, payTo recipient, network, asset, resource binding, TLS and reachability.",
       "endpoint": "/api/http-inspect",
       "method": "POST",
       "price": {
