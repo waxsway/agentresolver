@@ -30,6 +30,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
       - name: Verify on-chain collector invariants
         run: node scripts/merge-settlement-history.mjs --self-test
 
