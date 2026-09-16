@@ -113,7 +113,28 @@ async function logMcpRequest(req: Request) {
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
-    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. priced AgentResolver tools are directly payable over x402 inside MCP: an x402-aware client can receive a local payment challenge, apply its own spending policy, and retry the same tools/call with payment. Unpaid tool calls never execute paid capability work. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
+    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. Providers can call `sponsorship_info` to inspect the labeled sponsorship pilot; sponsorship never changes organic ranking. Priced AgentResolver tools are directly payable over x402 inside MCP: an x402-aware client can receive a local payment challenge, apply its own spending policy, and retry the same tools/call with payment. Unpaid tool calls never execute paid capability work. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
+  });
+
+  server.registerTool("sponsorship_info", {
+    title: "Provider sponsorship information",
+    description: "Free read-only information for tool/API/MCP providers about AgentResolver's explicitly labeled sponsorship pilot. Organic ranking remains independent; applying creates no purchase or financial commitment.",
+    inputSchema: z.object({}),
+    annotations: { title: "Provider sponsorship information", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, async () => {
+    const output = {
+      free: true,
+      readOnly: true,
+      sponsoredPlacementsLabeled: true,
+      organicRankingIndependent: true,
+      applicationCreatesCommitment: false,
+      inventory: sponsorshipInventory(CANONICAL),
+      providerPage: `${CANONICAL}/providers`,
+      manifest: `${CANONICAL}/.well-known/sponsorship.json`,
+      apply: "https://github.com/waxsway/agentresolver/issues/new?template=sponsorship.yml"
+    };
+    logToolCall("sponsorship_info", { mode: "provider_discovery", financialCommitment: false });
+    return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
   });
 
   server.registerTool("resolve", {

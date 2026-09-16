@@ -4,6 +4,9 @@ export const metadata = {
   alternates: { canonical: "https://agentresolver.vercel.app/providers" }
 };
 
+const sponsorshipApply =
+  "https://github.com/waxsway/agentresolver/issues/new?template=sponsorship.yml";
+
 export default function ProvidersPage() {
   return (
     <main>
@@ -12,57 +15,62 @@ export default function ProvidersPage() {
       <p className="lead">
         AgentResolver helps autonomous agents find external capabilities when
         their current toolset is missing something. Organic inclusion remains
-        free. The founding provider pilot adds disclosed, relevance-limited
-        placement and demand reporting without changing the integrity of
-        organic results.
+        free. A provider-funded sponsorship pilot is open for explicitly
+        labeled, relevance-limited placements that never change organic rank.
       </p>
 
       <div className="grid">
         <section>
-          <h2>Organic — free</h2>
+          <h2>Organic discovery — free</h2>
           <p>
-            Eligible public providers can appear in normal resolver results
-            based on capability relevance. Payment is not required for organic
-            discovery.
+            Eligible public providers can appear in resolver results based on
+            capability relevance. Sponsorship is never required for organic
+            inclusion.
           </p>
         </section>
         <section>
-          <h2>Founding Provider — $250/mo</h2>
+          <h2>Founding sponsorship pilot</h2>
           <p>
-            A limited pilot for providers that want a claimed profile,
-            disclosed sponsored eligibility when relevant, and a monthly
-            qualified-demand summary. No guaranteed rank or volume.
+            Providers can apply for a labeled sponsored placement alongside
+            matching agent intent. Pricing, duration, placement, and reporting
+            are agreed only after operator approval. Applying creates no
+            purchase or financial commitment.
           </p>
         </section>
         <section>
           <h2>Trust stays intact</h2>
           <p>
-            Sponsored treatment is labeled, must still match the requested
-            capability, and never authorizes an agent to spend money or use a
-            provider automatically.
+            Sponsored treatment is machine-readably labeled, must match the
+            requested capability, and does not alter organic ranking or
+            authorize an agent to spend money.
           </p>
         </section>
       </div>
 
       <section>
-        <h2>Founding pilot terms</h2>
+        <h2>What the pilot can measure</h2>
         <p>
-          Month-to-month. Cancel any time before the next billing period.
-          AgentResolver does not promise traffic, conversions, rankings, or
-          revenue. The pilot is intended to establish measurable demand before
-          expanding provider products.
+          AgentResolver can distinguish qualified intent from directory probes,
+          liveness crawlers, internal smoke traffic, and paid retries. Pilot
+          reporting is designed around eligible and qualified-intent
+          impressions rather than inflated raw request counts.
         </p>
         <p>
-          <a className="button" href="mailto:waxsway@gmail.com?subject=AgentResolver%20Founding%20Provider&body=Provider%20name%3A%0AWebsite%3A%0ACapabilities%3A%0AMCP%20or%20API%20endpoint%3A%0A">
-            Request a founding provider slot
+          <a className="button" href={sponsorshipApply}>
+            Apply for the sponsorship pilot
           </a>
+        </p>
+        <p>
+          Submission is an inquiry only. No placement, billing, ranking,
+          traffic volume, conversion, or revenue is guaranteed.
         </p>
       </section>
 
       <p className="links">
         <a href="/">AgentResolver</a> ·{" "}
-        <a href="/docs">Integration docs</a> ·{" "}
-        <a href="/openapi.json">OpenAPI</a>
+        <a href="/api/sponsorship">Machine-readable sponsorship info</a> ·{" "}
+        <a href="/.well-known/sponsorship.json">Sponsorship manifest</a> ·{" "}
+        <a href="/docs">Integration docs</a>
       </p>
     </main>
   );

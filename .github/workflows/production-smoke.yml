@@ -51,6 +51,11 @@ jobs:
           jq -e '.sponsorship.model == "provider-funded-discovery" and .sponsorship.organicRankingIndependent == true' /tmp/server-card.json >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/sponsorship.json" | grep -F 'pilot_inventory_open' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/sponsorship" | jq -e '.inventory.model == "provider-funded-discovery" and .activation.operatorApprovalRequired == true' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/providers" | grep -F 'Apply for the sponsorship pilot' >/dev/null
+          if curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/providers" | grep -Eq '\$[0-9]+|mailto:'; then
+            echo 'Provider page exposes fixed pricing or a mailto CTA without operator approval.'
+            exit 1
+          fi
 
           resolve_check() {
             local slug="$1" goal="$2" url="$3" expected_id="$4" expected_price="$5"
@@ -107,6 +112,7 @@ jobs:
               -o "/tmp/${slug}-body.txt" \
               -w '%{http_code}' \
               -H 'content-type: application/json' \
+              -H 'x-agentresolver-internal: 1' \
               --data "$body" \
               "$BASE_URL$path")"
 
@@ -187,6 +193,20 @@ jobs:
           MCP_URL: https://agentresolver.vercel.app/mcp
         run: |
           set -euo pipefail
+
+          sponsor_request='{"jsonrpc":"2.0","id":89,"method":"tools/call","params":{"name":"sponsorship_info","arguments":{}}}'
+          sponsor_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -o /tmp/mcp-sponsorship.out \
+            -w '%{http_code}' \
+            -X POST "$MCP_URL" \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
+            --data "$sponsor_request")
+          test "$sponsor_code" -ge 200 && test "$sponsor_code" -lt 300
+          grep -F 'sponsorship_info' /tmp/mcp-sponsorship.out >/dev/null || grep -F 'applicationCreatesCommitment' /tmp/mcp-sponsorship.out >/dev/null
+          grep -F 'applicationCreatesCommitment' /tmp/mcp-sponsorship.out >/dev/null
+          grep -F 'false' /tmp/mcp-sponsorship.out >/dev/null
 
           resolve_request='{"jsonrpc":"2.0","id":90,"method":"tools/call","params":{"name":"resolve","arguments":{"goal":"inspect this HTTPS URL for status latency cache headers and security headers","url":"https://example.com","limit":3}}}'
           resolve_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
