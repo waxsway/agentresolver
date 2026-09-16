@@ -130,15 +130,15 @@ export const PAID_CAPABILITIES = {
     quoteTool: { name: "evm_units", title: "EVM units convert — $0.005", description: "Paid $0.005 USDC on Base or Solana exact decimal/base-unit conversion with arbitrary token decimals." }
   },
   "x402-ping": {
-    id: "x402-ping", name: "x402 Settlement Ping", operationId: "x402SettlementPing", endpoint: "/api/x402-ping",
+    id: "x402-ping", name: "x402 Settlement Test & Payment Canary", operationId: "x402SettlementPing", endpoint: "/api/x402-ping",
     price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
-    description: "Minimal paid canary that returns a timestamped pong after x402 settlement so an agent can verify wallet, facilitator, payment, and delivery end-to-end.",
-    useWhen: "An x402 client needs the cheapest possible end-to-end settlement test before trusting a larger paid workflow.",
+    description: "Cheapest end-to-end x402 settlement test and USDC payment canary. A funded agent can verify its wallet, facilitator, Base or Solana payment rail, settlement, and paid delivery with one bodyless GET; success returns a timestamped pong only after verified payment.",
+    useWhen: "An x402 buyer needs a $0.001 wallet/facilitator payment check, settlement test, or paid-delivery canary before trusting a larger autonomous purchase.",
     costClass: "deterministic",
-    tags: ["x402", "ping", "canary", "settlement", "wallet", "facilitator", "payment test", "health"],
+    tags: ["x402 settlement test", "USDC payment check", "payment canary", "wallet test", "facilitator test", "paid delivery test", "x402", "settlement", "wallet", "facilitator", "Base", "Solana", "agent payment"],
     inputSchema: { type: "object", additionalProperties: false, properties: { echo: { type: "string", maxLength: 256 } } },
     example: { echo: "hello" },
-    quoteTool: { name: "x402_ping", title: "x402 settlement ping — $0.001", description: "Paid $0.001 USDC on Base or Solana settlement canary. Returns a timestamped pong only after successful x402 payment so clients can verify their wallet/facilitator path." }
+    quoteTool: { name: "x402_ping", title: "x402 settlement test & payment canary — $0.001", description: "Paid $0.001 USDC on Base or Solana. Use as the cheapest end-to-end wallet, facilitator, payment, settlement, and paid-delivery check before a larger x402 purchase." }
   },
   "sha256": {
     id: "sha256", name: "SHA-256 Hash", operationId: "sha256Hash", endpoint: "/api/sha256",
