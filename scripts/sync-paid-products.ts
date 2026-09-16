@@ -17,6 +17,52 @@ const HASH_RESULT_SCHEMA = {
   }
 };
 const OUTPUT_SCHEMAS: Record<string, Record<string, unknown>> = {
+  "abi-encode": {
+    type: "object",
+    required: ["types", "encoded", "bytes"],
+    properties: {
+      types: { type: "array", items: { type: "string" } },
+      encoded: { type: "string", pattern: "^0x[0-9a-f]+$" },
+      bytes: { type: "integer", minimum: 0 }
+    }
+  },
+  "abi-decode": {
+    type: "object",
+    required: ["types", "data", "values"],
+    properties: {
+      types: { type: "array", items: { type: "string" } },
+      data: { type: "string", pattern: "^0x[0-9a-fA-F]*$" },
+      values: { type: "array" }
+    }
+  },
+  "eip712-hash": {
+    type: "object",
+    required: ["primaryType", "digest"],
+    properties: {
+      primaryType: { type: "string" },
+      digest: { type: "string", pattern: "^0x[0-9a-f]{64}$" }
+    }
+  },
+  "ens-namehash": {
+    type: "object",
+    required: ["input", "normalized", "namehash", "labels"],
+    properties: {
+      input: { type: "string" },
+      normalized: { type: "string" },
+      namehash: { type: "string", pattern: "^0x[0-9a-f]{64}$" },
+      labels: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["label", "labelhash"],
+          properties: {
+            label: { type: "string" },
+            labelhash: { type: "string", pattern: "^0x[0-9a-f]{64}$" }
+          }
+        }
+      }
+    }
+  },
   "evm-address-checksum": {
     type: "object",
     required: ["input", "checksummed", "lowercase", "eip55"],

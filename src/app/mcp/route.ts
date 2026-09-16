@@ -12,6 +12,7 @@ import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
 import { runHashEncode, type HashEncodeOperation } from "@/lib/hashEncode";
 import { normalizeJson, validateJsonSchema, parseUrl, generateUuidV4, slugify } from "@/lib/deterministicUtilities";
 import { convertEvmUnits, ethereumKeccak256, evmAddressChecksum, soliditySelector } from "@/lib/evmPrecision";
+import { eip712TypedDataHash, ensNamehash, ethereumAbiDecode, ethereumAbiEncode } from "@/lib/evmAdvanced";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
@@ -32,6 +33,10 @@ const paid = (capabilityId: PaidCapabilityId, input: Record<string, unknown>) =>
   };
 };
 
+const abiEncodeProduct = getPaidCapability("abi-encode");
+const abiDecodeProduct = getPaidCapability("abi-decode");
+const eip712HashProduct = getPaidCapability("eip712-hash");
+const ensNamehashProduct = getPaidCapability("ens-namehash");
 const evmAddressChecksumProduct = getPaidCapability("evm-address-checksum");
 const keccak256Product = getPaidCapability("keccak256");
 const soliditySelectorProduct = getPaidCapability("solidity-selector");
@@ -215,6 +220,43 @@ const handler = createMcpHandler(() => {
     console.log(JSON.stringify({ event: "paid_capability_completed", capabilityId, surface: "mcp", at: new Date().toISOString() }));
     return { content: [{ type: "text" as const, text: JSON.stringify(report) }], structuredContent: report };
   };
+
+  server.registerTool("abi_encode", {
+    title: abiEncodeProduct.quoteTool.title, description: abiEncodeProduct.quoteTool.description,
+    inputSchema: z.object({ types: z.array(z.string().min(1).max(512)).min(1).max(32), values: z.array(z.unknown()).max(32) }),
+    annotations: { title: abiEncodeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ types: string[]; values: unknown[] }>("abi-encode", async ({ types, values }) =>
+    simplePaidResult("abi-encode", "abi_encode", ethereumAbiEncode({ types, values }))
+  ));
+
+  server.registerTool("abi_decode", {
+    title: abiDecodeProduct.quoteTool.title, description: abiDecodeProduct.quoteTool.description,
+    inputSchema: z.object({ types: z.array(z.string().min(1).max(512)).min(1).max(32), data: z.string().max(262146) }),
+    annotations: { title: abiDecodeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ types: string[]; data: string }>("abi-decode", async ({ types, data }) =>
+    simplePaidResult("abi-decode", "abi_decode", ethereumAbiDecode({ types, data }))
+  ));
+
+  server.registerTool("eip712_hash", {
+    title: eip712HashProduct.quoteTool.title, description: eip712HashProduct.quoteTool.description,
+    inputSchema: z.object({
+      domain: z.record(z.string(), z.unknown()),
+      types: z.record(z.string(), z.array(z.object({ name: z.string(), type: z.string() }))),
+      primaryType: z.string().min(1).max(128),
+      message: z.record(z.string(), z.unknown())
+    }),
+    annotations: { title: eip712HashProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ domain: Record<string, unknown>; types: Record<string, Array<{ name: string; type: string }>>; primaryType: string; message: Record<string, unknown> }>("eip712-hash", async ({ domain, types, primaryType, message }) =>
+    simplePaidResult("eip712-hash", "eip712_hash", eip712TypedDataHash({ domain, types, primaryType, message }))
+  ));
+
+  server.registerTool("ens_namehash", {
+    title: ensNamehashProduct.quoteTool.title, description: ensNamehashProduct.quoteTool.description,
+    inputSchema: z.object({ name: z.string().min(1).max(255) }),
+    annotations: { title: ensNamehashProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ name: string }>("ens-namehash", async ({ name }) =>
+    simplePaidResult("ens-namehash", "ens_namehash", ensNamehash(name))
+  ));
 
   server.registerTool("evm_address_checksum", {
     title: evmAddressChecksumProduct.quoteTool.title, description: evmAddressChecksumProduct.quoteTool.description,

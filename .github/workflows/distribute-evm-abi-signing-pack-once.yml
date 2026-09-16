@@ -1,0 +1,117 @@
+name: Distribute EVM ABI Signing Pack Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/distribute-evm-abi-signing-pack-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for ABI signing pack on canonical production
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://agentresolver.vercel.app'
+          for attempt in $(seq 1 36); do
+            if curl -fsS "$base/.well-known/x402" > /tmp/x402.json; then
+              if jq -e '
+                [.resources[]?.resource] |
+                any(. == "POST /api/abi-encode") and
+                any(. == "POST /api/abi-decode") and
+                any(. == "POST /api/eip712-hash") and
+                any(. == "POST /api/ens-namehash")
+              ' /tmp/x402.json >/dev/null; then
+                code=$(curl -sS -o /tmp/abi.json -w '%{http_code}' "$base/api/abi-encode" || true)
+                if [ "$code" = "402" ] && jq -e '.accepts[0].amount == "20000"' /tmp/abi.json >/dev/null; then
+                  echo 'ABI/signing pack is live.'
+                  exit 0
+                fi
+              fi
+            fi
+            sleep 10
+          done
+          echo 'ABI/signing pack did not reach canonical production.' >&2
+          exit 1
+
+      - name: Refresh Agent402 origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/agent402.json -w '%{http_code}'             -X POST 'https://agent402.tools/api/index/register'             -H 'content-type: application/json'             -d '{"origin":"https://agentresolver.vercel.app"}')
+          cat /tmp/agent402.json
+          echo
+          case "$code" in 200|201|202|204|409) ;; *) exit 1 ;; esac
+
+      - name: Submit ABI signing tools to Market402
+        shell: bash
+        run: |
+          set -euo pipefail
+          submit() {
+            local path="$1" price="$2"
+            local url="https://agentresolver.vercel.app/api/$path"
+            code=$(curl -sS -o /tmp/market402.json -w '%{http_code}'               -X POST 'https://market402.com/submit'               -H 'content-type: application/json'               -d "$(jq -n --arg resource "$url" --argjson price "$price" '{resource:$resource,declared_price_usd:$price}')")
+            cat /tmp/market402.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          }
+          submit abi-encode 0.02
+          submit abi-decode 0.02
+          submit eip712-hash 0.005
+          submit ens-namehash 0.01
+
+      - name: Register ABI signing tools with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          register() {
+            local path="$1" name="$2" description="$3" price="$4" probe="$5"
+            payload=$(jq -n               --arg url "https://agentresolver.vercel.app/api/$path"               --arg name "$name" --arg description "$description" --arg probe "$probe" --argjson price "$price"               '{url:$url,name:$name,description:$description,protocol:"x402",http_method:"POST",probe_body:$probe,price_usd:$price,payment_asset:"USDC",payment_network:"Base",category:"developer-tools/evm",provider:"AgentResolver"}')
+            code=$(curl -sS -o /tmp/402index.json -w '%{http_code}'               -X POST 'https://402index.io/api/v1/register'               -H 'content-type: application/json'               -d "$payload")
+            cat /tmp/402index.json
+            echo
+            case "$code" in 200|201) ;; *) exit 1 ;; esac
+          }
+          register abi-encode 'AgentResolver Ethereum ABI Encode' 'Exact Ethereum ABI encoding from typed values to calldata-ready hex.' 0.02 '{"types":["uint256","bool"],"values":["42",true]}'
+          register abi-decode 'AgentResolver Ethereum ABI Decode' 'Exact Ethereum ABI decoding from hex into JSON-safe typed values.' 0.02 '{"types":["uint256","bool"],"data":"0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001"}'
+          register eip712-hash 'AgentResolver EIP-712 Hash' 'Exact EIP-712 typed-data digest for signing and verification.' 0.005 '{"domain":{"name":"Test","version":"1","chainId":1},"types":{"Test":[{"name":"value","type":"uint256"}]},"primaryType":"Test","message":{"value":"1"}}'
+          register ens-namehash 'AgentResolver ENS Namehash' 'ENSIP-15 normalize and compute exact ENS namehash and label hashes.' 0.01 '{"name":"wevm.eth"}'
+
+      - name: Register ABI signing tools with x402dash
+        shell: bash
+        run: |
+          set -euo pipefail
+          register() {
+            local path="$1" name="$2" description="$3" tags="$4"
+            payload=$(jq -n --arg url "https://agentresolver.vercel.app/api/$path" --arg name "$name" --arg description "$description" --arg tags "$tags"               '{url:$url,name:$name,description:$description,category:"Agents/Developer Tools",tags:($tags|split(","))}')
+            code=$(curl -sS -o /tmp/x402dash.json -w '%{http_code}'               -X POST 'https://api.x402dash.com/v1/register'               -H 'content-type: application/json'               -d "$payload")
+            cat /tmp/x402dash.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          }
+          register abi-encode 'AgentResolver Ethereum ABI Encode' 'Exact calldata-ready ABI encoding.' 'evm,ethereum,abi,encode,calldata'
+          register abi-decode 'AgentResolver Ethereum ABI Decode' 'Exact ABI decoding into JSON-safe values.' 'evm,ethereum,abi,decode,calldata'
+          register eip712-hash 'AgentResolver EIP-712 Hash' 'Exact typed-data signing digest.' 'evm,ethereum,eip712,signing,hash'
+          register ens-namehash 'AgentResolver ENS Namehash' 'ENSIP-15 normalized namehash and label hashes.' 'evm,ethereum,ens,namehash'
+
+      - name: Refresh x402scan public origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://x402scan.com/api/trpc/public.resources.registerFromOrigin?batch=1'
+          payload='{"0":{"json":{"origin":"https://agentresolver.vercel.app"}}}'
+          code=$(curl -L -sS -o /tmp/x402scan.json -w '%{http_code}'             -X POST "$endpoint"             -H 'content-type: application/json'             -H 'x-trpc-source: agentresolver-abi-signing'             --data "$payload")
+          cat /tmp/x402scan.json
+          echo
+          test "$code" -ge 200 && test "$code" -lt 300
+          jq -e '(.[0].result.data.json.success == true) or (.[0].result.data.success == true)' /tmp/x402scan.json >/dev/null
+
+      - name: Distribution complete
+        run: echo 'ABI EIP-712 and ENS pack distributed through free x402 discovery channels.'

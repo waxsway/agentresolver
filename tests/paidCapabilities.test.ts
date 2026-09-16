@@ -55,6 +55,10 @@ test("deterministic utility discovery publishes response schemas", () => {
   const x402 = readJson("public/.well-known/x402");
   const openapi = readJson("public/openapi.json");
   const ids = [
+    "abi-encode",
+    "abi-decode",
+    "eip712-hash",
+    "ens-namehash",
     "evm-address-checksum",
     "keccak256",
     "solidity-selector",

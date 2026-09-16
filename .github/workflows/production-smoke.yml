@@ -128,6 +128,10 @@ jobs:
             ' "/tmp/${slug}-get.json" >/dev/null
           }
 
+          check_402 'ABI Encode' '/api/abi-encode' '{"types":["uint256","bool"],"values":["42",true]}' 'abi-encode' '20000'
+          check_402 'ABI Decode' '/api/abi-decode' '{"types":["uint256","bool"],"data":"0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001"}' 'abi-decode' '20000'
+          check_402 'EIP-712 Hash' '/api/eip712-hash' '{"domain":{"name":"Test","version":"1","chainId":1},"types":{"Test":[{"name":"value","type":"uint256"}]},"primaryType":"Test","message":{"value":"1"}}' 'eip712-hash' '5000'
+          check_402 'ENS Namehash' '/api/ens-namehash' '{"name":"wevm.eth"}' 'ens-namehash' '10000'
           check_402 'EVM Address Checksum' '/api/evm-address-checksum' '{"address":"0x52908400098527886e0f7030069857d2e4169ee7"}' 'evm-address-checksum' '3000'
           check_402 'Keccak-256' '/api/keccak256' '{"input":"","encoding":"utf8"}' 'keccak256' '4000'
           check_402 'Solidity Selector' '/api/solidity-selector' '{"signature":"transfer(address,uint256)"}' 'solidity-selector' '10000'
@@ -301,5 +305,9 @@ jobs:
           check_unpaid_mcp_tool 106 'keccak256' '4000' '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470' '{"input":"","encoding":"utf8"}'
           check_unpaid_mcp_tool 107 'solidity_selector' '10000' '0xa9059cbb' '{"signature":"transfer(address,uint256)"}'
           check_unpaid_mcp_tool 108 'evm_units' '5000' '1500000000000000000' '{"mode":"parse","value":"1.5","decimals":18}'
+          check_unpaid_mcp_tool 109 'abi_encode' '20000' '"encoded"' '{"types":["uint256","bool"],"values":["42",true]}'
+          check_unpaid_mcp_tool 110 'abi_decode' '20000' '"values"' '{"types":["uint256","bool"],"data":"0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001"}'
+          check_unpaid_mcp_tool 111 'eip712_hash' '5000' '"digest"' '{"domain":{"name":"Test","version":"1","chainId":1},"types":{"Test":[{"name":"value","type":"uint256"}]},"primaryType":"Test","message":{"value":"1"}}'
+          check_unpaid_mcp_tool 112 'ens_namehash' '10000' '0xf246651c1b9a6b141d19c2604e9a58f567973833990f830d882534a747801359' '{"name":"wevm.eth"}'
 
           echo 'All directly payable MCP tools return local challenges without signing, spending, or paid execution egress.'
