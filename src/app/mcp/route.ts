@@ -15,6 +15,13 @@ import { convertEvmUnits, ethereumKeccak256, evmAddressChecksum, soliditySelecto
 import { eip712TypedDataHash, ensNamehash, ethereumAbiDecode, ethereumAbiEncode } from "@/lib/evmAdvanced";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
+import { classifyTraffic } from "@/lib/trafficClassification";
+import {
+  getActiveSponsor,
+  logSponsorImpression,
+  sponsorPublicPayload,
+  sponsorshipInventory
+} from "@/lib/sponsorship";
 
 const CANONICAL = "https://agentresolver.vercel.app";
 const paid = (capabilityId: PaidCapabilityId, input: Record<string, unknown>) => {
@@ -80,12 +87,23 @@ async function logMcpRequest(req: Request) {
       ? body.params.arguments.goal.trim()
       : "";
     const hasMcpPayment = Boolean(body?.params?._meta?.["x402/payment"]);
+    const traffic = classifyTraffic(req, {
+      path: "/mcp",
+      mcpMethod: method,
+      tool,
+      hasUserIntent: Boolean(goal) || (method === "tools/call" && Boolean(tool)),
+      hasPayment: hasMcpPayment
+    });
     console.log(JSON.stringify({
       ...base,
       method,
       tool,
       hasMcpPayment,
       phase: tool ? (hasMcpPayment ? "paid_retry" : "tool_call") : null,
+      trafficClass: traffic.trafficClass,
+      external: traffic.external,
+      sponsorEligible: traffic.sponsorEligible,
+      trafficClassReason: traffic.reason,
       ...(goal ? { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal) } : {})
     }));
   } catch {
@@ -104,6 +122,8 @@ const handler = createMcpHandler(() => {
     annotations: { title: "Resolve a missing capability", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   }, async ({ goal, url, limit }) => {
     const resolution = await resolveGoal(goal, url, limit || 3);
+    const intentTags = classifyIntent(goal);
+    const sponsor = getActiveSponsor(intentTags);
     const owned = resolution.owned.map((match) => ({ ...match, execute: match.status === "live" && match.endpoint ? `${CANONICAL}${match.endpoint}` : null, spendingAuthorizationRequired: match.priceUsd > 0 }));
     const candidateCount = resolution.mcp.length + resolution.marketplace.length;
     const singleMcp = resolution.mcp.length === 1 ? resolution.mcp[0] : null;
@@ -207,9 +227,10 @@ const handler = createMcpHandler(() => {
       }
       : resolution.mcp.length > 0 || candidateCount > 1 ? verifiedResolveMcpRec : null);
 
-    logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal), mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null, paidRecommendationSurface: rec?.surface || null });
+    logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags, mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null, paidRecommendationSurface: rec?.surface || null });
+    if (sponsor) logSponsorImpression({ sponsor, placement: "mcp-resolve", intentTags, goal });
     if (rec) console.log(JSON.stringify({ event: "paid_recommendation_shown", surface: "mcp", executionSurface: rec.surface, at: new Date().toISOString(), capabilityId: rec.capabilityId, priceUsd: rec.priceUsd, goalHash: shortHash(goal) }));
-    const output = { goal, url: url || null, free: true, readOnly: true, spendingAuthorized: false, owned, mcp: resolution.mcp, marketplace: resolution.marketplace, recommendedPaidAction: rec,
+    const output = { goal, url: url || null, free: true, readOnly: true, spendingAuthorized: false, sponsored: sponsor ? sponsorPublicPayload(sponsor) : null, sponsorship: sponsorshipInventory(CANONICAL), owned, mcp: resolution.mcp, marketplace: resolution.marketplace, recommendedPaidAction: rec,
       nextAction: rec ? (rec.surface === "mcp" ? `Optional direct MCP execution costs ${formatUsd(rec.priceUsd)} USDC on Base. Call ${rec.tool} with the prefilled input only if your existing spending policy independently authorizes it.` : `Optional live evidence costs ${formatUsd(rec.priceUsd)} USDC on Base. The executable request is prefilled. Execute only if your existing spending policy independently authorizes it.`) : "Choose the best relevant result; refine the goal and resolve again if needed.",
       rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, paidManifest: `${CANONICAL}/.well-known/x402` } };
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
