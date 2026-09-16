@@ -22,7 +22,7 @@ jobs:
           endpoint='https://x402scan.com/api/trpc/public.resources.registerFromOrigin?batch=1'
           payload='{"0":{"json":{"origin":"https://agentresolver.vercel.app"}}}'
 
-          code=$(curl -sS -o /tmp/x402scan.json -w '%{http_code}' \
+          code=$(curl -L -sS -o /tmp/x402scan.json -w '%{http_code}' \
             -X POST "$endpoint" \
             -H 'content-type: application/json' \
             -H 'x-trpc-source: agentresolver-public-registration' \
@@ -43,3 +43,23 @@ jobs:
 
           echo 'x402scan returned HTTP success but not a successful registration payload.' >&2
           exit 1
+
+      - name: Audit Agent402 buyer routing for exact utilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            'sha256 hash'
+            'base64 encode'
+            'normalize json'
+            'validate json schema'
+            'x402 settlement ping'
+          )
+          for q in "${queries[@]}"; do
+            echo "=== Agent402 find: $q ==="
+            encoded=$(jq -rn --arg v "$q" '$v|@uri')
+            code=$(curl -sS -o /tmp/find.json -w '%{http_code}' "https://agent402.tools/api/find?q=$encoded&include=external")
+            cat /tmp/find.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          done
