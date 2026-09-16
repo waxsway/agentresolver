@@ -1,0 +1,30 @@
+name: Register AgentResolver with AgentCash
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/agentcash-register.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Validate AgentCash discovery
+        run: |
+          set -euo pipefail
+          npx -y @agentcash/discovery@1.7.5 discover https://agentresolver.vercel.app
+          npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app
+
+      - name: Register origin with AgentCash
+        env:
+          HOME: ${{ runner.temp }}/agentcash-home
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME"
+          npx -y agentcash@0.17.1 register https://agentresolver.vercel.app --yes --format json | tee /tmp/agentcash-register.json
