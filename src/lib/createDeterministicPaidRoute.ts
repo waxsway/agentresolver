@@ -132,7 +132,7 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
   return {
     POST: async (req: NextRequest) => {
       const requestId = randomUUID();
-      const traffic = classifyTraffic(req, { path: product.endpoint, hasUserIntent: true });
+      const traffic = classifyTraffic(req, { path: product.endpoint });
       logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
       try {
         const response = stampInfrastructureHeaders(await getPaidHandler()(req), capabilityId, requestId);

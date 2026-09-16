@@ -377,7 +377,7 @@ export const PAID_CAPABILITIES = {
     useWhen: "A concrete public MCP endpoint is known and current reachability, compatibility, latency or tool inventory matters before depending on it.",
     costClass: "bounded-network",
     tags: ["mcp", "preflight", "tools", "latency", "compatibility", "x402"],
-    inputSchema: { type: "object", required: ["endpoint"], additionalProperties: false, properties: { endpoint: { type: "string", format: "uri", maxLength: 500 } } },
+    inputSchema: { type: "object", required: ["endpoint"], additionalProperties: false, properties: { endpoint: { type: "string", pattern: "^https://", maxLength: 500 } } },
     example: { endpoint: "https://example.com/mcp" },
     quoteTool: {
       name: "mcp_preflight",
@@ -397,7 +397,7 @@ export const PAID_CAPABILITIES = {
     useWhen: "An agent or operator needs current evidence that a public site exposes usable agent discovery and integration metadata.",
     costClass: "bounded-network",
     tags: ["agent-readiness", "llms.txt", "openapi", "mcp", "robots", "sitemap", "x402"],
-    inputSchema: { type: "object", required: ["url"], additionalProperties: false, properties: { url: { type: "string", format: "uri", maxLength: 500 } } },
+    inputSchema: { type: "object", required: ["url"], additionalProperties: false, properties: { url: { type: "string", pattern: "^https://", maxLength: 500 } } },
     example: { url: "https://example.com" },
     quoteTool: {
       name: "agent_readiness",
@@ -417,7 +417,7 @@ export const PAID_CAPABILITIES = {
     useWhen: "An agent has a public OpenAPI spec but needs to choose the right operation without loading the entire API surface into model context.",
     costClass: "bounded-network",
     tags: ["openapi", "api operation", "operation selection", "operationid", "endpoint selection", "request schema", "agent tool", "x402"],
-    inputSchema: { type: "object", required: ["specUrl", "goal"], additionalProperties: false, properties: { specUrl: { type: "string", format: "uri", maxLength: 500 }, goal: { type: "string", minLength: 1, maxLength: 600 } } },
+    inputSchema: { type: "object", required: ["specUrl", "goal"], additionalProperties: false, properties: { specUrl: { type: "string", pattern: "^https://", maxLength: 500 }, goal: { type: "string", minLength: 1, maxLength: 600 } } },
     example: { specUrl: "https://example.com/openapi.json", goal: "find a customer order by id" },
     quoteTool: {
       name: "openapi_select",
@@ -437,7 +437,7 @@ export const PAID_CAPABILITIES = {
     useWhen: "Discovery returns external candidates but stale, dead, MCP-incompatible, or non-payment-ready endpoints would make a blind selection costly.",
     costClass: "bounded-network",
     tags: ["capability", "discovery", "mcp", "http", "x402", "verification", "selection"],
-    inputSchema: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", format: "uri", maxLength: 500 } } },
+    inputSchema: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", pattern: "^https://", maxLength: 500 } } },
     example: { goal: "Find and verify an MCP server for web search" },
     quoteTool: {
       name: "verified_resolve",
@@ -457,7 +457,7 @@ export const PAID_CAPABILITIES = {
     useWhen: "An agent has multiple missing capability decisions and wants one bounded purchase with live external-candidate evidence.",
     costClass: "bounded-network",
     tags: ["batch", "capability", "discovery", "mcp", "verification", "x402"],
-    inputSchema: { type: "object", required: ["items"], additionalProperties: false, properties: { items: { type: "array", minItems: 2, maxItems: 4, items: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", format: "uri", maxLength: 500 } } } } } },
+    inputSchema: { type: "object", required: ["items"], additionalProperties: false, properties: { items: { type: "array", minItems: 2, maxItems: 4, items: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", pattern: "^https://", maxLength: 500 } } } } } },
     example: { items: [{ goal: "Find an MCP server for search" }, { goal: "Find an MCP server for browser automation" }] },
     quoteTool: {
       name: "batch_verified_resolve",
