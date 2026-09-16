@@ -41,6 +41,19 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     buyerMustApplyOwnBudgetAndAuthorizationPolicy: true,
     privateNetworkTargetsBlocked: true
   },
+  probeSafety: {
+    httpsOnly: true,
+    credentialsInTargetUrlBlocked: true,
+    customPortsBlocked: true,
+    privateAndReservedIpRangesBlocked: true,
+    dnsResolvedBeforeConnect: true,
+    anyPrivateDnsAnswerRejectsTarget: true,
+    redirectsFollowed: false,
+    defaultTimeoutMs: 4500,
+    postProbeRequiresExplicitOptIn: true,
+    maxPostBodyBytes: 65536,
+    responseBodyConsumed: false
+  },
   evidence: {
     health: "https://agentresolver.vercel.app/api/health",
     openapi: "https://agentresolver.vercel.app/openapi.json",
