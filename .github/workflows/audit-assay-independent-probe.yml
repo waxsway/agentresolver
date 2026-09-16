@@ -1,0 +1,108 @@
+name: Audit Assay Independent Probe Lane
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-assay-independent-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Fetch Assay public machine documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://assay.nominal-labs.com'
+          for path in \
+            '/' \
+            '/SKILL.md' \
+            '/.well-known/agent-card.json' \
+            '/openapi.json' \
+            '/api/openapi.json' \
+            '/robots.txt' \
+            '/sitemap.xml' \
+            '/leaderboard' \
+            '/leaderboard.json' \
+            '/status' \
+            '/status.json'
+          do
+            safe="$(printf '%s' "$path" | tr '/?' '__')"
+            code="$(curl -sS --max-time 20 -L -D "/tmp/\${safe}.headers" -o "/tmp/\${safe}.body" -w '%{http_code}' "$base$path" || true)"
+            ctype="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {gsub("\r",""); print substr($0,index($0,":")+2); exit}' "/tmp/\${safe}.headers" 2>/dev/null || true)"
+            echo "=== $path ==="
+            echo "HTTP=$code CONTENT_TYPE=$ctype"
+            head -c 12000 "/tmp/\${safe}.body" 2>/dev/null || true
+            echo
+            echo
+          done
+
+      - name: Query free Assay tier for AgentResolver surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >/tmp/assay-tier-urls.txt
+          from urllib.parse import quote
+          base = "https://assay.nominal-labs.com/tier/"
+          services = [
+              "https://agentresolver.vercel.app",
+              "https://agentresolver.vercel.app/api/x402-ping",
+              "https://agentresolver.vercel.app/api/x402-payment-preflight",
+          ]
+          for service in services:
+              print(service + "\t" + base + quote(service, safe=""))
+          PY
+
+          while IFS=$'\t' read -r service url; do
+            body="$(mktemp)"
+            code="$(curl -sS --max-time 20 -L -o "$body" -w '%{http_code}' "$url" || true)"
+            echo "=== TIER: $service ==="
+            echo "HTTP=$code URL=$url"
+            cat "$body" 2>/dev/null || true
+            echo
+          done </tmp/assay-tier-urls.txt
+
+      - name: Inspect public docs for enrollment and monitoring routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --max-time 20 -L 'https://assay.nominal-labs.com/' -o /tmp/home.html
+          curl -sS --max-time 20 -L 'https://assay.nominal-labs.com/SKILL.md' -o /tmp/skill.txt || true
+
+          echo '=== HOMEPAGE LINKS ==='
+          grep -Eo 'href="[^"]+"' /tmp/home.html | sed 's/^href="//; s/"$//' | sort -u | head -200 || true
+          echo
+          echo '=== HOMEPAGE PROBE/ENROLLMENT TERMS ==='
+          grep -Eio '.{0,160}(submit|register|enroll|monitor|probe|catalog|operator|continuous|request|service).{0,240}' /tmp/home.html | head -120 || true
+          echo
+          echo '=== SKILL PROBE/ENROLLMENT TERMS ==='
+          grep -Eio '.{0,160}(submit|register|enroll|monitor|probe|catalog|operator|continuous|request|service).{0,320}' /tmp/skill.txt | head -160 || true
+
+      - name: Read-only OPTIONS survey for likely public routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://assay.nominal-labs.com'
+          for path in \
+            '/tier' \
+            '/score' \
+            '/leaderboard' \
+            '/api' \
+            '/api/services' \
+            '/services' \
+            '/submit' \
+            '/register' \
+            '/monitor' \
+            '/probe' \
+            '/catalog'
+          do
+            headers="$(mktemp)"
+            code="$(curl -sS --max-time 15 -X OPTIONS -D "$headers" -o /dev/null -w '%{http_code}' "$base$path" || true)"
+            allow="$(awk 'BEGIN{IGNORECASE=1} /^allow:/ {gsub("\r",""); print substr($0,index($0,":")+2); exit}' "$headers" || true)"
+            echo "$path HTTP=$code ALLOW=$allow"
+          done
