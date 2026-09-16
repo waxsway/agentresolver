@@ -1,0 +1,40 @@
+name: Register Agent402 Index
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-agent402.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify live x402 challenge
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/challenge.json -w '%{http_code}' \
+            -X POST 'https://agentresolver.vercel.app/api/x402-ping' \
+            -H 'content-type: application/json' \
+            -H 'x-agentresolver-internal: agent402-registration' \
+            --data '{"echo":"agent402-registration"}')
+          test "$code" = "402"
+          grep -q 'accepts' /tmp/challenge.json
+
+      - name: Register origin with Agent402 free index
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/register.json -w '%{http_code}' \
+            -X POST 'https://agent402.tools/api/index/register' \
+            -H 'content-type: application/json' \
+            --data '{"url":"https://agentresolver.vercel.app"}')
+          cat /tmp/register.json
+          case "$code" in
+            200|201|202|204|409) ;;
+            *) echo "Unexpected registration status: $code" >&2; exit 1 ;;
+          esac
