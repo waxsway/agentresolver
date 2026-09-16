@@ -313,7 +313,7 @@ openapi.info = {
     url: "https://github.com/waxsway/agentresolver"
   },
   termsOfService: "https://agentresolver.vercel.app/legal",
-  "x-guidance": "For x402 verify-before-pay, use POST /api/x402-payment-preflight. It costs $0.001 USDC on Base or Solana and returns structured endpoint/payment evidence plus stable fingerprints for the observed payment identity and terms. Those fingerprints support change detection; they do not establish legal wallet ownership or provider legitimacy. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
+  "x-guidance": "For x402 payment preflight, endpoint safety, payTo verification, USDC payment checks, or API trust/security preflight, use POST /api/x402-payment-preflight. It costs $0.001 USDC on Base or Solana and returns structured endpoint/payment evidence plus stable fingerprints for the observed payment identity and terms. Response headers link to exact execution evidence and independently verified settlement history. Those signals do not establish legal wallet ownership or provider legitimacy. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
