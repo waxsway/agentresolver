@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Extract structured PayAPI listing contract
+      - name: Extract PayAPI submit-listing payload contract
         shell: bash
         run: |
           set -euo pipefail
@@ -23,38 +23,15 @@ jobs:
           test -n "$js"
           curl -fsS --max-time 30 "https://payapi.market$js" -o /tmp/payapi.js
           python3 - <<'PY'
-          import re, json
           from pathlib import Path
           s=Path('/tmp/payapi.js').read_text(errors='ignore')
-          q=chr(96)
-
-          pat=r'\.from\('+re.escape(q)+r'([^'+q+r']+)'+re.escape(q)+r'\)\.(select|insert|update|upsert|delete)'
-          ops=[{"table":m.group(1),"op":m.group(2),"pos":m.start()} for m in re.finditer(pat,s)]
-          print("TABLE_OPS="+json.dumps(ops))
-
-          apis=sorted(set(re.findall(r'/api/[A-Za-z0-9_./?=&:-]+',s)))
-          print("API_ENDPOINTS="+json.dumps(apis))
-
-          for table in ["providers","api_listings"]:
-              print(f"=== TABLE {table} CONTEXTS ===")
-              needle=".from("+q+table+q+")"
-              start=0; count=0
-              while count<10:
+          for needle in ['/api/submit-listing','/api/get-provider','submit-listing','get-provider']:
+              print(f'=== {needle} ===')
+              start=0; hits=0
+              while hits<10:
                   i=s.find(needle,start)
                   if i<0: break
-                  ctx=s[max(0,i-700):min(len(s),i+2400)]
-                  if any(k in ctx for k in [".insert(", ".upsert(", ".update("]):
-                      print(ctx); print("\n---"); count+=1
-                  start=i+len(needle)
-
-          anchors=["Your details","Your name","Your email","USDC payout wallet","payout wallet","Review and submit","Submit for verification","List your API"]
-          for a in anchors:
-              print(f"=== ANCHOR {a} ===")
-              start=0; hits=0
-              while hits<4:
-                  i=s.find(a,start)
-                  if i<0: break
-                  print(s[max(0,i-3500):min(len(s),i+9000)])
-                  print("\n---")
-                  start=i+len(a); hits+=1
+                  print(s[max(0,i-7000):min(len(s),i+12000)])
+                  print('\n---')
+                  start=i+len(needle); hits+=1
           PY
