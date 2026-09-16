@@ -30,16 +30,19 @@ test("trust contract declares the canonical non-custodial payment boundary", () 
   );
 });
 
-test("public manifests point buyers at the canonical preflight", () => {
+test("public manifests keep canonical preflight trust while true402 bootstraps through the GET canary", () => {
   const service = JSON.parse(readFileSync("public/.well-known/x402-service.json", "utf8"));
   const agent = JSON.parse(readFileSync("public/.well-known/agent.json", "utf8"));
 
-  assert.equal(service.endpoint, "https://agentresolver.vercel.app/api/x402-payment-preflight");
+  assert.equal(service.endpoint, "https://agentresolver.vercel.app/api/x402-ping");
+  assert.equal(service.name, "agentresolver-settlement-ping");
+  assert.equal(service.pricing.base, "0.001");
   assert.equal(service.x402Version, 2);
   assert.equal(service.trust, "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json");
 
   assert.equal(agent.non_custodial, true);
   assert.equal(agent.intents[0].endpoint, "/api/x402-payment-preflight");
+  assert.equal(AGENTRESOLVER_TRUST_CONTRACT.canonicalPaidRoute.url, "https://agentresolver.vercel.app/api/x402-payment-preflight");
   assert.equal(agent.trust_url, "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json");
 });
 
