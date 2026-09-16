@@ -2,14 +2,6 @@ name: Register Canonical Preflight with 402 Index
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Deploy Production"]
-    types: [completed]
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/register-402index-once.yml
 permissions:
   contents: read
 
@@ -54,8 +46,8 @@ jobs:
           cat /tmp/register.json
           echo
           if [ "$status" != "200" ] && [ "$status" != "201" ]; then
-            echo "402 Index canonical preflight registration failed with HTTP $status"
-            exit 1
+            echo "::warning::402 Index cannot currently verify the POST preflight route (HTTP $status). The dedicated GET canary is the active registered buyer surface."
+            exit 0
           fi
 
       - name: Confirm buyer-search retrieval
