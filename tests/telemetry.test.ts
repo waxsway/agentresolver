@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   callerHash,
   classifyIntent,
+  logX402Settlement,
   referrerHost,
   safeUserAgent,
   shortHash,
@@ -55,4 +56,47 @@ test("x402 settlement parsing requires an explicit success receipt and preserves
   });
   assert.equal(parseX402SettlementHeader(null), null);
   assert.equal(parseX402SettlementHeader("not-base64-json"), null);
+});
+
+test("successful settlement telemetry exposes the public transaction reference but not raw payer identity", () => {
+  const transaction = `0x${"ab".repeat(32)}`;
+  const payer = "0x1111111111111111111111111111111111111111";
+  const receipt = Buffer.from(
+    JSON.stringify({
+      success: true,
+      transaction,
+      network: "eip155:8453",
+      payer,
+      amount: "1000"
+    }),
+    "utf8"
+  ).toString("base64");
+
+  const response = new Response("{}", {
+    status: 200,
+    headers: {
+      "payment-response": receipt,
+      "x-agentresolver-execution-id": "11111111-1111-4111-8111-111111111111",
+      "x-agentresolver-response-sha256": "cd".repeat(32),
+      "x-agentresolver-deployment": "ef".repeat(20)
+    }
+  });
+
+  const originalLog = console.log;
+  let logged = "";
+  console.log = (...args: unknown[]) => {
+    logged += args.map(String).join(" ");
+  };
+  try {
+    logX402Settlement(response, "x402-ping", "request-1");
+  } finally {
+    console.log = originalLog;
+  }
+
+  const event = JSON.parse(logged);
+  assert.equal(event.event, "paid_capability_settled");
+  assert.equal(event.transactionReference, transaction);
+  assert.equal(event.transactionHash, shortHash(transaction));
+  assert.equal(event.payerHash, shortHash(payer));
+  assert.equal(logged.includes(payer), false);
 });
