@@ -112,6 +112,7 @@ test("overlapping log windows are idempotently deduplicated", () => {
 
   assert.equal(second.settlementCount, 1);
   assert.equal(second.uniqueTransactionFingerprintCount, 1);
+  assert.equal(second.lastUpdatedAt, first.lastUpdatedAt);
   assert.deepEqual(second.byCapability, { "x402-payment-preflight": 1 });
   assert.deepEqual(second.byNetwork, { "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": 1 });
 });
