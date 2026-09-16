@@ -29,8 +29,8 @@ export async function resolveGoal(
   return {
     owned: resolveCapabilities(
       `${goal}${url ? ` ${url}` : ""}`,
-      safeLimit
-    ),
+      safeLimit + 1
+    ).filter((match) => match.id !== "resolve").slice(0, safeLimit),
     mcp,
     marketplace
   };
