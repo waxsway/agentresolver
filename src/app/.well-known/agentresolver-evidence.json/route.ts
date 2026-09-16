@@ -57,14 +57,20 @@ export function GET() {
         environment: process.env.VERCEL_ENV || null
       },
       historicalReputation: {
-        aggregatePublished: false,
-        reason:
-          "AgentResolver does not publish a synthetic trust score or infer reputation from crawls, 402 challenges, registrations, or unverified traffic. Per-call delivery and settlement evidence is the current source of truth."
+        aggregatePublished: true,
+        interpretation: "Versioned first-party x402 settlement evidence, not an independent reputation score.",
+        scope: "Only paid_capability_settled runtime events are eligible. Crawls, registrations, 402 challenges, unsigned requests, and traffic volume are excluded.",
+        settlementHistoryUrl:
+          "https://raw.githubusercontent.com/waxsway/agentresolver/evidence-history/evidence/settlements.json",
+        versionHistoryUrl:
+          "https://github.com/waxsway/agentresolver/commits/evidence-history/evidence/settlements.json",
+        syntheticTrustScorePublished: false
       },
       limitations: [
         "Execution evidence proves what this AgentResolver deployment returned for a successful paid call; it does not prove a third-party provider is legitimate.",
         "A deployment commit link improves inspectability but is not a substitute for an independent security review.",
-        "Settlement evidence should be checked against the relevant network rather than accepted solely because AgentResolver returned it."
+        "Settlement evidence should be checked against the relevant network rather than accepted solely because AgentResolver returned it.",
+        "The public settlement history is derived from first-party runtime telemetry and versioned in Git; it is not an independent or on-chain reputation registry."
       ]
     },
     {
