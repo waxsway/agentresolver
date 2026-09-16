@@ -1,0 +1,92 @@
+name: Amplify First Verified Settlement
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: first-settlement-amplifier
+  cancel-in-progress: false
+
+jobs:
+  amplify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Trigger settlement evidence publisher
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run publish-settlement-history.yml --repo "$REPO" --ref main
+
+      - name: Wait for independently verified successful settlement
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json'
+          for i in {1..30}; do
+            if curl -fsSL --max-time 20 "$url" -o /tmp/reputation.json; then
+              verified="$(jq -r '.independentlyVerifiedSettlementCount // 0' /tmp/reputation.json)"
+              delivered="$(jq -r '.successfulVerifiedExecutionCount // 0' /tmp/reputation.json)"
+              echo "attempt=$i independently_verified=$verified successful_verified_execution=$delivered"
+              if [ "$verified" -ge 1 ] && [ "$delivered" -ge 1 ]; then
+                jq '{
+                  independentlyVerifiedSettlementCount,
+                  successfulVerifiedExecutionCount,
+                  firstVerifiedSettlementAt,
+                  latestVerifiedSettlementAt,
+                  byNetwork,
+                  byCapability
+                }' /tmp/reputation.json
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "No independently verified successful x402 settlement is published yet; refusing to amplify unverified traffic." >&2
+          exit 1
+
+      - name: Re-seed verified usage across buyer surfaces
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          workflows=(
+            register-true402-once.yml
+            register-agent402-once.yml
+            agentcash-register.yml
+            register-x402dash-trust.yml
+            register-402index-canary-once.yml
+          )
+          for wf in "${workflows[@]}"; do
+            echo "dispatching=$wf"
+            gh workflow run "$wf" --repo "$REPO" --ref main
+          done
+
+      - name: Emit machine-readable amplification summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq '{
+            event: "agentresolver_verified_settlement_amplified",
+            independentlyVerifiedSettlementCount,
+            successfulVerifiedExecutionCount,
+            latestVerifiedSettlementAt,
+            byNetwork,
+            byCapability,
+            reseededBuyerSurfaces: [
+              "true402",
+              "Agent402",
+              "AgentCash",
+              "x402dash",
+              "402 Index"
+            ]
+          }' /tmp/reputation.json
