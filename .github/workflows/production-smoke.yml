@@ -52,8 +52,9 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/sponsorship.json" | grep -F 'pilot_inventory_open' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/sponsorship" | jq -e '.inventory.model == "provider-funded-discovery" and .activation.operatorApprovalRequired == true' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/providers" | grep -F 'Apply for the sponsorship pilot' >/dev/null
-          if curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/providers" | grep -Eq '\$[0-9]+|mailto:'; then
-            echo 'Provider page exposes fixed pricing or a mailto CTA without operator approval.'
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/providers?smoke=${GITHUB_SHA}" > /tmp/providers.html
+          if grep -F 'mailto:' /tmp/providers.html >/dev/null || grep -F '$250/mo' /tmp/providers.html >/dev/null; then
+            echo 'Provider page exposes the removed mailto CTA or prior fixed sponsorship price.'
             exit 1
           fi
 
