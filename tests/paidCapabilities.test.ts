@@ -69,6 +69,10 @@ test("generated machine surfaces contain every registered paid capability", () =
 test("canonical preflight vocabulary covers broad buyer discovery intents", () => {
   const preflight = PAID_CAPABILITY_LIST.find((item) => item.id === "x402-payment-preflight");
   assert.ok(preflight);
+  assert.match(preflight.name, /api trust/i);
+  assert.match(preflight.name, /security preflight/i);
+  assert.match(preflight.name, /endpoint safety/i);
+  assert.match(preflight.name, /before paying/i);
   for (const phrase of [
     "x402 preflight",
     "verify endpoint before paying",
