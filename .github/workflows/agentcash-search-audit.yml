@@ -1,0 +1,27 @@
+name: AgentCash Search Visibility Audit
+
+on:
+  push:
+    branches:
+      - audit/agentcash-search-visibility
+    paths:
+      - ".github/workflows/agentcash-search-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Search buyer catalog without spending
+        shell: bash
+        run: |
+          set -euo pipefail
+          for query in             "ethereum abi encode"             "eip 712 typed data hash"             "ens namehash"             "mcp endpoint preflight"             "select openapi operation"
+          do
+            echo "::group::SEARCH: $query"
+            npx -y agentcash@0.17.1 search "$query" --format json || true
+            echo "::endgroup::"
+          done
