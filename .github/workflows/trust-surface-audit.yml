@@ -1,0 +1,125 @@
+name: Trust Surface Audit
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Production Smoke"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify public infrastructure contract
+        shell: bash
+        env:
+          BASE_URL: https://agentresolver.vercel.app
+        run: |
+          set -euo pipefail
+
+          curl -fsS "$BASE_URL/api/health?audit=$GITHUB_RUN_ID" -o /tmp/health.json
+          jq -e '
+            .ok == true and
+            .canonicalPaidRoute == "/api/x402-payment-preflight" and
+            .trust == "/.well-known/agentresolver-trust.json" and
+            .security == "/.well-known/security.txt"
+          ' /tmp/health.json >/dev/null
+
+          curl -fsS "$BASE_URL/.well-known/agentresolver-trust.json?audit=$GITHUB_RUN_ID" -o /tmp/trust.json
+          jq -e '
+            .schemaVersion == 1 and
+            .paymentModel.custodial == false and
+            .paymentModel.holdsCustomerBalances == false and
+            .paymentModel.callerControlsAuthorization == true and
+            .canonicalPaidRoute.priceUsd == 0.001 and
+            (.deployment.commitSha | type == "string" and length == 40)
+          ' /tmp/trust.json >/dev/null
+
+          code="$(curl -sS -D /tmp/preflight.headers -o /tmp/preflight.json -w '%{http_code}' "$BASE_URL/api/x402-payment-preflight")"
+          test "$code" = "402"
+          grep -Fi 'x-agentresolver-contract-version: 1' /tmp/preflight.headers >/dev/null
+          grep -Fi 'x-agentresolver-request-id:' /tmp/preflight.headers >/dev/null
+          grep -Fi 'x-agentresolver-deployment:' /tmp/preflight.headers >/dev/null
+          grep -Fi 'payment-required:' /tmp/preflight.headers >/dev/null
+          jq -e '
+            .x402Version == 2 and
+            (.accepts | length == 2) and
+            (.accepts | any(.network == "eip155:8453" and .amount == "1000")) and
+            (.accepts | any(.network == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and .amount == "1000")) and
+            (.extensions.bazaar.schema.properties.output != null)
+          ' /tmp/preflight.json >/dev/null
+
+          curl -fsS "$BASE_URL/.well-known/security.txt?audit=$GITHUB_RUN_ID" |
+            grep -F 'Canonical: https://agentresolver.vercel.app/.well-known/security.txt' >/dev/null
+
+          echo "Canonical production trust contract is healthy."
+
+      - name: Audit Agent402 buyer routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            "x402 preflight"
+            "payTo verification"
+            "verify endpoint before paying"
+          )
+          for q in "${queries[@]}"; do
+            payload="$(jq -cn --arg query "$q" '{query:$query,top:10,include:"external"}')"
+            code="$(curl -sS -o /tmp/agent402.json -w '%{http_code}' \
+              -X POST https://agent402.tools/api/route \
+              -H 'content-type: application/json' \
+              -d "$payload")"
+            test "$code" -ge 200 && test "$code" -lt 300
+            jq --arg q "$q" '{
+              query:$q,
+              agentresolver:[
+                (.results // [])[]? |
+                select(
+                  ((.origin // "") | contains("agentresolver.vercel.app")) or
+                  ((.host // "") | contains("agentresolver.vercel.app")) or
+                  ((.seller // "") | ascii_downcase | contains("agentresolver"))
+                ) |
+                {rank,name,priceUsd,health,networks,routerDispatchEligible,executeViaCallableNow}
+              ]
+            }' /tmp/agent402.json
+          done
+
+      - name: Audit AgentCash buyer-search visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=("x402 payment preflight" "payTo verification" "verify endpoint before paying")
+          found=0
+          for q in "${queries[@]}"; do
+            if npx -y agentcash@0.17.1 search "$q" --format json > /tmp/agentcash.json 2>/tmp/agentcash.err; then
+              if grep -Fq 'agentresolver.vercel.app' /tmp/agentcash.json; then
+                found=$((found + 1))
+                echo "AgentCash visible for: $q"
+              else
+                echo "::warning::AgentCash not visible for: $q"
+              fi
+            else
+              echo "::warning::AgentCash search command failed for: $q"
+              cat /tmp/agentcash.err || true
+            fi
+          done
+          echo "AgentCash buyer-search visibility: $found/${#queries[@]} queries."
+
+      - name: Audit true402 public catalog state
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/true402.json -w '%{http_code}' https://true402.dev/api/v1/services)"
+          test "$code" = "200"
+          if grep -Fq 'https://agentresolver.vercel.app' /tmp/true402.json; then
+            echo "AgentResolver is visible in the true402 public buyer catalog."
+          else
+            echo "::warning::AgentResolver remains absent from the true402 public buyer catalog; registration/reputation and catalog visibility are distinct states."
+          fi
