@@ -1,0 +1,166 @@
+name: Audit First Payment Funnel Once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-first-payment-funnel-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: NoHumans payment census status
+        shell: bash
+        run: |
+          set -u
+          code="$(curl -sS --max-time 20 -o /tmp/nohumans.json -w '%{http_code}' 'https://nohumans.directory/v1/listings/28e33786-f07' || true)"
+          echo "HTTP=$code"
+          cat /tmp/nohumans.json 2>/dev/null || true
+          echo
+          if [ "$code" = "200" ]; then
+            jq '{id,status,score,probe_count,consecutive_failures,x402_version,transport,scheme,accepts_count,observed_network,observed_amount_atomic,observed_pay_to,paid_verified,paid_depth,distinct_payers,onchain_unique_payers_30d,evidence_tier,last_probed_at}' /tmp/nohumans.json || true
+          fi
+
+      - name: true402 public buyer catalog
+        shell: bash
+        run: |
+          set -u
+          code="$(curl -sS --max-time 20 -o /tmp/true402.json -w '%{http_code}' 'https://true402.dev/api/v1/services' || true)"
+          echo "HTTP=$code"
+          if [ "$code" = "200" ]; then
+            jq '{
+              count:(.data|length),
+              agentresolver:[.data[]? | select(
+                ((.id // "") | ascii_downcase | contains("agentresolver")) or
+                ((.url // "") | contains("agentresolver.vercel.app")) or
+                ((.manifest.endpoint // "") | contains("agentresolver.vercel.app"))
+              ) | {id,url,manifest,reputation}]
+            }' /tmp/true402.json
+          else
+            cat /tmp/true402.json 2>/dev/null || true
+          fi
+
+      - name: x402dash search and readiness
+        shell: bash
+        run: |
+          set -u
+          search_code="$(curl -sS --max-time 20 -o /tmp/x402dash-search.json -w '%{http_code}' 'https://api.x402dash.com/v1/endpoints?limit=50&q=agentresolver' || true)"
+          live_code="$(curl -sS --max-time 20 -G -o /tmp/x402dash-live.json -w '%{http_code}'             'https://api.x402dash.com/v1/liveness'             --data-urlencode 'endpoint=https://agentresolver.vercel.app/api/x402-ping' || true)"
+          echo "SEARCH_HTTP=$search_code"
+          cat /tmp/x402dash-search.json 2>/dev/null || true
+          echo
+          echo "LIVENESS_HTTP=$live_code"
+          cat /tmp/x402dash-live.json 2>/dev/null || true
+          echo
+          if [ "$live_code" = "200" ]; then
+            jq '{id,url,liveness_score,liveness_confidence,reachability_status,x402_status,request_shape,integration_readiness,check_count,alive_count,dead_count,price_usd,network,pay_to}' /tmp/x402dash-live.json || true
+          fi
+
+      - name: 402 Index canary search
+        shell: bash
+        run: |
+          set -u
+          code="$(curl -sS --max-time 20 -G -o /tmp/402index.json -w '%{http_code}'             'https://402index.io/api/v1/services'             --data-urlencode 'q=AgentResolver Settlement Ping'             --data-urlencode 'protocol=x402'             --data-urlencode 'limit=20' || true)"
+          echo "HTTP=$code"
+          cat /tmp/402index.json 2>/dev/null || true
+          echo
+
+      - name: Market402 catalog and paid-probe state
+        shell: bash
+        run: |
+          set -u
+          search_code="$(curl -sS --max-time 20 -G -o /tmp/market-search.json -w '%{http_code}'             'https://market402.com/search.json'             --data-urlencode 'q=x402 preflight' || true)"
+          optin_code="$(curl -sS --max-time 20 -o /tmp/market-optin.json -w '%{http_code}' 'https://market402.com/optin.json' || true)"
+          selftest_code="$(curl -sS --max-time 30 -o /tmp/market-selftest.json -w '%{http_code}'             -X POST 'https://market402.com/selftest'             -H 'content-type: application/json'             --data '{"url":"https://agentresolver.vercel.app/api/x402-ping"}' || true)"
+          echo "SEARCH_HTTP=$search_code"
+          cat /tmp/market-search.json 2>/dev/null || true
+          echo
+          echo "OPTIN_HTTP=$optin_code"
+          if [ "$optin_code" = "200" ]; then
+            grep -o '.\{0,250\}agentresolver.vercel.app.\{0,800\}' /tmp/market-optin.json || true
+          else
+            cat /tmp/market-optin.json 2>/dev/null || true
+          fi
+          echo
+          echo "SELFTEST_HTTP=$selftest_code"
+          cat /tmp/market-selftest.json 2>/dev/null || true
+          echo
+
+      - name: Agent402 buyer routing
+        shell: bash
+        run: |
+          set -u
+          queries=(
+            "x402 preflight"
+            "verify endpoint before paying"
+            "payTo verification"
+            "endpoint safety"
+            "USDC payment check"
+            "x402 settlement test"
+          )
+          for q in "${queries[@]}"; do
+            echo "=== $q ==="
+            code="$(curl -sS --max-time 20 -G -o /tmp/agent402.json -w '%{http_code}'               'https://agent402.tools/api/route'               --data-urlencode "q=$q"               --data-urlencode 'include=external' || true)"
+            echo "HTTP=$code"
+            if [ "$code" = "200" ]; then
+              jq --arg q "$q" '{
+                query:$q,
+                count:(.results // .routes // .data // [] | if type=="array" then length else 0 end),
+                agentresolver:[(.results // .routes // .data // [])[]? | select(
+                  ((.origin // "") | tostring | contains("agentresolver.vercel.app")) or
+                  ((.host // "") | tostring | contains("agentresolver.vercel.app")) or
+                  ((.seller // "") | tostring | ascii_downcase | contains("agentresolver"))
+                ) | {rank,seller,origin,host,name,tool,route,slug,price,priceUsd,score,matchScore,health,networks,routerDispatchEligible,routerDispatchReason,executeVia,executeViaWhenEligible}]
+              }' /tmp/agent402.json || cat /tmp/agent402.json
+            else
+              cat /tmp/agent402.json 2>/dev/null || true
+            fi
+          done
+
+      - name: AgentCash and x402scan buyer search
+        shell: bash
+        env:
+          HOME: ${{ runner.temp }}/agentcash-home
+        run: |
+          set -u
+          mkdir -p "$HOME"
+          queries=(
+            "AgentResolver"
+            "x402 payment preflight"
+            "verify endpoint before paying"
+            "payTo verification"
+            "endpoint safety"
+            "USDC payment check"
+            "x402 settlement test"
+          )
+          for q in "${queries[@]}"; do
+            echo "=== $q ==="
+            out="$(mktemp)"
+            if npx -y agentcash@0.17.1 search "$q" --format json > "$out" 2>&1; then
+              jq --arg q "$q" '{
+                query:$q,
+                totalResults:.data.results.totalResults,
+                agentresolver:[(.data.results.results // [])[]? | select((.origin.url // "") == "https://agentresolver.vercel.app") | {
+                  path,summary,score,
+                  resourceTransactions:.signals.resourceUsage.transactionCount,
+                  originTransactions:.signals.originUsage.transactionCount
+                }]
+              }' "$out" || cat "$out"
+            else
+              cat "$out"
+            fi
+          done
+
+      - name: Public AgentResolver settlement history
+        shell: bash
+        run: |
+          set -u
+          code="$(curl -sS --max-time 20 -o /tmp/history.json -w '%{http_code}' 'https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json' || true)"
+          echo "HTTP=$code"
+          cat /tmp/history.json 2>/dev/null || true
+          echo
