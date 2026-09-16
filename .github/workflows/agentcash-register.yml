@@ -1,11 +1,18 @@
 name: Register AgentResolver with AgentCash
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
       - ".github/workflows/agentcash-register.yml"
+      - "src/lib/paidCapabilities.ts"
+      - "public/openapi.json"
+      - "public/.well-known/x402"
+      - "public/.well-known/x402-catalog.json"
+      - "public/.well-known/agent.json"
+      - "public/.well-known/x402-service.json"
 
 permissions:
   contents: read
