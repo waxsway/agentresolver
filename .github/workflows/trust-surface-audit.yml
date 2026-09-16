@@ -41,7 +41,8 @@ jobs:
             .paymentModel.holdsCustomerBalances == false and
             .paymentModel.callerControlsAuthorization == true and
             .canonicalPaidRoute.priceUsd == 0.001 and
-            (.deployment.commitSha | type == "string" and length == 40)
+            (.deployment.commitSha | type == "string" and length == 40) and
+            .deployment.sourceCommitUrl == ("https://github.com/waxsway/agentresolver/commit/" + .deployment.commitSha)
           ' /tmp/trust.json >/dev/null
 
           code="$(curl -sS -D /tmp/preflight.headers -o /tmp/preflight.json -w '%{http_code}' "$BASE_URL/api/x402-payment-preflight")"
