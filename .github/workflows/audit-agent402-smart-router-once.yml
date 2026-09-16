@@ -1,0 +1,121 @@
+name: Audit Agent402 Smart Order Router Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-agent402-smart-router-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query Agent402 cross-seller router
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            "check whether one tool JSON schema output can satisfy another tool required input schema"
+            "preflight an MCP endpoint and list its tools before connecting"
+            "resolve a missing agent capability and live verify the best MCP candidates"
+            "select the best OpenAPI operation for a natural language goal"
+            "audit a website for agent discoverability llms.txt openapi mcp"
+            "sha256 hash text"
+            "x402 settlement ping"
+          )
+
+          found_any=0
+          eligible_any=0
+          for q in "${queries[@]}"; do
+            echo "=== ROUTE INTENT: $q ==="
+            payload=$(jq -cn --arg query "$q" '{query:$query,top:10,include:"external"}')
+            code=$(curl -sS -o /tmp/route.json -w '%{http_code}' \
+              -X POST 'https://agent402.tools/api/route' \
+              -H 'content-type: application/json' \
+              -d "$payload")
+            test "$code" -ge 200 && test "$code" -lt 300
+
+            jq '{
+              query,
+              count,
+              results: [
+                .results[]? | {
+                  rank,
+                  seller,
+                  origin,
+                  host,
+                  name,
+                  tool,
+                  route,
+                  price,
+                  priceUsd,
+                  matchScore,
+                  health,
+                  networks,
+                  paymentNetworksKnown,
+                  routerDispatchEligible,
+                  routerDispatchReason,
+                  executeVia,
+                  executeViaWhenEligible
+                }
+              ]
+            }' /tmp/route.json
+
+            if jq -e '[.results[]? | select(
+              ((.origin // "") | contains("agentresolver.vercel.app")) or
+              ((.host // "") | contains("agentresolver.vercel.app")) or
+              ((.seller // "") | contains("agentresolver"))
+            )] | length > 0' /tmp/route.json >/dev/null; then
+              found_any=1
+              echo 'AGENTRESOLVER_PRESENT=true'
+              jq '[.results[]? | select(
+                ((.origin // "") | contains("agentresolver.vercel.app")) or
+                ((.host // "") | contains("agentresolver.vercel.app")) or
+                ((.seller // "") | contains("agentresolver"))
+              ) | {
+                rank,seller,origin,host,name,tool,route,price,priceUsd,matchScore,health,
+                networks,paymentNetworksKnown,routerDispatchEligible,routerDispatchReason,
+                executeVia,executeViaWhenEligible
+              }]' /tmp/route.json
+            else
+              echo 'AGENTRESOLVER_PRESENT=false'
+            fi
+
+            if jq -e '[.results[]? | select(
+              (
+                ((.origin // "") | contains("agentresolver.vercel.app")) or
+                ((.host // "") | contains("agentresolver.vercel.app")) or
+                ((.seller // "") | contains("agentresolver"))
+              ) and .routerDispatchEligible == true
+            )] | length > 0' /tmp/route.json >/dev/null; then
+              eligible_any=1
+              echo 'AGENTRESOLVER_DISPATCH_ELIGIBLE=true'
+            else
+              echo 'AGENTRESOLVER_DISPATCH_ELIGIBLE=false'
+            fi
+          done
+          echo "found_any=$found_any"
+          echo "eligible_any=$eligible_any"
+
+      - name: Inspect indexed AgentResolver seller
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            'https://agent402.tools/api/index?seller=agentresolver.vercel.app' \
+            'https://agent402.tools/api/index?origin=https%3A%2F%2Fagentresolver.vercel.app'
+          do
+            echo "=== $url ==="
+            code=$(curl -sS -o /tmp/index.json -w '%{http_code}' "$url")
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+              jq '.' /tmp/index.json
+              exit 0
+            fi
+          done
+          echo 'Could not fetch indexed seller detail.' >&2
+          exit 1
