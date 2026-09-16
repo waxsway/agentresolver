@@ -9,6 +9,7 @@ export const X402_FACILITATOR_URL = "https://facilitator.xpay.sh" as const;
 // that perform paid AgentResolver-owned work. Never gate /api/resolve or MCP
 // discovery behind payment.
 export const X402_PRICING = {
+  hashEncode: getPaidCapability("hash-encode").price,
   httpInspect: getPaidCapability("http-inspect").price,
   toolContract: getPaidCapability("tool-contract").price,
   mcpProbe: getPaidCapability("mcp-probe").price,

@@ -9,6 +9,7 @@ import { evaluateToolContract } from "@/lib/toolContract";
 import { probeMcpEndpoint } from "@/lib/mcpProbe";
 import { auditAgentReadiness } from "@/lib/agentReadiness";
 import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
+import { runHashEncode, type HashEncodeOperation } from "@/lib/hashEncode";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
@@ -29,6 +30,7 @@ const paid = (capabilityId: PaidCapabilityId, input: Record<string, unknown>) =>
   };
 };
 
+const hashEncodeProduct = getPaidCapability("hash-encode");
 const httpInspectProduct = getPaidCapability("http-inspect");
 const toolContractProduct = getPaidCapability("tool-contract");
 const mcpProbeProduct = getPaidCapability("mcp-probe");
@@ -189,6 +191,32 @@ const handler = createMcpHandler(() => {
       rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, paidManifest: `${CANONICAL}/.well-known/x402` } };
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
   });
+
+  server.registerTool("hash_encode", {
+    title: hashEncodeProduct.quoteTool.title,
+    description: hashEncodeProduct.quoteTool.description,
+    inputSchema: z.object({
+      operation: z.enum(["sha256", "sha512", "hmac-sha256", "base64-encode", "base64-decode", "jwt-decode"]),
+      input: z.string().max(131072),
+      secret: z.string().max(4096).optional()
+    }),
+    annotations: { title: hashEncodeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ operation: HashEncodeOperation; input: string; secret?: string }>("hash-encode", async ({ operation, input, secret }) => {
+    logToolCall("hash_encode", { priceUsd: hashEncodeProduct.priceUsd, mode: "direct_paid_mcp", operation });
+    const report = runHashEncode({ operation, input, ...(secret !== undefined ? { secret } : {}) });
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "hash-encode",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      operation,
+      inputBytes: report.inputBytes
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
 
   server.registerTool("http_inspect", {
     title: httpInspectProduct.quoteTool.title,

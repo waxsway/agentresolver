@@ -42,6 +42,7 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'resolveCapability' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'probeMcpEndpoint' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/capabilities.json" | grep -F 'verified-resolve' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/capabilities.json" | grep -F 'hash-encode' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402-catalog.json" | grep -F 'batch-verified-resolve' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402" | grep -F 'mcp-probe' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
@@ -76,6 +77,9 @@ jobs:
           resolve_check 'resolve-openapi-select' \
             'select the best OpenAPI operation endpoint for this API goal' \
             "$BASE_URL/openapi.json" 'openapi-select' 0.005
+          resolve_check 'resolve-hash-encode' \
+            'sha256 hash base64 encode decode jwt hmac' \
+            '' 'hash-encode' 0.001
 
           echo 'Production discovery checks passed.'
 
@@ -124,6 +128,7 @@ jobs:
             ' "/tmp/${slug}-get.json" >/dev/null
           }
 
+          check_402 'Hash & Encode' '/api/hash-encode' '{"operation":"sha256","input":"agentresolver"}' 'hash-encode' '1000'
           check_402 'HTTP Inspect' '/api/http-inspect' '{"url":"https://example.com"}' 'http-inspect' '1000'
 
           payment_required=$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-inspect-headers.txt)
@@ -270,5 +275,6 @@ jobs:
           check_unpaid_mcp_tool 96 'mcp_preflight' '1000' 'mcpCompatible' '{"endpoint":"https://agentresolver.vercel.app/mcp"}'
           check_unpaid_mcp_tool 97 'agent_readiness' '5000' 'recommendations' '{"url":"https://example.com"}'
           check_unpaid_mcp_tool 98 'batch_verified_resolve' '50000' 'durationMs' '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}'
+          check_unpaid_mcp_tool 99 'hash_encode' '1000' '206c438b0ceeb41e34a19e134396e4dc317e4cc71863065c2da451326a2f5d77' '{"operation":"sha256","input":"agentresolver"}'
 
           echo 'All directly payable MCP tools return local challenges without signing, spending, or paid execution egress.'

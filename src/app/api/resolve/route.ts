@@ -87,6 +87,7 @@ export async function POST(req: Request) {
     (match) => match.rank === 1 && match.status === "live" && match.priceUsd > 0 && match.endpoint
   );
   const directOwnedId = topDirectOwned?.id && topDirectOwned.id in {
+    "hash-encode": true,
     "http-inspect": true,
     "tool-contract": true,
     "mcp-probe": true,
