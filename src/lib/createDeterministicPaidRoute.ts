@@ -82,6 +82,7 @@ function stampInfrastructureHeaders(
   capabilityId: PaidCapabilityId,
   requestId: string
 ) {
+  response.headers.set("access-control-allow-origin", "*");
   response.headers.set("x-agentresolver-capability", capabilityId);
   response.headers.set("x-agentresolver-request-id", requestId);
   response.headers.set("x-agentresolver-contract-version", "1");
