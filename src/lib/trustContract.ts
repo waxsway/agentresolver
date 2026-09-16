@@ -92,7 +92,8 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     sourceCode: "https://github.com/waxsway/agentresolver",
     trustAuditHistory: "https://github.com/waxsway/agentresolver/actions/workflows/trust-surface-audit.yml",
     executionEvidence: "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json",
-    settlementHistory: "https://raw.githubusercontent.com/waxsway/agentresolver/evidence-history/evidence/settlements.json",
+    settlementHistory: "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json",
+    settlementHistorySource: "https://raw.githubusercontent.com/waxsway/agentresolver/evidence-history/evidence/settlements.json",
     settlementHistoryVersions: "https://github.com/waxsway/agentresolver/commits/evidence-history/evidence/settlements.json"
   },
   telemetry: {
