@@ -37,6 +37,42 @@ jobs:
             *) echo "Market402 self-test failed with HTTP $code" >&2; exit 1 ;;
           esac
 
+      - name: Free Market402 self-test for paid GET canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://market402.com/selftest' \
+            -H 'content-type: application/json' \
+            --data '{"url":"https://agentresolver.vercel.app/api/x402-ping"}')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202) ;;
+            *) echo "Market402 canary self-test failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Submit paid GET canary and opt into real paid delivery probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://market402.com/submit' \
+            -H 'content-type: application/json' \
+            --data '{
+              "resource":"https://agentresolver.vercel.app/api/x402-ping",
+              "declared_price_usd":0.001,
+              "paid_probe_optin":true
+            }')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "Market402 canary submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
       - name: Submit canonical preflight and opt into real paid delivery probes
         shell: bash
         run: |
@@ -79,5 +115,8 @@ jobs:
           cat /tmp/optin.json
           echo
           if ! grep -q 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/optin.json; then
-            echo "::warning::Market402 accepted the canonical submission but its public opt-in roster has not refreshed yet."
+            echo "::warning::Market402 accepted the canonical preflight submission but its public opt-in roster has not refreshed yet."
+          fi
+          if ! grep -q 'agentresolver.vercel.app/api/x402-ping' /tmp/optin.json; then
+            echo "::warning::Market402 accepted the paid canary submission but its public opt-in roster has not refreshed yet."
           fi
