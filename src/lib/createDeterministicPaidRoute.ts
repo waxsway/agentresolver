@@ -12,6 +12,7 @@ import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
+import { buildExecutionEvidence, executionEvidenceHeaders } from "@/lib/executionEvidence";
 
 type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
@@ -39,6 +40,10 @@ function stampInfrastructureHeaders(
     "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json"
   );
   response.headers.set(
+    "x-agentresolver-evidence",
+    "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json"
+  );
+  response.headers.set(
     "access-control-expose-headers",
     [
       "payment-required",
@@ -47,6 +52,10 @@ function stampInfrastructureHeaders(
       "x-agentresolver-request-id",
       "x-agentresolver-contract-version",
       "x-agentresolver-trust",
+      "x-agentresolver-evidence",
+      "x-agentresolver-execution-id",
+      "x-agentresolver-response-sha256",
+      "x-agentresolver-evidence-version",
       "x-agentresolver-deployment"
     ].join(", ")
   );
@@ -68,16 +77,24 @@ export function createDeterministicPaidRoute(
   async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
     try {
       const result = await execute(req);
+      const responseBody = JSON.stringify(result);
+      const executionEvidence = buildExecutionEvidence(responseBody, capabilityId);
       console.log(JSON.stringify({
         event: "paid_capability_completed",
         capabilityId,
         surface: "http",
-        at: new Date().toISOString()
+        at: executionEvidence.completedAt,
+        executionId: executionEvidence.executionId,
+        responseSha256: executionEvidence.responseSha256,
+        deploymentCommitSha: executionEvidence.deploymentCommitSha
       }));
-      return NextResponse.json(result, {
+      return new NextResponse(responseBody, {
+        status: 200,
         headers: {
+          "content-type": "application/json; charset=utf-8",
           "cache-control": "no-store",
-          "access-control-allow-origin": "*"
+          "access-control-allow-origin": "*",
+          ...executionEvidenceHeaders(executionEvidence)
         }
       });
     } catch (error) {
