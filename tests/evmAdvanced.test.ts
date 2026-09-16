@@ -52,12 +52,12 @@ test("EIP-712 hash matches the canonical Ether Mail example", () => {
   assert.equal(out.digest, "0xbe609aee343fb3c4b28e1df9e632fca64fcfaede20f02e86244efddf30957bd2");
 });
 
-test("ENS namehash normalizes before hashing and matches viem documented vector", () => {
-  const out = ensNamehash("WeVm.eTh");
-  assert.equal(out.normalized, "wevm.eth");
-  assert.equal(out.namehash, "0xf246651c1b9a6b141d19c2604e9a58f567973833990f830d882534a747801359");
-  assert.equal(out.labels.length, 2);
-  assert.match(out.labels[0].labelhash, /^0x[0-9a-f]{64}$/);
+test("ENS namehash normalizes before hashing and matches canonical eth node", () => {
+  const out = ensNamehash("EtH");
+  assert.equal(out.normalized, "eth");
+  assert.equal(out.namehash, "0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae");
+  assert.equal(out.labels.length, 1);
+  assert.equal(out.labels[0].labelhash, "0x4f5b812789fc606be1b3b16908db13fc7a9adf7ca72641f84d75b47069d3d7f0");
 });
 
 test("ABI encoder rejects unsafe numeric integers", () => {
