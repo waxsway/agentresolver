@@ -1,0 +1,109 @@
+name: Register Hash Encode Directories Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-hash-directories-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify canonical Hash & Encode challenge
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://agentresolver.vercel.app/api/hash-encode'
+          for attempt in $(seq 1 24); do
+            code=$(curl -sS -o /tmp/hash-challenge.json -w '%{http_code}' "$url" || true)
+            if [ "$code" = "402" ] && jq -e '
+              .x402Version == 2 and
+              .accepts[0].amount == "1000" and
+              .accepts[0].network == "eip155:8453"
+            ' /tmp/hash-challenge.json >/dev/null; then
+              echo 'Hash & Encode is live at $0.001 USDC on Base.'
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Hash & Encode challenge was not ready.' >&2
+          exit 1
+
+      - name: Submit Hash & Encode to Market402
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://agentresolver.vercel.app/api/hash-encode'
+
+          selftest_code=$(curl -sS -o /tmp/market402-selftest.json -w '%{http_code}' \
+            -X POST 'https://market402.com/selftest' \
+            -H 'content-type: application/json' \
+            -d "$(jq -n --arg url "$url" '{url:$url}')")
+          cat /tmp/market402-selftest.json
+          echo
+          test "$selftest_code" -ge 200 && test "$selftest_code" -lt 300
+
+          submit_code=$(curl -sS -o /tmp/market402-submit.json -w '%{http_code}' \
+            -X POST 'https://market402.com/submit' \
+            -H 'content-type: application/json' \
+            -d "$(jq -n --arg resource "$url" '{resource:$resource,declared_price_usd:0.001}')")
+          cat /tmp/market402-submit.json
+          echo
+          test "$submit_code" -ge 200 && test "$submit_code" -lt 300
+
+      - name: Register Hash & Encode with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl -sS -o /tmp/402index.json -w '%{http_code}' \
+            -X POST 'https://402index.io/api/v1/register' \
+            -H 'content-type: application/json' \
+            --data-binary @- <<'JSON'
+          {
+            "url": "https://agentresolver.vercel.app/api/hash-encode",
+            "name": "AgentResolver Hash & Encode",
+            "description": "Deterministic SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, and non-verifying JWT decode for AI-agent workflows.",
+            "protocol": "x402",
+            "http_method": "POST",
+            "probe_body": "{\"operation\":\"sha256\",\"input\":\"agentresolver\"}",
+            "price_usd": 0.001,
+            "payment_asset": "USDC",
+            "payment_network": "Base",
+            "category": "developer-tools",
+            "provider": "AgentResolver"
+          }
+          JSON
+          )
+          cat /tmp/402index.json
+          echo
+          case "$status" in
+            200|201) ;;
+            *) echo "402 Index registration failed with HTTP $status" >&2; exit 1 ;;
+          esac
+
+      - name: Register Hash & Encode with x402dash
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl -sS -o /tmp/x402dash.json -w '%{http_code}' \
+            -X POST 'https://api.x402dash.com/v1/register' \
+            -H 'content-type: application/json' \
+            -d '{
+              "url":"https://agentresolver.vercel.app/api/hash-encode",
+              "name":"AgentResolver Hash & Encode",
+              "description":"One $0.001 x402 endpoint for SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, and JWT decode.",
+              "category":"Agents/Developer Tools",
+              "tags":["hash","sha256","sha512","hmac","base64","jwt","agent-tools"]
+            }')
+          cat /tmp/x402dash.json
+          echo
+          test "$status" -ge 200 && test "$status" -lt 300
+
+      - name: Distribution complete
+        run: echo 'Hash & Encode submitted to Market402, 402 Index, and x402dash with no paid placement.'
