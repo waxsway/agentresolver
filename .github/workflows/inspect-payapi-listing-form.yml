@@ -1,0 +1,45 @@
+name: Inspect PayAPI Listing Form
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-payapi-listing-form.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch listing page and inspect forms/scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 'https://payapi.market/list' -o /tmp/list.html
+          echo "=== forms ==="
+          grep -Eio '<form[^>]*>|<input[^>]*>|<select[^>]*>|<textarea[^>]*>|<button[^>]*>' /tmp/list.html | sed -n '1,220p' || true
+          echo "=== actions / fetch / api refs ==="
+          grep -Eo '(/api/[A-Za-z0-9_./?=&:-]+|action="[^"]+"|fetch\([^)]*\)|XMLHttpRequest|axios\.[a-z]+\([^)]*\))' /tmp/list.html | sed -n '1,220p' || true
+          echo "=== js bundle refs ==="
+          grep -Eo 'src="[^"]+\.js[^"]*"' /tmp/list.html | sed 's/^src="//;s/"$//' | tee /tmp/jsrefs.txt || true
+
+          base='https://payapi.market'
+          n=0
+          while IFS= read -r src; do
+            [ -z "$src" ] && continue
+            n=$((n+1))
+            [ "$n" -gt 20 ] && break
+            case "$src" in
+              http*) url="$src" ;;
+              /*) url="$base$src" ;;
+              *) url="$base/$src" ;;
+            esac
+            out="/tmp/js-$n.js"
+            if curl -fsS --max-time 30 "$url" -o "$out"; then
+              echo "=== bundle $n: $url ==="
+              grep -Eo '.{0,220}(list|submit|provider|payout|wallet|email|baseUrl|base_url|price|category|endpoint).{0,420}' "$out" | sed -n '1,120p' || true
+            fi
+          done < /tmp/jsrefs.txt
