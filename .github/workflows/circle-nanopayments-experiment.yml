@@ -1,0 +1,77 @@
+name: Circle Nanopayments Experiment
+
+on:
+  push:
+    branches: [experiment/circle-nanopayments]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/lib/createDeterministicPaidRoute.ts'
+      - '.github/workflows/circle-nanopayments-experiment.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  challenge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "true"
+      AGENTRESOLVER_INTERNAL_TEST: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+
+      - name: Start app with Circle Gateway enabled
+        shell: bash
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3010 >/tmp/agentresolver-circle.log 2>&1 &
+          echo $! >/tmp/agentresolver-circle.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3010/api/health >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/agentresolver-circle.log
+          exit 1
+
+      - name: Verify standard and Gateway payment options coexist
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -D /tmp/headers.txt -o /tmp/body.json -w '%{http_code}'             -X POST http://127.0.0.1:3010/api/x402-payment-preflight             -H 'content-type: application/json'             -H 'x-agentresolver-internal: 1'             -d '{"url":"https://example.com"}')"
+          test "$code" = "402"
+
+          node <<'NODE'
+          const fs = require("fs");
+          const headers = fs.readFileSync("/tmp/headers.txt", "utf8");
+          const match = headers.match(/^payment-required:\s*(.+)$/im);
+          if (!match) throw new Error("PAYMENT-REQUIRED header missing");
+          const encoded = match[1].trim();
+          const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
+          const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+          const challenge = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+          const accepts = challenge.accepts || [];
+          const gateway = accepts.filter((item) => item?.extra?.name === "GatewayWalletBatched");
+          const standardBase = accepts.filter((item) => item?.network === "eip155:8453" && item?.extra?.name !== "GatewayWalletBatched");
+          const solana = accepts.filter((item) => item?.network === "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp");
+          console.log(JSON.stringify({
+            acceptCount: accepts.length,
+            gatewayCount: gateway.length,
+            standardBaseCount: standardBase.length,
+            solanaCount: solana.length,
+            gateway: gateway.map(({network,amount,payTo,extra}) => ({network,amount,payTo,extra}))
+          }, null, 2));
+          if (!gateway.length) throw new Error("GatewayWalletBatched option missing");
+          if (!standardBase.length) throw new Error("standard Base option missing");
+          if (!solana.length) throw new Error("Solana option missing");
+          NODE
