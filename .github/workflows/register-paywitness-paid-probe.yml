@@ -1,0 +1,115 @@
+name: Register Paywitness Paid Probe Lane
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-paywitness-paid-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify live paid GET canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          headers="$(mktemp)"
+          code="$(curl -sS -D "$headers" -o "$body" -w '%{http_code}'             'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          body = json.load(open(sys.argv[1]))
+          assert body.get("x402Version") == 2
+          accepts = body.get("accepts") or []
+          assert any(
+              a.get("network") == "eip155:8453" and
+              str(a.get("amount")) == "1000" and
+              a.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for a in accepts
+          )
+          assert body.get("extensions", {}).get("bazaar")
+          PY
+
+      - name: Self-list canary with Paywitness free trust index
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='https://agentresolver.vercel.app/api/x402-ping'
+          attempt() {
+            local payload="$1"
+            local body
+            body="$(mktemp)"
+            local code
+            code="$(curl -sS --connect-timeout 5 --max-time 20               -o "$body" -w '%{http_code}'               -X POST 'https://paywitness.ai/list'               -H 'content-type: application/json'               --data "$payload" || printf '000')"
+            echo "Paywitness /list -> HTTP $code"
+            cat "$body" 2>/dev/null || true
+            echo
+            case "$code" in
+              200|201|202|204|409)
+                return 0
+                ;;
+              400|422)
+                return 2
+                ;;
+              429)
+                echo "::warning::Paywitness rate-limited the free listing call; no payment was attempted."
+                return 0
+                ;;
+              402)
+                echo "::error::Paywitness advertised /list as free but returned 402. No payment was attempted."
+                return 1
+                ;;
+              000|500|502|503|504)
+                echo "::warning::Paywitness is temporarily unavailable; no payment was attempted."
+                return 0
+                ;;
+              *)
+                echo "::error::Unexpected Paywitness status $code"
+                return 1
+                ;;
+            esac
+          }
+
+          # The public surface names POST /list but does not publish its request
+          # schema in the HTML index. Try the three conventional single-URL field
+          # names only when the prior one is rejected as a validation error.
+          if attempt "$(printf '{"resource":"%s"}' "$target")"; then
+            exit 0
+          else
+            rc=$?
+          fi
+          if [ "$rc" -ne 2 ]; then exit "$rc"; fi
+
+          if attempt "$(printf '{"url":"%s"}' "$target")"; then
+            exit 0
+          else
+            rc=$?
+          fi
+          if [ "$rc" -ne 2 ]; then exit "$rc"; fi
+
+          attempt "$(printf '{"endpoint":"%s"}' "$target")"
+
+      - name: Query free Paywitness preflight for indexed state
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -X POST 'https://paywitness.ai/preflight'             -H 'content-type: application/json'             --data '{"resource":"https://agentresolver.vercel.app/api/x402-ping"}' || printf '000')"
+          echo "Paywitness /preflight -> HTTP $code"
+          cat "$body" 2>/dev/null || true
+          echo
+          case "$code" in
+            200|201|202|400|404|422|429|500|502|503|504|000) ;;
+            402)
+              echo "::error::Free Paywitness preflight unexpectedly requested payment. No payment was attempted."
+              exit 1
+              ;;
+            *) echo "::warning::Unexpected Paywitness preflight status $code" ;;
+          esac
