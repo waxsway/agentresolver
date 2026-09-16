@@ -58,5 +58,7 @@ export function runHashEncode(input: {
       }
       return { operation: input.operation, inputBytes, verified: false, note: "Decoded only; signature was not verified.", header, payload, signature: parts[2] };
     }
+    default:
+      throw new Error("Unsupported operation.");
   }
 }
