@@ -5,10 +5,10 @@ import { circleGatewayEnabled } from "../src/lib/createDeterministicPaidRoute";
 import { AGENTRESOLVER_TRUST_CONTRACT } from "../src/lib/trustContract";
 
 test("Circle Gateway rail is disabled unless explicitly set to 1", () => {
-  assert.equal(circleGatewayEnabled({} as NodeJS.ProcessEnv), false);
-  assert.equal(circleGatewayEnabled({ AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "0" } as NodeJS.ProcessEnv), false);
-  assert.equal(circleGatewayEnabled({ AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "true" } as NodeJS.ProcessEnv), false);
-  assert.equal(circleGatewayEnabled({ AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "1" } as NodeJS.ProcessEnv), true);
+  assert.equal(circleGatewayEnabled({}), false);
+  assert.equal(circleGatewayEnabled({ AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "0" }), false);
+  assert.equal(circleGatewayEnabled({ AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "true" }), false);
+  assert.equal(circleGatewayEnabled({ AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "1" }), true);
 });
 
 test("Gateway compatibility preserves the non-custodial trust boundary", () => {
