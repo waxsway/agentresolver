@@ -3,9 +3,7 @@ name: Trust Surface Audit
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - ops/facilitator-catalog-audit
+    branches: [main]
     paths:
       - '.github/workflows/trust-surface-audit.yml'
   schedule:
