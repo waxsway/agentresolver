@@ -1,0 +1,37 @@
+name: Refresh Discovery Artifacts
+
+on:
+  push:
+    branches: [infra/generated-discovery-parity]
+    paths:
+      - '.github/workflows/refresh-discovery-artifacts.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: infra/generated-discovery-parity
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run sync:products
+      - name: Commit generated discovery artifacts
+        run: |
+          set -euo pipefail
+          git add public/.well-known/x402 public/capabilities.json public/integrations.json public/openapi.json
+          if git diff --cached --quiet; then
+            echo "Generated artifacts already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Refresh generated discovery artifacts"
+          git push origin HEAD:infra/generated-discovery-parity
