@@ -1,10 +1,24 @@
 # AgentResolver
 
-AgentResolver is a **free fallback capability resolver for autonomous AI agents**.
+AgentResolver is a **$0.001 x402 verify-before-pay service for autonomous agents**, with a free fallback capability resolver.
 
 When an agent needs an external tool, API, MCP server, x402 service, browser capability, data source, or machine service that is not already connected, it can ask AgentResolver what to use next. AgentResolver returns ranked compatible capabilities and machine-ready discovery metadata.
 
 **Production:** https://agentresolver.vercel.app
+
+Primary paid route:
+
+```text
+POST https://agentresolver.vercel.app/api/x402-payment-preflight
+$0.001 USDC · Base or Solana
+```
+
+AgentCash direct onboarding:
+
+```bash
+npx agentcash try https://agentresolver.vercel.app
+npx agentcash add https://agentresolver.vercel.app
+```
 
 ## Install as a persistent fallback
 
@@ -61,7 +75,8 @@ Results are grouped into AgentResolver-owned capabilities, live MCP directory ma
 ## Machine discovery surfaces
 
 - `POST /api/resolve` — free natural-language capability resolution
-- `POST /api/http-inspect` — $0.001 live HTTPS status/latency/header inspection
+- `POST /api/x402-payment-preflight` — $0.001 verify-before-pay x402 payment contract and PayTo safety check
+- `POST /api/http-inspect` — $0.001 live HTTPS/x402 trust inspection
 - `POST /api/mcp-probe` — $0.001 live MCP endpoint preflight
 - `POST /api/agent-readiness` — $0.005 agent-discoverability audit
 - `POST /api/tool-contract` — $0.005 deterministic tool schema compatibility check
@@ -91,7 +106,7 @@ The useful integration pattern is not to replace an agent's existing tools. Agen
 
 ## Provider program
 
-Organic inclusion remains free and relevance-based. Providers that want a claimed profile, disclosed sponsored eligibility when relevant, and qualified-demand reporting can apply for the **Founding Provider pilot at $250/month**.
+Organic inclusion remains free and relevance-based. Providers that want a claimed profile, disclosed sponsored eligibility when relevant, and qualified-demand reporting can submit a no-commitment sponsorship inquiry.
 
 Provider details and pilot terms: https://agentresolver.vercel.app/providers
 
@@ -113,7 +128,7 @@ The resolver augments AgentResolver-owned capabilities with live MCP discovery a
 
 ## Payment safety
 
-Resolution and MCP quote tools never spend money. AgentResolver's six direct paid endpoints use x402 USDC on Base and execute only after a caller supplies a valid payment authorization; successful revenue is counted only from confirmed settlement receipts. `/api/execute` remains disabled for generic third-party execution.
+Resolution and MCP quote tools never spend money. AgentResolver's direct paid endpoints use x402 USDC on Base or Solana and execute only after a caller supplies a valid payment authorization; successful revenue is counted only from confirmed settlement receipts. `/api/execute` remains disabled for generic third-party execution.
 
 Marketplace results can contain third-party payment requirements. Calling agents must apply their own authorization, budget, trust, and safety policy before paying or invoking any third-party service.
 
