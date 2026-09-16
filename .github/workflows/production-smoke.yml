@@ -245,4 +245,30 @@ jobs:
             exit 1
           fi
 
-          echo 'Direct paid MCP challenges verified without signing, spending, or paid execution egress.'
+          check_unpaid_mcp_tool() {
+            local id="$1"
+            local name="$2"
+            local amount="$3"
+            local forbidden="$4"
+            local arguments="$5"
+            local output="/tmp/mcp-direct-${name}.out"
+            local request
+            request=$(jq -cn --argjson id "$id" --arg name "$name" --argjson arguments "$arguments"               '{jsonrpc:"2.0",id:$id,method:"tools/call",params:{name:$name,arguments:$arguments}}')
+            local code
+            code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS               -o "$output"               -w '%{http_code}'               -X POST "$MCP_URL"               -H 'content-type: application/json'               -H 'accept: application/json, text/event-stream'               -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0'               --data "$request")
+            test "$code" -ge 200 && test "$code" -lt 300
+            grep -F 'x402Version' "$output" >/dev/null
+            grep -F "$amount" "$output" >/dev/null
+            if grep -F "$forbidden" "$output" >/dev/null; then
+              echo "SECURITY FAILURE: unpaid $name MCP call exposed paid output before settlement."
+              cat "$output"
+              exit 1
+            fi
+          }
+
+          check_unpaid_mcp_tool 95 'tool_contract' '5000' 'directMatches' '{"producerOutputSchema":{"type":"object","properties":{"id":{"type":"string"}}},"consumerInputSchema":{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}}'
+          check_unpaid_mcp_tool 96 'mcp_preflight' '1000' 'mcpCompatible' '{"endpoint":"https://agentresolver.vercel.app/mcp"}'
+          check_unpaid_mcp_tool 97 'agent_readiness' '5000' 'recommendations' '{"url":"https://example.com"}'
+          check_unpaid_mcp_tool 98 'batch_verified_resolve' '50000' 'durationMs' '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}'
+
+          echo 'All directly payable MCP tools return local challenges without signing, spending, or paid execution egress.'
