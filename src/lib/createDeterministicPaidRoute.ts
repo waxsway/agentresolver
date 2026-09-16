@@ -44,6 +44,10 @@ function stampInfrastructureHeaders(
     "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json"
   );
   response.headers.set(
+    "x-agentresolver-settlement-history",
+    "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
+  );
+  response.headers.set(
     "access-control-expose-headers",
     [
       "payment-required",
