@@ -1,0 +1,92 @@
+name: Post CDP Readiness Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/post-cdp-readiness-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify live x402 manifest compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 'https://agentresolver.vercel.app/.well-known/x402.json' -o /tmp/x402.json
+          jq -e '
+            .x402Version == 2 and
+            .category == "Developer Tools" and
+            (.tags | index("payment-canary")) != null and
+            (.resources | any(.resource == "GET /api/x402-ping")) and
+            (.resources | any(.resource == "POST /api/x402-payment-preflight"))
+          ' /tmp/x402.json >/dev/null
+          jq '{
+            x402Version,
+            category,
+            tags,
+            owner_url,
+            owner_contact,
+            resources: [.resources[] | select(.resource == "GET /api/x402-ping" or .resource == "POST /api/x402-payment-preflight") | {resource,description,price}]
+          }' /tmp/x402.json
+
+      - name: Run Ontario readiness after manifest fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 45 -o /tmp/ontario.json -w '%{http_code}'             -X POST 'https://ontarioprotocol.com/api/verify/x402-readiness'             -H 'content-type: application/json'             --data '{"target_url":"https://agentresolver.vercel.app/api/x402-ping"}')"
+          echo "ONTARIO_HTTP=$code"
+          case "$code" in 200|201|202) ;; *) cat /tmp/ontario.json; exit 1 ;; esac
+          jq '{
+            readiness_score,
+            grade,
+            recommendations,
+            signals,
+            report_id,
+            target_url
+          }' /tmp/ontario.json
+
+      - name: Validate paid routes with Coinbase CDP
+        shell: bash
+        run: |
+          set -euo pipefail
+          validate() {
+            local method="$1" resource="$2" out="$3"
+            code="$(curl -sS --max-time 45 -o "$out" -w '%{http_code}'               -X POST 'https://api.cdp.coinbase.com/platform/v2/x402/validate'               -H 'content-type: application/json'               --data "$(jq -nc --arg resource "$resource" --arg method "$method" '{resource:$resource,method:$method}')")"
+            echo "$resource HTTP=$code"
+            case "$code" in 200|201|202) ;; *) cat "$out"; exit 1 ;; esac
+            jq '{valid, simulation, index, requiredFailures:[.preflight[]? | select(.severity=="required" and .passed==false)]}' "$out"
+            jq -e '.valid == true and .simulation.outcome == "accepted"' "$out" >/dev/null
+          }
+          validate GET 'https://agentresolver.vercel.app/api/x402-ping' /tmp/canary.json
+          validate POST 'https://agentresolver.vercel.app/api/x402-payment-preflight' /tmp/preflight.json
+
+      - name: Check Coinbase Bazaar semantic visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            "x402 settlement test"
+            "wallet facilitator payment test"
+            "verify endpoint before paying"
+            "payTo verification"
+            "USDC payment check"
+          )
+          found=0
+          for q in "${queries[@]}"; do
+            out="$(mktemp)"
+            curl -fsS --max-time 30 -G 'https://api.cdp.coinbase.com/platform/v2/x402/discovery/search'               --data-urlencode "query=$q"               --data-urlencode 'limit=20'               -o "$out"
+            target_count="$(jq '[.. | objects | select((.resource? // .url? // "") == "https://agentresolver.vercel.app/api/x402-ping" or (.resource? // .url? // "") == "https://agentresolver.vercel.app/api/x402-payment-preflight")] | length' "$out")"
+            echo "QUERY=$q TARGET_MATCHES=$target_count"
+            if [ "$target_count" -gt 0 ]; then found=$((found+1)); fi
+            jq '{
+              total: (.resources|length // .results|length // 0),
+              agentresolver: [.. | objects | select(((.resource? // .url? // "") | startswith("https://agentresolver.vercel.app/"))) | {resource:(.resource? // .url?), description, price_usdc, quality}]
+            }' "$out" 2>/dev/null || true
+          done
+          echo "BAZAAR_VISIBLE_QUERIES=$found"
