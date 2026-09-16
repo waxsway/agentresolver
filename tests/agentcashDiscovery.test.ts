@@ -7,6 +7,14 @@ const openapi = JSON.parse(readFileSync("public/openapi.json", "utf8"));
 test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.equal(openapi.openapi, "3.1.0");
   assert.match(openapi.info?.["x-guidance"] || "", /free capability discovery/i);
+  assert.match(openapi.info?.["x-guidance"] || "", /GET \/api\/x402-ping/i);
+  assert.match(openapi.info?.["x-guidance"] || "", /POST \/api\/x402-payment-preflight/i);
+  assert.match(openapi.info?.title || "", /settlement canary/i);
+
+  const canary = openapi.paths?.["/api/x402-ping"]?.get;
+  assert.equal(canary?.operationId, "x402SettlementPingGet");
+  assert.equal(canary?.requestBody, undefined);
+  assert.equal(canary?.["x-payment-info"]?.priceUsd, 0.001);
   assert.deepEqual(openapi.paths?.["/api/resolve"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/health"]?.get?.security, []);
 
