@@ -15,6 +15,6 @@ test("production deploy guard verifies merged PR metadata, not commit-message fo
 
 test("GET canary manifest copy clearly advertises the bodyless settlement path", () => {
   const publisher = readFileSync("scripts/publish-x402-get-canary.ts", "utf8");
-  assert.match(publisher, /No-body \$0\.001 x402 settlement test/);
+  assert.ok(publisher.includes("No-body $0.001 x402 settlement test"));
   assert.match(publisher, /wallet, facilitator, USDC payment, and paid delivery/i);
 });
