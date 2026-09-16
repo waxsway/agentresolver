@@ -3,6 +3,8 @@ import { createHash, randomUUID } from "node:crypto";
 export const EXECUTION_EVIDENCE_VERSION = 1;
 export const EXECUTION_EVIDENCE_URL =
   "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json";
+export const VERIFIED_SETTLEMENT_HISTORY_URL =
+  "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json";
 
 export type ExecutionEvidence = ReturnType<typeof buildExecutionEvidence>;
 
