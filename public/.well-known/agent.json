@@ -1,8 +1,8 @@
 {
-  "version": "1.3",
+  "version": "1.4",
   "origin": "agentresolver.vercel.app",
   "display_name": "AgentResolver",
-  "description": "Free machine-first capability discovery plus low-cost x402 trust, security and live-verification tools for autonomous agents.",
+  "description": "$0.001 USDC x402 verify-before-pay and PayTo verification infrastructure for autonomous agents, with free fallback capability discovery.",
   "payout_address": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
   "payments": {
     "x402": {
@@ -88,5 +88,9 @@
   "payout_addresses": {
     "base": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
     "solana": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
-  }
+  },
+  "trust_url": "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json",
+  "security_url": "https://agentresolver.vercel.app/.well-known/security.txt",
+  "legal_url": "https://agentresolver.vercel.app/legal",
+  "non_custodial": true
 }
