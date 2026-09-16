@@ -275,8 +275,18 @@ integrations.paidActions = PAID_CAPABILITY_LIST.map((product) => ({
 writeJson("public/integrations.json", integrations);
 
 const openapi = readJson("public/openapi.json");
-openapi.info = { ...openapi.info, version: "0.1.3" };
+openapi.info = {
+  ...openapi.info,
+  version: "0.1.4",
+  "x-guidance": "Use POST /api/resolve first for free capability discovery. Use paid routes only when exact live evidence or deterministic computation is worth the listed per-call price. Payment is always caller-authorized."
+};
 openapi.paths ||= {};
+if (openapi.paths["/api/resolve"]?.post) {
+  openapi.paths["/api/resolve"].post.security = [];
+}
+if (openapi.paths["/api/health"]?.get) {
+  openapi.paths["/api/health"].get.security = [];
+}
 for (const product of PAID_CAPABILITY_LIST) {
   openapi.paths[product.endpoint] = {
     post: {
@@ -285,6 +295,12 @@ for (const product of PAID_CAPABILITY_LIST) {
       summary: product.name,
       description: `Price: ${product.price} USDC on Base via x402. ${product.description}`,
       "x-payment-info": {
+        price: {
+          mode: "fixed",
+          currency: "USD",
+          amount: String(product.priceUsd)
+        },
+        protocols: [{ x402: {} }],
         protocol: "x402",
         version: 2,
         scheme: "exact",
