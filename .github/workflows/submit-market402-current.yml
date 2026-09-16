@@ -1,0 +1,59 @@
+name: Submit AgentResolver to Market402
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/submit-market402-current.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify live settlement canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 20 -o /tmp/ping.json -w '%{http_code}' 'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          jq -e '.x402Version==2 and (.accepts | any(.network=="eip155:8453" and .amount=="1000" and .payTo=="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"))' /tmp/ping.json >/dev/null
+
+      - name: Run Market402 free self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 40 -o /tmp/selftest.json -w '%{http_code}' \
+            -X POST 'https://market402.com/selftest' \
+            -H 'content-type: application/json' \
+            --data '{"url":"https://agentresolver.vercel.app/api/x402-ping"}' || true)"
+          echo "MARKET402_SELFTEST_HTTP=$code"
+          jq . /tmp/selftest.json 2>/dev/null || cat /tmp/selftest.json || true
+          case "$code" in
+            200|201|202) ;;
+            *) echo 'Market402 selftest did not accept the request; continuing to authoritative submit endpoint.' ;;
+          esac
+
+      - name: Submit canary with independent paid-probe opt-in
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n '{
+            resource: "https://agentresolver.vercel.app/api/x402-ping",
+            declared_price_usd: 0.001,
+            paid_probe_optin: true
+          }' > /tmp/payload.json
+
+          code="$(curl -sS --max-time 45 -o /tmp/submit.json -w '%{http_code}' \
+            -X POST 'https://market402.com/submit' \
+            -H 'content-type: application/json' \
+            --data-binary @/tmp/payload.json || true)"
+          echo "MARKET402_SUBMIT_HTTP=$code"
+          jq . /tmp/submit.json 2>/dev/null || cat /tmp/submit.json
+          case "$code" in
+            200|201|202|409) ;;
+            *) exit 1 ;;
+          esac
