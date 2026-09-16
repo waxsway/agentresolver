@@ -10,6 +10,7 @@ import { probeMcpEndpoint } from "@/lib/mcpProbe";
 import { auditAgentReadiness } from "@/lib/agentReadiness";
 import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
 import { runHashEncode, type HashEncodeOperation } from "@/lib/hashEncode";
+import { normalizeJson, validateJsonSchema, parseUrl, generateUuidV4, slugify } from "@/lib/deterministicUtilities";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
@@ -30,6 +31,18 @@ const paid = (capabilityId: PaidCapabilityId, input: Record<string, unknown>) =>
   };
 };
 
+const x402PingProduct = getPaidCapability("x402-ping");
+const sha256Product = getPaidCapability("sha256");
+const sha512Product = getPaidCapability("sha512");
+const hmacSha256Product = getPaidCapability("hmac-sha256");
+const base64EncodeProduct = getPaidCapability("base64-encode");
+const base64DecodeProduct = getPaidCapability("base64-decode");
+const jwtDecodeProduct = getPaidCapability("jwt-decode");
+const jsonNormalizeProduct = getPaidCapability("json-normalize");
+const jsonSchemaValidateProduct = getPaidCapability("json-schema-validate");
+const urlParseProduct = getPaidCapability("url-parse");
+const uuidV4Product = getPaidCapability("uuid-v4");
+const slugifyProduct = getPaidCapability("slugify");
 const hashEncodeProduct = getPaidCapability("hash-encode");
 const httpInspectProduct = getPaidCapability("http-inspect");
 const toolContractProduct = getPaidCapability("tool-contract");
@@ -191,6 +204,108 @@ const handler = createMcpHandler(() => {
       rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, paidManifest: `${CANONICAL}/.well-known/x402` } };
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
   });
+
+  const simplePaidResult = (capabilityId: PaidCapabilityId, tool: string, report: Record<string, unknown>) => {
+    logToolCall(tool, { priceUsd: getPaidCapability(capabilityId).priceUsd, mode: "direct_paid_mcp" });
+    console.log(JSON.stringify({ event: "paid_capability_completed", capabilityId, surface: "mcp", at: new Date().toISOString() }));
+    return { content: [{ type: "text" as const, text: JSON.stringify(report) }], structuredContent: report };
+  };
+
+  server.registerTool("x402_ping", {
+    title: x402PingProduct.quoteTool.title, description: x402PingProduct.quoteTool.description,
+    inputSchema: z.object({ echo: z.string().max(256).optional() }),
+    annotations: { title: x402PingProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ echo?: string }>("x402-ping", async ({ echo }) =>
+    simplePaidResult("x402-ping", "x402_ping", { pong: true, settledDelivery: true, at: new Date().toISOString(), unixMs: Date.now(), requestId: generateUuidV4(1).values[0], echo: echo || null })
+  ));
+
+  server.registerTool("sha256", {
+    title: sha256Product.quoteTool.title, description: sha256Product.quoteTool.description,
+    inputSchema: z.object({ input: z.string().max(131072) }),
+    annotations: { title: sha256Product.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ input: string }>("sha256", async ({ input }) =>
+    simplePaidResult("sha256", "sha256", runHashEncode({ operation: "sha256", input }) as unknown as Record<string, unknown>)
+  ));
+
+  server.registerTool("sha512", {
+    title: sha512Product.quoteTool.title, description: sha512Product.quoteTool.description,
+    inputSchema: z.object({ input: z.string().max(131072) }),
+    annotations: { title: sha512Product.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ input: string }>("sha512", async ({ input }) =>
+    simplePaidResult("sha512", "sha512", runHashEncode({ operation: "sha512", input }) as unknown as Record<string, unknown>)
+  ));
+
+  server.registerTool("hmac_sha256", {
+    title: hmacSha256Product.quoteTool.title, description: hmacSha256Product.quoteTool.description,
+    inputSchema: z.object({ input: z.string().max(131072), secret: z.string().min(1).max(4096) }),
+    annotations: { title: hmacSha256Product.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ input: string; secret: string }>("hmac-sha256", async ({ input, secret }) =>
+    simplePaidResult("hmac-sha256", "hmac_sha256", runHashEncode({ operation: "hmac-sha256", input, secret }) as unknown as Record<string, unknown>)
+  ));
+
+  server.registerTool("base64_encode", {
+    title: base64EncodeProduct.quoteTool.title, description: base64EncodeProduct.quoteTool.description,
+    inputSchema: z.object({ input: z.string().max(131072) }),
+    annotations: { title: base64EncodeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ input: string }>("base64-encode", async ({ input }) =>
+    simplePaidResult("base64-encode", "base64_encode", runHashEncode({ operation: "base64-encode", input }) as unknown as Record<string, unknown>)
+  ));
+
+  server.registerTool("base64_decode", {
+    title: base64DecodeProduct.quoteTool.title, description: base64DecodeProduct.quoteTool.description,
+    inputSchema: z.object({ input: z.string().max(131072) }),
+    annotations: { title: base64DecodeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ input: string }>("base64-decode", async ({ input }) =>
+    simplePaidResult("base64-decode", "base64_decode", runHashEncode({ operation: "base64-decode", input }) as unknown as Record<string, unknown>)
+  ));
+
+  server.registerTool("jwt_decode", {
+    title: jwtDecodeProduct.quoteTool.title, description: jwtDecodeProduct.quoteTool.description,
+    inputSchema: z.object({ input: z.string().max(131072) }),
+    annotations: { title: jwtDecodeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ input: string }>("jwt-decode", async ({ input }) =>
+    simplePaidResult("jwt-decode", "jwt_decode", runHashEncode({ operation: "jwt-decode", input }) as unknown as Record<string, unknown>)
+  ));
+
+  server.registerTool("json_normalize", {
+    title: jsonNormalizeProduct.quoteTool.title, description: jsonNormalizeProduct.quoteTool.description,
+    inputSchema: z.object({ value: z.unknown() }),
+    annotations: { title: jsonNormalizeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ value: unknown }>("json-normalize", async ({ value }) =>
+    simplePaidResult("json-normalize", "json_normalize", normalizeJson(value))
+  ));
+
+  server.registerTool("json_schema_validate", {
+    title: jsonSchemaValidateProduct.quoteTool.title, description: jsonSchemaValidateProduct.quoteTool.description,
+    inputSchema: z.object({ data: z.unknown(), schema: z.record(z.string(), z.unknown()) }),
+    annotations: { title: jsonSchemaValidateProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ data: unknown; schema: Record<string, unknown> }>("json-schema-validate", async ({ data, schema }) =>
+    simplePaidResult("json-schema-validate", "json_schema_validate", validateJsonSchema(data, schema))
+  ));
+
+  server.registerTool("url_parse", {
+    title: urlParseProduct.quoteTool.title, description: urlParseProduct.quoteTool.description,
+    inputSchema: z.object({ url: z.string().max(4096) }),
+    annotations: { title: urlParseProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ url: string }>("url-parse", async ({ url }) =>
+    simplePaidResult("url-parse", "url_parse", parseUrl(url))
+  ));
+
+  server.registerTool("uuid_v4", {
+    title: uuidV4Product.quoteTool.title, description: uuidV4Product.quoteTool.description,
+    inputSchema: z.object({ count: z.number().int().min(1).max(20).optional() }),
+    annotations: { title: uuidV4Product.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ count?: number }>("uuid-v4", async ({ count }) =>
+    simplePaidResult("uuid-v4", "uuid_v4", generateUuidV4(count || 1))
+  ));
+
+  server.registerTool("slugify", {
+    title: slugifyProduct.quoteTool.title, description: slugifyProduct.quoteTool.description,
+    inputSchema: z.object({ text: z.string().max(8192), separator: z.enum(["-", "_"]).optional() }),
+    annotations: { title: slugifyProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ text: string; separator?: "-" | "_" }>("slugify", async ({ text, separator }) =>
+    simplePaidResult("slugify", "slugify", slugify(text, separator))
+  ));
 
   server.registerTool("hash_encode", {
     title: hashEncodeProduct.quoteTool.title,
