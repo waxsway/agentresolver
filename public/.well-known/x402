@@ -1,27 +1,70 @@
 {
   "x402Version": 2,
   "name": "AgentResolver",
-  "description": "Free capability discovery plus low-cost pay-per-call trust, security and live-verification tools for autonomous agents. No signup or API key.",
+  "description": "Free capability discovery plus pay-per-call live utilities and deterministic compatibility checks for autonomous agents. No signup or API key.",
   "resources": [
     {
-      "resource": "POST /api/http-inspect",
-      "description": "Preflight a public HTTPS or x402 API before an agent depends on or pays it. Returns a live 0-100 trust score, grade and weighted TLS, reachability, latency, redirect and security-header evidence.",
-      "price": "$0.001",
+      "resource": "POST /api/abi-encode",
+      "description": "ABI-encode Solidity typed values and function arguments into exact EVM calldata-ready hex for smart-contract calls, hashing, fixtures, and signing workflows.",
+      "price": "$0.005",
       "inputSchema": {
         "type": "object",
         "required": [
-          "url"
+          "types",
+          "values"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "types": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "values": {
+            "type": "array",
+            "maxItems": 32
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "types",
+          "encoded",
+          "bytes"
         ],
         "properties": {
-          "url": {
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "encoded": {
             "type": "string",
-            "format": "uri"
+            "pattern": "^0x[0-9a-f]+$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
       "examples": [
         {
-          "url": "https://example.com"
+          "types": [
+            "address",
+            "uint256"
+          ],
+          "values": [
+            "0x000000000000000000000000000000000000dEaD",
+            "42"
+          ]
         }
       ],
       "accepts": [
@@ -30,10 +73,2467 @@
           "network": "eip155:8453",
           "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
           "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/abi-encode",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/abi-encode",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/abi-decode",
+      "description": "ABI-decode EVM calldata or return-data hex against Solidity parameter types into exact JSON-safe typed values for smart-contract workflows.",
+      "price": "$0.005",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "types",
+          "data"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "types": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "data": {
+            "type": "string",
+            "pattern": "^0x(?:[0-9a-fA-F]{2})*$",
+            "maxLength": 262146
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "types",
+          "data",
+          "values"
+        ],
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "data": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]*$"
+          },
+          "values": {
+            "type": "array"
+          }
+        }
+      },
+      "examples": [
+        {
+          "types": [
+            "uint256",
+            "bool"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/abi-decode",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/abi-decode",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/eip712-hash",
+      "description": "Compute the exact EIP-712 typed-structured-data digest used for Ethereum signing and signature recovery.",
+      "price": "$0.005",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "domain",
+          "types",
+          "primaryType",
+          "message"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "type": "object"
+          },
+          "types": {
+            "type": "object"
+          },
+          "primaryType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "message": {
+            "type": "object"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "primaryType",
+          "digest"
+        ],
+        "properties": {
+          "primaryType": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$"
+          }
+        }
+      },
+      "examples": [
+        {
+          "domain": {
+            "name": "Ether Mail",
+            "version": "1",
+            "chainId": 1,
+            "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
+          },
+          "types": {
+            "Person": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "wallet",
+                "type": "address"
+              }
+            ],
+            "Mail": [
+              {
+                "name": "from",
+                "type": "Person"
+              },
+              {
+                "name": "to",
+                "type": "Person"
+              },
+              {
+                "name": "contents",
+                "type": "string"
+              }
+            ]
+          },
+          "primaryType": "Mail",
+          "message": {
+            "from": {
+              "name": "Cow",
+              "wallet": "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"
+            },
+            "to": {
+              "name": "Bob",
+              "wallet": "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB"
+            },
+            "contents": "Hello, Bob!"
+          }
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/eip712-hash",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/eip712-hash",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/ens-namehash",
+      "description": "ENSIP-15 normalize an ENS name, compute its exact ENS namehash, and return each normalized label hash.",
+      "price": "$0.01",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "input",
+          "normalized",
+          "namehash",
+          "labels"
+        ],
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "normalized": {
+            "type": "string"
+          },
+          "namehash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "labelhash"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "labelhash": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-f]{64}$"
+                }
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "name": "wevm.eth"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/ens-namehash",
+          "amount": "10000",
+          "maxAmountRequired": "10000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/ens-namehash",
+          "amount": "10000",
+          "maxAmountRequired": "10000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/evm-address-checksum",
+      "description": "Validate and normalize one EVM address to the exact EIP-55 mixed-case checksum form.",
+      "price": "$0.003",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "address"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "input",
+          "checksummed",
+          "lowercase",
+          "eip55"
+        ],
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "checksummed": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "lowercase": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{40}$"
+          },
+          "eip55": {
+            "const": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "address": "0x52908400098527886e0f7030069857d2e4169ee7"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/evm-address-checksum",
+          "amount": "3000",
+          "maxAmountRequired": "3000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/evm-address-checksum",
+          "amount": "3000",
+          "maxAmountRequired": "3000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/keccak256",
+      "description": "Compute the exact Ethereum keccak256 digest of bounded UTF-8 text or hex bytes.",
+      "price": "$0.004",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "input"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 131072
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "utf8",
+              "hex"
+            ]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "algorithm",
+          "encoding",
+          "inputBytes",
+          "digest"
+        ],
+        "properties": {
+          "algorithm": {
+            "const": "keccak256"
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "utf8",
+              "hex"
+            ]
+          },
+          "inputBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": "transfer(address,uint256)",
+          "encoding": "utf8"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/keccak256",
+          "amount": "4000",
+          "maxAmountRequired": "4000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/keccak256",
+          "amount": "4000",
+          "maxAmountRequired": "4000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/solidity-selector",
+      "description": "Compute the exact 4-byte Solidity function/error selector and full keccak256 hash from a canonical signature.",
+      "price": "$0.01",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "signature"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "signature": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 1024
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "signature",
+          "selector",
+          "keccak256"
+        ],
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "selector": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{8}$"
+          },
+          "keccak256": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$"
+          }
+        }
+      },
+      "examples": [
+        {
+          "signature": "transfer(address,uint256)"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/solidity-selector",
+          "amount": "10000",
+          "maxAmountRequired": "10000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/solidity-selector",
+          "amount": "10000",
+          "maxAmountRequired": "10000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/evm-units",
+      "description": "Precisely parse decimal token amounts into integer base units or format integer base units using arbitrary token decimals.",
+      "price": "$0.005",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "mode",
+          "value",
+          "decimals"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "parse",
+              "format"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "decimals": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "mode",
+          "value",
+          "decimals",
+          "result",
+          "resultKind"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "parse",
+              "format"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "decimals": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "result": {
+            "type": "string"
+          },
+          "resultKind": {
+            "type": "string",
+            "enum": [
+              "base-units",
+              "decimal"
+            ]
+          }
+        }
+      },
+      "examples": [
+        {
+          "mode": "parse",
+          "value": "1.5",
+          "decimals": 18
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/evm-units",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/evm-units",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/x402-ping",
+      "description": "Minimal paid canary that returns a timestamped pong after x402 settlement so an agent can verify wallet, facilitator, payment, and delivery end-to-end.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "echo": {
+            "type": "string",
+            "maxLength": 256
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "pong",
+          "settledDelivery",
+          "at",
+          "unixMs",
+          "requestId",
+          "echo"
+        ],
+        "properties": {
+          "pong": {
+            "const": true
+          },
+          "settledDelivery": {
+            "const": true
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unixMs": {
+            "type": "integer"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "echo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "examples": [
+        {
+          "echo": "hello"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/x402-ping",
+          "amount": "1000",
           "maxAmountRequired": "1000",
           "extra": {
             "name": "USD Coin",
             "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/x402-ping",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/sha256",
+      "description": "Compute a deterministic SHA-256 hex digest for bounded UTF-8 text.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "input"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 131072
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "operation",
+          "inputBytes",
+          "encoding",
+          "result"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "inputBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "encoding": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": "agentresolver"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/sha256",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/sha256",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/sha512",
+      "description": "Compute a deterministic SHA-512 hex digest for bounded UTF-8 text.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "input"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 131072
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "operation",
+          "inputBytes",
+          "encoding",
+          "result"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "inputBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "encoding": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": "agentresolver"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/sha512",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/sha512",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/hmac-sha256",
+      "description": "Compute a deterministic HMAC-SHA256 hex digest from bounded UTF-8 input and a caller-supplied secret.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "input",
+          "secret"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 131072
+          },
+          "secret": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "operation",
+          "inputBytes",
+          "encoding",
+          "result"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "inputBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "encoding": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": "payload",
+          "secret": "secret"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/hmac-sha256",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/hmac-sha256",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/base64-encode",
+      "description": "Encode bounded UTF-8 text as Base64.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "input"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 131072
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "operation",
+          "inputBytes",
+          "encoding",
+          "result"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "inputBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "encoding": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": "hello"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/base64-encode",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/base64-encode",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/base64-decode",
+      "description": "Decode bounded Base64 text to UTF-8.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "input"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 131072
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "operation",
+          "inputBytes",
+          "encoding",
+          "result"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "inputBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "encoding": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": "aGVsbG8="
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/base64-decode",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/base64-decode",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/jwt-decode",
+      "description": "Decode a JWT header and payload without accepting secrets or claiming signature verification.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "input"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 131072
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "operation",
+          "inputBytes",
+          "verified",
+          "note",
+          "header",
+          "payload",
+          "signature"
+        ],
+        "properties": {
+          "operation": {
+            "const": "jwt-decode"
+          },
+          "inputBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verified": {
+            "const": false
+          },
+          "note": {
+            "type": "string"
+          },
+          "header": {},
+          "payload": {},
+          "signature": {
+            "type": "string"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/jwt-decode",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/jwt-decode",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/json-normalize",
+      "description": "Recursively sort JSON object keys and return canonical compact JSON plus a SHA-256 digest.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "value": {}
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "normalized",
+          "sha256",
+          "bytes"
+        ],
+        "properties": {
+          "normalized": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "examples": [
+        {
+          "value": {
+            "b": 2,
+            "a": 1
+          }
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/json-normalize",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/json-normalize",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/json-schema-validate",
+      "description": "Validate JSON data against a practical deterministic JSON Schema subset and return exact path-level errors.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "data",
+          "schema"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "data": {},
+          "schema": {
+            "type": "object"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "valid",
+          "errorCount",
+          "errors"
+        ],
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "errorCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "keyword",
+                "message"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "keyword": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "data": {
+            "id": "123"
+          },
+          "schema": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/json-schema-validate",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/json-schema-validate",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/url-parse",
+      "description": "Parse an absolute URL into normalized components and machine-readable query parameters.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "href",
+          "origin",
+          "protocol",
+          "hostname",
+          "port",
+          "pathname",
+          "query",
+          "fragment"
+        ],
+        "properties": {
+          "href": {
+            "type": "string",
+            "format": "uri"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "port": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pathname": {
+            "type": "string"
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            }
+          },
+          "fragment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "examples": [
+        {
+          "url": "https://example.com/a?x=1&x=2#frag"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/url-parse",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/url-parse",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/uuid-v4",
+      "description": "Generate one or more cryptographically random UUID v4 values for IDs, traces, fixtures, and workflow keys.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "count",
+          "values"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "count": 1
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/uuid-v4",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/uuid-v4",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/slugify",
+      "description": "Convert bounded text into a stable lowercase URL slug with deterministic separator handling.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "separator": {
+            "type": "string",
+            "enum": [
+              "-",
+              "_"
+            ]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "slug",
+          "separator",
+          "changed"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "separator": {
+            "type": "string",
+            "enum": [
+              "-",
+              "_"
+            ]
+          },
+          "changed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "examples": [
+        {
+          "text": "Hello Agent World",
+          "separator": "-"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/slugify",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/slugify",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/hash-encode",
+      "description": "Deterministic hashing and encoding primitive for SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, and non-verifying JWT decode.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "operation",
+          "input"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "sha256",
+              "sha512",
+              "hmac-sha256",
+              "base64-encode",
+              "base64-decode",
+              "jwt-decode"
+            ]
+          },
+          "input": {
+            "type": "string",
+            "maxLength": 131072
+          },
+          "secret": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Structured JSON result from Hash & Encode.",
+        "additionalProperties": true
+      },
+      "examples": [
+        {
+          "operation": "sha256",
+          "input": "agentresolver"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/hash-encode",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/hash-encode",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/http-inspect",
+      "description": "Legacy compatibility endpoint for bounded HTTP, TLS, reachability and payment-challenge inspection. New x402 verify-before-pay buyers should use /api/x402-payment-preflight.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "pattern": "^https://",
+            "maxLength": 500
+          },
+          "maxPriceUsd": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "expectedPayTo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expectedNetwork": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "HEAD",
+              "POST"
+            ]
+          },
+          "body": {},
+          "allowUnpaidPostProbe": {
+            "type": "boolean"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Structured JSON result from HTTP Endpoint Inspect (Legacy Alias).",
+        "additionalProperties": true
+      },
+      "examples": [
+        {
+          "url": "https://example.com/api",
+          "method": "GET",
+          "maxPriceUsd": 0.01,
+          "expectedNetwork": "eip155:8453"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/http-inspect",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/http-inspect",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/x402-payment-preflight",
+      "description": "Verify a public x402 endpoint before paying it. AgentResolver performs one bounded HTTPS preflight and returns machine-readable evidence for reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted USDC price, network, asset, x402 version, exact scheme and resource binding before an autonomous agent authorizes spend. The probe does not request private keys or a target payment, does not follow redirects, blocks private/reserved network targets, stops after headers/TLS/payment evidence, and times out at 4.5 seconds. Optional max-price, expected-payee and expected-network assertions fail closed on mismatches. Response headers include a request ID, contract version and exact deployed source SHA. The paid result also returns a reusable evidence receipt with stable fingerprints for the observed payment identity and terms so agents can detect changes across observations without treating a wallet as a verified legal identity. Point-in-time evidence, not a guarantee of future uptime, provider legitimacy, or fulfillment. Works on Base and Solana.",
+      "price": "$0.001",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "pattern": "^https://",
+            "maxLength": 500
+          },
+          "maxPriceUsd": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "expectedPayTo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expectedNetwork": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "HEAD",
+              "POST"
+            ]
+          },
+          "body": {},
+          "allowUnpaidPostProbe": {
+            "type": "boolean"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "url",
+          "status",
+          "ok",
+          "latencyMs",
+          "x402",
+          "trust",
+          "evidenceReceipt"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "latencyMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "x402": {
+            "type": "object",
+            "required": [
+              "detected",
+              "challengeHeaderPresent",
+              "parseable",
+              "version",
+              "acceptCount",
+              "scheme",
+              "network",
+              "asset",
+              "payTo",
+              "resource",
+              "amountAtomic",
+              "amountUsd",
+              "score",
+              "verdict",
+              "checks"
+            ],
+            "additionalProperties": true,
+            "properties": {
+              "detected": {
+                "type": "boolean"
+              },
+              "challengeHeaderPresent": {
+                "type": "boolean"
+              },
+              "parseable": {
+                "type": "boolean"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "acceptCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "scheme": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "network": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "asset": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "payTo": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resource": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "amountAtomic": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "amountUsd": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "score": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "verdict": {
+                "type": "string",
+                "enum": [
+                  "strong",
+                  "mixed",
+                  "weak",
+                  "not-detected"
+                ]
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "label",
+                    "passed",
+                    "weight",
+                    "evidence"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "passed": {
+                      "type": "boolean"
+                    },
+                    "weight": {
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "trust": {
+            "type": "object",
+            "required": [
+              "scope",
+              "identityVerified",
+              "fulfillmentVerified",
+              "score",
+              "infrastructureScore",
+              "x402Score",
+              "grade",
+              "verdict",
+              "checks"
+            ],
+            "additionalProperties": true,
+            "properties": {
+              "scope": {
+                "type": "string",
+                "const": "technical_endpoint_and_x402_payment_challenge"
+              },
+              "identityVerified": {
+                "type": "boolean",
+                "const": false
+              },
+              "fulfillmentVerified": {
+                "type": "boolean",
+                "const": false
+              },
+              "score": {
+                "type": "number"
+              },
+              "infrastructureScore": {
+                "type": "number"
+              },
+              "x402Score": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "grade": {
+                "type": "string",
+                "enum": [
+                  "A",
+                  "B",
+                  "C",
+                  "D",
+                  "F"
+                ]
+              },
+              "verdict": {
+                "type": "string",
+                "enum": [
+                  "strong",
+                  "mixed",
+                  "weak"
+                ]
+              },
+              "checks": {
+                "type": "array"
+              }
+            }
+          },
+          "evidenceReceipt": {
+            "type": "object",
+            "required": [
+              "schemaVersion",
+              "observedAt",
+              "source",
+              "endpoint",
+              "observedPaymentIdentity",
+              "observedPaymentTerms",
+              "evidence",
+              "interoperability",
+              "limitations"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "schemaVersion": {
+                "type": "integer",
+                "const": 1
+              },
+              "observedAt": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "const": "live_endpoint_observation"
+              },
+              "endpoint": {
+                "type": "object",
+                "required": [
+                  "url",
+                  "origin",
+                  "status",
+                  "tlsAuthorized",
+                  "tlsProtocol"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "integer"
+                  },
+                  "tlsAuthorized": {
+                    "type": "boolean"
+                  },
+                  "tlsProtocol": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "observedPaymentIdentity": {
+                "type": "object",
+                "required": [
+                  "network",
+                  "asset",
+                  "payTo",
+                  "paymentIdentityFingerprint",
+                  "endpointPaymentFingerprint",
+                  "basis",
+                  "ownershipVerified",
+                  "providerLegitimacyVerified"
+                ],
+                "properties": {
+                  "network": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "asset": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "payTo": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "paymentIdentityFingerprint": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "endpointPaymentFingerprint": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "basis": {
+                    "type": "string",
+                    "const": "x402_challenge"
+                  },
+                  "ownershipVerified": {
+                    "type": "boolean",
+                    "const": false
+                  },
+                  "providerLegitimacyVerified": {
+                    "type": "boolean",
+                    "const": false
+                  }
+                }
+              },
+              "observedPaymentTerms": {
+                "type": "object",
+                "required": [
+                  "resource",
+                  "amountAtomic",
+                  "amountUsd",
+                  "scheme",
+                  "x402Version",
+                  "paymentTermsFingerprint"
+                ],
+                "properties": {
+                  "resource": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "amountAtomic": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "amountUsd": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "scheme": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "x402Version": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "paymentTermsFingerprint": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "evidence": {
+                "type": "object",
+                "required": [
+                  "digestAlgorithm",
+                  "digest",
+                  "infrastructureScore",
+                  "x402Score",
+                  "checksObserved"
+                ],
+                "properties": {
+                  "digestAlgorithm": {
+                    "type": "string",
+                    "const": "sha256"
+                  },
+                  "digest": {
+                    "type": "string"
+                  },
+                  "infrastructureScore": {
+                    "type": "number"
+                  },
+                  "x402Score": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "checksObserved": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "interoperability": {
+                "type": "object",
+                "required": [
+                  "erc8004"
+                ],
+                "properties": {
+                  "erc8004": {
+                    "type": "object",
+                    "required": [
+                      "status",
+                      "submittedOnchain",
+                      "identityBinding",
+                      "endpoint",
+                      "evidenceDigestSha256",
+                      "feedbackCandidates"
+                    ],
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "candidate_evidence_only"
+                      },
+                      "submittedOnchain": {
+                        "type": "boolean",
+                        "const": false
+                      },
+                      "identityBinding": {
+                        "type": "null"
+                      },
+                      "endpoint": {
+                        "type": "string"
+                      },
+                      "evidenceDigestSha256": {
+                        "type": "string"
+                      },
+                      "feedbackCandidates": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "tag1",
+                            "tag2",
+                            "value",
+                            "valueDecimals"
+                          ],
+                          "properties": {
+                            "tag1": {
+                              "type": "string"
+                            },
+                            "tag2": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "integer"
+                            },
+                            "valueDecimals": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 18
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "url": "https://example.com/api",
+          "method": "GET",
+          "maxPriceUsd": 0.01
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/x402-payment-preflight",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/x402-payment-preflight",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
           }
         }
       ]
@@ -48,6 +2548,7 @@
           "producerOutputSchema",
           "consumerInputSchema"
         ],
+        "additionalProperties": false,
         "properties": {
           "producerOutputSchema": {
             "type": "object"
@@ -56,6 +2557,11 @@
             "type": "object"
           }
         }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Structured JSON result from Tool Contract Fit.",
+        "additionalProperties": true
       },
       "examples": [
         {
@@ -89,10 +2595,24 @@
           "network": "eip155:8453",
           "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
           "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/tool-contract",
+          "amount": "5000",
           "maxAmountRequired": "5000",
           "extra": {
             "name": "USD Coin",
             "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/tool-contract",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
           }
         }
       ]
@@ -106,12 +2626,19 @@
         "required": [
           "endpoint"
         ],
+        "additionalProperties": false,
         "properties": {
           "endpoint": {
             "type": "string",
-            "format": "uri"
+            "pattern": "^https://",
+            "maxLength": 500
           }
         }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Structured JSON result from MCP Live Preflight.",
+        "additionalProperties": true
       },
       "examples": [
         {
@@ -124,33 +2651,54 @@
           "network": "eip155:8453",
           "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
           "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/mcp-probe",
+          "amount": "1000",
           "maxAmountRequired": "1000",
           "extra": {
             "name": "USD Coin",
             "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/mcp-probe",
+          "amount": "1000",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
           }
         }
       ]
     },
     {
       "resource": "POST /api/agent-readiness",
-      "description": "Audit a public site for machine-readable agent discoverability and integration signals.",
+      "description": "Audit a public website for machine-readable agent discoverability and integration signals.",
       "price": "$0.005",
       "inputSchema": {
         "type": "object",
         "required": [
-          "target"
+          "url"
         ],
+        "additionalProperties": false,
         "properties": {
-          "target": {
+          "url": {
             "type": "string",
-            "format": "uri"
+            "pattern": "^https://",
+            "maxLength": 500
           }
         }
       },
+      "outputSchema": {
+        "type": "object",
+        "description": "Structured JSON result from Agent Readiness Audit.",
+        "additionalProperties": true
+      },
       "examples": [
         {
-          "target": "https://example.com"
+          "url": "https://example.com"
         }
       ],
       "accepts": [
@@ -159,32 +2707,118 @@
           "network": "eip155:8453",
           "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
           "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/agent-readiness",
+          "amount": "5000",
           "maxAmountRequired": "5000",
           "extra": {
             "name": "USD Coin",
             "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/agent-readiness",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "POST /api/openapi-select",
+      "description": "Fetch a public JSON OpenAPI spec, rank its operations against a natural-language goal, and return one compact execution-ready operation contract with request parameters, body schema, auth requirements, alternatives, and confidence.",
+      "price": "$0.005",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "specUrl",
+          "goal"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "specUrl": {
+            "type": "string",
+            "pattern": "^https://",
+            "maxLength": 500
+          },
+          "goal": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Structured JSON result from OpenAPI Operation Select.",
+        "additionalProperties": true
+      },
+      "examples": [
+        {
+          "specUrl": "https://example.com/openapi.json",
+          "goal": "find a customer order by id"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/openapi-select",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/openapi-select",
+          "amount": "5000",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
           }
         }
       ]
     },
     {
       "resource": "POST /api/verified-resolve",
-      "description": "Resolve one missing capability, live-check up to two top MCP candidates, and return an evidence-backed recommendation.",
+      "description": "Resolve one missing capability and perform up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates before returning evidence-backed selection data.",
       "price": "$0.02",
       "inputSchema": {
         "type": "object",
         "required": [
           "goal"
         ],
+        "additionalProperties": false,
         "properties": {
           "goal": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
           },
           "url": {
             "type": "string",
-            "format": "uri"
+            "pattern": "^https://",
+            "maxLength": 500
           }
         }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Structured JSON result from Verified Resolve.",
+        "additionalProperties": true
       },
       "examples": [
         {
@@ -197,45 +2831,69 @@
           "network": "eip155:8453",
           "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
           "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/verified-resolve",
+          "amount": "20000",
           "maxAmountRequired": "20000",
           "extra": {
             "name": "USD Coin",
             "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/verified-resolve",
+          "amount": "20000",
+          "maxAmountRequired": "20000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
           }
         }
       ]
     },
     {
       "resource": "POST /api/batch-verified-resolve",
-      "description": "Resolve and live-verify up to four missing capabilities in one bounded call.",
+      "description": "Resolve and live-verify up to four missing capability decisions in one bounded call, using unpaid MCP and x402/HTTP evidence.",
       "price": "$0.05",
       "inputSchema": {
         "type": "object",
         "required": [
           "items"
         ],
+        "additionalProperties": false,
         "properties": {
           "items": {
             "type": "array",
-            "minItems": 1,
+            "minItems": 2,
             "maxItems": 4,
             "items": {
               "type": "object",
               "required": [
                 "goal"
               ],
+              "additionalProperties": false,
               "properties": {
                 "goal": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 600
                 },
                 "url": {
                   "type": "string",
-                  "format": "uri"
+                  "pattern": "^https://",
+                  "maxLength": 500
                 }
               }
             }
           }
         }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Structured JSON result from Batch Verified Resolve.",
+        "additionalProperties": true
       },
       "examples": [
         {
@@ -255,10 +2913,24 @@
           "network": "eip155:8453",
           "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
           "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "resource": "https://agentresolver.vercel.app/api/batch-verified-resolve",
+          "amount": "50000",
           "maxAmountRequired": "50000",
           "extra": {
             "name": "USD Coin",
             "version": "2"
+          }
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+          "resource": "https://agentresolver.vercel.app/api/batch-verified-resolve",
+          "amount": "50000",
+          "maxAmountRequired": "50000",
+          "extra": {
+            "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
           }
         }
       ]
@@ -268,5 +2940,5 @@
     "mcp": "https://agentresolver.vercel.app/mcp",
     "resolve": "https://agentresolver.vercel.app/api/resolve"
   },
-  "instructions": "Use free resolve first. Pay for direct live work or deterministic compatibility checks only when useful. A 402 is a quote, never spending authorization."
+  "instructions": "Use free resolve first. Paid products require independent caller authorization. A 402 is a quote, never spending authorization."
 }

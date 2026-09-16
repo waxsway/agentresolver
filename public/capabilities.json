@@ -25,21 +25,732 @@
       "endpoint": "/api/resolve"
     },
     {
+      "id": "abi-encode",
+      "name": "Ethereum ABI Encode",
+      "description": "ABI-encode Solidity typed values and function arguments into exact EVM calldata-ready hex for smart-contract calls, hashing, fixtures, and signing workflows.",
+      "tags": [
+        "ethereum",
+        "evm",
+        "abi",
+        "encode",
+        "calldata",
+        "solidity",
+        "contract"
+      ],
+      "priceUsd": 0.005,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/abi-encode",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "abi-decode",
+      "name": "Ethereum ABI Decode",
+      "description": "ABI-decode EVM calldata or return-data hex against Solidity parameter types into exact JSON-safe typed values for smart-contract workflows.",
+      "tags": [
+        "ethereum",
+        "evm",
+        "abi",
+        "decode",
+        "calldata",
+        "solidity",
+        "contract"
+      ],
+      "priceUsd": 0.005,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/abi-decode",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "eip712-hash",
+      "name": "EIP-712 Typed Data Hash",
+      "description": "Compute the exact EIP-712 typed-structured-data digest used for Ethereum signing and signature recovery.",
+      "tags": [
+        "ethereum",
+        "evm",
+        "eip-712",
+        "typed data",
+        "hash",
+        "signing",
+        "signature"
+      ],
+      "priceUsd": 0.005,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/eip712-hash",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "ens-namehash",
+      "name": "ENS Namehash",
+      "description": "ENSIP-15 normalize an ENS name, compute its exact ENS namehash, and return each normalized label hash.",
+      "tags": [
+        "ens",
+        "ethereum",
+        "namehash",
+        "labelhash",
+        "ensip-15",
+        "evm",
+        "name"
+      ],
+      "priceUsd": 0.01,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/ens-namehash",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "evm-address-checksum",
+      "name": "EVM Address Checksum",
+      "description": "Validate and normalize one EVM address to the exact EIP-55 mixed-case checksum form.",
+      "tags": [
+        "evm",
+        "ethereum",
+        "address",
+        "checksum",
+        "eip-55",
+        "wallet",
+        "validation"
+      ],
+      "priceUsd": 0.003,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/evm-address-checksum",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "keccak256",
+      "name": "Keccak-256",
+      "description": "Compute the exact Ethereum keccak256 digest of bounded UTF-8 text or hex bytes.",
+      "tags": [
+        "keccak",
+        "keccak256",
+        "ethereum",
+        "evm",
+        "hash",
+        "digest",
+        "crypto"
+      ],
+      "priceUsd": 0.004,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/keccak256",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "solidity-selector",
+      "name": "Solidity Function Selector",
+      "description": "Compute the exact 4-byte Solidity function/error selector and full keccak256 hash from a canonical signature.",
+      "tags": [
+        "solidity",
+        "selector",
+        "abi",
+        "calldata",
+        "keccak",
+        "ethereum",
+        "evm"
+      ],
+      "priceUsd": 0.01,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/solidity-selector",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "evm-units",
+      "name": "EVM Units Convert",
+      "description": "Precisely parse decimal token amounts into integer base units or format integer base units using arbitrary token decimals.",
+      "tags": [
+        "evm",
+        "wei",
+        "ether",
+        "units",
+        "decimals",
+        "erc20",
+        "token",
+        "conversion"
+      ],
+      "priceUsd": 0.005,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/evm-units",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "x402-ping",
+      "name": "x402 Settlement Ping",
+      "description": "Minimal paid canary that returns a timestamped pong after x402 settlement so an agent can verify wallet, facilitator, payment, and delivery end-to-end.",
+      "tags": [
+        "x402",
+        "ping",
+        "canary",
+        "settlement",
+        "wallet",
+        "facilitator",
+        "payment test",
+        "health"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/x402-ping",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "sha256",
+      "name": "SHA-256 Hash",
+      "description": "Compute a deterministic SHA-256 hex digest for bounded UTF-8 text.",
+      "tags": [
+        "sha256",
+        "sha-256",
+        "hash",
+        "digest",
+        "integrity",
+        "checksum"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/sha256",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "sha512",
+      "name": "SHA-512 Hash",
+      "description": "Compute a deterministic SHA-512 hex digest for bounded UTF-8 text.",
+      "tags": [
+        "sha512",
+        "sha-512",
+        "hash",
+        "digest",
+        "integrity",
+        "checksum"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/sha512",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "hmac-sha256",
+      "name": "HMAC SHA-256",
+      "description": "Compute a deterministic HMAC-SHA256 hex digest from bounded UTF-8 input and a caller-supplied secret.",
+      "tags": [
+        "hmac",
+        "hmac-sha256",
+        "sha256",
+        "signature",
+        "webhook",
+        "integrity"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/hmac-sha256",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "base64-encode",
+      "name": "Base64 Encode",
+      "description": "Encode bounded UTF-8 text as Base64.",
+      "tags": [
+        "base64",
+        "encode",
+        "encoder",
+        "text",
+        "utf8"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/base64-encode",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "base64-decode",
+      "name": "Base64 Decode",
+      "description": "Decode bounded Base64 text to UTF-8.",
+      "tags": [
+        "base64",
+        "decode",
+        "decoder",
+        "text",
+        "utf8"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/base64-decode",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "jwt-decode",
+      "name": "JWT Decode",
+      "description": "Decode a JWT header and payload without accepting secrets or claiming signature verification.",
+      "tags": [
+        "jwt",
+        "json web token",
+        "decode",
+        "claims",
+        "token"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/jwt-decode",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "json-normalize",
+      "name": "JSON Normalize",
+      "description": "Recursively sort JSON object keys and return canonical compact JSON plus a SHA-256 digest.",
+      "tags": [
+        "json",
+        "normalize",
+        "canonical",
+        "stable",
+        "sort keys",
+        "sha256"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/json-normalize",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "json-schema-validate",
+      "name": "JSON Schema Validate",
+      "description": "Validate JSON data against a practical deterministic JSON Schema subset and return exact path-level errors.",
+      "tags": [
+        "json schema",
+        "validate",
+        "validation",
+        "schema",
+        "structured data"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/json-schema-validate",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "url-parse",
+      "name": "URL Parse",
+      "description": "Parse an absolute URL into normalized components and machine-readable query parameters.",
+      "tags": [
+        "url",
+        "parse",
+        "query parameters",
+        "hostname",
+        "pathname",
+        "uri"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/url-parse",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "uuid-v4",
+      "name": "UUID v4",
+      "description": "Generate one or more cryptographically random UUID v4 values for IDs, traces, fixtures, and workflow keys.",
+      "tags": [
+        "uuid",
+        "uuid v4",
+        "id",
+        "identifier",
+        "trace id",
+        "random"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/uuid-v4",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "slugify",
+      "name": "Slugify",
+      "description": "Convert bounded text into a stable lowercase URL slug with deterministic separator handling.",
+      "tags": [
+        "slugify",
+        "slug",
+        "url slug",
+        "filename",
+        "route"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/slugify",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "hash-encode",
+      "name": "Hash & Encode",
+      "description": "Deterministic hashing and encoding primitive for SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, and non-verifying JWT decode.",
+      "tags": [
+        "hash",
+        "hashing",
+        "sha256",
+        "sha512",
+        "hmac",
+        "base64",
+        "encode",
+        "decode",
+        "jwt",
+        "token",
+        "deterministic",
+        "x402"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/hash-encode",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "http-inspect",
+      "name": "HTTP Endpoint Inspect (Legacy Alias)",
+      "description": "Legacy compatibility endpoint for bounded HTTP, TLS, reachability and payment-challenge inspection. New x402 verify-before-pay buyers should use /api/x402-payment-preflight.",
+      "tags": [
+        "http inspect",
+        "https",
+        "status",
+        "latency",
+        "headers",
+        "security",
+        "tls",
+        "legacy"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/http-inspect",
+      "method": "POST",
+      "costClass": "bounded-network",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "x402-payment-preflight",
+      "name": "X402 Preflight — Verify Endpoint Before Paying",
+      "description": "Verify a public x402 endpoint before paying it. AgentResolver performs one bounded HTTPS preflight and returns machine-readable evidence for reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted USDC price, network, asset, x402 version, exact scheme and resource binding before an autonomous agent authorizes spend. The probe does not request private keys or a target payment, does not follow redirects, blocks private/reserved network targets, stops after headers/TLS/payment evidence, and times out at 4.5 seconds. Optional max-price, expected-payee and expected-network assertions fail closed on mismatches. Response headers include a request ID, contract version and exact deployed source SHA. The paid result also returns a reusable evidence receipt with stable fingerprints for the observed payment identity and terms so agents can detect changes across observations without treating a wallet as a verified legal identity. Point-in-time evidence, not a guarantee of future uptime, provider legitimacy, or fulfillment. Works on Base and Solana.",
+      "tags": [
+        "x402 preflight",
+        "verify endpoint before paying",
+        "payTo verification",
+        "USDC payment check",
+        "bounded preflight",
+        "no private keys",
+        "deployment provenance",
+        "request correlation",
+        "resource binding",
+        "Base mainnet",
+        "Solana",
+        "payment-required",
+        "agent payment safety"
+      ],
+      "priceUsd": 0.001,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/x402-payment-preflight",
+      "method": "POST",
+      "costClass": "bounded-network",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "tool-contract",
+      "name": "Tool Contract Fit",
+      "description": "Deterministically check whether one tool's structured output can satisfy another tool's required JSON-schema input contract, with exact incompatibility reasons and safe normalized field mappings.",
+      "tags": [
+        "json-schema",
+        "tool-contract",
+        "compatibility",
+        "workflow",
+        "mapping",
+        "x402"
+      ],
+      "priceUsd": 0.005,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/tool-contract",
+      "method": "POST",
+      "costClass": "deterministic",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
       "id": "mcp-probe",
       "name": "MCP Live Preflight",
-      "description": "Verify one remote MCP endpoint is alive and inspect compatibility, latency, server metadata, and tool inventory before depending on it.",
+      "description": "Live-preflight one public MCP endpoint for reachability, protocol compatibility, latency, server metadata, and tool inventory.",
       "tags": [
-        "mcp preflight",
-        "mcp probe",
-        "mcp health",
-        "mcp server",
-        "mcp endpoint",
-        "verify mcp",
-        "test mcp",
-        "tools list",
-        "compatibility",
+        "mcp",
+        "preflight",
+        "tools",
         "latency",
-        "server check",
+        "compatibility",
         "x402"
       ],
       "priceUsd": 0.001,
@@ -47,28 +758,29 @@
       "status": "live",
       "endpoint": "/api/mcp-probe",
       "method": "POST",
+      "costClass": "bounded-network",
       "payment": {
         "protocol": "x402",
         "scheme": "exact",
         "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
         "asset": "USDC"
       }
     },
     {
       "id": "agent-readiness",
       "name": "Agent Readiness Audit",
-      "description": "Audit a public website for agent discoverability, llms.txt, ARD, OpenAPI, sitemap, MCP metadata, and baseline headers.",
+      "description": "Audit a public website for machine-readable agent discoverability and integration signals.",
       "tags": [
-        "agent readiness",
-        "agent accessibility",
+        "agent-readiness",
         "llms.txt",
-        "ard",
         "openapi",
         "mcp",
         "robots",
         "sitemap",
-        "website audit",
-        "domain",
         "x402"
       ],
       "priceUsd": 0.005,
@@ -76,56 +788,89 @@
       "status": "live",
       "endpoint": "/api/agent-readiness",
       "method": "POST",
+      "costClass": "bounded-network",
       "payment": {
         "protocol": "x402",
         "scheme": "exact",
         "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "asset": "USDC"
+      }
+    },
+    {
+      "id": "openapi-select",
+      "name": "OpenAPI Operation Select",
+      "description": "Fetch a public JSON OpenAPI spec, rank its operations against a natural-language goal, and return one compact execution-ready operation contract with request parameters, body schema, auth requirements, alternatives, and confidence.",
+      "tags": [
+        "openapi",
+        "api operation",
+        "operation selection",
+        "operationid",
+        "endpoint selection",
+        "request schema",
+        "agent tool",
+        "x402"
+      ],
+      "priceUsd": 0.005,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/openapi-select",
+      "method": "POST",
+      "costClass": "bounded-network",
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
         "asset": "USDC"
       }
     },
     {
       "id": "verified-resolve",
       "name": "Verified Resolve",
-      "description": "Resolve a missing capability, live-probe up to two top MCP candidates, and return an evidence-backed recommendation.",
+      "description": "Resolve one missing capability and perform up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates before returning evidence-backed selection data.",
       "tags": [
-        "verified resolve",
-        "verified tool",
-        "tool verification",
-        "mcp verification",
-        "capability verification",
-        "tool selection",
-        "provider selection",
-        "live check",
-        "recommendation",
-        "x402"
+        "capability",
+        "discovery",
+        "mcp",
+        "http",
+        "x402",
+        "verification",
+        "selection"
       ],
       "priceUsd": 0.02,
       "mode": "owned",
       "status": "live",
       "endpoint": "/api/verified-resolve",
       "method": "POST",
+      "costClass": "bounded-network",
       "payment": {
         "protocol": "x402",
         "scheme": "exact",
         "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
         "asset": "USDC"
       }
     },
     {
       "id": "batch-verified-resolve",
       "name": "Batch Verified Resolve",
-      "description": "Resolve and live-verify up to four capability requests in one batch, probing up to two MCP candidates per request and returning evidence-backed recommendations.",
+      "description": "Resolve and live-verify up to four missing capability decisions in one bounded call, using unpaid MCP and x402/HTTP evidence.",
       "tags": [
-        "batch verified resolve",
-        "batch verification",
-        "tool procurement",
-        "agent procurement",
-        "mcp verification",
-        "capability verification",
-        "tool selection",
-        "provider selection",
-        "multi tool",
-        "recommendation",
+        "batch",
+        "capability",
+        "discovery",
+        "mcp",
+        "verification",
         "x402"
       ],
       "priceUsd": 0.05,
@@ -133,10 +878,15 @@
       "status": "live",
       "endpoint": "/api/batch-verified-resolve",
       "method": "POST",
+      "costClass": "bounded-network",
       "payment": {
         "protocol": "x402",
         "scheme": "exact",
         "network": "eip155:8453",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
         "asset": "USDC"
       }
     }

@@ -1,10 +1,15 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "AgentResolver — Find Missing Agent Tools",
-    "version": "0.1.4",
-    "description": "Free read-only fallback discovery for autonomous agents, plus low-cost x402 live verification. Resolution never authorizes spending; paid execution requires the calling agent to satisfy the advertised x402 payment challenge under its own spending policy.",
-    "x-guidance": "Use POST /api/resolve first for free capability discovery. Use paid routes only when exact live evidence or deterministic computation is worth the listed per-call price. Payment is always caller-authorized."
+    "title": "AgentResolver — X402 Payment Preflight & PayTo Verification",
+    "version": "0.1.5",
+    "description": "Machine-readable verify-before-pay infrastructure for autonomous x402 buyers. The canonical $0.001 USDC route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana network, asset and resource binding before spend, then returns a reusable evidence receipt with stable observed-payment fingerprints for change detection. Free capability resolution remains available as a secondary surface.",
+    "x-guidance": "For x402 verify-before-pay, use POST /api/x402-payment-preflight. It costs $0.001 USDC on Base or Solana and returns structured endpoint/payment evidence plus stable fingerprints for the observed payment identity and terms. Those fingerprints support change detection; they do not establish legal wallet ownership or provider legitimacy. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized.",
+    "contact": {
+      "name": "AgentResolver",
+      "url": "https://github.com/waxsway/agentresolver"
+    },
+    "termsOfService": "https://agentresolver.vercel.app/legal"
   },
   "servers": [
     {
@@ -75,12 +80,12 @@
     },
     "/api/http-inspect": {
       "post": {
-        "operationId": "inspectApiTrust",
+        "operationId": "inspectHttpEndpointLegacy",
         "tags": [
           "Paid Agent Capabilities"
         ],
-        "summary": "Preflight an API or x402 endpoint before an agent spends money",
-        "description": "Price: $0.001 USDC on Base via x402. Returns a live 0-100 trust score, grade and weighted evidence across TLS authorization/protocol/expiry, reachability, latency, redirects and baseline security headers.",
+        "summary": "HTTP Endpoint Inspect (Legacy Alias)",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Legacy compatibility endpoint for bounded HTTP, TLS, reachability and payment-challenge inspection. New x402 verify-before-pay buyers should use /api/x402-payment-preflight.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -96,12 +101,33 @@
           "version": 2,
           "scheme": "exact",
           "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
           "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
           "priceUsd": 0.001,
           "challengeStatus": 402,
           "challengeHeader": "PAYMENT-REQUIRED",
           "authorizationHeader": "PAYMENT-SIGNATURE",
           "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "http-inspect",
+          "costClass": "bounded-network",
+          "useWhen": "An existing integration still calls the legacy HTTP inspection route. New payment-preflight workflows should use /api/x402-payment-preflight."
         },
         "requestBody": {
           "required": true,
@@ -116,15 +142,44 @@
                 "properties": {
                   "url": {
                     "type": "string",
-                    "format": "uri",
+                    "pattern": "^https://",
                     "maxLength": 500
+                  },
+                  "maxPriceUsd": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "expectedPayTo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "expectedNetwork": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "GET",
+                      "HEAD",
+                      "POST"
+                    ]
+                  },
+                  "body": {},
+                  "allowUnpaidPostProbe": {
+                    "type": "boolean"
                   }
                 }
               },
               "examples": {
-                "x402Api": {
+                "default": {
                   "value": {
-                    "url": "https://example.com/api"
+                    "url": "https://example.com/api",
+                    "method": "GET",
+                    "maxPriceUsd": 0.01,
+                    "expectedNetwork": "eip155:8453"
                   }
                 }
               }
@@ -133,19 +188,19 @@
         },
         "responses": {
           "200": {
-            "description": "Paid API trust preflight completed.",
+            "description": "HTTP Endpoint Inspect (Legacy Alias) completed after verified payment.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Live trust score, grade, verdict, weighted checks, TLS, latency, redirect and security-header evidence.",
+                  "description": "Structured JSON result from HTTP Endpoint Inspect (Legacy Alias).",
                   "additionalProperties": true
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid or non-public HTTPS target."
+            "description": "Invalid capability input."
           },
           "402": {
             "description": "x402 payment required."
@@ -162,8 +217,8 @@
         "tags": [
           "Paid Agent Capabilities"
         ],
-        "summary": "Live-preflight a public MCP HTTP endpoint before depending on it",
-        "description": "Price: $0.001 USDC on Base via x402. Checks initialize and tools/list and returns reachability, compatibility, latency, server metadata, and current tool inventory.",
+        "summary": "MCP Live Preflight",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Live-preflight one public MCP endpoint for reachability, protocol compatibility, latency, server metadata, and tool inventory.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -179,12 +234,33 @@
           "version": 2,
           "scheme": "exact",
           "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
           "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
           "priceUsd": 0.001,
           "challengeStatus": 402,
           "challengeHeader": "PAYMENT-REQUIRED",
           "authorizationHeader": "PAYMENT-SIGNATURE",
           "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "mcp-probe",
+          "costClass": "bounded-network",
+          "useWhen": "A concrete public MCP endpoint is known and current reachability, compatibility, latency or tool inventory matters before depending on it."
         },
         "requestBody": {
           "required": true,
@@ -199,13 +275,13 @@
                 "properties": {
                   "endpoint": {
                     "type": "string",
-                    "format": "uri",
+                    "pattern": "^https://",
                     "maxLength": 500
                   }
                 }
               },
               "examples": {
-                "preflight": {
+                "default": {
                   "value": {
                     "endpoint": "https://example.com/mcp"
                   }
@@ -216,19 +292,19 @@
         },
         "responses": {
           "200": {
-            "description": "Paid MCP live preflight completed.",
+            "description": "MCP Live Preflight completed after verified payment.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Structured JSON result from Live-preflight a public MCP HTTP endpoint before depending on it.",
+                  "description": "Structured JSON result from MCP Live Preflight.",
                   "additionalProperties": true
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid endpoint."
+            "description": "Invalid capability input."
           },
           "402": {
             "description": "x402 payment required."
@@ -245,8 +321,8 @@
         "tags": [
           "Paid Agent Capabilities"
         ],
-        "summary": "Audit a public website for AI-agent discoverability",
-        "description": "Price: $0.005 USDC on Base via x402. Audits a public site for agent discoverability and machine-readable integration signals.",
+        "summary": "Agent Readiness Audit",
+        "description": "Price: $0.005 USDC on Base or Solana via x402. Audit a public website for machine-readable agent discoverability and integration signals.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -262,12 +338,33 @@
           "version": 2,
           "scheme": "exact",
           "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
           "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
           "priceUsd": 0.005,
           "challengeStatus": 402,
           "challengeHeader": "PAYMENT-REQUIRED",
           "authorizationHeader": "PAYMENT-SIGNATURE",
           "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "agent-readiness",
+          "costClass": "bounded-network",
+          "useWhen": "An agent or operator needs current evidence that a public site exposes usable agent discovery and integration metadata."
         },
         "requestBody": {
           "required": true,
@@ -276,14 +373,21 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "target"
+                  "url"
                 ],
                 "additionalProperties": false,
                 "properties": {
-                  "target": {
+                  "url": {
                     "type": "string",
-                    "format": "uri",
+                    "pattern": "^https://",
                     "maxLength": 500
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "url": "https://example.com"
                   }
                 }
               }
@@ -292,19 +396,19 @@
         },
         "responses": {
           "200": {
-            "description": "Paid audit completed.",
+            "description": "Agent Readiness Audit completed after verified payment.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Structured JSON result from Audit a public website for AI-agent discoverability.",
+                  "description": "Structured JSON result from Agent Readiness Audit.",
                   "additionalProperties": true
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid target."
+            "description": "Invalid capability input."
           },
           "402": {
             "description": "x402 payment required."
@@ -321,8 +425,8 @@
         "tags": [
           "Paid Agent Capabilities"
         ],
-        "summary": "Resolve a missing capability and live-verify top MCP candidates",
-        "description": "Price: $0.02 USDC on Base via x402. Resolves one capability, live-probes at most two top MCP candidates, and returns an evidence-backed recommendation.",
+        "summary": "Verified Resolve",
+        "description": "Price: $0.02 USDC on Base or Solana via x402. Resolve one missing capability and perform up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates before returning evidence-backed selection data.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -338,12 +442,33 @@
           "version": 2,
           "scheme": "exact",
           "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
           "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
           "priceUsd": 0.02,
           "challengeStatus": 402,
           "challengeHeader": "PAYMENT-REQUIRED",
           "authorizationHeader": "PAYMENT-SIGNATURE",
           "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "verified-resolve",
+          "costClass": "bounded-network",
+          "useWhen": "Discovery returns external candidates but stale, dead, MCP-incompatible, or non-payment-ready endpoints would make a blind selection costly."
         },
         "requestBody": {
           "required": true,
@@ -363,13 +488,13 @@
                   },
                   "url": {
                     "type": "string",
-                    "format": "uri",
+                    "pattern": "^https://",
                     "maxLength": 500
                   }
                 }
               },
               "examples": {
-                "searchTool": {
+                "default": {
                   "value": {
                     "goal": "Find and verify an MCP server for web search"
                   }
@@ -380,19 +505,19 @@
         },
         "responses": {
           "200": {
-            "description": "Paid verification completed.",
+            "description": "Verified Resolve completed after verified payment.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Structured JSON result from Resolve a missing capability and live-verify top MCP candidates.",
+                  "description": "Structured JSON result from Verified Resolve.",
                   "additionalProperties": true
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid input."
+            "description": "Invalid capability input."
           },
           "402": {
             "description": "x402 payment required."
@@ -409,8 +534,8 @@
         "tags": [
           "Paid Agent Capabilities"
         ],
-        "summary": "Resolve and live-verify several missing capabilities in one paid operation",
-        "description": "Price: $0.05 USDC on Base via x402. Accepts 1-4 capability requests. Each request may live-probe at most two MCP candidates, for a hard maximum of eight live MCP probes per paid batch.",
+        "summary": "Batch Verified Resolve",
+        "description": "Price: $0.05 USDC on Base or Solana via x402. Resolve and live-verify up to four missing capability decisions in one bounded call, using unpaid MCP and x402/HTTP evidence.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -426,12 +551,33 @@
           "version": 2,
           "scheme": "exact",
           "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
           "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
           "priceUsd": 0.05,
           "challengeStatus": 402,
           "challengeHeader": "PAYMENT-REQUIRED",
           "authorizationHeader": "PAYMENT-SIGNATURE",
           "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "batch-verified-resolve",
+          "costClass": "bounded-network",
+          "useWhen": "An agent has multiple missing capability decisions and wants one bounded purchase with live external-candidate evidence."
         },
         "requestBody": {
           "required": true,
@@ -446,7 +592,7 @@
                 "properties": {
                   "items": {
                     "type": "array",
-                    "minItems": 1,
+                    "minItems": 2,
                     "maxItems": 4,
                     "items": {
                       "type": "object",
@@ -462,7 +608,7 @@
                         },
                         "url": {
                           "type": "string",
-                          "format": "uri",
+                          "pattern": "^https://",
                           "maxLength": 500
                         }
                       }
@@ -471,14 +617,14 @@
                 }
               },
               "examples": {
-                "procurementBatch": {
+                "default": {
                   "value": {
                     "items": [
                       {
-                        "goal": "Find and verify an MCP server for web search"
+                        "goal": "Find an MCP server for search"
                       },
                       {
-                        "goal": "Find and verify an MCP server for GitHub repositories"
+                        "goal": "Find an MCP server for browser automation"
                       }
                     ]
                   }
@@ -489,19 +635,19 @@
         },
         "responses": {
           "200": {
-            "description": "Paid batch verification completed.",
+            "description": "Batch Verified Resolve completed after verified payment.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Structured JSON result from Resolve and live-verify several missing capabilities in one paid operation.",
+                  "description": "Structured JSON result from Batch Verified Resolve.",
                   "additionalProperties": true
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid batch input."
+            "description": "Invalid capability input."
           },
           "402": {
             "description": "x402 payment required."
@@ -525,6 +671,3750 @@
           }
         },
         "security": []
+      }
+    },
+    "/api/abi-encode": {
+      "post": {
+        "operationId": "ethereumAbiEncode",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Ethereum ABI Encode",
+        "description": "Price: $0.005 USDC on Base or Solana via x402. ABI-encode Solidity typed values and function arguments into exact EVM calldata-ready hex for smart-contract calls, hashing, fixtures, and signing workflows.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.005"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.005,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "abi-encode",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs exact ABI bytes for contract calls, hashing, fixtures, or signing and cannot safely approximate binary encoding."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "types",
+                  "values"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "types": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "values": {
+                    "type": "array",
+                    "maxItems": 32
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "types": [
+                      "address",
+                      "uint256"
+                    ],
+                    "values": [
+                      "0x000000000000000000000000000000000000dEaD",
+                      "42"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ethereum ABI Encode completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "types",
+                    "encoded",
+                    "bytes"
+                  ],
+                  "properties": {
+                    "types": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "encoded": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-f]+$"
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/abi-decode": {
+      "post": {
+        "operationId": "ethereumAbiDecode",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Ethereum ABI Decode",
+        "description": "Price: $0.005 USDC on Base or Solana via x402. ABI-decode EVM calldata or return-data hex against Solidity parameter types into exact JSON-safe typed values for smart-contract workflows.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.005"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.005,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "abi-decode",
+          "costClass": "deterministic",
+          "useWhen": "An agent has ABI-encoded return data or parameters and needs exact typed values without hand-decoding 32-byte words."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "types",
+                  "data"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "types": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "data": {
+                    "type": "string",
+                    "pattern": "^0x(?:[0-9a-fA-F]{2})*$",
+                    "maxLength": 262146
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "types": [
+                      "uint256",
+                      "bool"
+                    ],
+                    "data": "0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ethereum ABI Decode completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "types",
+                    "data",
+                    "values"
+                  ],
+                  "properties": {
+                    "types": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "data": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-fA-F]*$"
+                    },
+                    "values": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/eip712-hash": {
+      "post": {
+        "operationId": "eip712TypedDataHash",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "EIP-712 Typed Data Hash",
+        "description": "Price: $0.005 USDC on Base or Solana via x402. Compute the exact EIP-712 typed-structured-data digest used for Ethereum signing and signature recovery.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.005"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.005,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "eip712-hash",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs the exact EIP-712 digest for typed signing, verification, permits, orders, or wallet workflows."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "domain",
+                  "types",
+                  "primaryType",
+                  "message"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "domain": {
+                    "type": "object"
+                  },
+                  "types": {
+                    "type": "object"
+                  },
+                  "primaryType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "message": {
+                    "type": "object"
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "domain": {
+                      "name": "Ether Mail",
+                      "version": "1",
+                      "chainId": 1,
+                      "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
+                    },
+                    "types": {
+                      "Person": [
+                        {
+                          "name": "name",
+                          "type": "string"
+                        },
+                        {
+                          "name": "wallet",
+                          "type": "address"
+                        }
+                      ],
+                      "Mail": [
+                        {
+                          "name": "from",
+                          "type": "Person"
+                        },
+                        {
+                          "name": "to",
+                          "type": "Person"
+                        },
+                        {
+                          "name": "contents",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "primaryType": "Mail",
+                    "message": {
+                      "from": {
+                        "name": "Cow",
+                        "wallet": "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"
+                      },
+                      "to": {
+                        "name": "Bob",
+                        "wallet": "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB"
+                      },
+                      "contents": "Hello, Bob!"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "EIP-712 Typed Data Hash completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "primaryType",
+                    "digest"
+                  ],
+                  "properties": {
+                    "primaryType": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/ens-namehash": {
+      "post": {
+        "operationId": "ensNamehash",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "ENS Namehash",
+        "description": "Price: $0.01 USDC on Base or Solana via x402. ENSIP-15 normalize an ENS name, compute its exact ENS namehash, and return each normalized label hash.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.01"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.01,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "ens-namehash",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs an exact ENS node or label hash for registry/resolver calls, token IDs, or contract interactions."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "name": "wevm.eth"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ENS Namehash completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "input",
+                    "normalized",
+                    "namehash",
+                    "labels"
+                  ],
+                  "properties": {
+                    "input": {
+                      "type": "string"
+                    },
+                    "normalized": {
+                      "type": "string"
+                    },
+                    "namehash": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-f]{64}$"
+                    },
+                    "labels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "label",
+                          "labelhash"
+                        ],
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "labelhash": {
+                            "type": "string",
+                            "pattern": "^0x[0-9a-f]{64}$"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/evm-address-checksum": {
+      "post": {
+        "operationId": "evmAddressChecksum",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "EVM Address Checksum",
+        "description": "Price: $0.003 USDC on Base or Solana via x402. Validate and normalize one EVM address to the exact EIP-55 mixed-case checksum form.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.003"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.003,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "evm-address-checksum",
+          "costClass": "deterministic",
+          "useWhen": "An agent must safely normalize or validate an Ethereum/EVM address before signing, storing, displaying, or sending funds."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "address"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "address": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$"
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "address": "0x52908400098527886e0f7030069857d2e4169ee7"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "EVM Address Checksum completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "input",
+                    "checksummed",
+                    "lowercase",
+                    "eip55"
+                  ],
+                  "properties": {
+                    "input": {
+                      "type": "string"
+                    },
+                    "checksummed": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-fA-F]{40}$"
+                    },
+                    "lowercase": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-f]{40}$"
+                    },
+                    "eip55": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/keccak256": {
+      "post": {
+        "operationId": "keccak256Digest",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Keccak-256",
+        "description": "Price: $0.004 USDC on Base or Solana via x402. Compute the exact Ethereum keccak256 digest of bounded UTF-8 text or hex bytes.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.004"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.004,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "keccak256",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs Ethereum-compatible keccak256 for selectors, topics, commitments, IDs, or signature workflows."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "type": "string",
+                    "maxLength": 131072
+                  },
+                  "encoding": {
+                    "type": "string",
+                    "enum": [
+                      "utf8",
+                      "hex"
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "input": "transfer(address,uint256)",
+                    "encoding": "utf8"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Keccak-256 completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "algorithm",
+                    "encoding",
+                    "inputBytes",
+                    "digest"
+                  ],
+                  "properties": {
+                    "algorithm": {
+                      "const": "keccak256"
+                    },
+                    "encoding": {
+                      "type": "string",
+                      "enum": [
+                        "utf8",
+                        "hex"
+                      ]
+                    },
+                    "inputBytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "digest": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/solidity-selector": {
+      "post": {
+        "operationId": "solidityFunctionSelector",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Solidity Function Selector",
+        "description": "Price: $0.01 USDC on Base or Solana via x402. Compute the exact 4-byte Solidity function/error selector and full keccak256 hash from a canonical signature.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.01"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.01,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "solidity-selector",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs calldata selectors or exact ABI signature hashes and cannot safely approximate cryptographic output."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "signature"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "signature": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 1024
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "signature": "transfer(address,uint256)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solidity Function Selector completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "signature",
+                    "selector",
+                    "keccak256"
+                  ],
+                  "properties": {
+                    "signature": {
+                      "type": "string"
+                    },
+                    "selector": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-f]{8}$"
+                    },
+                    "keccak256": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/evm-units": {
+      "post": {
+        "operationId": "convertEvmUnits",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "EVM Units Convert",
+        "description": "Price: $0.005 USDC on Base or Solana via x402. Precisely parse decimal token amounts into integer base units or format integer base units using arbitrary token decimals.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.005"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.005,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "evm-units",
+          "costClass": "deterministic",
+          "useWhen": "An agent must convert wei/gwei/ether or arbitrary ERC-20 decimal units without floating-point rounding errors."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "value",
+                  "decimals"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "parse",
+                      "format"
+                    ]
+                  },
+                  "value": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "decimals": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "mode": "parse",
+                    "value": "1.5",
+                    "decimals": 18
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "EVM Units Convert completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "mode",
+                    "value",
+                    "decimals",
+                    "result",
+                    "resultKind"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "parse",
+                        "format"
+                      ]
+                    },
+                    "value": {
+                      "type": "string"
+                    },
+                    "decimals": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "result": {
+                      "type": "string"
+                    },
+                    "resultKind": {
+                      "type": "string",
+                      "enum": [
+                        "base-units",
+                        "decimal"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/x402-ping": {
+      "post": {
+        "operationId": "x402SettlementPing",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "x402 Settlement Ping",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Minimal paid canary that returns a timestamped pong after x402 settlement so an agent can verify wallet, facilitator, payment, and delivery end-to-end.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "x402-ping",
+          "costClass": "deterministic",
+          "useWhen": "An x402 client needs the cheapest possible end-to-end settlement test before trusting a larger paid workflow."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "echo": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "echo": "hello"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "x402 Settlement Ping completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "pong",
+                    "settledDelivery",
+                    "at",
+                    "unixMs",
+                    "requestId",
+                    "echo"
+                  ],
+                  "properties": {
+                    "pong": {
+                      "const": true
+                    },
+                    "settledDelivery": {
+                      "const": true
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "unixMs": {
+                      "type": "integer"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "echo": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/sha256": {
+      "post": {
+        "operationId": "sha256Hash",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "SHA-256 Hash",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Compute a deterministic SHA-256 hex digest for bounded UTF-8 text.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "sha256",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs a SHA-256 digest for integrity, cache keys, signatures, deduplication, or workflow IDs."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "type": "string",
+                    "maxLength": 131072
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "input": "agentresolver"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SHA-256 Hash completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "operation",
+                    "inputBytes",
+                    "encoding",
+                    "result"
+                  ],
+                  "properties": {
+                    "operation": {
+                      "type": "string"
+                    },
+                    "inputBytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "encoding": {
+                      "type": "string"
+                    },
+                    "result": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/sha512": {
+      "post": {
+        "operationId": "sha512Hash",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "SHA-512 Hash",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Compute a deterministic SHA-512 hex digest for bounded UTF-8 text.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "sha512",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs a SHA-512 digest for integrity, signing workflows, or deterministic identifiers."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "type": "string",
+                    "maxLength": 131072
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "input": "agentresolver"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SHA-512 Hash completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "operation",
+                    "inputBytes",
+                    "encoding",
+                    "result"
+                  ],
+                  "properties": {
+                    "operation": {
+                      "type": "string"
+                    },
+                    "inputBytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "encoding": {
+                      "type": "string"
+                    },
+                    "result": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/hmac-sha256": {
+      "post": {
+        "operationId": "hmacSha256",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "HMAC SHA-256",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Compute a deterministic HMAC-SHA256 hex digest from bounded UTF-8 input and a caller-supplied secret.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "hmac-sha256",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs an HMAC-SHA256 signature for webhook verification, API signing, or integrity checks."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input",
+                  "secret"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "type": "string",
+                    "maxLength": 131072
+                  },
+                  "secret": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "input": "payload",
+                    "secret": "secret"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "HMAC SHA-256 completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "operation",
+                    "inputBytes",
+                    "encoding",
+                    "result"
+                  ],
+                  "properties": {
+                    "operation": {
+                      "type": "string"
+                    },
+                    "inputBytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "encoding": {
+                      "type": "string"
+                    },
+                    "result": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/base64-encode": {
+      "post": {
+        "operationId": "base64Encode",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Base64 Encode",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Encode bounded UTF-8 text as Base64.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "base64-encode",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs text-to-Base64 conversion for payloads, headers, fixtures, or transport."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "type": "string",
+                    "maxLength": 131072
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "input": "hello"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Base64 Encode completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "operation",
+                    "inputBytes",
+                    "encoding",
+                    "result"
+                  ],
+                  "properties": {
+                    "operation": {
+                      "type": "string"
+                    },
+                    "inputBytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "encoding": {
+                      "type": "string"
+                    },
+                    "result": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/base64-decode": {
+      "post": {
+        "operationId": "base64Decode",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Base64 Decode",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Decode bounded Base64 text to UTF-8.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "base64-decode",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs Base64-to-text decoding for payloads, tokens, fixtures, or transport."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "type": "string",
+                    "maxLength": 131072
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "input": "aGVsbG8="
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Base64 Decode completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "operation",
+                    "inputBytes",
+                    "encoding",
+                    "result"
+                  ],
+                  "properties": {
+                    "operation": {
+                      "type": "string"
+                    },
+                    "inputBytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "encoding": {
+                      "type": "string"
+                    },
+                    "result": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/jwt-decode": {
+      "post": {
+        "operationId": "jwtDecode",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "JWT Decode",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Decode a JWT header and payload without accepting secrets or claiming signature verification.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "jwt-decode",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs to inspect JWT claims and metadata without verifying the token signature."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "type": "string",
+                    "maxLength": 131072
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "input": "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT Decode completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "operation",
+                    "inputBytes",
+                    "verified",
+                    "note",
+                    "header",
+                    "payload",
+                    "signature"
+                  ],
+                  "properties": {
+                    "operation": {
+                      "const": "jwt-decode"
+                    },
+                    "inputBytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "verified": {
+                      "const": false
+                    },
+                    "note": {
+                      "type": "string"
+                    },
+                    "header": {},
+                    "payload": {},
+                    "signature": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/json-normalize": {
+      "post": {
+        "operationId": "jsonNormalize",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "JSON Normalize",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Recursively sort JSON object keys and return canonical compact JSON plus a SHA-256 digest.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "json-normalize",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs stable JSON for hashing, deduplication, cache keys, signatures, diffs, or deterministic comparisons."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "value": {}
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "value": {
+                      "b": 2,
+                      "a": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON Normalize completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "normalized",
+                    "sha256",
+                    "bytes"
+                  ],
+                  "properties": {
+                    "normalized": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/json-schema-validate": {
+      "post": {
+        "operationId": "jsonSchemaValidate",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "JSON Schema Validate",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Validate JSON data against a practical deterministic JSON Schema subset and return exact path-level errors.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "json-schema-validate",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs a cheap validation gate before passing structured data to another tool."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "data",
+                  "schema"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "data": {},
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "data": {
+                      "id": "123"
+                    },
+                    "schema": {
+                      "type": "object",
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON Schema Validate completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "valid",
+                    "errorCount",
+                    "errors"
+                  ],
+                  "properties": {
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "errorCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "keyword",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "keyword": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/url-parse": {
+      "post": {
+        "operationId": "urlParse",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "URL Parse",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Parse an absolute URL into normalized components and machine-readable query parameters.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "url-parse",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs reliable URL components or query parameters without writing parser glue."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "maxLength": 4096
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "url": "https://example.com/a?x=1&x=2#frag"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL Parse completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "href",
+                    "origin",
+                    "protocol",
+                    "hostname",
+                    "port",
+                    "pathname",
+                    "query",
+                    "fragment"
+                  ],
+                  "properties": {
+                    "href": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "origin": {
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "type": "string"
+                    },
+                    "hostname": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "pathname": {
+                      "type": "string"
+                    },
+                    "query": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "fragment": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/uuid-v4": {
+      "post": {
+        "operationId": "uuidV4",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "UUID v4",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Generate one or more cryptographically random UUID v4 values for IDs, traces, fixtures, and workflow keys.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "uuid-v4",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs fresh UUID v4 identifiers without maintaining a utility dependency."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "count": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UUID v4 completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "count",
+                    "values"
+                  ],
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 20
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/slugify": {
+      "post": {
+        "operationId": "slugifyText",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Slugify",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Convert bounded text into a stable lowercase URL slug with deterministic separator handling.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "slugify",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs a safe URL/path slug for titles, labels, routes, or filenames."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 8192
+                  },
+                  "separator": {
+                    "type": "string",
+                    "enum": [
+                      "-",
+                      "_"
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "text": "Hello Agent World",
+                    "separator": "-"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Slugify completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "slug",
+                    "separator",
+                    "changed"
+                  ],
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "separator": {
+                      "type": "string",
+                      "enum": [
+                        "-",
+                        "_"
+                      ]
+                    },
+                    "changed": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/hash-encode": {
+      "post": {
+        "operationId": "hashAndEncode",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Hash & Encode",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Deterministic hashing and encoding primitive for SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, and non-verifying JWT decode.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "hash-encode",
+          "costClass": "deterministic",
+          "useWhen": "An agent needs a cheap deterministic hash, HMAC, Base64 transform, or JWT payload/header decode inside a workflow without creating an account or API key."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "operation",
+                  "input"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "operation": {
+                    "type": "string",
+                    "enum": [
+                      "sha256",
+                      "sha512",
+                      "hmac-sha256",
+                      "base64-encode",
+                      "base64-decode",
+                      "jwt-decode"
+                    ]
+                  },
+                  "input": {
+                    "type": "string",
+                    "maxLength": 131072
+                  },
+                  "secret": {
+                    "type": "string",
+                    "maxLength": 4096
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "operation": "sha256",
+                    "input": "agentresolver"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hash & Encode completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Structured JSON result from Hash & Encode.",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/x402-payment-preflight": {
+      "post": {
+        "operationId": "x402PaymentPreflightPayToVerification",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "X402 Preflight — Verify Endpoint Before Paying",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Verify a public x402 endpoint before paying it. AgentResolver performs one bounded HTTPS preflight and returns machine-readable evidence for reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted USDC price, network, asset, x402 version, exact scheme and resource binding before an autonomous agent authorizes spend. The probe does not request private keys or a target payment, does not follow redirects, blocks private/reserved network targets, stops after headers/TLS/payment evidence, and times out at 4.5 seconds. Optional max-price, expected-payee and expected-network assertions fail closed on mismatches. Response headers include a request ID, contract version and exact deployed source SHA. The paid result also returns a reusable evidence receipt with stable fingerprints for the observed payment identity and terms so agents can detect changes across observations without treating a wallet as a verified legal identity. Point-in-time evidence, not a guarantee of future uptime, provider legitimacy, or fulfillment. Works on Base and Solana.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "x402-payment-preflight",
+          "costClass": "bounded-network",
+          "useWhen": "Before paying an unfamiliar x402 endpoint: verify payTo, USDC quote, network, asset, resource binding and live challenge evidence with bounded no-key preflight behavior and deployment provenance."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "pattern": "^https://",
+                    "maxLength": 500
+                  },
+                  "maxPriceUsd": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "expectedPayTo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "expectedNetwork": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "GET",
+                      "HEAD",
+                      "POST"
+                    ]
+                  },
+                  "body": {},
+                  "allowUnpaidPostProbe": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "url": "https://example.com/api",
+                    "method": "GET",
+                    "maxPriceUsd": 0.01
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "X402 Preflight — Verify Endpoint Before Paying completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "url",
+                    "status",
+                    "ok",
+                    "latencyMs",
+                    "x402",
+                    "trust",
+                    "evidenceReceipt"
+                  ],
+                  "additionalProperties": true,
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 100,
+                      "maximum": 599
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "latencyMs": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "x402": {
+                      "type": "object",
+                      "required": [
+                        "detected",
+                        "challengeHeaderPresent",
+                        "parseable",
+                        "version",
+                        "acceptCount",
+                        "scheme",
+                        "network",
+                        "asset",
+                        "payTo",
+                        "resource",
+                        "amountAtomic",
+                        "amountUsd",
+                        "score",
+                        "verdict",
+                        "checks"
+                      ],
+                      "additionalProperties": true,
+                      "properties": {
+                        "detected": {
+                          "type": "boolean"
+                        },
+                        "challengeHeaderPresent": {
+                          "type": "boolean"
+                        },
+                        "parseable": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "acceptCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "scheme": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "network": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "asset": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "payTo": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resource": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "amountAtomic": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "amountUsd": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "enum": [
+                            "strong",
+                            "mixed",
+                            "weak",
+                            "not-detected"
+                          ]
+                        },
+                        "checks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "label",
+                              "passed",
+                              "weight",
+                              "evidence"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "passed": {
+                                "type": "boolean"
+                              },
+                              "weight": {
+                                "type": "number"
+                              },
+                              "evidence": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "trust": {
+                      "type": "object",
+                      "required": [
+                        "scope",
+                        "identityVerified",
+                        "fulfillmentVerified",
+                        "score",
+                        "infrastructureScore",
+                        "x402Score",
+                        "grade",
+                        "verdict",
+                        "checks"
+                      ],
+                      "additionalProperties": true,
+                      "properties": {
+                        "scope": {
+                          "type": "string",
+                          "const": "technical_endpoint_and_x402_payment_challenge"
+                        },
+                        "identityVerified": {
+                          "type": "boolean",
+                          "const": false
+                        },
+                        "fulfillmentVerified": {
+                          "type": "boolean",
+                          "const": false
+                        },
+                        "score": {
+                          "type": "number"
+                        },
+                        "infrastructureScore": {
+                          "type": "number"
+                        },
+                        "x402Score": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "grade": {
+                          "type": "string",
+                          "enum": [
+                            "A",
+                            "B",
+                            "C",
+                            "D",
+                            "F"
+                          ]
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "enum": [
+                            "strong",
+                            "mixed",
+                            "weak"
+                          ]
+                        },
+                        "checks": {
+                          "type": "array"
+                        }
+                      }
+                    },
+                    "evidenceReceipt": {
+                      "type": "object",
+                      "required": [
+                        "schemaVersion",
+                        "observedAt",
+                        "source",
+                        "endpoint",
+                        "observedPaymentIdentity",
+                        "observedPaymentTerms",
+                        "evidence",
+                        "interoperability",
+                        "limitations"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "schemaVersion": {
+                          "type": "integer",
+                          "const": 1
+                        },
+                        "observedAt": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string",
+                          "const": "live_endpoint_observation"
+                        },
+                        "endpoint": {
+                          "type": "object",
+                          "required": [
+                            "url",
+                            "origin",
+                            "status",
+                            "tlsAuthorized",
+                            "tlsProtocol"
+                          ],
+                          "properties": {
+                            "url": {
+                              "type": "string"
+                            },
+                            "origin": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "integer"
+                            },
+                            "tlsAuthorized": {
+                              "type": "boolean"
+                            },
+                            "tlsProtocol": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "observedPaymentIdentity": {
+                          "type": "object",
+                          "required": [
+                            "network",
+                            "asset",
+                            "payTo",
+                            "paymentIdentityFingerprint",
+                            "endpointPaymentFingerprint",
+                            "basis",
+                            "ownershipVerified",
+                            "providerLegitimacyVerified"
+                          ],
+                          "properties": {
+                            "network": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "asset": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "payTo": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "paymentIdentityFingerprint": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "endpointPaymentFingerprint": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "basis": {
+                              "type": "string",
+                              "const": "x402_challenge"
+                            },
+                            "ownershipVerified": {
+                              "type": "boolean",
+                              "const": false
+                            },
+                            "providerLegitimacyVerified": {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          }
+                        },
+                        "observedPaymentTerms": {
+                          "type": "object",
+                          "required": [
+                            "resource",
+                            "amountAtomic",
+                            "amountUsd",
+                            "scheme",
+                            "x402Version",
+                            "paymentTermsFingerprint"
+                          ],
+                          "properties": {
+                            "resource": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "amountAtomic": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "amountUsd": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "scheme": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "x402Version": {
+                              "anyOf": [
+                                {
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "paymentTermsFingerprint": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "evidence": {
+                          "type": "object",
+                          "required": [
+                            "digestAlgorithm",
+                            "digest",
+                            "infrastructureScore",
+                            "x402Score",
+                            "checksObserved"
+                          ],
+                          "properties": {
+                            "digestAlgorithm": {
+                              "type": "string",
+                              "const": "sha256"
+                            },
+                            "digest": {
+                              "type": "string"
+                            },
+                            "infrastructureScore": {
+                              "type": "number"
+                            },
+                            "x402Score": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "checksObserved": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          }
+                        },
+                        "interoperability": {
+                          "type": "object",
+                          "required": [
+                            "erc8004"
+                          ],
+                          "properties": {
+                            "erc8004": {
+                              "type": "object",
+                              "required": [
+                                "status",
+                                "submittedOnchain",
+                                "identityBinding",
+                                "endpoint",
+                                "evidenceDigestSha256",
+                                "feedbackCandidates"
+                              ],
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "const": "candidate_evidence_only"
+                                },
+                                "submittedOnchain": {
+                                  "type": "boolean",
+                                  "const": false
+                                },
+                                "identityBinding": {
+                                  "type": "null"
+                                },
+                                "endpoint": {
+                                  "type": "string"
+                                },
+                                "evidenceDigestSha256": {
+                                  "type": "string"
+                                },
+                                "feedbackCandidates": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "tag1",
+                                      "tag2",
+                                      "value",
+                                      "valueDecimals"
+                                    ],
+                                    "properties": {
+                                      "tag1": {
+                                        "type": "string"
+                                      },
+                                      "tag2": {
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "type": "integer"
+                                      },
+                                      "valueDecimals": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 18
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "limitations": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/tool-contract": {
+      "post": {
+        "operationId": "evaluateToolContract",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Tool Contract Fit",
+        "description": "Price: $0.005 USDC on Base or Solana via x402. Deterministically check whether one tool's structured output can satisfy another tool's required JSON-schema input contract, with exact incompatibility reasons and safe normalized field mappings.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.005"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.005,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "tool-contract",
+          "costClass": "deterministic",
+          "useWhen": "An agent is about to connect two structured tools and needs a deterministic compatibility check before attempting the workflow."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "producerOutputSchema",
+                  "consumerInputSchema"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "producerOutputSchema": {
+                    "type": "object"
+                  },
+                  "consumerInputSchema": {
+                    "type": "object"
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "producerOutputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "user_id"
+                      ]
+                    },
+                    "consumerInputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "userId"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool Contract Fit completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Structured JSON result from Tool Contract Fit.",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/api/openapi-select": {
+      "post": {
+        "operationId": "selectOpenApiOperation",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "OpenAPI Operation Select",
+        "description": "Price: $0.005 USDC on Base or Solana via x402. Fetch a public JSON OpenAPI spec, rank its operations against a natural-language goal, and return one compact execution-ready operation contract with request parameters, body schema, auth requirements, alternatives, and confidence.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.005"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "networks": [
+            "eip155:8453",
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+          ],
+          "asset": "USDC",
+          "paymentOptions": [
+            {
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            },
+            {
+              "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+              "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+            }
+          ],
+          "priceUsd": 0.005,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "x-agentresolver-product": {
+          "id": "openapi-select",
+          "costClass": "bounded-network",
+          "useWhen": "An agent has a public OpenAPI spec but needs to choose the right operation without loading the entire API surface into model context."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "specUrl",
+                  "goal"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "specUrl": {
+                    "type": "string",
+                    "pattern": "^https://",
+                    "maxLength": 500
+                  },
+                  "goal": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 600
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "specUrl": "https://example.com/openapi.json",
+                    "goal": "find a customer order by id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OpenAPI Operation Select completed after verified payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Structured JSON result from OpenAPI Operation Select.",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid capability input."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
       }
     }
   }
