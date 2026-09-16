@@ -9,7 +9,22 @@ const SOLANA_PAY_TO = "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa";
 const SOLANA_FEE_PAYER = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4";
 const NETWORK = "eip155:8453";
 const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
-const FACILITATOR_URL = "https://facilitator.payai.network";
+const PAYAI_FACILITATOR_URL = "https://facilitator.payai.network";
+const CDP_FACILITATOR_URL = "https://api.cdp.coinbase.com/platform/v2/x402";
+const CDP_FACILITATOR_CAPABILITIES = new Set(
+  (process.env.AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES || "x402-ping")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+);
+const CDP_FACILITATOR_ENABLED =
+  process.env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1";
+
+function facilitatorFor(capabilityId: string) {
+  return CDP_FACILITATOR_ENABLED && CDP_FACILITATOR_CAPABILITIES.has(capabilityId)
+    ? CDP_FACILITATOR_URL
+    : PAYAI_FACILITATOR_URL;
+}
 
 const STRING_OR_NULL = { anyOf: [{ type: "string" }, { type: "null" }] };
 const HASH_RESULT_SCHEMA = {
@@ -239,7 +254,7 @@ const marketplaceServices = PAID_CAPABILITY_LIST.map((product) => ({
   tags: [...product.tags, "x402", "agents"].filter((tag, index, all) => all.indexOf(tag) === index),
   owner_url: CANONICAL_ORIGIN,
   owner_contact: "https://github.com/waxsway/agentresolver",
-  facilitator: FACILITATOR_URL,
+  facilitator: facilitatorFor(product.id),
   x402_version: 2
 }));
 
@@ -266,7 +281,7 @@ const x402Manifest = {
   pay_to: PAY_TO,
   payment_protocols: ["x402"],
   facilitator: {
-    default: FACILITATOR_URL
+    default: PAYAI_FACILITATOR_URL
   },
   openapi: `${CANONICAL_ORIGIN}/openapi.json`,
   mcp: `${CANONICAL_ORIGIN}/mcp`,
@@ -288,7 +303,7 @@ const x402Manifest = {
     tags: [...product.tags, "x402", "agents"].filter((tag, index, all) => all.indexOf(tag) === index),
     owner_url: CANONICAL_ORIGIN,
     owner_contact: "https://github.com/waxsway/agentresolver",
-    facilitator: FACILITATOR_URL,
+    facilitator: facilitatorFor(product.id),
     x402_version: 2,
     resource: `POST ${product.endpoint}`,
     description: product.description,
