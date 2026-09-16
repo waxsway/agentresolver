@@ -6,6 +6,7 @@ import { isIP } from "node:net";
 const MAX_URL = 500;
 const TIMEOUT_MS = 4_500;
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913".toLowerCase();
+const SOLANA_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 export type HttpInspectOptions = {
   maxPriceUsd?: number;
@@ -251,9 +252,11 @@ export function assessX402Payment(
     ? String(amountAtomicRaw)
     : null;
   let amountUsd: number | null = null;
+  const recognizedUsdc =
+    (network === "eip155:8453" && asset?.toLowerCase() === BASE_USDC) ||
+    (network === "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" && asset === SOLANA_USDC);
   if (
-    network === "eip155:8453" &&
-    asset?.toLowerCase() === BASE_USDC &&
+    recognizedUsdc &&
     amountAtomic &&
     /^\d+$/.test(amountAtomic)
   ) {
@@ -425,7 +428,7 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
         { id: "cert_lifetime", label: "Certificate not near expiry", passed: daysRemaining !== null && daysRemaining >= 14, weight: 10, evidence: daysRemaining === null ? "Certificate expiry unavailable." : `${daysRemaining} days remaining.` },
         { id: "reachable", label: "Endpoint reachable without server error", passed: reachable, weight: 20, evidence: `HTTP ${status}.` },
         { id: "redirect", label: "No immediate redirect", passed: !(status >= 300 && status < 400 && Boolean(location)), weight: 5, evidence: location ? `Redirects to ${location}.` : "No redirect observed." },
-        { id: "latency", label: "Responsive endpoint", passed: latencyMs <= 1500, weight: 10, evidence: `${latencyMs} ms HEAD latency.` },
+        { id: "latency", label: "Responsive endpoint", passed: latencyMs <= 1500, weight: 10, evidence: `${latencyMs} ms ${method} latency.` },
         { id: "hsts", label: "HSTS enabled", passed: security.hsts, weight: 5, evidence: security.hsts ? "Strict-Transport-Security present." : "Strict-Transport-Security missing." },
         { id: "csp", label: "Content Security Policy present", passed: security.csp, weight: 3, evidence: security.csp ? "Content-Security-Policy present." : "Content-Security-Policy missing." },
         { id: "x_content_type_options", label: "MIME sniffing protection", passed: security.xContentTypeOptions, weight: 2, evidence: security.xContentTypeOptions ? "X-Content-Type-Options present." : "X-Content-Type-Options missing." },
