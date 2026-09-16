@@ -83,6 +83,9 @@ export type HttpInspectReport = {
     }>;
   };
   trust: {
+    scope: "technical_endpoint_and_x402_payment_challenge";
+    identityVerified: false;
+    fulfillmentVerified: false;
     score: number;
     infrastructureScore: number;
     x402Score: number | null;
@@ -480,6 +483,9 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
         security,
         x402,
         trust: {
+          scope: "technical_endpoint_and_x402_payment_challenge",
+          identityVerified: false,
+          fulfillmentVerified: false,
           score,
           infrastructureScore,
           x402Score: x402.score,
