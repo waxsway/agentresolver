@@ -2,7 +2,7 @@
   "name": "agentresolver",
   "version": "0.1.3",
   "private": true,
-  "description": "Machine-first capability discovery and live-evidence utilities for AI agents, with free resolve and optional x402-paid verification on Base.",
+  "description": "Machine-first capability discovery and live-evidence utilities for AI agents, with free resolve and optional x402-paid verification on Base and Solana.",
   "homepage": "https://agentresolver.vercel.app",
   "repository": {
     "type": "git",
@@ -40,6 +40,7 @@
     "@x402/extensions": "2.25.0",
     "@x402/mcp": "2.25.0",
     "@x402/next": "2.25.0",
+    "@x402/svm": "2.25.0",
     "next": "16.2.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

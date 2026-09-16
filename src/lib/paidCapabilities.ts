@@ -15,7 +15,7 @@ export const PAID_CAPABILITIES = {
     tags: ["ethereum", "evm", "abi", "encode", "calldata", "solidity", "contract"],
     inputSchema: { type: "object", required: ["types", "values"], additionalProperties: false, properties: { types: { type: "array", minItems: 1, maxItems: 32, items: { type: "string", minLength: 1, maxLength: 512 } }, values: { type: "array", maxItems: 32 } } },
     example: { types: ["address", "uint256"], values: ["0x000000000000000000000000000000000000dEaD", "42"] },
-    quoteTool: { name: "abi_encode", title: "Ethereum ABI encode — $0.005", description: "Paid $0.005 USDC/Base exact Ethereum ABI encoding from Solidity typed JSON values to calldata-ready hex." }
+    quoteTool: { name: "abi_encode", title: "Ethereum ABI encode — $0.005", description: "Paid $0.005 USDC on Base or Solana exact Ethereum ABI encoding from Solidity typed JSON values to calldata-ready hex." }
   },
   "abi-decode": {
     id: "abi-decode",
@@ -31,7 +31,7 @@ export const PAID_CAPABILITIES = {
     tags: ["ethereum", "evm", "abi", "decode", "calldata", "solidity", "contract"],
     inputSchema: { type: "object", required: ["types", "data"], additionalProperties: false, properties: { types: { type: "array", minItems: 1, maxItems: 32, items: { type: "string", minLength: 1, maxLength: 512 } }, data: { type: "string", pattern: "^0x(?:[0-9a-fA-F]{2})*$", maxLength: 262146 } } },
     example: { types: ["uint256", "bool"], data: "0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001" },
-    quoteTool: { name: "abi_decode", title: "Ethereum ABI decode — $0.005", description: "Paid $0.005 USDC/Base exact Ethereum ABI decoding into JSON-safe typed values." }
+    quoteTool: { name: "abi_decode", title: "Ethereum ABI decode — $0.005", description: "Paid $0.005 USDC on Base or Solana exact Ethereum ABI decoding into JSON-safe typed values." }
   },
   "eip712-hash": {
     id: "eip712-hash",
@@ -47,7 +47,7 @@ export const PAID_CAPABILITIES = {
     tags: ["ethereum", "evm", "eip-712", "typed data", "hash", "signing", "signature"],
     inputSchema: { type: "object", required: ["domain", "types", "primaryType", "message"], additionalProperties: false, properties: { domain: { type: "object" }, types: { type: "object" }, primaryType: { type: "string", minLength: 1, maxLength: 128 }, message: { type: "object" } } },
     example: { domain: { name: "Ether Mail", version: "1", chainId: 1, verifyingContract: "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC" }, types: { Person: [{ name: "name", type: "string" }, { name: "wallet", type: "address" }], Mail: [{ name: "from", type: "Person" }, { name: "to", type: "Person" }, { name: "contents", type: "string" }] }, primaryType: "Mail", message: { from: { name: "Cow", wallet: "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826" }, to: { name: "Bob", wallet: "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB" }, contents: "Hello, Bob!" } },
-    quoteTool: { name: "eip712_hash", title: "EIP-712 typed-data hash — $0.005", description: "Paid $0.005 USDC/Base exact EIP-712 typed-data digest for signing and verification workflows." }
+    quoteTool: { name: "eip712_hash", title: "EIP-712 typed-data hash — $0.005", description: "Paid $0.005 USDC on Base or Solana exact EIP-712 typed-data digest for signing and verification workflows." }
   },
   "ens-namehash": {
     id: "ens-namehash",
@@ -63,7 +63,7 @@ export const PAID_CAPABILITIES = {
     tags: ["ens", "ethereum", "namehash", "labelhash", "ensip-15", "evm", "name"],
     inputSchema: { type: "object", required: ["name"], additionalProperties: false, properties: { name: { type: "string", minLength: 1, maxLength: 255 } } },
     example: { name: "wevm.eth" },
-    quoteTool: { name: "ens_namehash", title: "ENS namehash — $0.01", description: "Paid $0.01 USDC/Base ENSIP-15 normalization, exact ENS namehash and label hashes." }
+    quoteTool: { name: "ens_namehash", title: "ENS namehash — $0.01", description: "Paid $0.01 USDC on Base or Solana ENSIP-15 normalization, exact ENS namehash and label hashes." }
   },
   "evm-address-checksum": {
     id: "evm-address-checksum",
@@ -79,7 +79,7 @@ export const PAID_CAPABILITIES = {
     tags: ["evm", "ethereum", "address", "checksum", "eip-55", "wallet", "validation"],
     inputSchema: { type: "object", required: ["address"], additionalProperties: false, properties: { address: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" } } },
     example: { address: "0x52908400098527886e0f7030069857d2e4169ee7" },
-    quoteTool: { name: "evm_address_checksum", title: "EVM address checksum — $0.003", description: "Paid $0.003 USDC/Base exact EIP-55 address validation and checksum normalization." }
+    quoteTool: { name: "evm_address_checksum", title: "EVM address checksum — $0.003", description: "Paid $0.003 USDC on Base or Solana exact EIP-55 address validation and checksum normalization." }
   },
   "keccak256": {
     id: "keccak256",
@@ -95,7 +95,7 @@ export const PAID_CAPABILITIES = {
     tags: ["keccak", "keccak256", "ethereum", "evm", "hash", "digest", "crypto"],
     inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 }, encoding: { type: "string", enum: ["utf8", "hex"] } } },
     example: { input: "transfer(address,uint256)", encoding: "utf8" },
-    quoteTool: { name: "keccak256", title: "Keccak-256 — $0.004", description: "Paid $0.004 USDC/Base exact Ethereum keccak256 digest for UTF-8 text or hex bytes." }
+    quoteTool: { name: "keccak256", title: "Keccak-256 — $0.004", description: "Paid $0.004 USDC on Base or Solana exact Ethereum keccak256 digest for UTF-8 text or hex bytes." }
   },
   "solidity-selector": {
     id: "solidity-selector",
@@ -111,7 +111,7 @@ export const PAID_CAPABILITIES = {
     tags: ["solidity", "selector", "abi", "calldata", "keccak", "ethereum", "evm"],
     inputSchema: { type: "object", required: ["signature"], additionalProperties: false, properties: { signature: { type: "string", minLength: 3, maxLength: 1024 } } },
     example: { signature: "transfer(address,uint256)" },
-    quoteTool: { name: "solidity_selector", title: "Solidity selector — $0.01", description: "Paid $0.01 USDC/Base exact 4-byte Solidity selector and full keccak256 signature hash." }
+    quoteTool: { name: "solidity_selector", title: "Solidity selector — $0.01", description: "Paid $0.01 USDC on Base or Solana exact 4-byte Solidity selector and full keccak256 signature hash." }
   },
   "evm-units": {
     id: "evm-units",
@@ -127,7 +127,7 @@ export const PAID_CAPABILITIES = {
     tags: ["evm", "wei", "ether", "units", "decimals", "erc20", "token", "conversion"],
     inputSchema: { type: "object", required: ["mode", "value", "decimals"], additionalProperties: false, properties: { mode: { type: "string", enum: ["parse", "format"] }, value: { type: "string", maxLength: 256 }, decimals: { type: "integer", minimum: 0, maximum: 255 } } },
     example: { mode: "parse", value: "1.5", decimals: 18 },
-    quoteTool: { name: "evm_units", title: "EVM units convert — $0.005", description: "Paid $0.005 USDC/Base exact decimal/base-unit conversion with arbitrary token decimals." }
+    quoteTool: { name: "evm_units", title: "EVM units convert — $0.005", description: "Paid $0.005 USDC on Base or Solana exact decimal/base-unit conversion with arbitrary token decimals." }
   },
   "x402-ping": {
     id: "x402-ping", name: "x402 Settlement Ping", operationId: "x402SettlementPing", endpoint: "/api/x402-ping",
@@ -138,7 +138,7 @@ export const PAID_CAPABILITIES = {
     tags: ["x402", "ping", "canary", "settlement", "wallet", "facilitator", "payment test", "health"],
     inputSchema: { type: "object", additionalProperties: false, properties: { echo: { type: "string", maxLength: 256 } } },
     example: { echo: "hello" },
-    quoteTool: { name: "x402_ping", title: "x402 settlement ping — $0.001", description: "Paid $0.001 USDC/Base settlement canary. Returns a timestamped pong only after successful x402 payment so clients can verify their wallet/facilitator path." }
+    quoteTool: { name: "x402_ping", title: "x402 settlement ping — $0.001", description: "Paid $0.001 USDC on Base or Solana settlement canary. Returns a timestamped pong only after successful x402 payment so clients can verify their wallet/facilitator path." }
   },
   "sha256": {
     id: "sha256", name: "SHA-256 Hash", operationId: "sha256Hash", endpoint: "/api/sha256",
@@ -148,7 +148,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["sha256", "sha-256", "hash", "digest", "integrity", "checksum"],
     inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
     example: { input: "agentresolver" },
-    quoteTool: { name: "sha256", title: "SHA-256 hash — $0.001", description: "Paid $0.001 USDC/Base SHA-256 digest of bounded UTF-8 text." }
+    quoteTool: { name: "sha256", title: "SHA-256 hash — $0.001", description: "Paid $0.001 USDC on Base or Solana SHA-256 digest of bounded UTF-8 text." }
   },
   "sha512": {
     id: "sha512", name: "SHA-512 Hash", operationId: "sha512Hash", endpoint: "/api/sha512",
@@ -158,7 +158,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["sha512", "sha-512", "hash", "digest", "integrity", "checksum"],
     inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
     example: { input: "agentresolver" },
-    quoteTool: { name: "sha512", title: "SHA-512 hash — $0.001", description: "Paid $0.001 USDC/Base SHA-512 digest of bounded UTF-8 text." }
+    quoteTool: { name: "sha512", title: "SHA-512 hash — $0.001", description: "Paid $0.001 USDC on Base or Solana SHA-512 digest of bounded UTF-8 text." }
   },
   "hmac-sha256": {
     id: "hmac-sha256", name: "HMAC SHA-256", operationId: "hmacSha256", endpoint: "/api/hmac-sha256",
@@ -168,7 +168,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["hmac", "hmac-sha256", "sha256", "signature", "webhook", "integrity"],
     inputSchema: { type: "object", required: ["input", "secret"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 }, secret: { type: "string", minLength: 1, maxLength: 4096 } } },
     example: { input: "payload", secret: "secret" },
-    quoteTool: { name: "hmac_sha256", title: "HMAC SHA-256 — $0.001", description: "Paid $0.001 USDC/Base HMAC-SHA256 hex digest." }
+    quoteTool: { name: "hmac_sha256", title: "HMAC SHA-256 — $0.001", description: "Paid $0.001 USDC on Base or Solana HMAC-SHA256 hex digest." }
   },
   "base64-encode": {
     id: "base64-encode", name: "Base64 Encode", operationId: "base64Encode", endpoint: "/api/base64-encode",
@@ -178,7 +178,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["base64", "encode", "encoder", "text", "utf8"],
     inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
     example: { input: "hello" },
-    quoteTool: { name: "base64_encode", title: "Base64 encode — $0.001", description: "Paid $0.001 USDC/Base UTF-8 to Base64 encoding." }
+    quoteTool: { name: "base64_encode", title: "Base64 encode — $0.001", description: "Paid $0.001 USDC on Base or Solana UTF-8 to Base64 encoding." }
   },
   "base64-decode": {
     id: "base64-decode", name: "Base64 Decode", operationId: "base64Decode", endpoint: "/api/base64-decode",
@@ -188,7 +188,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["base64", "decode", "decoder", "text", "utf8"],
     inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
     example: { input: "aGVsbG8=" },
-    quoteTool: { name: "base64_decode", title: "Base64 decode — $0.001", description: "Paid $0.001 USDC/Base Base64 to UTF-8 decoding." }
+    quoteTool: { name: "base64_decode", title: "Base64 decode — $0.001", description: "Paid $0.001 USDC on Base or Solana Base64 to UTF-8 decoding." }
   },
   "jwt-decode": {
     id: "jwt-decode", name: "JWT Decode", operationId: "jwtDecode", endpoint: "/api/jwt-decode",
@@ -198,7 +198,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["jwt", "json web token", "decode", "claims", "token"],
     inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
     example: { input: "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature" },
-    quoteTool: { name: "jwt_decode", title: "JWT decode — $0.001", description: "Paid $0.001 USDC/Base non-verifying JWT header/payload decode." }
+    quoteTool: { name: "jwt_decode", title: "JWT decode — $0.001", description: "Paid $0.001 USDC on Base or Solana non-verifying JWT header/payload decode." }
   },
   "json-normalize": {
     id: "json-normalize", name: "JSON Normalize", operationId: "jsonNormalize", endpoint: "/api/json-normalize",
@@ -208,7 +208,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["json", "normalize", "canonical", "stable", "sort keys", "sha256"],
     inputSchema: { type: "object", required: ["value"], additionalProperties: false, properties: { value: {} } },
     example: { value: { b: 2, a: 1 } },
-    quoteTool: { name: "json_normalize", title: "JSON normalize — $0.001", description: "Paid $0.001 USDC/Base canonical JSON normalization plus SHA-256 digest." }
+    quoteTool: { name: "json_normalize", title: "JSON normalize — $0.001", description: "Paid $0.001 USDC on Base or Solana canonical JSON normalization plus SHA-256 digest." }
   },
   "json-schema-validate": {
     id: "json-schema-validate", name: "JSON Schema Validate", operationId: "jsonSchemaValidate", endpoint: "/api/json-schema-validate",
@@ -218,7 +218,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["json schema", "validate", "validation", "schema", "structured data"],
     inputSchema: { type: "object", required: ["data", "schema"], additionalProperties: false, properties: { data: {}, schema: { type: "object" } } },
     example: { data: { id: "123" }, schema: { type: "object", required: ["id"], properties: { id: { type: "string" } } } },
-    quoteTool: { name: "json_schema_validate", title: "JSON Schema validate — $0.001", description: "Paid $0.001 USDC/Base deterministic JSON Schema subset validation." }
+    quoteTool: { name: "json_schema_validate", title: "JSON Schema validate — $0.001", description: "Paid $0.001 USDC on Base or Solana deterministic JSON Schema subset validation." }
   },
   "url-parse": {
     id: "url-parse", name: "URL Parse", operationId: "urlParse", endpoint: "/api/url-parse",
@@ -228,7 +228,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["url", "parse", "query parameters", "hostname", "pathname", "uri"],
     inputSchema: { type: "object", required: ["url"], additionalProperties: false, properties: { url: { type: "string", maxLength: 4096 } } },
     example: { url: "https://example.com/a?x=1&x=2#frag" },
-    quoteTool: { name: "url_parse", title: "URL parse — $0.001", description: "Paid $0.001 USDC/Base absolute URL parser." }
+    quoteTool: { name: "url_parse", title: "URL parse — $0.001", description: "Paid $0.001 USDC on Base or Solana absolute URL parser." }
   },
   "uuid-v4": {
     id: "uuid-v4", name: "UUID v4", operationId: "uuidV4", endpoint: "/api/uuid-v4",
@@ -238,7 +238,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["uuid", "uuid v4", "id", "identifier", "trace id", "random"],
     inputSchema: { type: "object", additionalProperties: false, properties: { count: { type: "integer", minimum: 1, maximum: 20 } } },
     example: { count: 1 },
-    quoteTool: { name: "uuid_v4", title: "UUID v4 — $0.001", description: "Paid $0.001 USDC/Base UUID v4 generation, up to 20 IDs." }
+    quoteTool: { name: "uuid_v4", title: "UUID v4 — $0.001", description: "Paid $0.001 USDC on Base or Solana UUID v4 generation, up to 20 IDs." }
   },
   "slugify": {
     id: "slugify", name: "Slugify", operationId: "slugifyText", endpoint: "/api/slugify",
@@ -248,7 +248,7 @@ export const PAID_CAPABILITIES = {
     costClass: "deterministic", tags: ["slugify", "slug", "url slug", "filename", "route"],
     inputSchema: { type: "object", required: ["text"], additionalProperties: false, properties: { text: { type: "string", maxLength: 8192 }, separator: { type: "string", enum: ["-", "_"] } } },
     example: { text: "Hello Agent World", separator: "-" },
-    quoteTool: { name: "slugify", title: "Slugify — $0.001", description: "Paid $0.001 USDC/Base deterministic slug generation." }
+    quoteTool: { name: "slugify", title: "Slugify — $0.001", description: "Paid $0.001 USDC on Base or Solana deterministic slug generation." }
   },
   "hash-encode": {
     id: "hash-encode",
@@ -276,7 +276,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "hash_encode",
       title: "Hash & encode — $0.001",
-      description: "Paid $0.001 USDC/Base deterministic SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, or non-verifying JWT decode. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.001 USDC on Base or Solana deterministic SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, or non-verifying JWT decode. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "http-inspect": {
@@ -309,7 +309,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "http_inspect",
       title: "x402 API trust preflight — $0.001",
-      description: "Paid $0.001 USDC/Base live x402/API payment-contract preflight. Probe the target method, verify quoted price, payee, network, resource binding and challenge structure plus TLS/reachability before authorizing spend. POST probes require explicit caller opt-in because an unprotected endpoint could have side effects."
+      description: "Paid $0.001 USDC on Base or Solana live x402/API payment-contract preflight. Probe the target method, verify quoted price, payee, network, resource binding and challenge structure plus TLS/reachability before authorizing spend. POST probes require explicit caller opt-in because an unprotected endpoint could have side effects."
     }
   },
   "tool-contract": {
@@ -329,7 +329,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "tool_contract",
       title: "Tool contract fit — $0.005",
-      description: "Paid $0.005 USDC/Base deterministic JSON-schema compatibility check between one tool output and the next tool input. Returns exact incompatibility reasons and conservative normalized mappings. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.005 USDC on Base or Solana deterministic JSON-schema compatibility check between one tool output and the next tool input. Returns exact incompatibility reasons and conservative normalized mappings. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "mcp-probe": {
@@ -349,7 +349,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "mcp_preflight",
       title: "MCP live preflight — $0.001",
-      description: "Paid $0.001 USDC/Base live MCP endpoint preflight for reachability, compatibility, latency, server metadata and tool inventory. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.001 USDC on Base or Solana live MCP endpoint preflight for reachability, compatibility, latency, server metadata and tool inventory. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "agent-readiness": {
@@ -369,7 +369,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "agent_readiness",
       title: "Agent-readiness audit — $0.005",
-      description: "Paid $0.005 USDC/Base audit of a public website for agent discoverability and machine-readable integration signals. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.005 USDC on Base or Solana audit of a public website for agent discoverability and machine-readable integration signals. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "openapi-select": {
@@ -389,7 +389,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "openapi_select",
       title: "OpenAPI operation selection — $0.005",
-      description: "Paid $0.005 USDC/Base selection of the best operation from one public JSON OpenAPI spec for a stated goal. Returns a compact execution-ready contract. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.005 USDC on Base or Solana selection of the best operation from one public JSON OpenAPI spec for a stated goal. Returns a compact execution-ready contract. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "verified-resolve": {
@@ -409,7 +409,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "verified_resolve",
       title: "Live verified resolve — $0.02",
-      description: "Paid $0.02 USDC/Base capability resolution plus up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.02 USDC on Base or Solana capability resolution plus up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "batch-verified-resolve": {
@@ -429,7 +429,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "batch_verified_resolve",
       title: "Batch verified resolve — $0.05",
-      description: "Paid $0.05 USDC/Base batch live verification for 2–4 capability decisions using unpaid MCP and x402/HTTP evidence. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.05 USDC on Base or Solana batch live verification for 2–4 capability decisions using unpaid MCP and x402/HTTP evidence. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   }
 } as const;

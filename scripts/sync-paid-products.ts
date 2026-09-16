@@ -2,8 +2,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { CANONICAL_ORIGIN, PAID_CAPABILITY_LIST } from "../src/lib/paidCapabilities";
 
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const SOLANA_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const PAY_TO = "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8";
+const SOLANA_PAY_TO = "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa";
+const SOLANA_FEE_PAYER = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4";
 const NETWORK = "eip155:8453";
+const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 
 const STRING_OR_NULL = { anyOf: [{ type: "string" }, { type: "null" }] };
 const HASH_RESULT_SCHEMA = {
@@ -225,16 +229,28 @@ writeJson("public/.well-known/x402", {
       additionalProperties: true
     },
     examples: [product.example],
-    accepts: [{
-      scheme: "exact",
-      network: NETWORK,
-      asset: BASE_USDC,
-      payTo: PAY_TO,
-      resource: `${CANONICAL_ORIGIN}${product.endpoint}`,
-      amount: product.atomicAmount,
-      maxAmountRequired: product.atomicAmount,
-      extra: { name: "USD Coin", version: "2" }
-    }]
+    accepts: [
+      {
+        scheme: "exact",
+        network: NETWORK,
+        asset: BASE_USDC,
+        payTo: PAY_TO,
+        resource: `${CANONICAL_ORIGIN}${product.endpoint}`,
+        amount: product.atomicAmount,
+        maxAmountRequired: product.atomicAmount,
+        extra: { name: "USD Coin", version: "2" }
+      },
+      {
+        scheme: "exact",
+        network: SOLANA_NETWORK,
+        asset: SOLANA_USDC,
+        payTo: SOLANA_PAY_TO,
+        resource: `${CANONICAL_ORIGIN}${product.endpoint}`,
+        amount: product.atomicAmount,
+        maxAmountRequired: product.atomicAmount,
+        extra: { feePayer: SOLANA_FEE_PAYER }
+      }
+    ]
   })),
   freeDiscovery: {
     mcp: `${CANONICAL_ORIGIN}/mcp`,
@@ -260,7 +276,13 @@ capabilities.capabilities = [
     endpoint: product.endpoint,
     method: "POST",
     costClass: product.costClass,
-    payment: { protocol: "x402", scheme: "exact", network: NETWORK, asset: "USDC" }
+    payment: {
+      protocol: "x402",
+      scheme: "exact",
+      network: NETWORK,
+      networks: [NETWORK, SOLANA_NETWORK],
+      asset: "USDC"
+    }
   }))
 ];
 writeJson("public/capabilities.json", capabilities);
@@ -297,7 +319,7 @@ for (const product of PAID_CAPABILITY_LIST) {
       operationId: product.operationId,
       tags: ["Paid Agent Capabilities"],
       summary: product.name,
-      description: `Price: ${product.price} USDC on Base via x402. ${product.description}`,
+      description: `Price: ${product.price} USDC on Base or Solana via x402. ${product.description}`,
       "x-payment-info": {
         price: {
           mode: "fixed",
@@ -309,7 +331,12 @@ for (const product of PAID_CAPABILITY_LIST) {
         version: 2,
         scheme: "exact",
         network: NETWORK,
+        networks: [NETWORK, SOLANA_NETWORK],
         asset: "USDC",
+        paymentOptions: [
+          { network: NETWORK, asset: BASE_USDC, payTo: PAY_TO },
+          { network: SOLANA_NETWORK, asset: SOLANA_USDC, payTo: SOLANA_PAY_TO }
+        ],
         priceUsd: product.priceUsd,
         challengeStatus: 402,
         challengeHeader: "PAYMENT-REQUIRED",
