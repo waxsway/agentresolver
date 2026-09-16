@@ -47,6 +47,7 @@ function stampInfrastructureHeaders(
     "x-agentresolver-evidence",
     "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json"
   );
+  response.headers.set("x-agentresolver-history", VERIFIED_SETTLEMENT_HISTORY_URL);
   response.headers.set(
     "access-control-expose-headers",
     [
