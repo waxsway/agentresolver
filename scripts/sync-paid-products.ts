@@ -300,7 +300,17 @@ for (const product of PAID_CAPABILITY_LIST) {
           currency: "USD",
           amount: String(product.priceUsd)
         },
-        protocols: [{ x402: {} }]
+        protocols: [{ x402: {} }],
+        protocol: "x402",
+        version: 2,
+        scheme: "exact",
+        network: NETWORK,
+        asset: "USDC",
+        priceUsd: product.priceUsd,
+        challengeStatus: 402,
+        challengeHeader: "PAYMENT-REQUIRED",
+        authorizationHeader: "PAYMENT-SIGNATURE",
+        catalog: `${CANONICAL_ORIGIN}/.well-known/x402`
       },
       "x-agentresolver-product": {
         id: product.id,
