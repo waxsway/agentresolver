@@ -1,0 +1,142 @@
+name: Reseed Buyer Surfaces After Bazaar Fix
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/reseed-buyers-after-bazaar-fix.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reseed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Verify clean live GET canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/ping.json -w '%{http_code}' 'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            (.accepts | length) >= 2 and
+            .resource.url == "https://agentresolver.vercel.app/api/x402-ping" and
+            .extensions.bazaar.info.input.method == "GET" and
+            (.extensions.bazaar.info.input | has("body") | not) and
+            (.extensions.bazaar.info.input | has("bodyType") | not)
+          ' /tmp/ping.json >/dev/null
+
+      - name: Re-register true402
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/true402-register.json -w '%{http_code}'             -X POST 'https://true402.dev/api/v1/services'             -H 'content-type: application/json'             --data '{"url":"https://agentresolver.vercel.app"}' || true)"
+          echo "HTTP=$code"
+          cat /tmp/true402-register.json 2>/dev/null || true
+          echo
+          case "$code" in 200|201|202|409) ;; *) exit 1 ;; esac
+
+          curl -sS --max-time 30 'https://true402.dev/api/v1/services' -o /tmp/true402-catalog.json
+          jq '{
+            count:(.data|length),
+            agentresolver:[.data[]? | select(
+              ((.id // "") | ascii_downcase | contains("agentresolver")) or
+              ((.url // "") | contains("agentresolver.vercel.app")) or
+              ((.manifest.endpoint // "") | contains("agentresolver.vercel.app"))
+            ) | {id,url,manifest,reputation}]
+          }' /tmp/true402-catalog.json
+
+      - name: Re-register x402dash canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/x402dash-register.json -w '%{http_code}'             -X POST 'https://api.x402dash.com/v1/register'             -H 'content-type: application/json'             --data '{
+              "url":"https://agentresolver.vercel.app/api/x402-ping",
+              "name":"AgentResolver x402 Settlement Ping",
+              "description":"Minimal $0.001 USDC GET canary for autonomous buyers to verify wallet, facilitator, settlement and paid delivery end to end.",
+              "category":"Developer Tools",
+              "tags":["x402","settlement","payment-canary","usdc","base","solana","agents"]
+            }' || true)"
+          echo "REGISTER_HTTP=$code"
+          cat /tmp/x402dash-register.json 2>/dev/null || true
+          echo
+          case "$code" in 200|201|202|409) ;; *) exit 1 ;; esac
+
+          curl -fsS -G 'https://api.x402dash.com/v1/liveness'             --data-urlencode 'endpoint=https://agentresolver.vercel.app/api/x402-ping'             -o /tmp/x402dash-live.json
+          jq '{id,url,liveness_score,liveness_confidence,reachability_status,x402_status,request_shape,integration_readiness,check_count,alive_count,dead_count,price_usd,network,pay_to}' /tmp/x402dash-live.json
+
+      - name: Re-submit Market402 canary paid-probe opt-in
+        shell: bash
+        run: |
+          set -euo pipefail
+          selftest="$(curl -sS --max-time 30 -o /tmp/market-selftest.json -w '%{http_code}'             -X POST 'https://market402.com/selftest'             -H 'content-type: application/json'             --data '{"url":"https://agentresolver.vercel.app/api/x402-ping"}' || true)"
+          echo "SELFTEST_HTTP=$selftest"
+          cat /tmp/market-selftest.json
+          jq -e '.summary.verdict == "spec_compliant" and .summary.passed == 11' /tmp/market-selftest.json >/dev/null
+
+          code="$(curl -sS --max-time 30 -o /tmp/market-submit.json -w '%{http_code}'             -X POST 'https://market402.com/submit'             -H 'content-type: application/json'             --data '{
+              "resource":"https://agentresolver.vercel.app/api/x402-ping",
+              "declared_price_usd":0.001,
+              "paid_probe_optin":true
+            }' || true)"
+          echo "SUBMIT_HTTP=$code"
+          cat /tmp/market-submit.json 2>/dev/null || true
+          echo
+          case "$code" in 200|201|202|409) ;; *) exit 1 ;; esac
+
+          curl -fsS 'https://market402.com/optin.json' -o /tmp/market-optin.json
+          jq '{
+            agentresolver:[(.resources // .optins // .data // . // [])[]? | select(
+              ((.resource // "") | contains("agentresolver.vercel.app"))
+            )]
+          }' /tmp/market-optin.json 2>/dev/null || grep -o '.\{0,200\}agentresolver.vercel.app.\{0,600\}' /tmp/market-optin.json || true
+
+      - name: Re-register Agent402
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/agent402-register.json -w '%{http_code}'             -X POST 'https://agent402.tools/api/index/register'             -H 'content-type: application/json'             --data '{"origin":"https://agentresolver.vercel.app"}' || true)"
+          echo "HTTP=$code"
+          cat /tmp/agent402-register.json 2>/dev/null || true
+          echo
+          case "$code" in 200|201|202|204|409|429) ;; *) exit 1 ;; esac
+
+          for q in 'verify endpoint before paying' 'payTo verification' 'x402 settlement test'; do
+            echo "=== $q ==="
+            curl -fsS -G 'https://agent402.tools/api/route'               --data-urlencode "q=$q"               --data-urlencode 'include=external' -o /tmp/agent402.json
+            jq --arg q "$q" '{
+              query:$q,
+              agentresolver:[(.results // .routes // .data // [])[]? | select(
+                ((.seller // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.origin // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.host // "") | tostring | contains("agentresolver.vercel.app"))
+              ) | {seller,name,route,slug,priceUsd,score,health,networks,routerDispatchEligible,routerDispatchReason,executeVia}]
+            }' /tmp/agent402.json
+          done
+
+      - name: Re-register AgentCash and check search propagation
+        shell: bash
+        env:
+          HOME: ${{ runner.temp }}/agentcash-home
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME"
+          npx -y @agentcash/discovery@1.7.5 discover https://agentresolver.vercel.app
+          npx -y agentcash@0.17.1 register https://agentresolver.vercel.app --yes --format json | tee /tmp/agentcash-register.json
+          for q in 'AgentResolver' 'verify endpoint before paying' 'payTo verification' 'x402 settlement test'; do
+            echo "=== $q ==="
+            out="$(mktemp)"
+            npx -y agentcash@0.17.1 search "$q" --format json > "$out"
+            jq --arg q "$q" '{
+              query:$q,
+              totalResults:.data.results.totalResults,
+              agentresolver:[(.data.results.results // [])[]? | select((.origin.url // "") == "https://agentresolver.vercel.app") | {
+                path,summary,score,
+                resourceTransactions:.signals.resourceUsage.transactionCount,
+                originTransactions:.signals.originUsage.transactionCount
+              }]
+            }' "$out"
+          done
