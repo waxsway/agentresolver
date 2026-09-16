@@ -74,8 +74,8 @@ export function GET() {
       limitations: [
         "Execution evidence proves what this AgentResolver deployment returned for a successful paid call; it does not prove a third-party provider is legitimate.",
         "A deployment commit link improves inspectability but is not a substitute for an independent security review.",
-        "Settlement evidence should be checked against the relevant network rather than accepted solely because AgentResolver returned it.",
-        "The public settlement history is derived from first-party runtime telemetry and versioned in Git; it is not an independent or on-chain reputation registry."
+        "Settlement candidates originate in first-party runtime telemetry, but verified history counts require a separate public-chain USDC transfer check.",
+        "Public transaction references make settlement verification reproducible; verified past execution still does not prove provider legitimacy or guarantee future fulfillment."
       ]
     },
     {
