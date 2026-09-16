@@ -81,6 +81,7 @@ export const X402_PREFLIGHT_OUTPUT_SCHEMA = {
         "observedPaymentIdentity",
         "observedPaymentTerms",
         "evidence",
+        "interoperability",
         "limitations"
       ],
       additionalProperties: false,
@@ -150,6 +151,43 @@ export const X402_PREFLIGHT_OUTPUT_SCHEMA = {
             infrastructureScore: { type: "number" },
             x402Score: { anyOf: [{ type: "number" }, { type: "null" }] },
             checksObserved: { type: "integer", minimum: 0 }
+          }
+        },
+        interoperability: {
+          type: "object",
+          required: ["erc8004"],
+          properties: {
+            erc8004: {
+              type: "object",
+              required: [
+                "status",
+                "submittedOnchain",
+                "identityBinding",
+                "endpoint",
+                "evidenceDigestSha256",
+                "feedbackCandidates"
+              ],
+              properties: {
+                status: { type: "string", const: "candidate_evidence_only" },
+                submittedOnchain: { type: "boolean", const: false },
+                identityBinding: { type: "null" },
+                endpoint: { type: "string" },
+                evidenceDigestSha256: { type: "string" },
+                feedbackCandidates: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["tag1", "tag2", "value", "valueDecimals"],
+                    properties: {
+                      tag1: { type: "string" },
+                      tag2: { type: "string" },
+                      value: { type: "integer" },
+                      valueDecimals: { type: "integer", minimum: 0, maximum: 18 }
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         limitations: { type: "array", items: { type: "string" } }
@@ -223,6 +261,20 @@ export const X402_PREFLIGHT_OUTPUT_EXAMPLE = {
       infrastructureScore: 100,
       x402Score: 100,
       checksObserved: 11
+    },
+    interoperability: {
+      erc8004: {
+        status: "candidate_evidence_only",
+        submittedOnchain: false,
+        identityBinding: null,
+        endpoint: "https://merchant.example/api/paid-resource",
+        evidenceDigestSha256: "8a2dbaf381ba6fd3ce4b3137cf49b69ee05a597d364d0e969bcf67f0848fdbd9",
+        feedbackCandidates: [
+          { tag1: "reachable", tag2: "", value: 1, valueDecimals: 0 },
+          { tag1: "responseTime", tag2: "milliseconds", value: 118, valueDecimals: 0 },
+          { tag1: "x402ProtocolValid", tag2: "technical", value: 1, valueDecimals: 0 }
+        ]
+      }
     },
     limitations: [
       "This receipt records what AgentResolver observed at one point in time.",
