@@ -28,11 +28,11 @@ jobs:
             -X POST 'https://api.x402dash.com/v1/register' \
             -H 'content-type: application/json' \
             --data '{
-              "url":"https://agentresolver.vercel.app/api/http-inspect",
-              "name":"AgentResolver x402 API Trust Preflight",
-              "description":"Verify a live x402 payment contract before agent spend: quoted price, payee, network, asset, resource binding, challenge structure, TLS and reachability, with optional caller policy limits.",
+              "url":"https://agentresolver.vercel.app/api/x402-payment-preflight",
+              "name":"AgentResolver x402 Payment Preflight & PayTo Safety",
+              "description":"Verify an x402 endpoint before paying USDC: endpoint liveness, payTo recipient, quoted price, Base/Solana network, asset, resource binding and payment challenge safety.",
               "category":"Developer Tools",
-              "tags":["x402","trust","security","payment-preflight","api","base","usdc"]
+              "tags":["x402","payment-preflight","payto","endpoint-safety","usdc","base","solana","agents"]
             }')"
           cat "$body"
           echo
