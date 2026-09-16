@@ -1,0 +1,39 @@
+name: Poll PayAPI Listing Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/poll-payapi-listing.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect current PayAPI status-read contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 'https://payapi.market/list' -o /tmp/list.html
+          js="$(grep -Eo '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/list.html | head -1)"
+          test -n "$js"
+          curl -fsS --max-time 30 "https://payapi.market$js" -o /tmp/payapi.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/payapi.js').read_text(errors='ignore')
+          for needle in ['/api/get-provider','api_listings','payment_verified','pending_review','triage_status']:
+              print(f'=== {needle} ===')
+              start=0
+              hits=0
+              while hits<8:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  print(s[max(0,i-5000):min(len(s),i+9000)])
+                  print('\n---')
+                  start=i+len(needle)
+                  hits+=1
+          PY
