@@ -23,7 +23,7 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     cdpFacilitator: {
       enabled: process.env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1",
       defaultEnabled: false,
-      scope: "AgentResolver-owned service payments only",
+      scope: "Selected AgentResolver-owned service payments only; default activation scope is x402-ping",
       buyerAuthorizationRequired: true,
       holdsBuyerFunds: false,
       note: "Optional Coinbase CDP settlement path for Bazaar indexing. Requires explicit production approval and CDP API credentials; existing payTo addresses remain unchanged."

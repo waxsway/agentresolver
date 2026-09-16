@@ -77,6 +77,21 @@ export function cdpFacilitatorEnabled(env: Readonly<Record<string, string | unde
   return env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1";
 }
 
+export function cdpFacilitatorCapabilities(
+  env: Readonly<Record<string, string | undefined>> = process.env
+) {
+  const configured = env.AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES?.trim();
+  const raw = configured || "x402-ping";
+  return new Set(raw.split(",").map((value) => value.trim()).filter(Boolean));
+}
+
+export function cdpFacilitatorEnabledFor(
+  capabilityId: PaidCapabilityId,
+  env: Readonly<Record<string, string | undefined>> = process.env
+) {
+  return cdpFacilitatorEnabled(env) && cdpFacilitatorCapabilities(env).has(capabilityId);
+}
+
 export function cdpFacilitatorCredentialsPresent(
   env: Readonly<Record<string, string | undefined>> = process.env
 ) {
@@ -180,7 +195,7 @@ export function createDeterministicPaidRoute(
 
     const standardFacilitator = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
     const gatewayEnabled = circleGatewayEnabled();
-    const cdpEnabled = cdpFacilitatorEnabled();
+    const cdpEnabled = cdpFacilitatorEnabledFor(capabilityId);
     if (cdpEnabled && !cdpFacilitatorCredentialsPresent()) {
       throw new Error(
         "AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires CDP_API_KEY_ID and CDP_API_KEY_SECRET."
