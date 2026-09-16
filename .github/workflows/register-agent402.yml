@@ -19,10 +19,8 @@ jobs:
         run: |
           set -euo pipefail
           code=$(curl -sS -o /tmp/challenge.json -w '%{http_code}' \
-            -X POST 'https://agentresolver.vercel.app/api/x402-ping' \
-            -H 'content-type: application/json' \
-            -H 'x-agentresolver-internal: agent402-registration' \
-            --data '{"echo":"agent402-registration"}')
+            -X GET 'https://agentresolver.vercel.app/api/x402-ping' \
+            -H 'x-agentresolver-internal: agent402-registration')
           test "$code" = "402"
           grep -q 'accepts' /tmp/challenge.json
 
