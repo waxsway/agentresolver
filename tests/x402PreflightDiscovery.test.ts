@@ -25,10 +25,11 @@ test("canonical x402 preflight publishes a structured output contract", () => {
   assert.equal(X402_PREFLIGHT_OUTPUT_SCHEMA.type, "object");
   assert.deepEqual(
     X402_PREFLIGHT_OUTPUT_SCHEMA.required,
-    ["url", "status", "ok", "latencyMs", "x402", "trust", "evidenceReceipt"]
+    ["url", "status", "ok", "latencyMs", "x402", "trust", "prepaymentDecision", "evidenceReceipt"]
   );
   assert.equal(X402_PREFLIGHT_OUTPUT_SCHEMA.properties.x402.type, "object");
   assert.equal(X402_PREFLIGHT_OUTPUT_SCHEMA.properties.trust.type, "object");
+  assert.equal(X402_PREFLIGHT_OUTPUT_SCHEMA.properties.prepaymentDecision.type, "object");
   assert.equal(X402_PREFLIGHT_OUTPUT_SCHEMA.properties.evidenceReceipt.type, "object");
 
   assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.status, 402);
@@ -36,6 +37,9 @@ test("canonical x402 preflight publishes a structured output contract", () => {
   assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.x402.network, "eip155:8453");
   assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.x402.verdict, "strong");
   assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.trust.grade, "A");
+  assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.prepaymentDecision.decision, "eligible");
+  assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.prepaymentDecision.eligibleForCallerAuthorization, true);
+  assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.prepaymentDecision.authorizationBoundary.agentResolverSignsTargetPayment, false);
   assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.evidenceReceipt.schemaVersion, 1);
   assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.evidenceReceipt.observedPaymentIdentity.ownershipVerified, false);
   assert.equal(X402_PREFLIGHT_OUTPUT_EXAMPLE.evidenceReceipt.observedPaymentIdentity.providerLegitimacyVerified, false);

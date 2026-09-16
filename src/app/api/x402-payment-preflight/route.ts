@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createDeterministicPaidRoute } from "@/lib/createDeterministicPaidRoute";
 import { inspectHttpResource } from "@/lib/httpInspect";
 import { buildProviderEvidenceReceipt } from "@/lib/providerEvidenceReceipt";
+import { buildX402PrepayDecision } from "@/lib/x402PrepayDecision";
 
 export const dynamic = "force-dynamic";
 
@@ -21,15 +22,20 @@ const route = createDeterministicPaidRoute("x402-payment-preflight", async (req:
   const method = methodRaw === "GET" || methodRaw === "HEAD" || methodRaw === "POST" ? methodRaw : undefined;
   if (!method) throw new Error("method must be GET, HEAD, or POST.");
 
-  const report = await inspectHttpResource(url, {
+  const constraints = {
     maxPriceUsd: typeof body?.maxPriceUsd === "number" ? body.maxPriceUsd : undefined,
     expectedPayTo: typeof body?.expectedPayTo === "string" ? body.expectedPayTo.trim() : undefined,
-    expectedNetwork: typeof body?.expectedNetwork === "string" ? body.expectedNetwork.trim() : undefined,
+    expectedNetwork: typeof body?.expectedNetwork === "string" ? body.expectedNetwork.trim() : undefined
+  };
+
+  const report = await inspectHttpResource(url, {
+    ...constraints,
     method,
     body: body?.body,
     allowUnpaidPostProbe: body?.allowUnpaidPostProbe === true
   });
   const evidenceReceipt = buildProviderEvidenceReceipt(report);
+  const prepaymentDecision = buildX402PrepayDecision(report, evidenceReceipt, constraints);
 
   console.log(JSON.stringify({
     event: "provider_evidence_observed",
@@ -42,11 +48,15 @@ const route = createDeterministicPaidRoute("x402-payment-preflight", async (req:
     evidenceDigest: evidenceReceipt.evidence.digest,
     network: evidenceReceipt.observedPaymentIdentity.network,
     ownershipVerified: false,
-    providerLegitimacyVerified: false
+    providerLegitimacyVerified: false,
+    prepaymentDecision: prepaymentDecision.decision,
+    eligibleForCallerAuthorization: prepaymentDecision.eligibleForCallerAuthorization,
+    prepaymentReasonCodes: prepaymentDecision.reasons
   }));
 
   return {
     ...report,
+    prepaymentDecision,
     evidenceReceipt
   };
 });

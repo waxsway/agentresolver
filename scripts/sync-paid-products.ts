@@ -309,14 +309,14 @@ const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
   title: "AgentResolver — X402 Payment Preflight & PayTo Verification",
-  description: "Machine-readable verify-before-pay infrastructure for autonomous x402 buyers. The canonical $0.001 USDC route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana network, asset and resource binding before spend, then returns a reusable evidence receipt with stable observed-payment fingerprints for change detection. Free capability resolution remains available as a secondary surface.",
+  description: "Machine-readable transaction-path verification for autonomous x402 buyers. The canonical $0.001 USDC route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana USDC, exact scheme and resource binding, then returns a fail-closed eligible/blocked router decision, exact observed target payment terms, reason codes, and reusable evidence fingerprints before caller authorization. Free capability resolution remains available as a secondary surface.",
   version: "0.1.5",
   contact: {
     name: "AgentResolver",
     url: "https://github.com/waxsway/agentresolver"
   },
   termsOfService: "https://agentresolver.vercel.app/legal",
-  "x-guidance": "For x402 verify-before-pay, use POST /api/x402-payment-preflight. It costs $0.001 USDC on Base or Solana and returns structured endpoint/payment evidence plus stable fingerprints for the observed payment identity and terms. Those fingerprints support change detection; they do not establish legal wallet ownership or provider legitimacy. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
+  "x-guidance": "Immediately before an x402 purchase, use POST /api/x402-payment-preflight as a transaction-path gate. It costs $0.001 USDC on Base or Solana and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints for the observed payment identity and terms. The caller remains the only party that can authorize the target spend. Those fingerprints support change detection; they do not establish legal wallet ownership or provider legitimacy. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
