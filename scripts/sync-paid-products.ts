@@ -217,7 +217,7 @@ function writeJson(path: string, value: unknown) {
 writeJson("public/.well-known/x402", {
   x402Version: 2,
   name: "AgentResolver",
-  description: "Free capability discovery plus pay-per-call live utilities and deterministic compatibility checks for autonomous agents. No signup or API key.",
+  description: "x402 payment-safety and seller-trust checks for autonomous agents before they spend, plus secondary deterministic utilities. No signup or API key.",
   resources: PAID_CAPABILITY_LIST.map((product) => ({
     resource: `POST ${product.endpoint}`,
     description: product.description,
@@ -256,7 +256,7 @@ writeJson("public/.well-known/x402", {
     mcp: `${CANONICAL_ORIGIN}/mcp`,
     resolve: `${CANONICAL_ORIGIN}/api/resolve`
   },
-  instructions: "Use free resolve first. Paid products require independent caller authorization. A 402 is a quote, never spending authorization."
+  instructions: "Before paying an unfamiliar x402 seller or API, use the $0.001 x402 Seller Trust & Payment Preflight to verify price, payTo recipient, network, asset, resource binding and live endpoint evidence. Payment always remains caller-authorized."
 });
 
 const capabilities = readJson("public/capabilities.json");
@@ -303,8 +303,10 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  version: "0.1.4",
-  "x-guidance": "Use POST /api/resolve first for free capability discovery. Use paid routes only when exact live evidence or deterministic computation is worth the listed per-call price. Payment is always caller-authorized."
+  title: "AgentResolver — x402 Payment Safety & Seller Trust",
+  version: "0.1.5",
+  description: "Pre-payment verification for autonomous agents using x402. Before paying an unfamiliar API or seller, inspect its live x402 quote, USDC price, payTo recipient, network, asset, resource binding, TLS and reachability. Secondary routes provide deterministic agent utilities and free capability discovery.",
+  "x-guidance": "Primary paid use case: before an agent pays an unfamiliar x402 API or seller, POST /api/http-inspect with the target URL to verify the live payment contract and seller trust evidence for $0.001. It checks quoted price, payTo recipient, network, asset, resource binding, TLS, reachability and optional caller policy limits. Use /api/resolve only when a capability itself is missing. Spending is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
@@ -317,7 +319,9 @@ for (const product of PAID_CAPABILITY_LIST) {
   openapi.paths[product.endpoint] = {
     post: {
       operationId: product.operationId,
-      tags: ["Paid Agent Capabilities"],
+      tags: product.id === "http-inspect"
+        ? ["x402 Payment Safety", "Seller Trust", "Security"]
+        : ["Paid Agent Capabilities"],
       summary: product.name,
       description: `Price: ${product.price} USDC on Base or Solana via x402. ${product.description}`,
       "x-payment-info": {
