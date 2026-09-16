@@ -82,4 +82,7 @@ test("generated OpenAPI advertises execution evidence headers", () => {
   assert.ok(response.headers["x-agentresolver-evidence"]);
   assert.ok(response.headers["x-agentresolver-history"]);
   assert.ok(response.headers["payment-response"]);
+  assert.ok(
+    openapi.paths["/api/x402-payment-preflight"].post.responses["402"].headers["x-agentresolver-history"]
+  );
 });
