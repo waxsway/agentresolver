@@ -96,3 +96,30 @@ test("deterministic utility discovery publishes response schemas", () => {
     );
   }
 });
+
+
+test("canonical x402 preflight explicitly covers broad buyer-safety discovery intents", () => {
+  const product = PAID_CAPABILITY_LIST.find((item) => item.id === "x402-payment-preflight");
+  assert.ok(product);
+  const searchText = [
+    product.name,
+    product.description,
+    product.useWhen,
+    ...product.tags,
+    product.quoteTool.title,
+    product.quoteTool.description
+  ].join(" ").toLowerCase();
+
+  for (const phrase of [
+    "x402 payment preflight",
+    "verify endpoint before paying",
+    "endpoint safety",
+    "api trust",
+    "security preflight",
+    "payto verification",
+    "usdc payment check",
+    "verify-before-pay"
+  ]) {
+    assert.ok(searchText.includes(phrase), `missing discovery phrase: ${phrase}`);
+  }
+});
