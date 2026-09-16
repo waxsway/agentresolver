@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
+import { X402_PING_OUTPUT_EXAMPLE, X402_PING_OUTPUT_SCHEMA } from "@/lib/x402PingDiscovery";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { X402_NETWORK, X402_PAY_TO, X402_SOLANA_ASSET, X402_SOLANA_FEE_PAYER, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 
@@ -20,13 +21,18 @@ export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
         example: X402_PREFLIGHT_OUTPUT_EXAMPLE,
         schema: X402_PREFLIGHT_OUTPUT_SCHEMA
       }
-    : {
-        example: {},
-        schema: {
-          type: "object",
-          additionalProperties: true
+    : capabilityId === "x402-ping"
+      ? {
+          example: X402_PING_OUTPUT_EXAMPLE,
+          schema: X402_PING_OUTPUT_SCHEMA
         }
-      };
+      : {
+          example: {},
+          schema: {
+            type: "object",
+            additionalProperties: true
+          }
+        };
   const body = {
     x402Version: 2,
     error: "PAYMENT-SIGNATURE header is required",
