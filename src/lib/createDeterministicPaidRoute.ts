@@ -28,6 +28,18 @@ function stampInfrastructureHeaders(
     "x-agentresolver-trust",
     "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json"
   );
+  response.headers.set(
+    "access-control-expose-headers",
+    [
+      "payment-required",
+      "payment-response",
+      "x-agentresolver-capability",
+      "x-agentresolver-request-id",
+      "x-agentresolver-contract-version",
+      "x-agentresolver-trust",
+      "x-agentresolver-deployment"
+    ].join(", ")
+  );
   const commitSha = process.env.VERCEL_GIT_COMMIT_SHA;
   if (commitSha) response.headers.set("x-agentresolver-deployment", commitSha);
   return response;
