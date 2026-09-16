@@ -9,6 +9,7 @@ const SOLANA_PAY_TO = "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa";
 const SOLANA_FEE_PAYER = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4";
 const NETWORK = "eip155:8453";
 const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+const FACILITATOR_URL = "https://facilitator.payai.network";
 
 const STRING_OR_NULL = { anyOf: [{ type: "string" }, { type: "null" }] };
 const HASH_RESULT_SCHEMA = {
@@ -221,6 +222,27 @@ const X402_MANIFEST_PATHS = [
   "public/.well-known/x402.json"
 ] as const;
 
+const generatedAt = new Date().toISOString();
+
+const marketplaceServices = PAID_CAPABILITY_LIST.map((product) => ({
+  id: product.id,
+  name: product.name,
+  description: product.description,
+  endpoint: `${CANONICAL_ORIGIN}${product.endpoint}`,
+  method: "POST",
+  price_usdc: String(product.priceUsd),
+  price_atomic: Number(product.atomicAmount),
+  network: "base",
+  network_id: NETWORK,
+  asset: BASE_USDC,
+  category: "developer",
+  tags: [...product.tags, "x402", "agents"].filter((tag, index, all) => all.indexOf(tag) === index),
+  owner_url: CANONICAL_ORIGIN,
+  owner_contact: "https://github.com/waxsway/agentresolver",
+  facilitator: FACILITATOR_URL,
+  x402_version: 2
+}));
+
 const x402Manifest = {
   x402Version: 2,
   name: "AgentResolver",
@@ -239,12 +261,35 @@ const x402Manifest = {
   ],
   owner_url: CANONICAL_ORIGIN,
   owner_contact: "https://github.com/waxsway/agentresolver",
+  homepage: CANONICAL_ORIGIN,
+  generated_at: generatedAt,
+  pay_to: PAY_TO,
+  payment_protocols: ["x402"],
+  facilitator: {
+    default: FACILITATOR_URL
+  },
   openapi: `${CANONICAL_ORIGIN}/openapi.json`,
   mcp: `${CANONICAL_ORIGIN}/mcp`,
   trust: `${CANONICAL_ORIGIN}/.well-known/agentresolver-trust.json`,
   executionEvidence: `${CANONICAL_ORIGIN}/.well-known/agentresolver-evidence.json`,
   verifiedSettlementHistory: `${CANONICAL_ORIGIN}/.well-known/agentresolver-reputation.json`,
+  services: marketplaceServices,
   resources: PAID_CAPABILITY_LIST.map((product) => ({
+    id: product.id,
+    name: product.name,
+    endpoint: `${CANONICAL_ORIGIN}${product.endpoint}`,
+    method: "POST",
+    price_usdc: String(product.priceUsd),
+    price_atomic: Number(product.atomicAmount),
+    network: "base",
+    network_id: NETWORK,
+    asset: BASE_USDC,
+    category: "developer",
+    tags: [...product.tags, "x402", "agents"].filter((tag, index, all) => all.indexOf(tag) === index),
+    owner_url: CANONICAL_ORIGIN,
+    owner_contact: "https://github.com/waxsway/agentresolver",
+    facilitator: FACILITATOR_URL,
+    x402_version: 2,
     resource: `POST ${product.endpoint}`,
     description: product.description,
     price: product.price,

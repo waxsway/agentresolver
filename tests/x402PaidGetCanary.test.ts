@@ -73,6 +73,21 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.equal(manifest.owner_contact, "https://github.com/waxsway/agentresolver");
   assert.equal(manifest.openapi, "https://agentresolver.vercel.app/openapi.json");
   assert.equal(manifest.mcp, "https://agentresolver.vercel.app/mcp");
+  assert.equal(manifest.facilitator.default, "https://facilitator.payai.network");
+  assert.equal(manifest.payment_protocols[0], "x402");
+  assert.match(manifest.generated_at, /^\d{4}-\d{2}-\d{2}T/);
+  const canaryService = manifest.services.find((item: any) => item.id === "x402-ping");
+  assert.equal(canaryService.endpoint, "https://agentresolver.vercel.app/api/x402-ping");
+  assert.equal(canaryService.method, "GET");
+  assert.deepEqual(canaryService.methods, ["GET", "POST"]);
+  assert.equal(canaryService.price_usdc, "0.001");
+  assert.equal(canaryService.network_id, "eip155:8453");
+  assert.equal(canaryService.asset, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
+  assert.equal(canaryService.owner_url, "https://agentresolver.vercel.app");
+  assert.ok(manifest.services.some((item: any) =>
+    item.id === "x402-payment-preflight" &&
+    item.endpoint === "https://agentresolver.vercel.app/api/x402-payment-preflight"
+  ));
   assert.ok(manifest.resources.some((item: any) => item.resource === "GET /api/x402-ping"));
   assert.ok(manifest.resources.some((item: any) => item.resource === "POST /api/x402-ping"));
   assert.ok(manifest.resources.some((item: any) => item.resource === "POST /api/x402-payment-preflight"));
