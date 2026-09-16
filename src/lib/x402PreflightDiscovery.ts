@@ -60,9 +60,12 @@ export const X402_PREFLIGHT_OUTPUT_SCHEMA = {
     },
     trust: {
       type: "object",
-      required: ["score", "infrastructureScore", "x402Score", "grade", "verdict", "checks"],
+      required: ["scope", "identityVerified", "fulfillmentVerified", "score", "infrastructureScore", "x402Score", "grade", "verdict", "checks"],
       additionalProperties: true,
       properties: {
+        scope: { type: "string", const: "technical_endpoint_and_x402_payment_challenge" },
+        identityVerified: { type: "boolean", const: false },
+        fulfillmentVerified: { type: "boolean", const: false },
         score: { type: "number" },
         infrastructureScore: { type: "number" },
         x402Score: { anyOf: [{ type: "number" }, { type: "null" }] },
@@ -219,6 +222,9 @@ export const X402_PREFLIGHT_OUTPUT_EXAMPLE = {
     checks: []
   },
   trust: {
+    scope: "technical_endpoint_and_x402_payment_challenge",
+    identityVerified: false,
+    fulfillmentVerified: false,
     score: 100,
     infrastructureScore: 100,
     x402Score: 100,
