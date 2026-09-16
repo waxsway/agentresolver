@@ -61,7 +61,7 @@ function getPaidHandler(): PaidHandler {
           input: { url: "https://example.com" },
           inputSchema: {
             type: "object",
-            properties: { url: { type: "string", format: "uri" } },
+            properties: { url: { type: "string", pattern: "^https://", maxLength: 2048 } },
             required: ["url"]
           },
           bodyType: "json",
