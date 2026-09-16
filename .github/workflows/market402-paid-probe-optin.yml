@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - name: Free Market402 self-test
+      - name: Free Market402 self-test for canonical preflight
         shell: bash
         run: |
           set -euo pipefail
@@ -23,7 +23,7 @@ jobs:
           code="$(curl -sS -o "$body" -w '%{http_code}' \
             -X POST 'https://market402.com/selftest' \
             -H 'content-type: application/json' \
-            --data '{"url":"https://agentresolver.vercel.app/api/http-inspect"}')"
+            --data '{"url":"https://agentresolver.vercel.app/api/x402-payment-preflight"}')"
           cat "$body"
           echo
           case "$code" in
@@ -31,7 +31,7 @@ jobs:
             *) echo "Market402 self-test failed with HTTP $code" >&2; exit 1 ;;
           esac
 
-      - name: Submit and opt into real paid delivery probes
+      - name: Submit canonical preflight and opt into real paid delivery probes
         shell: bash
         run: |
           set -euo pipefail
@@ -40,7 +40,7 @@ jobs:
             -X POST 'https://market402.com/submit' \
             -H 'content-type: application/json' \
             --data '{
-              "resource":"https://agentresolver.vercel.app/api/http-inspect",
+              "resource":"https://agentresolver.vercel.app/api/x402-payment-preflight",
               "declared_price_usd":0.001,
               "paid_probe_optin":true,
               "sample_input":{
@@ -60,11 +60,11 @@ jobs:
             *) echo "Market402 submission failed with HTTP $code" >&2; exit 1 ;;
           esac
 
-      - name: Check public Market402 surfaces
+      - name: Check public Market402 paid-probe roster
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS 'https://market402.com/search.json?q=trust' -o /tmp/search.json || true
+          curl -fsS 'https://market402.com/search.json?q=x402%20preflight' -o /tmp/search.json || true
           echo "=== capability search ==="
           cat /tmp/search.json 2>/dev/null || true
           echo
@@ -72,6 +72,6 @@ jobs:
           echo "=== paid probe opt-in roster ==="
           cat /tmp/optin.json
           echo
-          if ! grep -q 'agentresolver.vercel.app/api/http-inspect' /tmp/optin.json; then
-            echo "::warning::Market402 accepted the submission but the public opt-in roster has not refreshed yet."
+          if ! grep -q 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/optin.json; then
+            echo "::warning::Market402 accepted the canonical submission but its public opt-in roster has not refreshed yet."
           fi
