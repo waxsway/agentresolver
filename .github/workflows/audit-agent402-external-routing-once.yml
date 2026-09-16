@@ -1,0 +1,46 @@
+name: Audit Agent402 External Routing Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-agent402-external-routing-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query buyer intents against Agent402
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            "check whether one tool JSON schema output can satisfy another tool required input schema"
+            "preflight an MCP endpoint and list its tools before connecting"
+            "resolve a missing agent capability and live verify the best MCP candidates"
+            "select the best OpenAPI operation for a natural language goal"
+            "audit a website for agent discoverability llms.txt openapi mcp"
+          )
+
+          found_any=0
+          for q in "${queries[@]}"; do
+            echo "=== BUYER INTENT: $q ==="
+            encoded=$(jq -rn --arg v "$q" '$v|@uri')
+            code=$(curl -sS -o /tmp/find.json -w '%{http_code}' "https://agent402.tools/api/find?q=$encoded&include=external")
+            test "$code" -ge 200 && test "$code" -lt 300
+            jq '{query,count,results,packs}' /tmp/find.json
+            if grep -Eiq 'agentresolver|agentresolver\.vercel\.app' /tmp/find.json; then
+              found_any=1
+              echo 'AGENTRESOLVER_PRESENT=true'
+            else
+              echo 'AGENTRESOLVER_PRESENT=false'
+            fi
+          done
+
+          echo "found_any=$found_any"
+          # This audit is diagnostic: absence is a product signal, not a CI failure.
