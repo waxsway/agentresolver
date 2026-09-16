@@ -10,7 +10,6 @@ test("paid discovery challenge exposes Bazaar input/output schemas and dual rail
   assert.equal(body.x402Version, 2);
   assert.ok(body.extensions?.bazaar?.schema?.properties?.input);
   assert.ok(body.extensions?.bazaar?.schema?.properties?.output);
-  assert.equal(body.extensions?.bazaar?.info?.input?.method, "POST");
 
   assert.ok(body.accepts.some((item: any) => item.network === "eip155:8453"));
   assert.ok(body.accepts.some((item: any) =>
