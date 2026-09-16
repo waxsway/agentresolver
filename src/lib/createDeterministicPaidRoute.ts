@@ -12,7 +12,11 @@ import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
-import { buildExecutionEvidence, executionEvidenceHeaders } from "@/lib/executionEvidence";
+import {
+  buildExecutionEvidence,
+  executionEvidenceHeaders,
+  VERIFIED_SETTLEMENT_HISTORY_URL
+} from "@/lib/executionEvidence";
 
 type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
