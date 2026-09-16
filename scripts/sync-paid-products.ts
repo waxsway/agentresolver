@@ -406,7 +406,27 @@ for (const product of PAID_CAPABILITY_LIST) {
           }
         },
         "400": { description: "Invalid capability input." },
-        "402": { description: "x402 payment required." },
+        "402": {
+          description: "x402 payment required.",
+          headers: {
+            "x-agentresolver-trust": {
+              description: "AgentResolver trust-minimized service contract.",
+              schema: { type: "string", pattern: "^https://" }
+            },
+            "x-agentresolver-evidence": {
+              description: "Execution-evidence verification contract.",
+              schema: { type: "string", pattern: "^https://" }
+            },
+            "x-agentresolver-settlement-history": {
+              description: "Canonical independently verified settlement history. No synthetic trust score.",
+              schema: { type: "string", pattern: "^https://" }
+            },
+            "x-agentresolver-deployment": {
+              description: "Git commit SHA of the deployed AgentResolver source.",
+              schema: { type: "string", pattern: "^[0-9a-f]{40}$" }
+            }
+          }
+        },
         "503": { description: "Paid execution temporarily unavailable." }
       }
     }
