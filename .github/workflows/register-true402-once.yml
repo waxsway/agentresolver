@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Wait for canonical true402 manifest and paid route
+      - name: Wait for true402 bootstrap canary manifest and paid route
         shell: bash
         run: |
           set -euo pipefail
@@ -26,15 +26,15 @@ jobs:
 
             if curl -fsS https://agentresolver.vercel.app/.well-known/x402-service.json > /tmp/manifest.json; then
               if jq -e '
-                .name == "agentresolver-x402-payment-preflight" and
+                .name == "agentresolver-settlement-ping" and
                 .pricing.base == "0.001" and
-                .endpoint == "https://agentresolver.vercel.app/api/x402-payment-preflight"
+                .endpoint == "https://agentresolver.vercel.app/api/x402-ping"
               ' /tmp/manifest.json >/dev/null; then
                 manifest_ok=1
               fi
             fi
 
-            code="$(curl -sS -o /tmp/challenge.json -w '%{http_code}' https://agentresolver.vercel.app/api/x402-payment-preflight || true)"
+            code="$(curl -sS -o /tmp/challenge.json -w '%{http_code}' https://agentresolver.vercel.app/api/x402-ping || true)"
             if [ "$code" = "402" ] && jq -e '
               .accepts[0].amount == "1000" and
               .accepts[0].payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
@@ -47,7 +47,7 @@ jobs:
             fi
             sleep 10
           done
-          echo "Canonical API Trust Preflight manifest or x402 challenge did not become ready." >&2
+          echo "Settlement canary manifest or x402 challenge did not become ready." >&2
           exit 1
 
       - name: Register AgentResolver with true402
@@ -88,16 +88,18 @@ jobs:
           echo "true402 catalog HTTP $code"
           grep -i '^content-type:' /tmp/services.headers || true
           test "$code" = "200"
-          if grep -Fq 'https://agentresolver.vercel.app' /tmp/services.body; then
-            echo "AgentResolver is present in the live true402 buyer catalog."
+          if grep -Fq 'agentresolver-settlement-ping' /tmp/services.body || grep -Fq 'agentresolver.vercel.app/api/x402-ping' /tmp/services.body; then
+            echo "AgentResolver settlement canary is present in the live true402 buyer catalog."
             python - <<'PY'
           from pathlib import Path
           text=Path("/tmp/services.body").read_text(errors="replace")
-          needle="https://agentresolver.vercel.app"
+          needle="agentresolver-settlement-ping"
+          if needle not in text:
+              needle="agentresolver.vercel.app/api/x402-ping"
           i=text.find(needle)
           print(text[max(0,i-400):i+1800])
           PY
           else
-            echo "::warning::true402 accepted AgentResolver registration but the public buyer catalog does not contain the origin yet."
-            echo "This is a buyer-visibility/reputation state, not a registration or production-health failure."
+            echo "::warning::true402 accepted AgentResolver registration but the public buyer catalog does not contain the settlement canary yet."
+            echo "This is buyer-visibility/reputation state, not a production-health failure."
           fi
