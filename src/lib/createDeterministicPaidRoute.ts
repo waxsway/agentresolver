@@ -4,6 +4,7 @@ import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { ExactSvmScheme } from "@x402/svm/exact/server";
+import { BatchFacilitatorClient, GatewayEvmScheme } from "@circle-fin/x402-batching/server";
 import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
@@ -15,6 +16,10 @@ import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
+
+export function circleGatewayEnabled(env: NodeJS.ProcessEnv = process.env) {
+  return env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
+}
 
 function stampInfrastructureHeaders(
   response: NextResponse<unknown>,
@@ -47,7 +52,7 @@ function stampInfrastructureHeaders(
 
 export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, execute: Execute) {
   const product = getPaidCapability(capabilityId);
-  let paidHandler: PaidHandler | null = null;
+  let paidHandlerPromise: Promise<PaidHandler> | null = null;
 
   async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
     try {
@@ -72,8 +77,7 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
     }
   }
 
-  function getPaidHandler(): PaidHandler {
-    if (paidHandler) return paidHandler;
+  async function buildPaidHandler(): Promise<PaidHandler> {
     const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
     const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
     const facilitatorUrl = (process.env.AGENTRESOLVER_X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
@@ -81,11 +85,37 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
     if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(solanaPayTo)) throw new Error("AGENTRESOLVER_SOLANA_PAY_TO is invalid.");
     if (!/^https:\/\//i.test(facilitatorUrl)) throw new Error("AGENTRESOLVER_X402_FACILITATOR_URL is invalid.");
 
-    const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
-    const server = new x402ResourceServer(client)
-      .register(X402_NETWORK, new ExactEvmScheme())
+    const standardFacilitator = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
+    const gatewayEnabled = circleGatewayEnabled();
+    const server = gatewayEnabled
+      ? new x402ResourceServer([
+          standardFacilitator,
+          new BatchFacilitatorClient()
+        ])
+      : new x402ResourceServer(standardFacilitator);
+
+    if (gatewayEnabled) {
+      server.register("eip155:*", new GatewayEvmScheme());
+    } else {
+      server.register(X402_NETWORK, new ExactEvmScheme());
+    }
+
+    server
       .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
       .registerExtension(bazaarResourceServerExtension);
+
+    if (gatewayEnabled) {
+      await server.initialize();
+      console.log(JSON.stringify({
+        event: "circle_gateway_payment_rail_ready",
+        at: new Date().toISOString(),
+        capabilityId,
+        standardFacilitator: facilitatorUrl,
+        gateway: "circle",
+        evmNetworkPattern: "eip155:*"
+      }));
+    }
+
     const discoveryOutput = capabilityId === "x402-payment-preflight"
       ? {
           example: X402_PREFLIGHT_OUTPUT_EXAMPLE,
@@ -98,7 +128,8 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
             additionalProperties: true
           }
         };
-    paidHandler = withX402<unknown>(handler, {
+
+    return withX402<unknown>(handler, {
       [product.endpoint]: {
         accepts: [
           {
@@ -126,7 +157,11 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
         }
       }
     }, server) as PaidHandler;
-    return paidHandler;
+  }
+
+  function getPaidHandler(): Promise<PaidHandler> {
+    if (!paidHandlerPromise) paidHandlerPromise = buildPaidHandler();
+    return paidHandlerPromise;
   }
 
   return {
@@ -135,7 +170,8 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
       const traffic = classifyTraffic(req, { path: product.endpoint });
       logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
       try {
-        const response = stampInfrastructureHeaders(await getPaidHandler()(req), capabilityId, requestId);
+        const paidHandler = await getPaidHandler();
+        const response = stampInfrastructureHeaders(await paidHandler(req), capabilityId, requestId);
         logX402Settlement(response, capabilityId, requestId);
         return response;
       } catch (error) {
