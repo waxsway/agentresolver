@@ -14,7 +14,18 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
     headers: { "user-agent": "agentresolver-test" }
   }));
   assert.equal(getResponse.status, 402);
-  assert.ok(getResponse.headers.get("payment-required"));
+  const getPaymentRequired = getResponse.headers.get("payment-required");
+  assert.ok(getPaymentRequired);
+  const getBody = await getResponse.clone().json() as any;
+  assert.equal(getBody.x402Version, 2);
+  assert.ok(Array.isArray(getBody.accepts));
+  assert.ok(getBody.accepts.some((item: any) =>
+    item.network === "eip155:8453" &&
+    item.amount === "1000" &&
+    item.payTo === "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+  ));
+  const decodedHeader = JSON.parse(Buffer.from(getPaymentRequired!, "base64").toString("utf8"));
+  assert.deepEqual(getBody, decodedHeader);
   assert.equal(
     getResponse.headers.get("x-agentresolver-history"),
     "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
@@ -34,6 +45,9 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   }));
   assert.equal(postResponse.status, 402);
   assert.ok(postResponse.headers.get("payment-required"));
+  const postBody = await postResponse.json() as any;
+  assert.equal(postBody.x402Version, 2);
+  assert.ok(Array.isArray(postBody.accepts));
 });
 
 test("generated machine surfaces prefer GET for the settlement canary", () => {
