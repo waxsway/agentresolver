@@ -9,7 +9,12 @@ const SOLANA_PAY_TO = "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa";
 const SOLANA_FEE_PAYER = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4";
 const NETWORK = "eip155:8453";
 const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
-const FACILITATOR_URL = "https://facilitator.payai.network";
+const PAYAI_FACILITATOR_URL = "https://facilitator.payai.network";
+const CDP_FACILITATOR_URL = "https://api.cdp.coinbase.com/platform/v2/x402";
+const FACILITATOR_URL =
+  process.env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1"
+    ? CDP_FACILITATOR_URL
+    : PAYAI_FACILITATOR_URL;
 
 const STRING_OR_NULL = { anyOf: [{ type: "string" }, { type: "null" }] };
 const HASH_RESULT_SCHEMA = {
