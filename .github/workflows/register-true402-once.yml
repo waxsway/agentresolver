@@ -65,3 +65,20 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: Verify live true402 buyer catalog visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://true402.dev/api/v1/services' -o /tmp/services.json
+          jq -e '
+            .data[] |
+            select(.url == "https://agentresolver.vercel.app") |
+            .manifest.name == "agentresolver-api-trust-preflight" and
+            .manifest.endpoint == "https://agentresolver.vercel.app/api/http-inspect"
+          ' /tmp/services.json >/dev/null
+          jq -c '
+            .data[] |
+            select(.url == "https://agentresolver.vercel.app") |
+            {id,url,manifest,reputation}
+          ' /tmp/services.json
