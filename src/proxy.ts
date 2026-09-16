@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Some MCP discovery clients send the generic HTTP default `Accept: */*`.
+ * Some MCP discovery clients send only the generic HTTP wildcard Accept value.
  * The streamable-HTTP MCP transport correctly requires JSON and/or SSE and
  * otherwise answers 406, which strands those clients before they can discover
  * or call any paid tools. Normalize only the generic/missing Accept case; keep
