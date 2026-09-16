@@ -128,19 +128,19 @@ jobs:
 
           payment_required=$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-inspect-headers.txt)
           PAYMENT_REQUIRED="$payment_required" python3 - <<'PY'
-import base64
-import json
-import os
+          import base64
+          import json
+          import os
 
-raw = os.environ["PAYMENT_REQUIRED"].strip()
-raw += "=" * (-len(raw) % 4)
-payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
-bazaar = (payload.get("extensions") or {}).get("bazaar")
-assert bazaar, "HTTP Inspect payment challenge is missing extensions.bazaar"
-info = bazaar.get("info") or {}
-input_info = info.get("input") or {}
-assert input_info.get("method") == "POST", "Bazaar input method was not enriched to POST"
-PY
+          raw = os.environ["PAYMENT_REQUIRED"].strip()
+          raw += "=" * (-len(raw) % 4)
+          payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
+          bazaar = (payload.get("extensions") or {}).get("bazaar")
+          assert bazaar, "HTTP Inspect payment challenge is missing extensions.bazaar"
+          info = bazaar.get("info") or {}
+          input_info = info.get("input") or {}
+          assert input_info.get("method") == "POST", "Bazaar input method was not enriched to POST"
+          PY
 
           check_402 'Tool Contract Fit' '/api/tool-contract' '{"producerOutputSchema":{"type":"object"},"consumerInputSchema":{"type":"object"}}' 'tool-contract' '5000'
           check_402 'OpenAPI Operation Select' '/api/openapi-select' '{"specUrl":"https://agentresolver.vercel.app/openapi.json","goal":"select the resolve operation"}' 'openapi-select' '5000'
