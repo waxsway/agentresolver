@@ -17,6 +17,46 @@ const HASH_RESULT_SCHEMA = {
   }
 };
 const OUTPUT_SCHEMAS: Record<string, Record<string, unknown>> = {
+  "evm-address-checksum": {
+    type: "object",
+    required: ["input", "checksummed", "lowercase", "eip55"],
+    properties: {
+      input: { type: "string" },
+      checksummed: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" },
+      lowercase: { type: "string", pattern: "^0x[0-9a-f]{40}$" },
+      eip55: { const: true }
+    }
+  },
+  keccak256: {
+    type: "object",
+    required: ["algorithm", "encoding", "inputBytes", "digest"],
+    properties: {
+      algorithm: { const: "keccak256" },
+      encoding: { type: "string", enum: ["utf8", "hex"] },
+      inputBytes: { type: "integer", minimum: 0 },
+      digest: { type: "string", pattern: "^0x[0-9a-f]{64}$" }
+    }
+  },
+  "solidity-selector": {
+    type: "object",
+    required: ["signature", "selector", "keccak256"],
+    properties: {
+      signature: { type: "string" },
+      selector: { type: "string", pattern: "^0x[0-9a-f]{8}$" },
+      keccak256: { type: "string", pattern: "^0x[0-9a-f]{64}$" }
+    }
+  },
+  "evm-units": {
+    type: "object",
+    required: ["mode", "value", "decimals", "result", "resultKind"],
+    properties: {
+      mode: { type: "string", enum: ["parse", "format"] },
+      value: { type: "string" },
+      decimals: { type: "integer", minimum: 0, maximum: 255 },
+      result: { type: "string" },
+      resultKind: { type: "string", enum: ["base-units", "decimal"] }
+    }
+  },
   "x402-ping": {
     type: "object",
     required: ["pong", "settledDelivery", "at", "unixMs", "requestId", "echo"],
