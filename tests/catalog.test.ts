@@ -110,3 +110,14 @@ test("ranks OpenAPI operation selection for API operation choice goals", () => {
   assert.equal(matches[0]?.id, "openapi-select");
   assert.equal(matches[0]?.priceUsd, 0.005);
 });
+
+
+test("ranks canonical x402 preflight first for verify-before-pay intent", () => {
+  const matches = resolveCapabilities(
+    "verify this x402 endpoint before paying and check payTo price network asset and resource binding https://merchant.example/api/paid",
+    3
+  );
+  assert.equal(matches[0]?.id, "x402-payment-preflight");
+  assert.equal(matches[0]?.priceUsd, 0.001);
+  assert.equal(matches[0]?.endpoint, "/api/x402-payment-preflight");
+});

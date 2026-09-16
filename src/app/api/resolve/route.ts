@@ -3,6 +3,10 @@ import { randomUUID } from "node:crypto";
 import { resolveGoal } from "@/lib/resolver";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import {
+  directOwnedRecommendationInput,
+  isDirectOwnedCapabilityId
+} from "@/lib/paidRecommendationPolicy";
+import {
   callerHash,
   classifyIntent,
   referrerHost,
@@ -34,6 +38,7 @@ type PaidRecommendation = {
   priceUsd: number;
   asset: "USDC";
   network: "eip155:8453";
+  networks: ["eip155:8453", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"];
   protocol: "x402";
   spendingAuthorizationRequired: true;
   input?: Record<string, unknown>;
@@ -54,6 +59,7 @@ function paidRecommendation(
     priceUsd: product.priceUsd,
     asset: "USDC",
     network: "eip155:8453",
+    networks: ["eip155:8453", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
     protocol: "x402",
     spendingAuthorizationRequired: true,
     ...(input ? { input } : {})
@@ -96,30 +102,18 @@ export async function POST(req: Request) {
   const topDirectOwned = owned.find(
     (match) => match.rank === 1 && match.status === "live" && match.priceUsd > 0 && match.endpoint
   );
-  const directOwnedId = topDirectOwned?.id && topDirectOwned.id in {
-    "hash-encode": true,
-    "http-inspect": true,
-    "tool-contract": true,
-    "mcp-probe": true,
-    "agent-readiness": true,
-    "openapi-select": true,
-    "verified-resolve": true,
-    "batch-verified-resolve": true
-  }
-    ? topDirectOwned.id as PaidCapabilityId
+  const directOwnedId = topDirectOwned?.id && isDirectOwnedCapabilityId(topDirectOwned.id)
+    ? topDirectOwned.id
     : null;
 
-  const directInput = directOwnedId === "http-inspect" && url
-    ? { url }
-    : directOwnedId === "agent-readiness" && url
-      ? { url }
-      : directOwnedId === "mcp-probe" && singleProbeableMcp?.endpoint
-        ? { endpoint: singleProbeableMcp.endpoint }
-        : directOwnedId === "openapi-select" && url
-          ? { specUrl: url, goal }
-          : directOwnedId === "verified-resolve"
-          ? { goal, ...(url ? { url } : {}) }
-          : undefined;
+  const directInput = directOwnedId
+    ? directOwnedRecommendationInput(
+        directOwnedId,
+        goal,
+        url,
+        singleProbeableMcp?.endpoint || null
+      )
+    : undefined;
 
   const recommendedPaidAction: PaidRecommendation | null = directOwnedId
     ? paidRecommendation(
@@ -213,7 +207,7 @@ export async function POST(req: Request) {
     marketplace: resolution.marketplace,
     recommendedPaidAction,
     next: recommendedPaidAction
-      ? `Free discovery found a concrete next verification step. Optional verification is available for $${formatUsd(recommendedPaidAction.priceUsd)} USDC on Base. The 402 challenge is a quote only; call it only under the calling agent's independent spending policy.`
+      ? `Free discovery found a concrete next verification step. Optional verification is available for ${formatUsd(recommendedPaidAction.priceUsd)} USDC on Base or Solana. The 402 challenge is a quote only; call it only under the calling agent's independent spending policy.`
       : resolution.marketplace.length > 0
         ? "Review marketplace payment requirements and input schema before calling a provider. Only pay under the calling agent's own authorization and budget policy."
         : resolution.mcp.length > 0
