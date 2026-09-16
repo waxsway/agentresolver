@@ -16,6 +16,7 @@ export function GET() {
       paidManifest: "/.well-known/x402",
       canonicalPaidRoute: "/api/x402-payment-preflight",
       trust: "/.well-known/agentresolver-trust.json",
+      evidence: "/.well-known/agentresolver-evidence.json",
       security: "/.well-known/security.txt",
       legal: "/legal",
       agentGuide: "/agentresolver.md",
