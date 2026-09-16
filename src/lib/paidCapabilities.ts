@@ -1,6 +1,35 @@
 export const CANONICAL_ORIGIN = "https://agentresolver.vercel.app" as const;
 
 export const PAID_CAPABILITIES = {
+  "hash-encode": {
+    id: "hash-encode",
+    name: "Hash & Encode",
+    operationId: "hashAndEncode",
+    endpoint: "/api/hash-encode",
+    price: "$0.001",
+    priceUsd: 0.001,
+    atomicAmount: "1000",
+    description: "Deterministic hashing and encoding primitive for SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, and non-verifying JWT decode.",
+    useWhen: "An agent needs a cheap deterministic hash, HMAC, Base64 transform, or JWT payload/header decode inside a workflow without creating an account or API key.",
+    costClass: "deterministic",
+    tags: ["hash", "hashing", "sha256", "sha512", "hmac", "base64", "encode", "decode", "jwt", "token", "deterministic", "x402"],
+    inputSchema: {
+      type: "object",
+      required: ["operation", "input"],
+      additionalProperties: false,
+      properties: {
+        operation: { type: "string", enum: ["sha256", "sha512", "hmac-sha256", "base64-encode", "base64-decode", "jwt-decode"] },
+        input: { type: "string", maxLength: 131072 },
+        secret: { type: "string", maxLength: 4096 }
+      }
+    },
+    example: { operation: "sha256", input: "agentresolver" },
+    quoteTool: {
+      name: "hash_encode",
+      title: "Hash & encode — $0.001",
+      description: "Paid $0.001 USDC/Base deterministic SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, or non-verifying JWT decode. x402-aware MCP clients can authorize and settle inside this tool call."
+    }
+  },
   "http-inspect": {
     id: "http-inspect",
     name: "HTTP Inspect",
