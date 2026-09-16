@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Claim canonical AgentResolver hostname
+      - name: Claim canonical AgentResolver hostname safely
         shell: bash
         run: |
           set -euo pipefail
