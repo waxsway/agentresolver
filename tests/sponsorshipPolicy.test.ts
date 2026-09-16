@@ -17,7 +17,7 @@ test("provider funnel does not publish unapproved fixed sponsorship pricing", ()
 test("machine docs disclose sponsorship without changing organic ranking", () => {
   assert.match(llms, /Organic ranking remains free and independent/i);
   assert.match(llms, /inquiry only/i);
-  assert.match(agentDoc, /does not alter organic ranking/i);
+  assert.match(agentDoc, /do(?:es)? not alter organic ranking/i);
   assert.match(agentDoc, /does not create a purchase/i);
 });
 
