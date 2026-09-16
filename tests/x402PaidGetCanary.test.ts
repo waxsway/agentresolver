@@ -30,6 +30,10 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   }));
   assert.equal(postResponse.status, 402);
   assert.ok(postResponse.headers.get("payment-required"));
+  assert.equal(
+    postResponse.headers.get("x-agentresolver-settlement-history"),
+    "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
+  );
 });
 
 test("generated machine surfaces prefer GET for the settlement canary", () => {
