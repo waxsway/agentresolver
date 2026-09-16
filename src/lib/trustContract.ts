@@ -105,7 +105,8 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
       "referrer hostname",
       "capability identifier",
       "payment-signature presence",
-      "hashed settlement identifiers"
+      "hashed payer identity",
+      "public settlement transaction reference for independent chain verification"
     ]
   }
 } as const;
