@@ -54,9 +54,9 @@ jobs:
           set -euo pipefail
           subject="$(git log -1 --pretty=%s)"
           case "$subject" in
-            "Merge pull request #"*) ;;
+            "Merge pull request #"*|"Merge PR #"*) ;;
             *)
-              echo "Refusing production deploy: main commit was not produced by a pull-request merge."
+              echo "Refusing production deploy: main commit subject is not an accepted pull-request merge form."
               exit 1
               ;;
           esac
