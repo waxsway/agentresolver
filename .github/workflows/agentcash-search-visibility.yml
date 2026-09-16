@@ -19,6 +19,8 @@ jobs:
         run: |
           set -euo pipefail
           queries=(
+            "AgentResolver"
+            "x402 API Trust Preflight"
             "api trust security preflight"
             "check api security before paying"
             "x402 seller trust"
