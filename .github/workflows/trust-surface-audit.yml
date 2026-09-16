@@ -2,6 +2,10 @@ name: Trust Surface Audit
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/trust-surface-audit.yml'
   schedule:
     - cron: "17 */6 * * *"
   workflow_run:
@@ -127,4 +131,73 @@ jobs:
             echo "AgentResolver is visible in the true402 public buyer catalog."
           else
             echo "::warning::AgentResolver remains absent from the true402 public buyer catalog; registration/reputation and catalog visibility are distinct states."
+          fi
+
+      - name: Audit facilitator and Circle discovery catalogs
+        shell: bash
+        env:
+          BASE_PAY_TO: 0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8
+          SOLANA_PAY_TO: AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa
+          ORIGIN: https://agentresolver.vercel.app
+        run: |
+          set -euo pipefail
+
+          audit_payai() {
+            local label="$1"
+            local wallet="$2"
+            local out="/tmp/payai-$label.json"
+            local code
+            code="$(curl -sS -o "$out" -w '%{http_code}' --get               'https://facilitator.payai.network/discovery/resources'               --data-urlencode 'type=http'               --data-urlencode 'limit=1000'               --data-urlencode "payTo=$wallet")"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+              count="$(jq --arg origin "$ORIGIN" '[.items[]? | select((.resource // "") | startswith($origin))] | length' "$out")"
+              echo "PayAI $label AgentResolver resources: $count"
+              if [ "$count" = "0" ]; then
+                echo "::warning::PayAI $label Bazaar has no AgentResolver resource yet; cataloging normally follows a settlement carrying Bazaar metadata."
+              else
+                jq --arg origin "$ORIGIN" '[.items[]? | select((.resource // "") | startswith($origin)) | {resource,lastUpdated,accepts,metadata}]' "$out"
+              fi
+            else
+              echo "::warning::PayAI $label discovery audit returned HTTP $code."
+              head -c 1000 "$out" || true
+            fi
+          }
+
+          audit_cdp() {
+            local label="$1"
+            local wallet="$2"
+            local out="/tmp/cdp-$label.json"
+            local code
+            code="$(curl -sS -o "$out" -w '%{http_code}' --get               'https://api.cdp.coinbase.com/platform/v2/x402/discovery/merchant'               --data-urlencode "payTo=$wallet")"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+              count="$(jq --arg origin "$ORIGIN" '
+                [
+                  ((.items // .resources // .data // [])[]?) |
+                  select((.resource // .url // "") | startswith($origin))
+                ] | length
+              ' "$out")"
+              echo "CDP $label AgentResolver resources: $count"
+              if [ "$count" = "0" ]; then
+                echo "::warning::CDP $label merchant discovery has no AgentResolver resource yet."
+              fi
+            else
+              echo "::warning::CDP $label merchant discovery audit returned HTTP $code."
+              head -c 1000 "$out" || true
+            fi
+          }
+
+          audit_payai base "$BASE_PAY_TO"
+          audit_payai solana "$SOLANA_PAY_TO"
+          audit_cdp base "$BASE_PAY_TO"
+          audit_cdp solana "$SOLANA_PAY_TO"
+
+          circle_code="$(curl -sS -o /tmp/circle.json -w '%{http_code}' --get             'https://api.circle.com/v2/x402/discovery/resources'             --data-urlencode 'query=AgentResolver'             --data-urlencode 'category=INFRASTRUCTURE'             --data-urlencode 'maxUsdPrice=0.01')"
+          if [ "$circle_code" -ge 200 ] && [ "$circle_code" -lt 300 ]; then
+            if grep -Fq 'agentresolver.vercel.app' /tmp/circle.json; then
+              echo "AgentResolver is visible in Circle Agent Marketplace discovery."
+            else
+              echo "::warning::AgentResolver is not yet visible in Circle Agent Marketplace discovery."
+            fi
+          else
+            echo "::warning::Circle discovery audit returned HTTP $circle_code."
+            head -c 1000 /tmp/circle.json || true
           fi
