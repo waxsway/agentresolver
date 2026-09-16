@@ -19,6 +19,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ -f /tmp/paywitness-unavailable ]; then
+            echo "::notice::Skipping Paywitness self-list because its OpenAPI was unavailable."
+            exit 0
+          fi
           body="$(mktemp)"
           code="$(curl -sS -o "$body" -w '%{http_code}'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
           test "$code" = "402"
@@ -39,7 +43,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail-with-body -sS --retry 2 --retry-delay 2             'https://paywitness.ai/openapi.json'             -o /tmp/paywitness-openapi.json
+          if ! curl --fail-with-body -sS --retry 2 --retry-delay 2             'https://paywitness.ai/openapi.json'             -o /tmp/paywitness-openapi.json; then
+            echo "::warning::Paywitness OpenAPI is temporarily unavailable; no payment was attempted and registration is deferred."
+            touch /tmp/paywitness-unavailable
+            exit 0
+          fi
           python3 - <<'PY'
           import json
           from pathlib import Path
