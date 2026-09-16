@@ -36,6 +36,7 @@ export function executionEvidenceHeaders(evidence: ExecutionEvidence) {
     "x-agentresolver-execution-id": evidence.executionId,
     "x-agentresolver-response-sha256": evidence.responseSha256,
     "x-agentresolver-evidence-version": String(evidence.schemaVersion),
-    "x-agentresolver-evidence": evidence.evidenceUrl
+    "x-agentresolver-evidence": evidence.evidenceUrl,
+    "x-agentresolver-history": VERIFIED_SETTLEMENT_HISTORY_URL
   };
 }
