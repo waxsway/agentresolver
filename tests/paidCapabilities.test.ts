@@ -49,3 +49,34 @@ test("generated machine surfaces contain every registered paid capability", () =
     assert.equal(operation["x-agentresolver-product"]?.id, product.id);
   }
 });
+
+
+test("deterministic utility discovery publishes response schemas", () => {
+  const x402 = readJson("public/.well-known/x402");
+  const openapi = readJson("public/openapi.json");
+  const ids = [
+    "x402-ping",
+    "sha256",
+    "sha512",
+    "hmac-sha256",
+    "base64-encode",
+    "base64-decode",
+    "jwt-decode",
+    "json-normalize",
+    "json-schema-validate",
+    "url-parse",
+    "uuid-v4",
+    "slugify"
+  ];
+
+  for (const id of ids) {
+    const product = PAID_CAPABILITY_LIST.find((item) => item.id === id);
+    assert.ok(product, `missing paid product ${id}`);
+    const resource = x402.resources.find((item: any) => item.resource === `POST ${product.endpoint}`);
+    assert.ok(resource?.outputSchema, `missing x402 output schema for ${id}`);
+    assert.ok(
+      openapi.paths?.[product.endpoint]?.post?.responses?.["200"]?.content?.["application/json"]?.schema,
+      `missing OpenAPI 200 response schema for ${id}`
+    );
+  }
+});
