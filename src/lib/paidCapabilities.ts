@@ -320,7 +320,7 @@ export const PAID_CAPABILITIES = {
     price: "$0.001",
     priceUsd: 0.001,
     atomicAmount: "1000",
-    description: "Verify an x402 endpoint before paying it. Run a live x402 preflight to confirm endpoint safety, reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted USDC price, network, asset, x402 version, exact scheme and resource binding before an autonomous agent authorizes spend. Optional max-price, expected-payee and expected-network policy checks protect against changed payment destinations and unexpected quotes. Works on Base and Solana.",
+    description: "Verify an x402 endpoint before paying it. Run a live x402 preflight to confirm endpoint safety, reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted USDC price, network, asset, x402 version, exact scheme and resource binding before an autonomous agent authorizes spend. The paid result also returns a reusable evidence receipt with stable fingerprints for the observed payment identity and terms so agents can detect changes across observations without treating a wallet as a verified legal identity. Optional max-price, expected-payee and expected-network policy checks protect against changed payment destinations and unexpected quotes. Works on Base and Solana.",
     useWhen: "Verify an endpoint before paying it: check x402 preflight, payTo verification, endpoint safety, USDC payment amount, network and resource binding before agent spend.",
     costClass: "bounded-network",
     tags: ["x402 preflight", "verify endpoint before paying", "payTo verification", "endpoint safety", "USDC payment check", "before paying", "payment authentication", "Base mainnet", "Solana", "payment-required", "agent payment safety"],
@@ -342,7 +342,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "x402_payment_preflight",
       title: "X402 preflight — verify endpoint before paying — $0.001",
-      description: "Paid $0.001 USDC on Base or Solana x402 preflight: verify endpoint before paying, confirm payTo, quoted USDC price, network, resource binding, liveness and challenge compliance before agent spend."
+      description: "Paid $0.001 USDC on Base or Solana x402 preflight: verify endpoint before paying, confirm payTo, quoted USDC price, network, resource binding, liveness and challenge compliance, then receive stable observed-identity and payment-terms fingerprints for change detection."
     }
   },
   "tool-contract": {
