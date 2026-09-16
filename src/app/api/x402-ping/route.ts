@@ -13,7 +13,7 @@ const route = createDeterministicPaidRoute("x402-ping", async (req) => {
     requestId: randomUUID(),
     echo
   };
-});
+}, { paidGet: true });
 export const POST = route.POST;
 export const GET = route.GET;
 export const OPTIONS = route.OPTIONS;
