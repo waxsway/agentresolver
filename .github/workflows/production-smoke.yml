@@ -37,6 +37,7 @@ jobs:
           grep -F '"version":"0.1.3"' /tmp/health.json >/dev/null
           grep -F '"paidManifest":"/.well-known/x402"' /tmp/health.json >/dev/null
           grep -F '"evidence":"/.well-known/agentresolver-evidence.json"' /tmp/health.json >/dev/null
+          grep -F '"reputation":"/.well-known/agentresolver-reputation.json"' /tmp/health.json >/dev/null
 
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/agentresolver.md" | grep -F 'AgentResolver' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/integrations.json" | grep -F "$BASE_URL/mcp" >/dev/null
@@ -73,6 +74,14 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS -H 'x-agentresolver-internal: 1' "$BASE_URL/mcp/server-card" | tee /tmp/server-card.json >/dev/null
           grep -F '0.1.3' /tmp/server-card.json >/dev/null
           jq -e '.sponsorship.model == "provider-funded-discovery" and .sponsorship.organicRankingIndependent == true' /tmp/server-card.json >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL "$BASE_URL/.well-known/agentresolver-reputation.json" | jq -e '
+            .schemaVersion == 1 and
+            .service == "AgentResolver" and
+            .model == "verified-settlement-history" and
+            (.verifiedSuccessfulSettlements | type == "number") and
+            .methodology.requiresIndependentOnchainVerification == true and
+            .methodology.syntheticTrustScore == false
+          ' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/sponsorship.json" | grep -F 'pilot_inventory_open' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/sponsorship" | jq -e '.inventory.model == "provider-funded-discovery" and .activation.operatorApprovalRequired == true' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/providers" | grep -F 'Apply for the sponsorship pilot' >/dev/null
