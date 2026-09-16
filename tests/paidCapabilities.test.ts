@@ -32,6 +32,10 @@ test("generated machine surfaces contain every registered paid capability", () =
     assert.equal(x402Resource.accepts?.[0]?.amount, product.atomicAmount);
     assert.equal(x402Resource.accepts?.[0]?.maxAmountRequired, product.atomicAmount);
     assert.equal(x402Resource.accepts?.[0]?.resource, `${CANONICAL_ORIGIN}${product.endpoint}`);
+    assert.equal(x402Resource.accepts?.length, 2);
+    assert.equal(x402Resource.accepts?.[0]?.network, "eip155:8453");
+    assert.equal(x402Resource.accepts?.[1]?.network, "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp");
+    assert.equal(x402Resource.accepts?.[1]?.payTo, "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa");
 
     const capability = capabilities.capabilities.find((item: any) => item.id === product.id);
     assert.ok(capability, `missing capabilities.json entry for ${product.id}`);
@@ -46,6 +50,10 @@ test("generated machine surfaces contain every registered paid capability", () =
     const operation = openapi.paths?.[product.endpoint]?.post;
     assert.ok(operation, `missing OpenAPI operation for ${product.id}`);
     assert.equal(operation["x-payment-info"]?.priceUsd, product.priceUsd);
+    assert.deepEqual(operation["x-payment-info"]?.networks, [
+      "eip155:8453",
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    ]);
     assert.equal(operation["x-agentresolver-product"]?.id, product.id);
   }
 });
