@@ -90,7 +90,7 @@ function getPaidHandler(): PaidHandler {
           payTo: solanaPayTo
         }
       ],
-      description: "Preflight a public HTTPS or x402 payment endpoint before an agent depends on or pays it. Probes the caller-selected GET/HEAD method, or an explicitly authorized unpaid POST with optional JSON body, then verifies TLS and endpoint hygiene, decodes PAYMENT-REQUIRED, checks x402 version/scheme/network/asset/payee/resource binding, computes quoted USDC price, and enforces optional caller policy limits.",
+      description: "x402 payment preflight before paying an unfamiliar endpoint. Verify payTo recipient, endpoint safety, quoted USDC price, Base/Solana network, asset, resource binding and PAYMENT-REQUIRED challenge structure plus TLS/reachability before an autonomous agent authorizes spend.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
