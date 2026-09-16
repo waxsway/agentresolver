@@ -81,6 +81,7 @@ jobs:
           queries=(
             "api trust security preflight"
             "x402 preflight"
+            "x402 settlement test"
             "payTo verification"
             "endpoint safety"
             "USDC payment check"
