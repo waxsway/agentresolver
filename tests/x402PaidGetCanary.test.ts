@@ -75,7 +75,7 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.equal(manifest.mcp, "https://agentresolver.vercel.app/mcp");
   assert.equal(manifest.facilitator.default, "https://facilitator.payai.network");
   assert.equal(manifest.payment_protocols[0], "x402");
-  assert.match(manifest.generated_at, /^\\d{4}-\\d{2}-\\d{2}T/);
+  assert.match(manifest.generated_at, /^\d{4}-\d{2}-\d{2}T/);
   const canaryService = manifest.services.find((item: any) => item.id === "x402-ping");
   assert.equal(canaryService.endpoint, "https://agentresolver.vercel.app/api/x402-ping");
   assert.equal(canaryService.method, "GET");
