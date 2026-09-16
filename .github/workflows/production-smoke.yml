@@ -58,7 +58,7 @@ jobs:
                 (.["x-payment-info"].price.currency == "USD") and
                 (.["x-payment-info"].price.amount | type == "string" and length > 0) and
                 (.["x-payment-info"].protocols | any(has("x402"))) and
-                (.requestBody.content["application/json"].schema != null) and
+                ((.operationId == "x402SettlementPingGet") or (.requestBody.content["application/json"].schema != null)) and
                 (.responses["200"].content["application/json"].schema != null) and
                 (.responses["402"] != null)
               ))
@@ -155,15 +155,42 @@ jobs:
               exit 1
             fi
 
-            get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS -H 'x-agentresolver-internal: 1' -o "/tmp/${slug}-get.json" -w '%{http_code}' "$BASE_URL$path")"
+            get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+              -D "/tmp/${slug}-get-headers.txt" \
+              -H 'x-agentresolver-internal: 1' \
+              -o "/tmp/${slug}-get.json" \
+              -w '%{http_code}' \
+              "$BASE_URL$path")"
             if [ "$get_status" != "402" ]; then
               echo "Expected $name GET discovery probe to receive 402, got $get_status"
               exit 1
             fi
-            jq -e --arg amount "$expected_amount" '
+
+            if jq -e --arg amount "$expected_amount" '
               .accepts[0].amount == $amount and
               .accepts[0].maxAmountRequired == $amount
-            ' "/tmp/${slug}-get.json" >/dev/null
+            ' "/tmp/${slug}-get.json" >/dev/null 2>&1; then
+              :
+            else
+              payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' "/tmp/${slug}-get-headers.txt")"
+              PAYMENT_REQUIRED="$payment_required" EXPECTED_AMOUNT="$expected_amount" python3 - <<'PY'
+import base64
+import json
+import os
+
+raw = os.environ["PAYMENT_REQUIRED"].strip()
+assert raw, "PAYMENT-REQUIRED header missing"
+raw += "=" * (-len(raw) % 4)
+payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
+accepts = payload.get("accepts") or []
+expected = os.environ["EXPECTED_AMOUNT"]
+assert any(
+    str(item.get("amount")) == expected and
+    str(item.get("maxAmountRequired", item.get("amount"))) == expected
+    for item in accepts
+), f"Expected amount {expected} missing from PAYMENT-REQUIRED header"
+PY
+            fi
           }
 
           check_402 'ABI Encode' '/api/abi-encode' '{"types":["uint256","bool"],"values":["42",true]}' 'abi-encode' '5000'
