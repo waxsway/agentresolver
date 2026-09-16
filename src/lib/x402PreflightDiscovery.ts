@@ -1,6 +1,6 @@
 export const X402_PREFLIGHT_OUTPUT_SCHEMA = {
   type: "object",
-  required: ["url", "status", "ok", "latencyMs", "x402", "trust", "evidenceReceipt"],
+  required: ["url", "status", "ok", "latencyMs", "x402", "trust", "prepaymentDecision", "evidenceReceipt"],
   additionalProperties: true,
   properties: {
     url: { type: "string" },
@@ -72,6 +72,95 @@ export const X402_PREFLIGHT_OUTPUT_SCHEMA = {
         grade: { type: "string", enum: ["A", "B", "C", "D", "F"] },
         verdict: { type: "string", enum: ["strong", "mixed", "weak"] },
         checks: { type: "array" }
+      }
+    },
+    prepaymentDecision: {
+      type: "object",
+      required: [
+        "schemaVersion",
+        "kind",
+        "decision",
+        "eligibleForCallerAuthorization",
+        "authorizationBoundary",
+        "reasons",
+        "targetPayment",
+        "constraintsApplied",
+        "evidence",
+        "nextAction",
+        "limitations"
+      ],
+      additionalProperties: false,
+      properties: {
+        schemaVersion: { type: "integer", const: 1 },
+        kind: { type: "string", const: "x402-prepayment-decision" },
+        decision: { type: "string", enum: ["eligible", "blocked"] },
+        eligibleForCallerAuthorization: { type: "boolean" },
+        authorizationBoundary: {
+          type: "object",
+          required: [
+            "callerMustAuthorizeTargetPayment",
+            "agentResolverSignsTargetPayment",
+            "agentResolverCustodiesOrForwardsTargetFunds"
+          ],
+          properties: {
+            callerMustAuthorizeTargetPayment: { type: "boolean", const: true },
+            agentResolverSignsTargetPayment: { type: "boolean", const: false },
+            agentResolverCustodiesOrForwardsTargetFunds: { type: "boolean", const: false }
+          }
+        },
+        reasons: { type: "array", items: { type: "string" } },
+        targetPayment: {
+          type: "object",
+          required: ["network", "asset", "payTo", "resource", "amountAtomic", "amountUsd", "scheme", "x402Version"],
+          properties: {
+            network: { anyOf: [{ type: "string" }, { type: "null" }] },
+            asset: { anyOf: [{ type: "string" }, { type: "null" }] },
+            payTo: { anyOf: [{ type: "string" }, { type: "null" }] },
+            resource: { anyOf: [{ type: "string" }, { type: "null" }] },
+            amountAtomic: { anyOf: [{ type: "string" }, { type: "null" }] },
+            amountUsd: { anyOf: [{ type: "number" }, { type: "null" }] },
+            scheme: { anyOf: [{ type: "string" }, { type: "null" }] },
+            x402Version: { anyOf: [{ type: "integer" }, { type: "null" }] }
+          }
+        },
+        constraintsApplied: {
+          type: "object",
+          required: ["maxPriceUsd", "expectedPayTo", "expectedNetwork"],
+          properties: {
+            maxPriceUsd: { anyOf: [{ type: "number" }, { type: "null" }] },
+            expectedPayTo: { anyOf: [{ type: "string" }, { type: "null" }] },
+            expectedNetwork: { anyOf: [{ type: "string" }, { type: "null" }] }
+          }
+        },
+        evidence: {
+          type: "object",
+          required: [
+            "observedAt",
+            "evidenceDigestSha256",
+            "paymentIdentityFingerprint",
+            "endpointPaymentFingerprint",
+            "paymentTermsFingerprint"
+          ],
+          properties: {
+            observedAt: { type: "string" },
+            evidenceDigestSha256: { type: "string" },
+            paymentIdentityFingerprint: { anyOf: [{ type: "string" }, { type: "null" }] },
+            endpointPaymentFingerprint: { anyOf: [{ type: "string" }, { type: "null" }] },
+            paymentTermsFingerprint: { anyOf: [{ type: "string" }, { type: "null" }] }
+          }
+        },
+        nextAction: {
+          type: "object",
+          required: ["type", "instruction"],
+          properties: {
+            type: {
+              type: "string",
+              enum: ["caller_may_authorize_exact_target_payment", "do_not_authorize_target_payment"]
+            },
+            instruction: { type: "string" }
+          }
+        },
+        limitations: { type: "array", items: { type: "string" } }
       }
     },
     evidenceReceipt: {
@@ -231,6 +320,47 @@ export const X402_PREFLIGHT_OUTPUT_EXAMPLE = {
     grade: "A",
     verdict: "strong",
     checks: []
+  },
+  prepaymentDecision: {
+    schemaVersion: 1,
+    kind: "x402-prepayment-decision",
+    decision: "eligible",
+    eligibleForCallerAuthorization: true,
+    authorizationBoundary: {
+      callerMustAuthorizeTargetPayment: true,
+      agentResolverSignsTargetPayment: false,
+      agentResolverCustodiesOrForwardsTargetFunds: false
+    },
+    reasons: [],
+    targetPayment: {
+      network: "eip155:8453",
+      asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      payTo: "0x1111111111111111111111111111111111111111",
+      resource: "https://merchant.example/api/paid-resource",
+      amountAtomic: "5000",
+      amountUsd: 0.005,
+      scheme: "exact",
+      x402Version: 2
+    },
+    constraintsApplied: {
+      maxPriceUsd: 0.01,
+      expectedPayTo: null,
+      expectedNetwork: null
+    },
+    evidence: {
+      observedAt: "2026-09-16T18:20:00.000Z",
+      evidenceDigestSha256: "8a2dbaf381ba6fd3ce4b3137cf49b69ee05a597d364d0e969bcf67f0848fdbd9",
+      paymentIdentityFingerprint: "4a53d5d273a8242d7ae6ea031f8c931a6cc9606578066540806726aa370474de",
+      endpointPaymentFingerprint: "a0f453d0ebf0aee5ed27e772682d6bbd6a4d15e846f9476ac8d79249dd5a9970",
+      paymentTermsFingerprint: "c6bcf30b9c0c88ddb660149d84363095a171c243129c5570b1b3e89ef919977d"
+    },
+    nextAction: {
+      type: "caller_may_authorize_exact_target_payment",
+      instruction: "If the caller independently chooses to spend, authorize only the exact targetPayment terms returned here."
+    },
+    limitations: [
+      "Eligibility means the observed technical payment terms passed this fail-closed preflight; it is not spending authorization."
+    ]
   },
   evidenceReceipt: {
     schemaVersion: 1,
