@@ -3,6 +3,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 const ENDPOINT = "/api/x402-ping";
 const GET_RESOURCE = `GET ${ENDPOINT}`;
 const POST_RESOURCE = `POST ${ENDPOINT}`;
+const X402_MANIFEST_PATHS = [
+  "public/.well-known/x402",
+  "public/.well-known/x402.json"
+] as const;
 
 function readJson(path: string): Record<string, any> {
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, any>;
@@ -29,7 +33,9 @@ manifest.resources = [
   getResource,
   ...manifest.resources.filter((item: any) => item.resource !== GET_RESOURCE)
 ];
-writeJson("public/.well-known/x402", manifest);
+for (const path of X402_MANIFEST_PATHS) {
+  writeJson(path, manifest);
+}
 
 const capabilities = readJson("public/capabilities.json");
 const capability = capabilities.capabilities?.find((item: any) => item.id === "x402-ping");
