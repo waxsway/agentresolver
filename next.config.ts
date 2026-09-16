@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/http-inspect": [
       "./node_modules/@x402/extensions/**/*",
+      "./node_modules/@x402/core/**/*",
       "./node_modules/ajv/**/*",
       "./node_modules/fast-deep-equal/**/*",
       "./node_modules/fast-uri/**/*",
