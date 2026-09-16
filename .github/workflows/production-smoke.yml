@@ -66,6 +66,7 @@ jobs:
                 (.["x-payment-info"].protocols | any(has("x402"))) and
                 ((.operationId == "x402SettlementPingGet") or (.requestBody.content["application/json"].schema != null)) and
                 (.responses["200"].content["application/json"].schema != null) and
+                (.responses["200"].headers["x-agentresolver-history"] != null) and
                 (.responses["402"] != null)
               ))
             )

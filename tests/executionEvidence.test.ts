@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   buildExecutionEvidence,
   EXECUTION_EVIDENCE_URL,
+  VERIFIED_SETTLEMENT_HISTORY_URL,
   executionEvidenceHeaders,
   sha256Utf8
 } from "../src/lib/executionEvidence";
@@ -29,6 +30,7 @@ test("execution evidence hashes exact UTF-8 response bytes deterministically", (
   assert.equal(headers["x-agentresolver-execution-id"], evidence.executionId);
   assert.equal(headers["x-agentresolver-response-sha256"], evidence.responseSha256);
   assert.equal(headers["x-agentresolver-evidence"], EXECUTION_EVIDENCE_URL);
+  assert.equal(headers["x-agentresolver-history"], VERIFIED_SETTLEMENT_HISTORY_URL);
 });
 
 test("public evidence contract separates execution proof from provider legitimacy", async () => {
@@ -78,5 +80,9 @@ test("generated OpenAPI advertises execution evidence headers", () => {
   assert.ok(response.headers["x-agentresolver-response-sha256"]);
   assert.ok(response.headers["x-agentresolver-deployment"]);
   assert.ok(response.headers["x-agentresolver-evidence"]);
+  assert.ok(response.headers["x-agentresolver-history"]);
   assert.ok(response.headers["payment-response"]);
+  assert.ok(
+    openapi.paths["/api/x402-payment-preflight"].post.responses["402"].headers["x-agentresolver-history"]
+  );
 });

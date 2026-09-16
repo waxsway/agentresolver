@@ -21,6 +21,13 @@ test("paid capability registry identifiers and prices are coherent", () => {
 
 test("generated machine surfaces contain every registered paid capability", () => {
   const x402 = readJson("public/.well-known/x402");
+  assert.equal(
+    x402.verifiedSettlementHistory,
+    "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
+  );
+  assert.match(x402.description, /API trust\/security preflight/i);
+  assert.match(x402.description, /endpoint safety/i);
+  assert.match(x402.description, /payment verification/i);
   const capabilities = readJson("public/capabilities.json");
   const integrations = readJson("public/integrations.json");
   const openapi = readJson("public/openapi.json");
@@ -58,6 +65,25 @@ test("generated machine surfaces contain every registered paid capability", () =
   }
 });
 
+
+test("canonical preflight vocabulary covers broad buyer discovery intents", () => {
+  const preflight = PAID_CAPABILITY_LIST.find((item) => item.id === "x402-payment-preflight");
+  assert.ok(preflight);
+  for (const phrase of [
+    "x402 preflight",
+    "verify endpoint before paying",
+    "payTo verification",
+    "USDC payment check",
+    "api trust security preflight",
+    "endpoint safety",
+    "payment verification"
+  ]) {
+    assert.ok(
+      (preflight.tags as readonly string[]).includes(phrase),
+      `missing discovery phrase: ${phrase}`
+    );
+  }
+});
 
 test("deterministic utility discovery publishes response schemas", () => {
   const x402 = readJson("public/.well-known/x402");

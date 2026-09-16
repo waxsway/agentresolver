@@ -219,7 +219,10 @@ function writeJson(path: string, value: unknown) {
 writeJson("public/.well-known/x402", {
   x402Version: 2,
   name: "AgentResolver",
-  description: "Free capability discovery plus pay-per-call live utilities and deterministic compatibility checks for autonomous agents. No signup or API key.",
+  description: "Machine-native x402 verify-before-pay, API trust/security preflight, endpoint safety evidence, payTo verification and USDC payment verification for autonomous agents, plus free capability discovery. No signup or API key.",
+  trust: `${CANONICAL_ORIGIN}/.well-known/agentresolver-trust.json`,
+  executionEvidence: `${CANONICAL_ORIGIN}/.well-known/agentresolver-evidence.json`,
+  verifiedSettlementHistory: `${CANONICAL_ORIGIN}/.well-known/agentresolver-reputation.json`,
   resources: PAID_CAPABILITY_LIST.map((product) => ({
     resource: `POST ${product.endpoint}`,
     description: product.description,
@@ -386,6 +389,10 @@ for (const product of PAID_CAPABILITY_LIST) {
               description: "Machine-readable contract explaining how to verify AgentResolver execution evidence.",
               schema: { type: "string", pattern: "^https://" }
             },
+            "x-agentresolver-history": {
+              description: "Canonical independently verifiable settlement-history surface available before and after payment.",
+              schema: { type: "string", pattern: "^https://" }
+            },
             "payment-response": {
               description: "x402 settlement response supplied by the payment middleware after successful settlement.",
               schema: { type: "string" }
@@ -402,7 +409,19 @@ for (const product of PAID_CAPABILITY_LIST) {
           }
         },
         "400": { description: "Invalid capability input." },
-        "402": { description: "x402 payment required." },
+        "402": {
+          description: "x402 payment required.",
+          headers: {
+            "payment-required": {
+              description: "x402 payment challenge. A challenge is a quote and never caller spending authorization.",
+              schema: { type: "string" }
+            },
+            "x-agentresolver-history": {
+              description: "Verified settlement history that can be inspected before authorizing payment.",
+              schema: { type: "string", pattern: "^https://" }
+            }
+          }
+        },
         "503": { description: "Paid execution temporarily unavailable." }
       }
     }
