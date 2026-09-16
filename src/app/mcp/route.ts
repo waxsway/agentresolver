@@ -29,6 +29,7 @@ const paid = (capabilityId: PaidCapabilityId, input: Record<string, unknown>) =>
   };
 };
 
+const resolveProduct = getPaidCapability("resolve");
 const httpInspectProduct = getPaidCapability("http-inspect");
 const toolContractProduct = getPaidCapability("tool-contract");
 const mcpProbeProduct = getPaidCapability("mcp-probe");
@@ -70,14 +71,14 @@ async function logMcpRequest(req: Request) {
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
-    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. priced AgentResolver tools are directly payable over x402 inside MCP: an x402-aware client can receive a local payment challenge, apply its own spending policy, and retry the same tools/call with payment. Unpaid tool calls never execute paid capability work. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
+    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` when an external capability is missing. Goal-specific resolution and all AgentResolver-owned tools are directly payable over x402 inside MCP: an x402-aware client can receive a local payment challenge, apply its own spending policy, and retry the same tools/call with payment. Unpaid tool calls never execute paid capability work. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
   });
 
   server.registerTool("resolve", {
-    title: "Resolve a missing capability", description: "Free default discovery. Find ranked tools, APIs, MCP servers and machine services, with a prefilled paid live-evidence action when useful.",
+    title: resolveProduct.quoteTool.title, description: resolveProduct.quoteTool.description,
     inputSchema: z.object({ goal: z.string().min(1), url: z.string().url().optional(), limit: z.number().int().min(1).max(10).optional() }),
     annotations: { title: "Resolve a missing capability", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ goal, url, limit }) => {
+  }, createLazyPaidMcpTool<{ goal: string; url?: string; limit?: number }>("resolve", async ({ goal, url, limit }) => {
     const resolution = await resolveGoal(goal, url, limit || 3);
     const owned = resolution.owned.map((match) => ({ ...match, execute: match.status === "live" && match.endpoint ? `${CANONICAL}${match.endpoint}` : null, spendingAuthorizationRequired: match.priceUsd > 0 }));
     const candidateCount = resolution.mcp.length + resolution.marketplace.length;
@@ -184,11 +185,12 @@ const handler = createMcpHandler(() => {
 
     logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal), mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null, paidRecommendationSurface: rec?.surface || null });
     if (rec) console.log(JSON.stringify({ event: "paid_recommendation_shown", surface: "mcp", executionSurface: rec.surface, at: new Date().toISOString(), capabilityId: rec.capabilityId, priceUsd: rec.priceUsd, goalHash: shortHash(goal) }));
-    const output = { goal, url: url || null, free: true, readOnly: true, spendingAuthorized: false, owned, mcp: resolution.mcp, marketplace: resolution.marketplace, recommendedPaidAction: rec,
+    console.log(JSON.stringify({ event: "paid_capability_completed", capabilityId: "resolve", surface: "mcp", at: new Date().toISOString(), mcpMatchCount: resolution.mcp.length, marketplaceMatchCount: resolution.marketplace.length }));
+    const output = { goal, url: url || null, paid: true, priceUsd: resolveProduct.priceUsd, readOnly: true, spendingAuthorized: false, owned, mcp: resolution.mcp, marketplace: resolution.marketplace, recommendedPaidAction: rec,
       nextAction: rec ? (rec.surface === "mcp" ? `Optional direct MCP execution costs ${formatUsd(rec.priceUsd)} USDC on Base. Call ${rec.tool} with the prefilled input only if your existing spending policy independently authorizes it.` : `Optional live evidence costs ${formatUsd(rec.priceUsd)} USDC on Base. The executable request is prefilled. Execute only if your existing spending policy independently authorizes it.`) : "Choose the best relevant result; refine the goal and resolve again if needed.",
       rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, paidManifest: `${CANONICAL}/.well-known/x402` } };
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
-  });
+   }));
 
   server.registerTool("http_inspect", {
     title: httpInspectProduct.quoteTool.title,
