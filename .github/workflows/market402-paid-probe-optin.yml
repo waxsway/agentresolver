@@ -1,0 +1,77 @@
+name: Market402 Paid Probe Opt-In
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/market402-paid-probe-optin.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  optin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Free Market402 self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://market402.com/selftest' \
+            -H 'content-type: application/json' \
+            --data '{"url":"https://agentresolver.vercel.app/api/http-inspect"}')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202) ;;
+            *) echo "Market402 self-test failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Submit and opt into real paid delivery probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://market402.com/submit' \
+            -H 'content-type: application/json' \
+            --data '{
+              "resource":"https://agentresolver.vercel.app/api/http-inspect",
+              "declared_price_usd":0.001,
+              "paid_probe_optin":true,
+              "sample_input":{
+                "method":"POST",
+                "body":{
+                  "url":"https://agentresolver.vercel.app/api/x402-ping",
+                  "method":"GET",
+                  "maxPriceUsd":0.01,
+                  "expectedNetwork":"eip155:8453"
+                }
+              }
+            }')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "Market402 submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Check public Market402 surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://market402.com/search.json?q=trust' -o /tmp/search.json || true
+          echo "=== capability search ==="
+          cat /tmp/search.json 2>/dev/null || true
+          echo
+          curl -fsS 'https://market402.com/optin.json' -o /tmp/optin.json
+          echo "=== paid probe opt-in roster ==="
+          cat /tmp/optin.json
+          echo
+          if ! grep -q 'agentresolver.vercel.app/api/http-inspect' /tmp/optin.json; then
+            echo "::warning::Market402 accepted the submission but the public opt-in roster has not refreshed yet."
+          fi
