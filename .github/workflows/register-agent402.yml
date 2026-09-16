@@ -40,6 +40,9 @@ jobs:
           cat /tmp/register.json
           case "$code" in
             200|201|202|204|409) ;;
+            429)
+              echo "::warning::Agent402 registration is rate-limited; keeping the existing index entry and continuing to buyer-ranking audit."
+              ;;
             *) echo "Unexpected registration status: $code" >&2; exit 1 ;;
           esac
 
