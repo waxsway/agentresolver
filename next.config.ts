@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Link",
-            value: "<https://agentresolver.vercel.app/.well-known/agentresolver-trust.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver trust contract\", <https://agentresolver.vercel.app/.well-known/sponsorship.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver sponsorship inventory\""
+            value: "<https://agentresolver.vercel.app/.well-known/agentresolver-trust.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver trust contract\", <https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver execution evidence contract\", <https://agentresolver.vercel.app/.well-known/sponsorship.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver sponsorship inventory\""
           }
         ]
       }
