@@ -160,10 +160,22 @@
       "post": {
         "operationId": "probeMcpEndpoint",
         "tags": [
-          "Paid Agent Capabilities"
+          "Paid Agent Capabilities",
+          "mcp preflight",
+          "mcp probe",
+          "mcp health",
+          "mcp server",
+          "mcp endpoint",
+          "verify mcp",
+          "test mcp",
+          "tools list",
+          "compatibility",
+          "latency",
+          "server check",
+          "x402"
         ],
         "summary": "Live-preflight a public MCP HTTP endpoint before depending on it",
-        "description": "Price: $0.001 USDC on Base via x402. Checks initialize and tools/list and returns reachability, compatibility, latency, server metadata, and current tool inventory.",
+        "description": "Price: $0.001 USDC on Base via x402. Checks initialize and tools/list and returns reachability, compatibility, latency, server metadata, and current tool inventory. Use when: Free discovery found one concrete MCP endpoint and current reachability, compatibility, latency, or tool inventory matters before depending on it.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -236,6 +248,22 @@
           "503": {
             "description": "Paid execution temporarily unavailable."
           }
+        },
+        "x-agentresolver-product": {
+          "keywords": [
+            "mcp preflight",
+            "mcp probe",
+            "mcp health",
+            "mcp server",
+            "mcp endpoint",
+            "verify mcp",
+            "test mcp",
+            "tools list",
+            "compatibility",
+            "latency",
+            "server check",
+            "x402"
+          ]
         }
       }
     },
@@ -243,10 +271,21 @@
       "post": {
         "operationId": "auditAgentReadiness",
         "tags": [
-          "Paid Agent Capabilities"
+          "Paid Agent Capabilities",
+          "agent readiness",
+          "agent accessibility",
+          "llms.txt",
+          "ard",
+          "openapi",
+          "mcp",
+          "robots",
+          "sitemap",
+          "website audit",
+          "domain",
+          "x402"
         ],
         "summary": "Audit a public website for AI-agent discoverability",
-        "description": "Price: $0.005 USDC on Base via x402. Audits a public site for agent discoverability and machine-readable integration signals.",
+        "description": "Price: $0.005 USDC on Base via x402. Audits a public site for agent discoverability and machine-readable integration signals. Use when: An agent or operator needs to know whether a public site is machine-discoverable and exposes usable agent integration signals.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -312,6 +351,21 @@
           "503": {
             "description": "Paid execution temporarily unavailable."
           }
+        },
+        "x-agentresolver-product": {
+          "keywords": [
+            "agent readiness",
+            "agent accessibility",
+            "llms.txt",
+            "ard",
+            "openapi",
+            "mcp",
+            "robots",
+            "sitemap",
+            "website audit",
+            "domain",
+            "x402"
+          ]
         }
       }
     },
@@ -319,10 +373,20 @@
       "post": {
         "operationId": "verifiedResolve",
         "tags": [
-          "Paid Agent Capabilities"
+          "Paid Agent Capabilities",
+          "verified resolve",
+          "verified tool",
+          "tool verification",
+          "mcp verification",
+          "capability verification",
+          "tool selection",
+          "provider selection",
+          "live check",
+          "recommendation",
+          "x402"
         ],
         "summary": "Resolve a missing capability and live-verify top MCP candidates",
-        "description": "Price: $0.02 USDC on Base via x402. Resolves one capability, live-probes at most two top MCP candidates, and returns an evidence-backed recommendation.",
+        "description": "Price: $0.02 USDC on Base via x402. Resolves one capability, live-probes at most two top MCP candidates, and returns an evidence-backed recommendation. Use when: The agent needs an evidence-backed choice among capability candidates rather than discovery-only metadata.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -400,6 +464,20 @@
           "503": {
             "description": "Paid execution temporarily unavailable."
           }
+        },
+        "x-agentresolver-product": {
+          "keywords": [
+            "verified resolve",
+            "verified tool",
+            "tool verification",
+            "mcp verification",
+            "capability verification",
+            "tool selection",
+            "provider selection",
+            "live check",
+            "recommendation",
+            "x402"
+          ]
         }
       }
     },
@@ -407,10 +485,21 @@
       "post": {
         "operationId": "batchVerifiedResolve",
         "tags": [
-          "Paid Agent Capabilities"
+          "Paid Agent Capabilities",
+          "batch verified resolve",
+          "batch verification",
+          "tool procurement",
+          "agent procurement",
+          "mcp verification",
+          "capability verification",
+          "tool selection",
+          "provider selection",
+          "multi tool",
+          "recommendation",
+          "x402"
         ],
         "summary": "Resolve and live-verify several missing capabilities in one paid operation",
-        "description": "Price: $0.05 USDC on Base via x402. Accepts 1-4 capability requests. Each request may live-probe at most two MCP candidates, for a hard maximum of eight live MCP probes per paid batch.",
+        "description": "Price: $0.05 USDC on Base via x402. Accepts 1-4 capability requests. Each request may live-probe at most two MCP candidates, for a hard maximum of eight live MCP probes per paid batch. Use when: The agent needs up to four missing capabilities selected and live-checked in one bounded purchase.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -509,6 +598,21 @@
           "503": {
             "description": "Paid execution temporarily unavailable."
           }
+        },
+        "x-agentresolver-product": {
+          "keywords": [
+            "batch verified resolve",
+            "batch verification",
+            "tool procurement",
+            "agent procurement",
+            "mcp verification",
+            "capability verification",
+            "tool selection",
+            "provider selection",
+            "multi tool",
+            "recommendation",
+            "x402"
+          ]
         }
       }
     },
