@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { inspectHttpResource } from "@/lib/httpInspect";
 import { logX402Settlement } from "@/lib/telemetry";
 import { logLegacyPaidAttempt, logLegacyPaidDiscovery } from "@/lib/legacyPaidTraffic";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
-import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
+import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 
 export const dynamic = "force-dynamic";
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
@@ -66,19 +67,29 @@ async function inspectHandler(req: NextRequest): Promise<NextResponse<unknown>> 
 function getPaidHandler(): PaidHandler {
   if (paidHandler) return paidHandler;
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
-  const facilitatorUrl = (process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
+  const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
+  const facilitatorUrl = (process.env.AGENTRESOLVER_X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
   const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
   const server = new x402ResourceServer(client)
     .register(X402_NETWORK, new ExactEvmScheme())
+    .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
     .registerExtension(bazaarResourceServerExtension);
   paidHandler = withX402<unknown>(inspectHandler, {
     "/api/http-inspect": {
-      accepts: {
-        scheme: "exact",
-        price: X402_PRICING.httpInspect,
-        network: X402_NETWORK,
-        payTo: payTo as `0x${string}`
-      },
+      accepts: [
+        {
+          scheme: "exact",
+          price: X402_PRICING.httpInspect,
+          network: X402_NETWORK,
+          payTo: payTo as `0x${string}`
+        },
+        {
+          scheme: "exact",
+          price: X402_PRICING.httpInspect,
+          network: X402_SOLANA_NETWORK,
+          payTo: solanaPayTo
+        }
+      ],
       description: "Preflight a public HTTPS or x402 payment endpoint before an agent depends on or pays it. Probes the caller-selected GET/HEAD method, or an explicitly authorized unpaid POST with optional JSON body, then verifies TLS and endpoint hygiene, decodes PAYMENT-REQUIRED, checks x402 version/scheme/network/asset/payee/resource binding, computes quoted USDC price, and enforces optional caller policy limits.",
       mimeType: "application/json",
       extensions: {
@@ -89,7 +100,7 @@ function getPaidHandler(): PaidHandler {
             properties: {
               url: { type: "string", pattern: "^https://", maxLength: 500 },
               maxPriceUsd: { type: "number", minimum: 0, maximum: 1000 },
-              expectedPayTo: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" },
+              expectedPayTo: { type: "string", minLength: 1, maxLength: 128 },
               expectedNetwork: { type: "string", maxLength: 128 },
               method: { type: "string", enum: ["GET", "HEAD", "POST"] },
               body: {},
