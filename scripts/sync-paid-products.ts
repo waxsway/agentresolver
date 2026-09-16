@@ -216,10 +216,31 @@ function writeJson(path: string, value: unknown) {
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n");
 }
 
-writeJson("public/.well-known/x402", {
+const X402_MANIFEST_PATHS = [
+  "public/.well-known/x402",
+  "public/.well-known/x402.json"
+] as const;
+
+const x402Manifest = {
   x402Version: 2,
   name: "AgentResolver",
   description: "Machine-native $0.001 x402 settlement canary plus verify-before-pay, API trust/security preflight, endpoint safety evidence, payTo verification and USDC payment verification for autonomous agents. No signup or API key.",
+  category: "Developer Tools",
+  tags: [
+    "x402",
+    "agent-payments",
+    "settlement-test",
+    "payment-canary",
+    "payment-preflight",
+    "payto-verification",
+    "usdc",
+    "base",
+    "solana"
+  ],
+  owner_url: CANONICAL_ORIGIN,
+  owner_contact: "https://github.com/waxsway/agentresolver",
+  openapi: `${CANONICAL_ORIGIN}/openapi.json`,
+  mcp: `${CANONICAL_ORIGIN}/mcp`,
   trust: `${CANONICAL_ORIGIN}/.well-known/agentresolver-trust.json`,
   executionEvidence: `${CANONICAL_ORIGIN}/.well-known/agentresolver-evidence.json`,
   verifiedSettlementHistory: `${CANONICAL_ORIGIN}/.well-known/agentresolver-reputation.json`,
@@ -262,7 +283,11 @@ writeJson("public/.well-known/x402", {
     resolve: `${CANONICAL_ORIGIN}/api/resolve`
   },
   instructions: "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, use POST /api/x402-payment-preflight. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization."
-});
+};
+
+for (const path of X402_MANIFEST_PATHS) {
+  writeJson(path, x402Manifest);
+}
 
 const capabilities = readJson("public/capabilities.json");
 const freeCapabilities = Array.isArray(capabilities.capabilities)
