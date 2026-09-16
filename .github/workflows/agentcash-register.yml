@@ -8,6 +8,8 @@ on:
     paths:
       - ".github/workflows/agentcash-register.yml"
       - "src/lib/paidCapabilities.ts"
+      - "src/lib/createDeterministicPaidRoute.ts"
+      - "src/lib/x402DiscoveryChallenge.ts"
       - "public/openapi.json"
       - "public/.well-known/x402"
       - "public/.well-known/x402-catalog.json"
@@ -35,3 +37,21 @@ jobs:
           set -euo pipefail
           mkdir -p "$HOME"
           npx -y agentcash@0.17.1 register https://agentresolver.vercel.app --yes --format json | tee /tmp/agentcash-register.json
+
+      - name: Verify current buyer-search visibility
+        run: |
+          set -euo pipefail
+          found=0
+          for query in             "AgentResolver"             "x402 payment preflight"             "verify endpoint before paying"             "payTo verification"
+          do
+            echo "=== QUERY: $query ==="
+            out="$(mktemp)"
+            npx -y agentcash@0.17.1 search "$query" --format json | tee "$out"
+            if grep -Fq 'agentresolver.vercel.app' "$out"; then
+              echo "AgentResolver visible for: $query"
+              found=$((found+1))
+            else
+              echo "::warning::AgentResolver not visible for: $query"
+            fi
+          done
+          echo "AgentResolver visible in $found of 4 buyer searches after fresh registration."
