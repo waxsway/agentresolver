@@ -1,0 +1,19 @@
+{
+  "service": "AgentResolver",
+  "model": "provider-funded-discovery",
+  "status": "pilot_inventory_open",
+  "disclosure": "All sponsored placements are explicitly labeled and do not alter organic ranking.",
+  "placements": [
+    "resolver-response",
+    "mcp-resolve",
+    "mcp-server-card"
+  ],
+  "targeting": [
+    "intent-category"
+  ],
+  "reporting": [
+    "eligible-impressions",
+    "qualified-intent-impressions"
+  ],
+  "details": "https://agentresolver.vercel.app/api/sponsorship"
+}
