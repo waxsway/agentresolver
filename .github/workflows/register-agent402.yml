@@ -45,18 +45,35 @@ jobs:
       - name: Register origin with Agent402 free index
         run: |
           set -euo pipefail
-          code=$(curl -sS -o /tmp/register.json -w '%{http_code}' \
-            -X POST 'https://agent402.tools/api/index/register' \
-            -H 'content-type: application/json' \
-            --data '{"origin":"https://agentresolver.vercel.app"}')
-          cat /tmp/register.json
-          case "$code" in
-            200|201|202|204|409) ;;
-            429)
-              echo "::warning::Agent402 registration is rate-limited; keeping the existing index entry and continuing to buyer-ranking audit."
-              ;;
-            *) echo "Unexpected registration status: $code" >&2; exit 1 ;;
-          esac
+          code=""
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o /tmp/register.json -w '%{http_code}' \
+              --connect-timeout 5 --max-time 15 \
+              -X POST 'https://agent402.tools/api/index/register' \
+              -H 'content-type: application/json' \
+              --data '{"origin":"https://agentresolver.vercel.app"}' || printf '000')
+            echo "Agent402 registration attempt $attempt -> HTTP $code"
+            cat /tmp/register.json 2>/dev/null || true
+            echo
+            case "$code" in
+              200|201|202|204|409) break ;;
+              429)
+                echo "::warning::Agent402 registration is rate-limited; keeping the existing index entry and continuing to buyer-ranking audit."
+                break
+                ;;
+              500|502|503|504|000)
+                if [ "$attempt" -lt 3 ]; then
+                  sleep $((attempt * 2))
+                  continue
+                fi
+                echo "::warning::Agent402 registration remained unavailable after retries (HTTP $code); keeping the existing index entry and continuing to buyer-ranking audit."
+                ;;
+              *)
+                echo "Unexpected registration status: $code" >&2
+                exit 1
+                ;;
+            esac
+          done
 
       - name: Audit buyer-query rankings
         run: |
@@ -68,6 +85,8 @@ jobs:
             "endpoint safety"
             "USDC payment check"
             "verify endpoint before paying"
+            "x402 transaction path payment gate"
+            "prepayment authorization gate"
           )
           for q in "${queries[@]}"; do
             encoded="$(python -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$q")"
