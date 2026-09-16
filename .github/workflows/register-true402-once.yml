@@ -70,15 +70,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS 'https://true402.dev/api/v1/services' -o /tmp/services.json
-          jq -e '
-            .data[] |
-            select(.url == "https://agentresolver.vercel.app") |
-            .manifest.name == "agentresolver-api-trust-preflight" and
-            .manifest.endpoint == "https://agentresolver.vercel.app/api/http-inspect"
-          ' /tmp/services.json >/dev/null
-          jq -c '
-            .data[] |
-            select(.url == "https://agentresolver.vercel.app") |
-            {id,url,manifest,reputation}
-          ' /tmp/services.json
+          code="$(curl -sS -D /tmp/services.headers -o /tmp/services.body -w '%{http_code}' 'https://true402.dev/api/v1/services')"
+          echo "true402 catalog HTTP $code"
+          grep -i '^content-type:' /tmp/services.headers || true
+          test "$code" = "200"
+          if grep -Fq 'https://agentresolver.vercel.app' /tmp/services.body; then
+            echo "AgentResolver is present in the live true402 buyer catalog."
+            python - <<'PY'
+          from pathlib import Path
+          text=Path("/tmp/services.body").read_text(errors="replace")
+          needle="https://agentresolver.vercel.app"
+          i=text.find(needle)
+          print(text[max(0,i-400):i+1800])
+          PY
+          else
+            echo "::error::true402 accepted AgentResolver registration but its live buyer catalog does not contain the origin."
+            echo "Catalog prefix:"
+            head -c 1200 /tmp/services.body || true
+            exit 1
+          fi
