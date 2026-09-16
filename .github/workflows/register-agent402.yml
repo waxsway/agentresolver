@@ -65,11 +65,29 @@ jobs:
           rows=data.get("results") or data.get("routes") or data.get("data") or []
           if isinstance(rows,dict):
               rows=rows.get("results") or rows.get("routes") or []
+          print(json.dumps({
+              "query":q,
+              "top":[
+                  {
+                      "rank":idx,
+                      "seller":row.get("seller"),
+                      "name":row.get("name"),
+                      "slug":row.get("slug"),
+                      "priceUsd":row.get("priceUsd"),
+                      "score":row.get("score"),
+                      "health":row.get("health"),
+                      "routerDispatchEligible":row.get("routerDispatchEligible"),
+                      "executeViaCallableNow":row.get("executeViaCallableNow"),
+                      "networks":row.get("networks")
+                  }
+                  for idx,row in enumerate(rows[:5],1)
+              ]
+          }, separators=(",",":")))
           for idx,row in enumerate(rows,1):
               if "agentresolver.vercel.app" in json.dumps(row):
                   print(json.dumps({
                       "query":q,
-                      "rank":idx,
+                      "agentresolverRank":idx,
                       "name":row.get("name"),
                       "slug":row.get("slug"),
                       "priceUsd":row.get("priceUsd"),
@@ -81,6 +99,6 @@ jobs:
                   }, separators=(",",":")))
                   break
           else:
-              print(json.dumps({"query":q,"rank":None,"visible":False},separators=(",",":")))
+              print(json.dumps({"query":q,"agentresolverRank":None,"visible":False},separators=(",",":")))
           PY
           done
