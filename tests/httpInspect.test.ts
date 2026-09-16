@@ -22,7 +22,13 @@ test("HTTP inspection rejects non-HTTPS, credentials, custom ports and local hos
     "https://10.0.0.5",
     "https://192.168.1.10",
     "https://169.254.169.254",
-    "https://[::1]"
+    "https://[::1]",
+    "https://[::]",
+    "https://[fc00::1]",
+    "https://[fd12:3456::1]",
+    "https://[fe80::1]",
+    "https://[ff02::1]",
+    "https://[::ffff:127.0.0.1]"
   ];
 
   for (const target of rejected) {
