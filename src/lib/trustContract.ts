@@ -61,7 +61,8 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     agentManifest: "https://agentresolver.vercel.app/.well-known/agent.json",
     legal: "https://agentresolver.vercel.app/legal",
     securityDisclosure: "https://agentresolver.vercel.app/.well-known/security.txt",
-    sourceCode: "https://github.com/waxsway/agentresolver"
+    sourceCode: "https://github.com/waxsway/agentresolver",
+    trustAuditHistory: "https://github.com/waxsway/agentresolver/actions/workflows/trust-surface-audit.yml"
   },
   telemetry: {
     rawPrivateKeysCollected: false,
