@@ -51,6 +51,8 @@ jobs:
           grep -Fi 'x-agentresolver-request-id:' /tmp/preflight.headers >/dev/null
           grep -Fi 'x-agentresolver-deployment:' /tmp/preflight.headers >/dev/null
           grep -Fi 'payment-required:' /tmp/preflight.headers >/dev/null
+          grep -Fi 'access-control-expose-headers:' /tmp/preflight.headers | grep -Fi 'x-agentresolver-request-id' >/dev/null
+          grep -Fi 'access-control-expose-headers:' /tmp/preflight.headers | grep -Fi 'payment-response' >/dev/null
           jq -e '
             .x402Version == 2 and
             (.accepts | length == 2) and
