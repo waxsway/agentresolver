@@ -14,6 +14,10 @@ test("trust contract declares the canonical non-custodial payment boundary", () 
     AGENTRESOLVER_TRUST_CONTRACT.canonicalPaidRoute.url,
     "https://agentresolver.vercel.app/api/x402-payment-preflight"
   );
+  assert.equal(
+    AGENTRESOLVER_TRUST_CONTRACT.canonicalPaidRoute.operationId,
+    "x402PaymentPreflightPayToVerification"
+  );
   assert.equal(AGENTRESOLVER_TRUST_CONTRACT.supportedSettlement.length, 2);
   assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.httpsOnly, true);
   assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.privateAndReservedIpRangesBlocked, true);
@@ -47,6 +51,12 @@ test("security.txt has the RFC 9116 required disclosure fields", async () => {
   assert.match(body, /^Contact: https:\/\/github\.com\/waxsway\/agentresolver\/security\/advisories\/new/m);
   assert.match(body, /^Expires: 2027-03-16T00:00:00Z$/m);
   assert.match(body, /^Canonical: https:\/\/agentresolver\.vercel\.app\/\.well-known\/security\.txt$/m);
+});
+
+test("production deploy gate accepts validated main CI regardless of redundant upstream event field", () => {
+  const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
+  assert.match(workflow, /github\.event\.workflow_run\.head_branch == 'main'/);
+  assert.doesNotMatch(workflow, /github\.event\.workflow_run\.event == 'push'/);
 });
 
 test("production config traces the canonical paid route and sends HSTS", () => {

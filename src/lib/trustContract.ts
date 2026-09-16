@@ -5,6 +5,7 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
   role: "non-custodial x402 verify-before-pay infrastructure",
   canonicalPaidRoute: {
     method: "POST",
+    operationId: "x402PaymentPreflightPayToVerification",
     url: "https://agentresolver.vercel.app/api/x402-payment-preflight",
     priceUsd: 0.001,
     asset: "USDC",
