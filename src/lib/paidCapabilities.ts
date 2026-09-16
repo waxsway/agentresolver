@@ -281,16 +281,16 @@ export const PAID_CAPABILITIES = {
   },
   "http-inspect": {
     id: "http-inspect",
-    name: "x402 API Trust Preflight",
-    operationId: "inspectX402ApiTrust",
+    name: "x402 Payment Preflight — PayTo Verification & Endpoint Safety",
+    operationId: "x402PaymentPreflightPayToVerificationEndpointSafety",
     endpoint: "/api/http-inspect",
     price: "$0.001",
     priceUsd: 0.001,
     atomicAmount: "1000",
-    description: "Verify a public HTTPS/x402 payment endpoint before an agent spends. Probe GET/HEAD directly or explicitly authorize one unpaid POST with a JSON body, then decode the live PAYMENT-REQUIRED challenge and verify x402 version, payment options, scheme, network, asset, payee, resource binding and quoted USDC price alongside TLS/reachability evidence. Optional max-price, expected-payee and expected-network constraints turn it into a caller policy gate.",
-    useWhen: "An agent is about to pay or depend on an unfamiliar x402/API endpoint and wants to verify the live payment contract, destination, price and resource binding before authorizing spend.",
+    description: "x402 preflight and USDC payment check before paying an unfamiliar endpoint. Verify endpoint safety, payTo recipient, quoted price, Base or Solana network, USDC asset, resource binding, x402 challenge structure, TLS and reachability before an autonomous agent authorizes spend. Optional max-price, expectedPayTo and expected-network constraints fail closed when payment terms change.",
+    useWhen: "Verify an x402 endpoint before paying: perform payTo verification, endpoint safety checks and a USDC payment preflight before an autonomous agent signs or authorizes spend.",
     costClass: "bounded-network",
-    tags: ["x402", "trust", "security", "payment preflight", "api", "payee", "price", "resource binding", "tls", "agent payment"],
+    tags: ["x402 preflight", "payTo verification", "endpoint safety", "USDC payment check", "verify before paying", "payment preflight", "payee", "resource binding", "Base", "Solana", "agent payment safety"],
     inputSchema: {
       type: "object",
       required: ["url"],
@@ -308,8 +308,8 @@ export const PAID_CAPABILITIES = {
     example: { url: "https://example.com/api", method: "GET", maxPriceUsd: 0.01, expectedNetwork: "eip155:8453" },
     quoteTool: {
       name: "http_inspect",
-      title: "x402 API trust preflight — $0.001",
-      description: "Paid $0.001 USDC on Base or Solana live x402/API payment-contract preflight. Probe the target method, verify quoted price, payee, network, resource binding and challenge structure plus TLS/reachability before authorizing spend. POST probes require explicit caller opt-in because an unprotected endpoint could have side effects."
+      title: "x402 payment preflight + PayTo verification — $0.001",
+      description: "Paid $0.001 USDC on Base or Solana verify-before-pay endpoint safety check: payTo verification, quote price, network, asset, resource binding and x402 challenge compliance before an agent authorizes spend. POST probes require explicit caller opt-in because an unprotected endpoint could have side effects."
     }
   },
   "x402-payment-preflight": {
