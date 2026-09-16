@@ -58,6 +58,7 @@ function stampInfrastructureHeaders(
       "x-agentresolver-contract-version",
       "x-agentresolver-trust",
       "x-agentresolver-evidence",
+      "x-agentresolver-history",
       "x-agentresolver-execution-id",
       "x-agentresolver-response-sha256",
       "x-agentresolver-evidence-version",
