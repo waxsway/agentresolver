@@ -15,6 +15,10 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   }));
   assert.equal(getResponse.status, 402);
   assert.ok(getResponse.headers.get("payment-required"));
+  assert.equal(
+    getResponse.headers.get("x-agentresolver-settlement-history"),
+    "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
+  );
 
   const postResponse = await POST(new NextRequest("https://agentresolver.vercel.app/api/x402-ping", {
     method: "POST",
