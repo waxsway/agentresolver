@@ -47,37 +47,7 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/mcp/server-card" | grep -F '0.1.3' >/dev/null
 
-          resolve_check() {
-            local slug="$1" goal="$2" url="$3" expected_id="$4" expected_price="$5"
-            local body
-            if [ -n "$url" ]; then
-              body=$(jq -n --arg goal "$goal" --arg url "$url" '{goal:$goal,url:$url,limit:3}')
-            else
-              body=$(jq -n --arg goal "$goal" '{goal:$goal,limit:3}')
-            fi
-            curl --retry 5 --retry-delay 2 --retry-all-errors -fsS \
-              -H 'content-type: application/json' \
-              --data "$body" \
-              "$BASE_URL/api/resolve" > "/tmp/$slug.json"
-            jq -e --arg id "$expected_id" --argjson price "$expected_price" '
-              .owned[0].id == $id and
-              .owned[0].priceUsd == $price and
-              .recommendedPaidAction.capabilityId == $id and
-              .recommendedPaidAction.priceUsd == $price
-            ' "/tmp/$slug.json" >/dev/null
-          }
-
-          resolve_check 'resolve-http-inspect' \
-            'inspect this HTTPS URL for status latency cache headers and security headers' \
-            'https://example.com' 'http-inspect' 0.001
-          resolve_check 'resolve-tool-contract' \
-            'check tool contract JSON schema workflow compatibility mapping' \
-            '' 'tool-contract' 0.005
-          resolve_check 'resolve-openapi-select' \
-            'select the best OpenAPI operation endpoint for this API goal' \
-            "$BASE_URL/openapi.json" 'openapi-select' 0.005
-
-          echo 'Production discovery checks passed.'
+          echo 'Production discovery metadata checks passed.'
 
       - name: Verify x402 payment challenges without spending
         shell: bash
@@ -124,6 +94,7 @@ jobs:
             ' "/tmp/${slug}-get.json" >/dev/null
           }
 
+          check_402 'Capability Resolve' '/api/resolve' '{"goal":"find an MCP server for web search","limit":3}' 'resolve' '1000'
           check_402 'HTTP Inspect' '/api/http-inspect' '{"url":"https://example.com"}' 'http-inspect' '1000'
 
           payment_required=$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-inspect-headers.txt)
@@ -167,11 +138,14 @@ jobs:
             -H 'accept: application/json, text/event-stream' \
             -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
             --data "$resolve_request")
-
           test "$resolve_code" -ge 200 && test "$resolve_code" -lt 300
-          grep -F 'recommendedPaidAction' /tmp/mcp-resolve.out >/dev/null
-          grep -F 'http_inspect' /tmp/mcp-resolve.out >/dev/null
-          grep -F '"surface":"mcp"' /tmp/mcp-resolve.out >/dev/null || grep -F '\\"surface\\":\\"mcp\\"' /tmp/mcp-resolve.out >/dev/null
+          grep -F 'x402Version' /tmp/mcp-resolve.out >/dev/null
+          grep -F '1000' /tmp/mcp-resolve.out >/dev/null
+          if grep -F 'recommendedPaidAction' /tmp/mcp-resolve.out >/dev/null; then
+            echo 'SECURITY FAILURE: unpaid resolve MCP call exposed paid resolution output.'
+            cat /tmp/mcp-resolve.out
+            exit 1
+          fi
 
                     request='{"jsonrpc":"2.0","id":91,"method":"tools/call","params":{"name":"http_inspect","arguments":{"url":"https://example.com"}}}'
           code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS             -o /tmp/mcp-paid.out             -w '%{http_code}'             -X POST "$MCP_URL"             -H 'content-type: application/json'             -H 'accept: application/json, text/event-stream'             -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0'             --data "$request")
@@ -195,19 +169,6 @@ jobs:
           fi
 
           echo 'Direct paid HTTP Inspect MCP challenge verified without signing or spending.'
-
-          openapi_resolve='{"jsonrpc":"2.0","id":92,"method":"tools/call","params":{"name":"resolve","arguments":{"goal":"select the best OpenAPI operation endpoint for this API goal","url":"https://agentresolver.vercel.app/openapi.json","limit":3}}}'
-          openapi_resolve_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-            -o /tmp/mcp-openapi-resolve.out \
-            -w '%{http_code}' \
-            -X POST "$MCP_URL" \
-            -H 'content-type: application/json' \
-            -H 'accept: application/json, text/event-stream' \
-            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
-            --data "$openapi_resolve")
-          test "$openapi_resolve_code" -ge 200 && test "$openapi_resolve_code" -lt 300
-          grep -F 'openapi_select' /tmp/mcp-openapi-resolve.out >/dev/null
-          grep -F '"surface":"mcp"' /tmp/mcp-openapi-resolve.out >/dev/null || grep -F '\\"surface\\":\\"mcp\\"' /tmp/mcp-openapi-resolve.out >/dev/null
 
           openapi_request='{"jsonrpc":"2.0","id":93,"method":"tools/call","params":{"name":"openapi_select","arguments":{"specUrl":"https://agentresolver.vercel.app/openapi.json","goal":"select the resolve operation"}}}'
           openapi_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
