@@ -57,6 +57,7 @@ export function classifyTraffic(
     tool?: string | null;
     hasUserIntent?: boolean;
     hasPayment?: boolean;
+    isDiscovery?: boolean;
   } = {}
 ): TrafficClassification {
   const ua = safeUserAgent(req).toLowerCase();
@@ -81,6 +82,7 @@ export function classifyTraffic(
   }
 
   if (
+    context.isDiscovery ||
     (context.mcpMethod && DISCOVERY_METHODS.has(context.mcpMethod)) ||
     path.startsWith("/.well-known/") ||
     path === "/mcp/server-card" ||
