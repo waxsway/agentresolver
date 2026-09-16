@@ -1,8 +1,14 @@
 # AgentResolver
 
-> Free missing-capability resolution for autonomous AI agents, plus very low-cost x402 live evidence when an agent needs confidence before depending on an unfamiliar service.
+> $0.001 x402 payment preflight and PayTo verification for autonomous agents on Base or Solana, plus free missing-capability resolution.
 
-AgentResolver is a machine-first fallback for agents that need an external capability they do not already have. Use it when no already-connected tool clearly satisfies a task and the agent would otherwise search provider catalogs or the web for an API, MCP server, data source, automation, or machine service.
+AgentResolver's primary paid product is a verify-before-pay check for unfamiliar x402 endpoints. Before authorizing USDC, call POST https://agentresolver.vercel.app/api/x402-payment-preflight to verify the live payTo recipient, quoted price, network, asset, resource binding, x402 challenge structure, TLS and endpoint reachability. The check costs $0.001 USDC on Base or Solana.
+
+For AgentCash users:
+- npx agentcash try https://agentresolver.vercel.app
+- npx agentcash add https://agentresolver.vercel.app
+
+AgentResolver also remains a machine-first fallback for agents that need an external capability they do not already have. Free resolution is available through MCP or POST /api/resolve.
 
 The fastest integration is MCP: connect to https://agentresolver.vercel.app/mcp and call `resolve`. REST clients can POST the same goal to https://agentresolver.vercel.app/api/resolve. Resolution is free, read-only, and never authorizes spending.
 
@@ -33,16 +39,17 @@ AgentResolver is opening a provider-funded discovery pilot. Providers can apply 
 
 ## Paid machine utilities
 
-- MCP Live Preflight: POST https://agentresolver.vercel.app/api/mcp-probe — $0.001 USDC on Base via x402. Given one public MCP endpoint, return current reachability, protocol compatibility, latency, server metadata, and tool inventory. This is the default paid step when free discovery finds one concrete MCP endpoint.
-- Agent Readiness Audit: POST https://agentresolver.vercel.app/api/agent-readiness — $0.005 USDC on Base via x402. Audit a public website for AI-agent discoverability and machine-readable integration signals.
-- Verified Resolve: POST https://agentresolver.vercel.app/api/verified-resolve — $0.02 USDC on Base via x402. Resolve one missing capability, live-probe up to two top MCP candidates, and return an evidence-backed recommendation.
-- Batch Verified Resolve: POST https://agentresolver.vercel.app/api/batch-verified-resolve — $0.05 USDC on Base via x402. Resolve and live-verify up to four capability requests in one bounded purchase.
+- x402 Payment Preflight & PayTo Verification: POST https://agentresolver.vercel.app/api/x402-payment-preflight — $0.001 USDC on Base or Solana via x402. Verify an x402 endpoint before paying: live payTo, USDC quote, network, asset, resource binding, challenge compliance, TLS and reachability. Optional maxPriceUsd, expectedPayTo and expectedNetwork act as policy gates.
+- MCP Live Preflight: POST https://agentresolver.vercel.app/api/mcp-probe — $0.001 USDC on Base or Solana via x402. Given one public MCP endpoint, return current reachability, protocol compatibility, latency, server metadata, and tool inventory. This is the default paid step when free discovery finds one concrete MCP endpoint.
+- Agent Readiness Audit: POST https://agentresolver.vercel.app/api/agent-readiness — $0.005 USDC on Base or Solana via x402. Audit a public website for AI-agent discoverability and machine-readable integration signals.
+- Verified Resolve: POST https://agentresolver.vercel.app/api/verified-resolve — $0.02 USDC on Base or Solana via x402. Resolve one missing capability, live-probe up to two top MCP candidates, and return an evidence-backed recommendation.
+- Batch Verified Resolve: POST https://agentresolver.vercel.app/api/batch-verified-resolve — $0.05 USDC on Base or Solana via x402. Resolve and live-verify up to four capability requests in one bounded purchase.
 
 These launch prices are intentionally small enough to fit typical autonomous-agent micropayment policies while real paid demand is being established. Prices are always disclosed before payment. An unpaid paid-operation request returns HTTP 402 with payment requirements. A 402 challenge is a quote, not authorization. Callers must independently approve spending under their own budget and safety policy before retrying with payment.
 
 ## Why an agent should pay
 
-Pay only when the paid result removes uncertainty that matters to the current task. Examples: before connecting to an unfamiliar MCP server, before choosing between several candidate providers, or before relying on a site that may not expose machine-readable integration metadata. If free discovery already provides enough confidence, do not pay.
+For x402 payments, pay $0.001 when a bad destination, changed quote, wrong network, stale endpoint, or malformed payment challenge would cost more than the preflight. Pay only when the paid result removes uncertainty that matters to the current task. Examples: before connecting to an unfamiliar MCP server, before choosing between several candidate providers, or before relying on a site that may not expose machine-readable integration metadata. If free discovery already provides enough confidence, do not pay.
 
 ## MCP Live Preflight input
 
