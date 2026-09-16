@@ -20,7 +20,7 @@ export function logLegacyPaidDiscovery(
   capabilityId: PaidCapabilityId,
   path: string
 ) {
-  const traffic = classifyTraffic(req, { path });
+  const traffic = classifyTraffic(req, { path, isDiscovery: true });
   console.log(JSON.stringify({
     event: "paid_capability_discovery",
     at: new Date().toISOString(),
