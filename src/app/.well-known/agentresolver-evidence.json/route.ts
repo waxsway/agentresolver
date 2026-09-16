@@ -57,9 +57,15 @@ export function GET() {
         environment: process.env.VERCEL_ENV || null
       },
       historicalReputation: {
-        aggregatePublished: false,
-        reason:
-          "AgentResolver does not publish a synthetic trust score or infer reputation from crawls, 402 challenges, registrations, or unverified traffic. Per-call delivery and settlement evidence is the current source of truth."
+        aggregatePublished: true,
+        scorePublished: false,
+        aggregateUrl: "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json",
+        durableSourceUrl:
+          "https://raw.githubusercontent.com/waxsway/agentresolver/settlement-history/history/agentresolver-reputation.json",
+        ledgerUrl:
+          "https://raw.githubusercontent.com/waxsway/agentresolver/settlement-history/history/verified-settlements.jsonl",
+        inclusionRule:
+          "Only successful x402 settlements with execution evidence and an independently verified on-chain USDC transfer are included. Crawls, 402 challenges, registrations, unsigned traffic, internal smoke tests, and unverified payment attempts are excluded."
       },
       limitations: [
         "Execution evidence proves what this AgentResolver deployment returned for a successful paid call; it does not prove a third-party provider is legitimate.",
