@@ -17,6 +17,40 @@ type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
 
+type CorePaymentPayload = Parameters<HTTPFacilitatorClient["verify"]>[0];
+type CorePaymentRequirements = Parameters<HTTPFacilitatorClient["verify"]>[1];
+type CirclePaymentPayload = Parameters<BatchFacilitatorClient["verify"]>[0];
+type CirclePaymentRequirements = Parameters<BatchFacilitatorClient["verify"]>[1];
+
+function normalizeCirclePaymentPayload(payload: CorePaymentPayload): CirclePaymentPayload {
+  return {
+    ...payload,
+    resource: payload.resource
+      ? {
+          url: payload.resource.url,
+          description: payload.resource.description ?? "",
+          mimeType: payload.resource.mimeType ?? "application/json"
+        }
+      : undefined
+  } as CirclePaymentPayload;
+}
+
+function createCircleFacilitatorAdapter(batch: BatchFacilitatorClient) {
+  return {
+    verify: (payload: CorePaymentPayload, requirements: CorePaymentRequirements) =>
+      batch.verify(
+        normalizeCirclePaymentPayload(payload),
+        requirements as CirclePaymentRequirements
+      ),
+    settle: (payload: CorePaymentPayload, requirements: CorePaymentRequirements) =>
+      batch.settle(
+        normalizeCirclePaymentPayload(payload),
+        requirements as CirclePaymentRequirements
+      ),
+    getSupported: () => batch.getSupported()
+  };
+}
+
 function stampInfrastructureHeaders(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
@@ -89,7 +123,7 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
     const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
     const circleGatewayEnabled = process.env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "true";
     const facilitators = circleGatewayEnabled
-      ? [client, new BatchFacilitatorClient()]
+      ? [client, createCircleFacilitatorAdapter(new BatchFacilitatorClient())]
       : client;
     const server = new x402ResourceServer(facilitators)
       .register(
