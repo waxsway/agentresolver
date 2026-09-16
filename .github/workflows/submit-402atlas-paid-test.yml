@@ -1,0 +1,42 @@
+name: Submit AgentResolver to 402atlas Paid-Test Queue
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/submit-402atlas-paid-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify live $0.001 GET canary first
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 20 -o /tmp/ping.json -w '%{http_code}' 'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            (.accepts | any(.network == "eip155:8453" and .amount == "1000" and .payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"))
+          ' /tmp/ping.json >/dev/null
+
+      - name: Submit anonymously to 402atlas paid-test queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload='{
+            "message":"Please independently paid-test AgentResolver next. Durable endpoint: GET https://agentresolver.vercel.app/api/x402-ping . Price: $0.001 USDC on Base (eip155:8453), x402 v2 exact, payTo 0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8. It requires no request body and returns a timestamped pong only after successful settlement. Public OpenAPI: https://agentresolver.vercel.app/openapi.json . Settlement history: https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json . This request is anonymous; no sponsorship or special treatment requested."
+          }'
+          code="$(curl -sS --max-time 30 -o /tmp/atlas.json -w '%{http_code}'             -X POST 'https://402atlas.com/api/feedback'             -H 'content-type: application/json'             --data "$payload" || true)"
+          echo "HTTP=$code"
+          cat /tmp/atlas.json 2>/dev/null || true
+          echo
+          case "$code" in
+            200|201|202|204) ;;
+            *) echo "402atlas anonymous submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
