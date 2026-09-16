@@ -11,6 +11,7 @@ import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
+import { X402_PING_OUTPUT_EXAMPLE, X402_PING_OUTPUT_SCHEMA } from "@/lib/x402PingDiscovery";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -254,13 +255,18 @@ export function createDeterministicPaidRoute(
           example: X402_PREFLIGHT_OUTPUT_EXAMPLE,
           schema: X402_PREFLIGHT_OUTPUT_SCHEMA
         }
-      : {
-          example: {},
-          schema: {
-            type: "object",
-            additionalProperties: true
+      : capabilityId === "x402-ping"
+        ? {
+            example: X402_PING_OUTPUT_EXAMPLE,
+            schema: X402_PING_OUTPUT_SCHEMA
           }
-        };
+        : {
+            example: {},
+            schema: {
+              type: "object",
+              additionalProperties: true
+            }
+          };
 
     return withX402<unknown>(handler, {
       [product.endpoint]: {
