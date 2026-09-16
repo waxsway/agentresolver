@@ -91,7 +91,17 @@
             {
               "x402": {}
             }
-          ]
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "USDC",
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
         },
         "requestBody": {
           "required": true,
@@ -155,7 +165,17 @@
             {
               "x402": {}
             }
-          ]
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "USDC",
+          "priceUsd": 0.005,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
         },
         "requestBody": {
           "required": true,
@@ -212,7 +232,17 @@
             {
               "x402": {}
             }
-          ]
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "USDC",
+          "priceUsd": 0.02,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
         },
         "requestBody": {
           "required": true,
@@ -281,7 +311,17 @@
             {
               "x402": {}
             }
-          ]
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "USDC",
+          "priceUsd": 0.05,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
         },
         "requestBody": {
           "required": true,
