@@ -133,7 +133,16 @@
         },
         "responses": {
           "200": {
-            "description": "Paid MCP live preflight completed."
+            "description": "Paid MCP live preflight completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Structured JSON result from Live-preflight a public MCP HTTP endpoint before depending on it.",
+                  "additionalProperties": true
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid endpoint."
@@ -200,7 +209,16 @@
         },
         "responses": {
           "200": {
-            "description": "Paid audit completed."
+            "description": "Paid audit completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Structured JSON result from Audit a public website for AI-agent discoverability.",
+                  "additionalProperties": true
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid target."
@@ -279,7 +297,16 @@
         },
         "responses": {
           "200": {
-            "description": "Paid verification completed."
+            "description": "Paid verification completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Structured JSON result from Resolve a missing capability and live-verify top MCP candidates.",
+                  "additionalProperties": true
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid input."
@@ -379,7 +406,16 @@
         },
         "responses": {
           "200": {
-            "description": "Paid batch verification completed."
+            "description": "Paid batch verification completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Structured JSON result from Resolve and live-verify several missing capabilities in one paid operation.",
+                  "additionalProperties": true
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid batch input."
