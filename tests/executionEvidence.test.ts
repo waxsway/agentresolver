@@ -42,7 +42,11 @@ test("public evidence contract is explicit about what it proves and does not pro
     assert.equal(body.claims.responseDeliveryCanBeHashed, true);
     assert.equal(body.claims.providerLegitimacyGuaranteed, false);
     assert.equal(body.claims.futureFulfillmentGuaranteed, false);
-    assert.equal(body.historicalReputation.aggregatePublished, false);
+    assert.equal(body.historicalReputation.aggregatePublished, true);
+    assert.equal(body.historicalReputation.syntheticTrustScorePublished, false);
+    assert.match(body.historicalReputation.interpretation, /first-party/i);
+    assert.match(body.historicalReputation.scope, /402 challenges.*excluded/i);
+    assert.match(body.historicalReputation.settlementHistoryUrl, /evidence-history\/evidence\/settlements\.json/);
     assert.equal(body.responseEvidence.headers.responseSha256, "x-agentresolver-response-sha256");
     assert.equal(body.settlementEvidence.settlementHeader, "payment-response");
   } finally {
