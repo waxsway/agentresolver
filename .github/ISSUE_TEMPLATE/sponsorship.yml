@@ -1,0 +1,72 @@
+name: AgentResolver sponsorship pilot
+description: Apply for a labeled sponsored placement in AgentResolver discovery surfaces.
+title: "[Sponsorship] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AgentResolver is testing provider-funded discovery. Sponsored placements are explicitly labeled and do not change organic ranking. Submitting this form is an inquiry only; it does not create a purchase, placement, or financial commitment.
+  - type: input
+    id: provider
+    attributes:
+      label: Provider or product name
+      placeholder: Example API
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: HTTPS destination
+      description: The machine-readable or product URL an agent should receive.
+      placeholder: https://example.com/agent
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Primary capability category
+      options:
+        - web
+        - documents
+        - search
+        - code
+        - data
+        - commerce
+        - payments
+        - crypto-risk
+        - communications
+        - media
+        - all
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Machine-readable description
+      description: In 1-3 sentences, what should an autonomous agent know about the provider?
+      placeholder: Describe the capability, intended use, and any important constraints.
+    validations:
+      required: true
+  - type: textarea
+    id: fit
+    attributes:
+      label: Desired placement / buyer intent
+      description: What agent requests should this sponsorship appear alongside?
+      placeholder: Example — agents looking for web search or research APIs.
+    validations:
+      required: true
+  - type: input
+    id: contact
+    attributes:
+      label: Public contact or account
+      description: Optional public contact, GitHub account, or provider page for follow-up.
+      placeholder: https://github.com/example
+    validations:
+      required: false
+  - type: checkboxes
+    id: disclosure
+    attributes:
+      label: Sponsorship disclosure
+      options:
+        - label: I understand any active placement will be explicitly marked as sponsored and will not alter AgentResolver's organic ranking.
+          required: true
