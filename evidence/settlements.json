@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "service": "AgentResolver",
+  "canonicalOrigin": "https://agentresolver.vercel.app",
+  "evidenceType": "verified-x402-settlement-history",
+  "sourceEvent": "paid_capability_settled",
+  "lastUpdatedAt": null,
+  "settlementCount": 0,
+  "uniqueTransactionFingerprintCount": 0,
+  "byNetwork": {},
+  "byCapability": {},
+  "settlements": [],
+  "privacy": {
+    "rawPayerAddressesPublished": false,
+    "payerFingerprintsPublished": false,
+    "rawTransactionIdsPublished": false,
+    "transactionFingerprintsPublished": true
+  },
+  "verification": {
+    "transactionFingerprintAlgorithm": "first 16 hex characters of SHA-256(transaction id)",
+    "perCallSettlementEvidenceHeader": "payment-response",
+    "perCallResponseDigestHeader": "x-agentresolver-response-sha256",
+    "perCallExecutionIdHeader": "x-agentresolver-execution-id"
+  },
+  "limitations": [
+    "This history is derived only from AgentResolver runtime events emitted after x402 settlement middleware reports success and a transaction identifier.",
+    "It is versioned in public Git history but is not an on-chain reputation registry.",
+    "Transaction fingerprints preserve buyer privacy and are not sufficient for a third party to locate a payment on-chain without already knowing the transaction identifier.",
+    "Crawls, registrations, 402 challenges, unsigned requests, and traffic volume are never counted as settlements."
+  ]
+}
