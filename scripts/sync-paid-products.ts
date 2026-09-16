@@ -133,6 +133,7 @@ writeJson("public/.well-known/x402", {
     description: product.description,
     price: product.price,
     inputSchema: product.inputSchema,
+    ...(OUTPUT_SCHEMAS[product.id] ? { outputSchema: OUTPUT_SCHEMAS[product.id] } : {}),
     examples: [product.example],
     accepts: [{
       scheme: "exact",
