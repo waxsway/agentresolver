@@ -4,6 +4,7 @@ import { resolveGoal } from "@/lib/resolver";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { inspectHttpResource } from "@/lib/httpInspect";
 import { selectOpenApiOperation } from "@/lib/openapiSelect";
+import { verifiedResolve } from "@/lib/verifiedResolve";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
@@ -105,15 +106,19 @@ const handler = createMcpHandler(() => {
       ? "http_inspect"
       : directOwnedId === "openapi-select"
         ? "openapi_select"
-        : null;
+        : directOwnedId === "verified-resolve"
+          ? "verified_resolve"
+          : null;
     const directMcpProduct = directOwnedId === "http-inspect"
       ? httpInspectProduct
       : directOwnedId === "openapi-select"
         ? openApiSelectProduct
-        : null;
+        : directOwnedId === "verified-resolve"
+          ? verifiedResolveProduct
+          : null;
     const directMcpRec = directMcpTool && directMcpProduct && directInput
       ? {
-          capabilityId: directOwnedId as "http-inspect" | "openapi-select",
+          capabilityId: directOwnedId as "http-inspect" | "openapi-select" | "verified-resolve",
           surface: "mcp" as const,
           tool: directMcpTool,
           execute: `${CANONICAL}/mcp`,
@@ -132,10 +137,25 @@ const handler = createMcpHandler(() => {
       ? { ...paid(directOwnedId, directInput), surface: "http" as const, reason: "The highest-ranked live AgentResolver capability directly matches this goal. Use this owned product before broader verification." }
       : null;
 
+    const verifiedResolveMcpRec = {
+      capabilityId: "verified-resolve" as const,
+      surface: "mcp" as const,
+      tool: "verified_resolve" as const,
+      execute: `${CANONICAL}/mcp`,
+      input: { goal, ...(url ? { url } : {}) },
+      priceUsd: verifiedResolveProduct.priceUsd,
+      asset: "USDC" as const,
+      network: "eip155:8453" as const,
+      protocol: "x402" as const,
+      spendingAuthorizationRequired: true as const,
+      spendingAuthorized: false as const,
+      reason: "Discovery returned multiple or uncertain external candidates. Verified Resolve is payable inside MCP and adds up to two unpaid live verification probes after settlement."
+    };
+
     const rec = directMcpRec
       || directHttpRec
       || (singleMcpEndpoint ? { ...paid("mcp-probe", { endpoint: singleMcpEndpoint }), surface: "http" as const, reason: "One MCP candidate found; live-preflight it before depending on it." }
-      : resolution.mcp.length > 0 || candidateCount > 1 ? { ...paid("verified-resolve", { goal, ...(url ? { url } : {}) }), surface: "http" as const, reason: "Candidates found; add live comparative evidence before choosing." } : null);
+      : resolution.mcp.length > 0 || candidateCount > 1 ? verifiedResolveMcpRec : null);
 
     logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal), mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null, paidRecommendationSurface: rec?.surface || null });
     if (rec) console.log(JSON.stringify({ event: "paid_recommendation_shown", surface: "mcp", executionSurface: rec.surface, at: new Date().toISOString(), capabilityId: rec.capabilityId, priceUsd: rec.priceUsd, goalHash: shortHash(goal) }));
@@ -219,8 +239,24 @@ const handler = createMcpHandler(() => {
 
   server.registerTool("verified_resolve", {
     title: verifiedResolveProduct.quoteTool.title, description: verifiedResolveProduct.quoteTool.description,
-    inputSchema: z.object({ goal: z.string().min(1), url: z.string().url().optional() }), annotations: { title: verifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ goal, url }) => { logToolCall("verified_resolve", { goalHash: shortHash(goal), quotedPriceUsd: verifiedResolveProduct.priceUsd }); const action = paid("verified-resolve", { goal, ...(url ? { url } : {}) }); return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action }; });
+    inputSchema: z.object({ goal: z.string().min(1).max(1000), url: z.string().url().optional() }), annotations: { title: verifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  }, createLazyPaidMcpTool<{ goal: string; url?: string }>("verified-resolve", async ({ goal, url }) => {
+    logToolCall("verified_resolve", { goalHash: shortHash(goal), priceUsd: verifiedResolveProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await verifiedResolve(goal, url);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "verified-resolve",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      mcpProbeCount: report.liveVerification.length,
+      marketplaceProbeCount: report.liveMarketplaceVerification.length,
+      recommendationType: report.recommendation.type
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
 
   server.registerTool("batch_verified_resolve", {
     title: batchVerifiedResolveProduct.quoteTool.title, description: batchVerifiedResolveProduct.quoteTool.description,

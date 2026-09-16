@@ -117,8 +117,8 @@ export const PAID_CAPABILITIES = {
     example: { goal: "Find and verify an MCP server for web search" },
     quoteTool: {
       name: "verified_resolve",
-      title: "Quote live verified resolve — $0.02",
-      description: "Quote a $0.02 USDC/Base resolve plus up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates. Returns the exact x402 action; never spends."
+      title: "Live verified resolve — $0.02",
+      description: "Paid $0.02 USDC/Base capability resolution plus up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "batch-verified-resolve": {

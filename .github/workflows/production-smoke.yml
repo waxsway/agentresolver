@@ -210,4 +210,22 @@ jobs:
             exit 1
           fi
 
+          verified_request='{"jsonrpc":"2.0","id":94,"method":"tools/call","params":{"name":"verified_resolve","arguments":{"goal":"find and verify an MCP server for web search"}}}'
+          verified_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -o /tmp/mcp-verified-paid.out \
+            -w '%{http_code}' \
+            -X POST "$MCP_URL" \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
+            --data "$verified_request")
+          test "$verified_code" -ge 200 && test "$verified_code" -lt 300
+          grep -F 'x402Version' /tmp/mcp-verified-paid.out >/dev/null
+          grep -F '20000' /tmp/mcp-verified-paid.out >/dev/null
+          if grep -F 'liveVerification' /tmp/mcp-verified-paid.out >/dev/null; then
+            echo 'SECURITY FAILURE: unpaid Verified Resolve MCP call exposed paid output before settlement.'
+            cat /tmp/mcp-verified-paid.out
+            exit 1
+          fi
+
           echo 'Direct paid MCP challenges verified without signing, spending, or paid execution egress.'
