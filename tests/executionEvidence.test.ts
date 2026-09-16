@@ -78,5 +78,12 @@ test("generated OpenAPI advertises execution evidence headers", () => {
   assert.ok(response.headers["x-agentresolver-response-sha256"]);
   assert.ok(response.headers["x-agentresolver-deployment"]);
   assert.ok(response.headers["x-agentresolver-evidence"]);
+  assert.ok(response.headers["x-agentresolver-settlement-history"]);
   assert.ok(response.headers["payment-response"]);
+
+  const challenge = openapi.paths["/api/x402-payment-preflight"].post.responses["402"];
+  assert.ok(challenge.headers["x-agentresolver-trust"]);
+  assert.ok(challenge.headers["x-agentresolver-evidence"]);
+  assert.ok(challenge.headers["x-agentresolver-settlement-history"]);
+  assert.ok(challenge.headers["x-agentresolver-deployment"]);
 });
