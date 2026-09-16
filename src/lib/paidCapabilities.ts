@@ -314,7 +314,7 @@ export const PAID_CAPABILITIES = {
   },
   "x402-payment-preflight": {
     id: "x402-payment-preflight",
-    name: "X402 Preflight — Verify Endpoint Before Paying",
+    name: "X402 API Trust & Payment Security Preflight — Verify Endpoint Safety Before Paying",
     operationId: "x402PaymentPreflightPayToVerification",
     endpoint: "/api/x402-payment-preflight",
     price: "$0.001",
@@ -341,7 +341,7 @@ export const PAID_CAPABILITIES = {
     example: { url: "https://example.com/api", method: "GET", maxPriceUsd: 0.01 },
     quoteTool: {
       name: "x402_payment_preflight",
-      title: "X402 preflight — verify endpoint before paying — $0.001",
+      title: "X402 API trust & payment security preflight — verify endpoint safety before paying — $0.001",
       description: "Paid $0.001 USDC on Base or Solana bounded x402 preflight. No private key or target payment is requested. Verify payTo, quote, network, asset, resource binding and live challenge evidence before agent spend; receive stable observed-identity and payment-terms fingerprints for change detection; response headers include request correlation and exact deployment provenance."
     }
   },
