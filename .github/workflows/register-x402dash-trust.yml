@@ -48,10 +48,10 @@ jobs:
           for i in {1..6}; do
             curl -fsS 'https://api.x402dash.com/v1/endpoints?limit=50&q=agentresolver' -o /tmp/endpoints.json
             cat /tmp/endpoints.json
-            if grep -q 'agentresolver.vercel.app/api/http-inspect' /tmp/endpoints.json; then
+            if grep -q 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/endpoints.json; then
               exit 0
             fi
             sleep 5
           done
-          echo "AgentResolver was accepted by registration but is not yet visible in x402dash free endpoint search." >&2
+          echo "Fresh AgentResolver payment-preflight was accepted by registration but is not yet visible in x402dash free endpoint search." >&2
           exit 1
