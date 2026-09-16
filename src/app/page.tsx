@@ -1,60 +1,88 @@
-const example = `POST /api/resolve
+const challengeExample = `curl -i https://agentresolver.vercel.app/api/x402-payment-preflight`;
+
+const agentCashExample = `npx agentcash try https://agentresolver.vercel.app
+npx agentcash add https://agentresolver.vercel.app`;
+
+const paidExample = `POST /api/x402-payment-preflight
 Content-Type: application/json
 
-{"goal":"find a GitHub MCP server"}`;
-
-const vscodeInstall = `vscode:mcp/install?${encodeURIComponent(JSON.stringify({
-  name: "agentresolver",
-  type: "http",
-  url: "https://agentresolver.vercel.app/mcp"
-}))}`;
+{
+  "url": "https://merchant.example/api",
+  "method": "GET",
+  "maxPriceUsd": 0.01,
+  "expectedNetwork": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+}`;
 
 export default function Home() {
   return (
     <main>
-      <div className="eyebrow">MACHINE-FIRST CAPABILITY ROUTING</div>
-      <h1>One resolver for whatever your agent needs next.</h1>
+      <div className="eyebrow">X402 VERIFY-BEFORE-PAY</div>
+      <h1>Check an x402 payment before your agent signs it.</h1>
       <p className="lead">
-        Describe a goal. AgentResolver returns ranked owned capabilities, live
-        MCP server matches, and x402 marketplace services. Resolution is free,
-        requires no account or API key, and does not spend money.
+        AgentResolver live-checks an unfamiliar x402 endpoint, decodes its
+        payment challenge, and verifies payTo, quoted USDC price, network,
+        asset, resource binding, TLS, and reachability before your agent spends.
+        One check costs $0.001 USDC on Base or Solana.
       </p>
 
       <p className="actions">
-        <a className="button" href={vscodeInstall}>Install in VS Code</a>{" "}
-        <a className="button secondary" href="/docs#install">Other MCP hosts</a>
+        <a className="button" href="/api/x402-payment-preflight">See the live $0.001 quote</a>{" "}
+        <a className="button secondary" href="/openapi.json">OpenAPI</a>
       </p>
 
       <div className="grid">
         <section>
-          <h2>Live MCP discovery</h2>
+          <h2>PayTo verification</h2>
           <p>
-            Search live MCP directories using privacy-safe capability keywords,
-            with timeouts and graceful fallback.
+            Compare the live payment recipient with the address your agent
+            expects. Fail the policy check if the destination changed.
           </p>
         </section>
         <section>
-          <h2>Machine native</h2>
+          <h2>Budget guard</h2>
           <p>
-            MCP, OpenAPI, JSON catalogs, llms.txt, ARD, and x402 marketplace
-            metadata from one stable endpoint.
+            Set <code>maxPriceUsd</code> and verify the quoted USDC amount
+            before signing a payment authorization.
           </p>
         </section>
         <section>
-          <h2>Provider demand</h2>
+          <h2>Base + Solana</h2>
           <p>
-            Providers can stay organically discoverable for free or join a
-            disclosed founding provider pilot for measurable qualified demand.
+            The same endpoint accepts $0.001 USDC over x402 on Base or Solana,
+            with no account, API key, subscription, or card.
           </p>
         </section>
       </div>
 
-      <pre><code>{example}</code></pre>
+      <h2>Use it from AgentCash</h2>
+      <p>
+        Discover the origin, make a live call, then keep AgentResolver available
+        to the agent for future verify-before-pay checks.
+      </p>
+      <pre><code>{agentCashExample}</code></pre>
+
+      <h2>Inspect the quote first</h2>
+      <p>
+        An unpaid request returns HTTP 402 with both supported payment options.
+        Seeing the quote does not authorize spending.
+      </p>
+      <pre><code>{challengeExample}</code></pre>
+
+      <h2>Paid preflight input</h2>
+      <pre><code>{paidExample}</code></pre>
+
+      <h2>Free capability fallback</h2>
+      <p>
+        AgentResolver still provides free capability resolution and MCP
+        discovery when your agent is missing a tool. Connect the remote MCP
+        endpoint at <code>https://agentresolver.vercel.app/mcp</code> or call
+        <code> POST /api/resolve</code>. Free resolution never spends money.
+      </p>
 
       <p className="links">
         <a href="/docs">Docs</a> ·{" "}
-        <a href="/providers">For providers</a> ·{" "}
-        <a href="/openapi.json">OpenAPI</a> ·{" "}
+        <a href="/mcp/server-card">MCP Server Card</a> ·{" "}
+        <a href="/.well-known/x402">x402 manifest</a> ·{" "}
         <a href="/llms.txt">llms.txt</a> ·{" "}
         <a href="/capabilities.json">Capabilities</a>
       </p>

@@ -3,9 +3,9 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://agentresolver.vercel.app"),
-  title: "AgentResolver — Capability Routing for AI Agents",
+  title: "AgentResolver — x402 Payment Preflight & PayTo Verification",
   description:
-    "Free capability resolution for AI agents. Discover, compare, and execute machine services through one interface.",
+    "Verify an x402 endpoint before paying: live payTo, USDC quote, network, asset, resource binding, TLS and endpoint safety for $0.001 on Base or Solana.",
   alternates: {
     canonical: "/"
   }
@@ -20,19 +20,19 @@ const structuredData = {
       url: "https://agentresolver.vercel.app",
       applicationCategory: "DeveloperApplication",
       operatingSystem: "Web",
-      isAccessibleForFree: true,
+      isAccessibleForFree: false,
       description:
-        "Free capability resolver for AI agents that discovers tools, APIs, MCP servers, and x402 machine services.",
+        "x402 payment preflight and payTo verification for autonomous agents, plus a free fallback capability resolver.",
       codeRepository: "https://github.com/waxsway/agentresolver",
       license: "https://opensource.org/license/mit"
     },
     {
       "@type": "WebAPI",
-      name: "AgentResolver API",
-      url: "https://agentresolver.vercel.app/api/resolve",
+      name: "AgentResolver x402 Payment Preflight",
+      url: "https://agentresolver.vercel.app/api/x402-payment-preflight",
       documentation: "https://agentresolver.vercel.app/openapi.json",
       description:
-        "Machine-readable API for resolving an agent goal into compatible external capabilities and services.",
+        "Verify a live x402 payment challenge, payTo recipient, USDC price, network, asset and resource binding before an agent authorizes spend.",
       provider: {
         "@type": "Organization",
         name: "AgentResolver",

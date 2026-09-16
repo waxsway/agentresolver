@@ -26,14 +26,23 @@
   },
   "intents": [
     {
-      "name": "api_trust_preflight",
-      "description": "Preflight one public HTTPS or x402 API before spending money on it. Returns a live 0-100 trust score, grade and weighted security evidence.",
-      "endpoint": "/api/http-inspect",
+      "name": "x402_payment_preflight",
+      "description": "Verify an x402 endpoint before paying USDC: payTo recipient, quote price, Base/Solana network, asset, resource binding, challenge structure, TLS and reachability.",
+      "endpoint": "/api/x402-payment-preflight",
       "method": "POST",
       "price": {
         "amount": 0.001,
         "currency": "USDC"
-      }
+      },
+      "use_when": "Before an autonomous agent authorizes payment to an unfamiliar or changed x402 endpoint.",
+      "tags": [
+        "x402 preflight",
+        "payTo verification",
+        "endpoint safety",
+        "USDC payment check",
+        "Base",
+        "Solana"
+      ]
     },
     {
       "name": "mcp_live_preflight",
