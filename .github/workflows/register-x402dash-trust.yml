@@ -43,6 +43,54 @@ jobs:
             *) echo "x402dash registration failed with HTTP $code" >&2; exit 1 ;;
           esac
 
+      - name: Register cheapest paid GET canary with x402dash
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://api.x402dash.com/v1/register'             -H 'content-type: application/json'             --data '{
+              "url":"https://agentresolver.vercel.app/api/x402-ping",
+              "name":"AgentResolver x402 Settlement Ping",
+              "description":"Minimal $0.001 USDC GET canary for autonomous buyers to verify wallet, facilitator, settlement and paid delivery end to end.",
+              "category":"Developer Tools",
+              "tags":["x402","settlement","payment-canary","usdc","base","solana","agents"]
+            }')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "x402dash canary registration failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Inspect canary liveness/readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -G 'https://api.x402dash.com/v1/liveness'             --data-urlencode 'endpoint=https://agentresolver.vercel.app/api/x402-ping'             -o /tmp/canary-liveness.json
+          cat /tmp/canary-liveness.json
+          echo
+          jq '{
+            id,
+            url,
+            liveness_score,
+            liveness_confidence,
+            reachability_status,
+            x402_status,
+            request_shape,
+            integration_readiness,
+            check_count,
+            alive_count,
+            dead_count,
+            price_usd,
+            network,
+            pay_to
+          }' /tmp/canary-liveness.json || true
+          if jq -e '.integration_readiness == "ready_now" or .integration_readiness == "ready now"' /tmp/canary-liveness.json >/dev/null 2>&1; then
+            echo "X402DASH_CANARY_READY_NOW=true"
+          else
+            echo "::notice::x402dash canary is indexed but not yet ready_now; its scheduled liveness crawler will continue accumulating checks."
+          fi
+
       - name: Verify free-directory visibility
         shell: bash
         run: |
