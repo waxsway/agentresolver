@@ -219,7 +219,7 @@ function writeJson(path: string, value: unknown) {
 writeJson("public/.well-known/x402", {
   x402Version: 2,
   name: "AgentResolver",
-  description: "Machine-native x402 verify-before-pay, API trust/security preflight, endpoint safety evidence, payTo verification and USDC payment verification for autonomous agents, plus free capability discovery. No signup or API key.",
+  description: "Machine-native $0.001 x402 settlement canary plus verify-before-pay, API trust/security preflight, endpoint safety evidence, payTo verification and USDC payment verification for autonomous agents. No signup or API key.",
   trust: `${CANONICAL_ORIGIN}/.well-known/agentresolver-trust.json`,
   executionEvidence: `${CANONICAL_ORIGIN}/.well-known/agentresolver-evidence.json`,
   verifiedSettlementHistory: `${CANONICAL_ORIGIN}/.well-known/agentresolver-reputation.json`,
@@ -261,7 +261,7 @@ writeJson("public/.well-known/x402", {
     mcp: `${CANONICAL_ORIGIN}/mcp`,
     resolve: `${CANONICAL_ORIGIN}/api/resolve`
   },
-  instructions: "Use free resolve first. Paid products require independent caller authorization. A 402 is a quote, never spending authorization."
+  instructions: "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, use POST /api/x402-payment-preflight. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization."
 });
 
 const capabilities = readJson("public/capabilities.json");
@@ -308,15 +308,15 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  title: "AgentResolver — X402 Payment Preflight & PayTo Verification",
-  description: "Machine-readable transaction-path verification for autonomous x402 buyers. The canonical $0.001 USDC route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana USDC, exact scheme and resource binding, then returns a fail-closed eligible/blocked router decision, exact observed target payment terms, reason codes, and reusable evidence fingerprints before caller authorization. Free capability resolution remains available as a secondary surface.",
-  version: "0.1.5",
+  title: "AgentResolver — X402 Settlement Canary & Payment Preflight",
+  description: "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary. Before authorizing a target x402 purchase, POST /api/x402-payment-preflight checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision and reusable evidence fingerprints. Free capability resolution remains available as a secondary surface.",
+  version: "0.1.6",
   contact: {
     name: "AgentResolver",
     url: "https://github.com/waxsway/agentresolver"
   },
   termsOfService: "https://agentresolver.vercel.app/legal",
-  "x-guidance": "Immediately before an x402 purchase, use POST /api/x402-payment-preflight as a transaction-path gate. It costs $0.001 USDC on Base or Solana and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints for the observed payment identity and terms. The caller remains the only party that can authorize the target spend. Those fingerprints support change detection; they do not establish legal wallet ownership or provider legitimacy. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
+  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. Immediately before authorizing a separate x402 purchase, use POST /api/x402-payment-preflight as the canonical transaction-path gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
