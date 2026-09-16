@@ -22,10 +22,18 @@ export function evmAddressChecksum(address: string) {
   }
   let checksummed: string;
   try {
-    checksummed = getAddress(address);
+    checksummed = getAddress(address.toLowerCase());
   } catch {
+    throw new Error("address is not a valid EVM address.");
+  }
+
+  const body = address.slice(2);
+  const letters = body.replace(/[^a-fA-F]/g, "");
+  const isMixedCase = /[a-f]/.test(letters) && /[A-F]/.test(letters);
+  if (isMixedCase && address !== checksummed) {
     throw new Error("address has invalid mixed-case EIP-55 checksum.");
   }
+
   return {
     input: address,
     checksummed,
