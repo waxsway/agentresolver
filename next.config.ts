@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/api/http-inspect": ["./node_modules/@x402/extensions/**/*"]
+  },
   async headers() {
     return [
       {
