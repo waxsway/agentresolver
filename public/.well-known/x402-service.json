@@ -1,15 +1,17 @@
 {
   "x402": "1.0",
-  "name": "agentresolver-http-inspect",
+  "name": "agentresolver-api-trust-preflight",
   "capabilities": [
     "agents",
-    "http",
-    "inspection",
-    "latency",
-    "headers",
+    "api",
+    "x402",
+    "trust",
+    "security",
+    "preflight",
     "tls",
     "certificate",
-    "security"
+    "latency",
+    "headers"
   ],
   "pricing": {
     "currency": "USDC",
@@ -21,5 +23,6 @@
     "chain": "base",
     "facilitator": "https://facilitator.xpay.sh"
   },
-  "endpoint": "https://agentresolver.vercel.app/api/http-inspect"
+  "endpoint": "https://agentresolver.vercel.app/api/http-inspect",
+  "description": "Low-cost live trust and security preflight for public HTTPS and x402 API endpoints before an agent spends money or depends on them."
 }

@@ -73,6 +73,89 @@
         "security": []
       }
     },
+    "/api/http-inspect": {
+      "post": {
+        "operationId": "inspectApiTrust",
+        "tags": [
+          "Paid Agent Capabilities"
+        ],
+        "summary": "Preflight an API or x402 endpoint before an agent spends money",
+        "description": "Price: $0.001 USDC on Base via x402. Returns a live 0-100 trust score, grade and weighted evidence across TLS authorization/protocol/expiry, reachability, latency, redirects and baseline security headers.",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.001"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "protocol": "x402",
+          "version": 2,
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "USDC",
+          "priceUsd": 0.001,
+          "challengeStatus": 402,
+          "challengeHeader": "PAYMENT-REQUIRED",
+          "authorizationHeader": "PAYMENT-SIGNATURE",
+          "catalog": "https://agentresolver.vercel.app/.well-known/x402"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 500
+                  }
+                }
+              },
+              "examples": {
+                "x402Api": {
+                  "value": {
+                    "url": "https://example.com/api"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paid API trust preflight completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Live trust score, grade, verdict, weighted checks, TLS, latency, redirect and security-header evidence.",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or non-public HTTPS target."
+          },
+          "402": {
+            "description": "x402 payment required."
+          },
+          "503": {
+            "description": "Paid execution temporarily unavailable."
+          }
+        }
+      }
+    },
     "/api/mcp-probe": {
       "post": {
         "operationId": "probeMcpEndpoint",
