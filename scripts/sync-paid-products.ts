@@ -306,7 +306,7 @@ const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
   title: "AgentResolver — X402 Payment Preflight & PayTo Verification",
-  description: "Machine-readable verify-before-pay infrastructure for autonomous x402 buyers. The canonical $0.001 USDC route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana network, asset and resource binding before spend, then returns a reusable evidence receipt with stable observed-payment fingerprints for change detection. Free capability resolution remains available as a secondary surface.",
+  description: "Machine-readable x402 payment preflight, endpoint safety and API trust/security infrastructure for autonomous buyers. The canonical $0.001 USDC verify-before-pay route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana network, asset and resource binding before spend, then returns reusable execution/payment evidence plus a link to independently verified settlement history. Free capability resolution remains available as a secondary surface.",
   version: "0.1.5",
   contact: {
     name: "AgentResolver",
