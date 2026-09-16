@@ -14,6 +14,7 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
     headers: { "user-agent": "agentresolver-test" }
   }));
   assert.equal(getResponse.status, 402);
+  assert.equal(getResponse.headers.get("access-control-allow-origin"), "*");
   const getPaymentRequired = getResponse.headers.get("payment-required");
   assert.ok(getPaymentRequired);
   const getBody = await getResponse.clone().json() as any;
@@ -44,6 +45,7 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
     body: JSON.stringify({ echo: "hello" })
   }));
   assert.equal(postResponse.status, 402);
+  assert.equal(postResponse.headers.get("access-control-allow-origin"), "*");
   assert.ok(postResponse.headers.get("payment-required"));
   const postBody = await postResponse.json() as any;
   assert.equal(postBody.x402Version, 2);
