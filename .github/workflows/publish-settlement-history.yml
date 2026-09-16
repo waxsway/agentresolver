@@ -1,0 +1,95 @@
+name: Publish Verified Settlement History
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: verified-settlement-history
+  cancel-in-progress: false
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout current main with repository history
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Verify collector invariants
+        run: node scripts/collect-settlement-history.mjs --self-test
+
+      - name: Require Vercel log credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN is required to read runtime settlement telemetry."
+            exit 1
+          fi
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@48.8.0 --no-audit --no-fund
+
+      - name: Link read-only log query to AgentResolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Retrieve recent successful-settlement telemetry
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel logs \
+            --project "$VERCEL_PROJECT_ID" \
+            --environment production \
+            --query "paid_capability_settled" \
+            --since 2h \
+            --json \
+            --token "$VERCEL_TOKEN" \
+            > /tmp/settlement-logs.ndjson
+          wc -l /tmp/settlement-logs.ndjson
+
+      - name: Verify on-chain and update append-only history
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp scripts/collect-settlement-history.mjs /tmp/collect-settlement-history.mjs
+          git fetch origin settlement-history:settlement-history
+          git switch settlement-history
+          node /tmp/collect-settlement-history.mjs --logs /tmp/settlement-logs.ndjson
+
+      - name: Publish only newly verified evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- history/agentresolver-reputation.json history/verified-settlements.jsonl; then
+            echo "No new independently verified settlements."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add history/agentresolver-reputation.json history/verified-settlements.jsonl
+          git commit -m "history: append independently verified x402 settlements"
+          git push origin settlement-history
