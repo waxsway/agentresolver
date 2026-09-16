@@ -33,6 +33,12 @@ manifest.resources = [
   getResource,
   ...manifest.resources.filter((item: any) => item.resource !== GET_RESOURCE)
 ];
+
+const canaryService = manifest.services?.find((item: any) => item.id === "x402-ping");
+if (!canaryService) throw new Error("x402-ping service is missing from the generated manifest.");
+canaryService.method = "GET";
+canaryService.methods = ["GET", "POST"];
+canaryService.preferredMethod = "GET";
 for (const path of X402_MANIFEST_PATHS) {
   writeJson(path, manifest);
 }
