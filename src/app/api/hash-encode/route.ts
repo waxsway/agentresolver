@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { runHashEncode, type HashEncodeOperation } from "@/lib/hashEncode";
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
-import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
+import { bazaarResourceServerExtension, paidRouteBazaarExtension } from "@/lib/bazaarDiscovery";
+import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 
 export const dynamic = "force-dynamic";
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
@@ -66,23 +68,36 @@ async function hashEncodeHandler(req: NextRequest): Promise<NextResponse<unknown
 function getPaidHandler(): PaidHandler {
   if (paidHandler) return paidHandler;
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
+  const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
   const facilitatorUrl = (process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
   if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) throw new Error("AGENTRESOLVER_PAY_TO is invalid.");
   if (!/^https:\/\//i.test(facilitatorUrl)) throw new Error("X402_FACILITATOR_URL is invalid.");
 
   const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
-  const server = new x402ResourceServer(client).register(X402_NETWORK, new ExactEvmScheme());
+  const server = new x402ResourceServer(client)
+    .register(X402_NETWORK, new ExactEvmScheme())
+    .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
+    .registerExtension(bazaarResourceServerExtension);
 
   paidHandler = withX402<unknown>(hashEncodeHandler, {
     "/api/hash-encode": {
-      accepts: {
-        scheme: "exact",
-        price: X402_PRICING.hashEncode,
-        network: X402_NETWORK,
-        payTo: payTo as `0x${string}`
-      },
+      accepts: [
+        {
+          scheme: "exact",
+          price: X402_PRICING.hashEncode,
+          network: X402_NETWORK,
+          payTo: payTo as `0x${string}`
+        },
+        {
+          scheme: "exact",
+          price: X402_PRICING.hashEncode,
+          network: X402_SOLANA_NETWORK,
+          payTo: solanaPayTo
+        }
+      ],
       description: "Deterministic SHA-256, SHA-512, HMAC-SHA256, Base64 encode/decode, and non-verifying JWT decode.",
-      mimeType: "application/json"
+      mimeType: "application/json",
+      extensions: paidRouteBazaarExtension("hash-encode")
     }
   }, server) as PaidHandler;
 
