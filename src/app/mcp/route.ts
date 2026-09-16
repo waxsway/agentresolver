@@ -11,6 +11,7 @@ import { auditAgentReadiness } from "@/lib/agentReadiness";
 import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
 import { runHashEncode, type HashEncodeOperation } from "@/lib/hashEncode";
 import { normalizeJson, validateJsonSchema, parseUrl, generateUuidV4, slugify } from "@/lib/deterministicUtilities";
+import { convertEvmUnits, ethereumKeccak256, evmAddressChecksum, soliditySelector } from "@/lib/evmPrecision";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
@@ -31,6 +32,10 @@ const paid = (capabilityId: PaidCapabilityId, input: Record<string, unknown>) =>
   };
 };
 
+const evmAddressChecksumProduct = getPaidCapability("evm-address-checksum");
+const keccak256Product = getPaidCapability("keccak256");
+const soliditySelectorProduct = getPaidCapability("solidity-selector");
+const evmUnitsProduct = getPaidCapability("evm-units");
 const x402PingProduct = getPaidCapability("x402-ping");
 const sha256Product = getPaidCapability("sha256");
 const sha512Product = getPaidCapability("sha512");
@@ -210,6 +215,38 @@ const handler = createMcpHandler(() => {
     console.log(JSON.stringify({ event: "paid_capability_completed", capabilityId, surface: "mcp", at: new Date().toISOString() }));
     return { content: [{ type: "text" as const, text: JSON.stringify(report) }], structuredContent: report };
   };
+
+  server.registerTool("evm_address_checksum", {
+    title: evmAddressChecksumProduct.quoteTool.title, description: evmAddressChecksumProduct.quoteTool.description,
+    inputSchema: z.object({ address: z.string().regex(/^0x[0-9a-fA-F]{40}$/) }),
+    annotations: { title: evmAddressChecksumProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ address: string }>("evm-address-checksum", async ({ address }) =>
+    simplePaidResult("evm-address-checksum", "evm_address_checksum", evmAddressChecksum(address))
+  ));
+
+  server.registerTool("keccak256", {
+    title: keccak256Product.quoteTool.title, description: keccak256Product.quoteTool.description,
+    inputSchema: z.object({ input: z.string().max(131072), encoding: z.enum(["utf8", "hex"]).optional() }),
+    annotations: { title: keccak256Product.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ input: string; encoding?: "utf8" | "hex" }>("keccak256", async ({ input, encoding }) =>
+    simplePaidResult("keccak256", "keccak256", ethereumKeccak256(input, encoding ?? "utf8"))
+  ));
+
+  server.registerTool("solidity_selector", {
+    title: soliditySelectorProduct.quoteTool.title, description: soliditySelectorProduct.quoteTool.description,
+    inputSchema: z.object({ signature: z.string().min(3).max(1024) }),
+    annotations: { title: soliditySelectorProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ signature: string }>("solidity-selector", async ({ signature }) =>
+    simplePaidResult("solidity-selector", "solidity_selector", soliditySelector(signature))
+  ));
+
+  server.registerTool("evm_units", {
+    title: evmUnitsProduct.quoteTool.title, description: evmUnitsProduct.quoteTool.description,
+    inputSchema: z.object({ mode: z.enum(["parse", "format"]), value: z.string().max(256), decimals: z.number().int().min(0).max(255) }),
+    annotations: { title: evmUnitsProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, createLazyPaidMcpTool<{ mode: "parse" | "format"; value: string; decimals: number }>("evm-units", async ({ mode, value, decimals }) =>
+    simplePaidResult("evm-units", "evm_units", convertEvmUnits({ mode, value, decimals }))
+  ));
 
   server.registerTool("x402_ping", {
     title: x402PingProduct.quoteTool.title, description: x402PingProduct.quoteTool.description,
