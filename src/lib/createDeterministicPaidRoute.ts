@@ -5,6 +5,7 @@ import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { BatchFacilitatorClient, GatewayEvmScheme } from "@circle-fin/x402-batching/server";
+import { createCdpFacilitatorClient } from "@coinbase/cdp-sdk/x402";
 import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
@@ -71,6 +72,10 @@ async function mirrorPaymentChallengeBody(response: NextResponse<unknown>) {
 
 export function circleGatewayEnabled(env: Readonly<Record<string, string | undefined>> = process.env) {
   return env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
+}
+
+export function cdpFacilitatorEnabled(env: Readonly<Record<string, string | undefined>> = process.env) {
+  return env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1";
 }
 
 function isCaip2Network(value: string): value is `${string}:${string}` {
@@ -170,6 +175,13 @@ export function createDeterministicPaidRoute(
 
     const standardFacilitator = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
     const gatewayEnabled = circleGatewayEnabled();
+    const cdpEnabled = cdpFacilitatorEnabled();
+
+    if (cdpEnabled && (!process.env.CDP_API_KEY_ID || !process.env.CDP_API_KEY_SECRET)) {
+      throw new Error("CDP Facilitator is enabled but CDP_API_KEY_ID/CDP_API_KEY_SECRET are missing.");
+    }
+
+    const cdpFacilitator = cdpEnabled ? createCdpFacilitatorClient() : null;
 
     type CurrentPaymentPayload = Parameters<HTTPFacilitatorClient["verify"]>[0];
     type CurrentPaymentRequirements = Parameters<HTTPFacilitatorClient["verify"]>[1];
@@ -224,9 +236,15 @@ export function createDeterministicPaidRoute(
       }
     } : null;
 
-    const server = circleFacilitator
-      ? new x402ResourceServer([standardFacilitator, circleFacilitator])
-      : new x402ResourceServer(standardFacilitator);
+    const facilitators = [
+      ...(cdpFacilitator ? [cdpFacilitator] : []),
+      standardFacilitator,
+      ...(circleFacilitator ? [circleFacilitator] : [])
+    ];
+
+    const server = facilitators.length === 1
+      ? new x402ResourceServer(facilitators[0])
+      : new x402ResourceServer(facilitators);
 
     if (gatewayEnabled) {
       server.register("eip155:*", new GatewayEvmScheme());
@@ -237,6 +255,17 @@ export function createDeterministicPaidRoute(
     server
       .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
       .registerExtension(bazaarResourceServerExtension);
+
+    if (cdpEnabled) {
+      console.log(JSON.stringify({
+        event: "cdp_facilitator_payment_rail_ready",
+        at: new Date().toISOString(),
+        capabilityId,
+        facilitator: "coinbase-cdp",
+        purpose: "bazaar-indexable-settlement",
+        existingPayAiFallback: true
+      }));
+    }
 
     if (gatewayEnabled) {
       await server.initialize();
