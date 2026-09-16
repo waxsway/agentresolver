@@ -1,0 +1,76 @@
+name: Register 402 Index Paid Canary Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-402index-paid-canary-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Confirm canary returns clean x402 challenge
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], 'r', encoding='utf-8'))
+          assert payload.get('x402Version') == 2
+          accepts = payload.get('accepts') or []
+          assert any(
+              item.get('network') == 'eip155:8453'
+              and str(item.get('amount')) == '1000'
+              and item.get('payTo') == '0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8'
+              for item in accepts
+          )
+          PY
+
+      - name: Register GET settlement canary with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://402index.io/api/v1/register'             -H 'content-type: application/json'             --data '{
+              "url":"https://agentresolver.vercel.app/api/x402-ping",
+              "name":"AgentResolver Settlement Ping",
+              "protocol":"x402",
+              "http_method":"GET",
+              "description":"Minimal $0.001 USDC x402 settlement canary for autonomous agents. Returns a timestamped pong after successful settlement so buyers can verify wallet, facilitator, payment and delivery end to end.",
+              "price_usd":0.001,
+              "payment_asset":"USDC",
+              "payment_network":"Base",
+              "category":"security/verification",
+              "provider":"AgentResolver"
+            }')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201) ;;
+            422)
+              echo "402 Index could not verify the GET canary." >&2
+              exit 1
+              ;;
+            *)
+              echo "402 Index registration returned HTTP $code" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Confirm buyer-search visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          curl -fsS -G 'https://402index.io/api/v1/services'             --data-urlencode 'protocol=x402'             --data-urlencode 'q=AgentResolver Settlement Ping'             --data-urlencode 'limit=20'             -o /tmp/402index-search.json || true
+          cat /tmp/402index-search.json 2>/dev/null || true
+          echo
