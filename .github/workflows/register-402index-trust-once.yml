@@ -6,6 +6,10 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/register-402index-trust-once.yml'
+      - 'src/lib/paidCapabilities.ts'
+      - 'src/lib/httpInspect.ts'
+      - 'src/app/api/http-inspect/route.ts'
+      - 'public/openapi.json'
 
 permissions:
   contents: read
@@ -42,3 +46,11 @@ jobs:
             200|201) ;;
             *) echo "402 Index registration failed with HTTP $code" >&2; exit 1 ;;
           esac
+
+      - name: Verify buyer-search visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://402index.io/api/v1/services?protocol=x402&q=AgentResolver%20x402%20API%20Trust%20Preflight' -o /tmp/search.json
+          cat /tmp/search.json
+          grep -q 'agentresolver.vercel.app/api/http-inspect' /tmp/search.json
