@@ -199,6 +199,7 @@ jobs:
 
           grep -Fi 'x-agentresolver-contract-version: 1' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'x-agentresolver-trust: https://agentresolver.vercel.app/.well-known/agentresolver-trust.json' /tmp/preflight-headers.txt >/dev/null
+          grep -Fi 'x-agentresolver-history: https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'x-agentresolver-request-id:' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'payment-required:' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-request-id' >/dev/null
