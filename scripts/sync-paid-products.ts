@@ -409,7 +409,19 @@ for (const product of PAID_CAPABILITY_LIST) {
           }
         },
         "400": { description: "Invalid capability input." },
-        "402": { description: "x402 payment required." },
+        "402": {
+          description: "x402 payment required.",
+          headers: {
+            "payment-required": {
+              description: "x402 payment challenge. A challenge is a quote and never caller spending authorization.",
+              schema: { type: "string" }
+            },
+            "x-agentresolver-history": {
+              description: "Verified settlement history that can be inspected before authorizing payment.",
+              schema: { type: "string", pattern: "^https://" }
+            }
+          }
+        },
         "503": { description: "Paid execution temporarily unavailable." }
       }
     }
