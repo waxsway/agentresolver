@@ -43,20 +43,44 @@ jobs:
             *) echo "Unexpected registration status: $code" >&2; exit 1 ;;
           esac
 
-      - name: Check buyer-search visibility
+      - name: Audit buyer-query rankings
         run: |
           set -euo pipefail
-          curl -fsS 'https://agent402.tools/api/find?q=api%20trust%20security%20preflight&k=10' -o /tmp/find.json
-          cat /tmp/find.json
-          if ! grep -q 'agentresolver.vercel.app' /tmp/find.json; then
-            echo "::warning::AgentResolver is registered but not yet visible in the local buyer-search query; checking cross-seller router."
-          fi
-
-      - name: Check cross-seller router visibility
-        run: |
-          set -euo pipefail
-          curl -fsS 'https://agent402.tools/api/route?q=api%20trust%20security%20preflight&include=external' -o /tmp/route.json
-          cat /tmp/route.json
-          if ! grep -q 'agentresolver.vercel.app' /tmp/route.json; then
-            echo "::warning::AgentResolver is registered/routable but not yet returned for this cross-seller buyer query; hourly crawler refresh may still be pending."
-          fi
+          queries=(
+            "api trust security preflight"
+            "x402 preflight"
+            "payTo verification"
+            "endpoint safety"
+            "USDC payment check"
+            "verify endpoint before paying"
+          )
+          for q in "${queries[@]}"; do
+            encoded="$(python -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$q")"
+            echo "=== QUERY: $q ==="
+            curl -fsS "https://agent402.tools/api/route?q=$encoded&include=external" -o /tmp/route.json
+            python - "$q" /tmp/route.json <<'PY'
+          import json,sys
+          q=sys.argv[1]
+          data=json.load(open(sys.argv[2]))
+          rows=data.get("results") or data.get("routes") or data.get("data") or []
+          if isinstance(rows,dict):
+              rows=rows.get("results") or rows.get("routes") or []
+          for idx,row in enumerate(rows,1):
+              if "agentresolver.vercel.app" in json.dumps(row):
+                  print(json.dumps({
+                      "query":q,
+                      "rank":idx,
+                      "name":row.get("name"),
+                      "slug":row.get("slug"),
+                      "priceUsd":row.get("priceUsd"),
+                      "score":row.get("score"),
+                      "routerDispatchEligible":row.get("routerDispatchEligible"),
+                      "routerDispatchReason":row.get("routerDispatchReason"),
+                      "executeViaCallableNow":row.get("executeViaCallableNow"),
+                      "networks":row.get("networks")
+                  }, separators=(",",":")))
+                  break
+          else:
+              print(json.dumps({"query":q,"rank":None,"visible":False},separators=(",",":")))
+          PY
+          done
