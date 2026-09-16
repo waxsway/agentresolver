@@ -80,5 +80,6 @@ test("generated OpenAPI advertises execution evidence headers", () => {
   assert.ok(response.headers["x-agentresolver-response-sha256"]);
   assert.ok(response.headers["x-agentresolver-deployment"]);
   assert.ok(response.headers["x-agentresolver-evidence"]);
+  assert.ok(response.headers["x-agentresolver-history"]);
   assert.ok(response.headers["payment-response"]);
 });
