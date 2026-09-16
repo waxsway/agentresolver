@@ -46,8 +46,7 @@ jobs:
               "endpoint_url":"https://agentresolver.vercel.app/api/x402-ping",
               "category":"tools.verification",
               "price_amount":0.001,
-              "chains":["base","solana"],
-              "sample_query":"https://agentresolver.vercel.app/api/x402-ping"
+              "chains":["base","solana"]
             }')"
           cat "$body" | tee /tmp/nohumans-submit.json
           echo
