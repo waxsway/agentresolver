@@ -21,6 +21,8 @@ type CorePaymentPayload = Parameters<HTTPFacilitatorClient["verify"]>[0];
 type CorePaymentRequirements = Parameters<HTTPFacilitatorClient["verify"]>[1];
 type CirclePaymentPayload = Parameters<BatchFacilitatorClient["verify"]>[0];
 type CirclePaymentRequirements = Parameters<BatchFacilitatorClient["verify"]>[1];
+type CoreSettleResponse = Awaited<ReturnType<HTTPFacilitatorClient["settle"]>>;
+type CoreSupportedResponse = Awaited<ReturnType<HTTPFacilitatorClient["getSupported"]>>;
 
 function normalizeCirclePaymentPayload(payload: CorePaymentPayload): CirclePaymentPayload {
   return {
@@ -42,12 +44,26 @@ function createCircleFacilitatorAdapter(batch: BatchFacilitatorClient) {
         normalizeCirclePaymentPayload(payload),
         requirements as CirclePaymentRequirements
       ),
-    settle: (payload: CorePaymentPayload, requirements: CorePaymentRequirements) =>
-      batch.settle(
+    settle: async (payload: CorePaymentPayload, requirements: CorePaymentRequirements) => {
+      const result = await batch.settle(
         normalizeCirclePaymentPayload(payload),
         requirements as CirclePaymentRequirements
-      ),
-    getSupported: () => batch.getSupported()
+      );
+      return {
+        ...result,
+        network: result.network as CoreSettleResponse["network"]
+      } satisfies CoreSettleResponse;
+    },
+    getSupported: async () => {
+      const result = await batch.getSupported();
+      return {
+        ...result,
+        kinds: result.kinds.map((kind) => ({
+          ...kind,
+          network: kind.network as CoreSupportedResponse["kinds"][number]["network"]
+        }))
+      } satisfies CoreSupportedResponse;
+    }
   };
 }
 
