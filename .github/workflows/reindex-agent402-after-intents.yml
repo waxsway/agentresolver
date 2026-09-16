@@ -1,0 +1,127 @@
+name: Reindex Agent402 After Buyer Intent Deploy
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/reindex-agent402-after-intents.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reindex:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Wait for exact validated production SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='341bd9d3b306f381e6d66fb72304b07ab585f727'
+          for attempt in {1..60}; do
+            code="$(curl -sS -D /tmp/ping.headers -o /tmp/ping.body -w '%{http_code}'               'https://agentresolver.vercel.app/api/x402-ping' || true)"
+            live="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/ping.headers)"
+            echo "attempt=$attempt http=$code live_sha=$live"
+            if [ "$code" = "402" ] && [ "$live" = "$expected" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Production did not converge to $expected." >&2
+          exit 1
+
+      - name: Verify deployed buyer intent metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://agentresolver.vercel.app/openapi.json' -o /tmp/openapi.json
+          jq -e '
+            .paths["/api/x402-ping"].get.summary
+              | test("Settlement Test"; "i")
+          ' /tmp/openapi.json >/dev/null
+          jq -e '
+            .paths["/api/x402-ping"].get.tags
+              | index("x402 settlement test") != null
+          ' /tmp/openapi.json >/dev/null
+          jq -e '
+            .paths["/api/x402-ping"].get["x-agentresolver-product"].keywords
+              | index("payment canary") != null
+          ' /tmp/openapi.json >/dev/null
+          jq -e '
+            .paths["/api/x402-payment-preflight"].post.tags
+              | index("endpoint safety") != null
+          ' /tmp/openapi.json >/dev/null
+          jq -e '
+            .paths["/api/x402-payment-preflight"].post.tags
+              | index("USDC payment check") != null
+          ' /tmp/openapi.json >/dev/null
+          jq '{
+            canary:{
+              summary:.paths["/api/x402-ping"].get.summary,
+              tags:.paths["/api/x402-ping"].get.tags,
+              keywords:.paths["/api/x402-ping"].get["x-agentresolver-product"].keywords
+            },
+            preflight:{
+              summary:.paths["/api/x402-payment-preflight"].post.summary,
+              tags:.paths["/api/x402-payment-preflight"].post.tags,
+              keywords:.paths["/api/x402-payment-preflight"].post["x-agentresolver-product"].keywords
+            }
+          }' /tmp/openapi.json
+
+      - name: Re-register origin once with Agent402
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/register.json -w '%{http_code}'             -X POST 'https://agent402.tools/api/index/register'             -H 'content-type: application/json'             --data '{"origin":"https://agentresolver.vercel.app"}' || true)"
+          echo "HTTP=$code"
+          cat /tmp/register.json 2>/dev/null || true
+          echo
+          case "$code" in
+            200|201|202|204|409)
+              echo "AGENT402_REINDEX_ACCEPTED=true"
+              ;;
+            429)
+              echo "AGENT402_REINDEX_ACCEPTED=false"
+              echo "Agent402 rate limit is respected; continuing with existing index entry."
+              ;;
+            *)
+              echo "Unexpected Agent402 registration status: $code" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Measure Agent402 buyer routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            "x402 settlement test"
+            "USDC payment check"
+            "endpoint safety"
+            "verify endpoint before paying"
+            "payTo verification"
+            "wallet facilitator payment test"
+          )
+          visible=0
+          for q in "${queries[@]}"; do
+            echo "=== QUERY: $q ==="
+            curl -fsS -G 'https://agent402.tools/api/route'               --data-urlencode "q=$q"               --data-urlencode 'include=external'               --data-urlencode 'network=base'               -o /tmp/route.json
+            jq --arg q "$q" '{
+              query:$q,
+              top:[(.results // .routes // .data // [])[0:5][]? | {
+                seller,name,route,slug,priceUsd,score,health,routerDispatchEligible,routerDispatchReason,executeVia
+              }],
+              agentresolver:[(.results // .routes // .data // [])[]? | select(
+                ((.seller // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.origin // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.host // "") | tostring | contains("agentresolver.vercel.app"))
+              ) | {
+                seller,name,route,slug,priceUsd,score,health,routerDispatchEligible,routerDispatchReason,executeVia
+              }]
+            }' /tmp/route.json
+            if grep -Fq 'agentresolver.vercel.app' /tmp/route.json; then
+              visible=$((visible+1))
+            fi
+          done
+          echo "AGENTRESOLVER_VISIBLE_QUERIES=$visible"
