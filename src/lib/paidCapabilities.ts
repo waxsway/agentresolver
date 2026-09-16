@@ -320,10 +320,10 @@ export const PAID_CAPABILITIES = {
     price: "$0.001",
     priceUsd: 0.001,
     atomicAmount: "1000",
-    description: "Verify an x402 endpoint before paying it. Run a live x402 preflight to confirm endpoint safety, reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted USDC price, network, asset, x402 version, exact scheme and resource binding before an autonomous agent authorizes spend. Optional max-price, expected-payee and expected-network policy checks protect against changed payment destinations and unexpected quotes. Works on Base and Solana.",
-    useWhen: "Verify an endpoint before paying it: check x402 preflight, payTo verification, endpoint safety, USDC payment amount, network and resource binding before agent spend.",
+    description: "Verify a public x402 endpoint before paying it. AgentResolver performs one bounded HTTPS preflight and returns machine-readable evidence for reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted USDC price, network, asset, x402 version, exact scheme and resource binding before an autonomous agent authorizes spend. The probe does not request private keys or a target payment, does not follow redirects, blocks private/reserved network targets, stops after headers/TLS/payment evidence, and times out at 4.5 seconds. Optional max-price, expected-payee and expected-network assertions fail closed on mismatches. Response headers include a request ID, contract version and exact deployed source SHA. Point-in-time evidence, not a guarantee of future uptime or provider behavior. Works on Base and Solana.",
+    useWhen: "Before paying an unfamiliar x402 endpoint: verify payTo, USDC quote, network, asset, resource binding and live challenge evidence with bounded no-key preflight behavior and deployment provenance.",
     costClass: "bounded-network",
-    tags: ["x402 preflight", "verify endpoint before paying", "payTo verification", "endpoint safety", "USDC payment check", "before paying", "payment authentication", "Base mainnet", "Solana", "payment-required", "agent payment safety"],
+    tags: ["x402 preflight", "verify endpoint before paying", "payTo verification", "USDC payment check", "bounded preflight", "no private keys", "deployment provenance", "request correlation", "resource binding", "Base mainnet", "Solana", "payment-required", "agent payment safety"],
     inputSchema: {
       type: "object",
       required: ["url"],
@@ -342,7 +342,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "x402_payment_preflight",
       title: "X402 preflight — verify endpoint before paying — $0.001",
-      description: "Paid $0.001 USDC on Base or Solana x402 preflight: verify endpoint before paying, confirm payTo, quoted USDC price, network, resource binding, liveness and challenge compliance before agent spend."
+      description: "Paid $0.001 USDC on Base or Solana bounded x402 preflight. No private key or target payment is requested. Verify payTo, quote, network, asset, resource binding and live challenge evidence before agent spend; response headers include request correlation and exact deployment provenance."
     }
   },
   "tool-contract": {

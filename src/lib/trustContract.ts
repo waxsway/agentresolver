@@ -41,6 +41,19 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     buyerMustApplyOwnBudgetAndAuthorizationPolicy: true,
     privateNetworkTargetsBlocked: true
   },
+  probeSafety: {
+    httpsOnly: true,
+    credentialsInTargetUrlBlocked: true,
+    customPortsBlocked: true,
+    privateAndReservedIpRangesBlocked: true,
+    dnsResolvedBeforeConnect: true,
+    anyPrivateDnsAnswerRejectsTarget: true,
+    redirectsFollowed: false,
+    defaultTimeoutMs: 4500,
+    postProbeRequiresExplicitOptIn: true,
+    maxPostBodyBytes: 65536,
+    responseBodyConsumed: false
+  },
   evidence: {
     health: "https://agentresolver.vercel.app/api/health",
     openapi: "https://agentresolver.vercel.app/openapi.json",
@@ -48,7 +61,8 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     agentManifest: "https://agentresolver.vercel.app/.well-known/agent.json",
     legal: "https://agentresolver.vercel.app/legal",
     securityDisclosure: "https://agentresolver.vercel.app/.well-known/security.txt",
-    sourceCode: "https://github.com/waxsway/agentresolver"
+    sourceCode: "https://github.com/waxsway/agentresolver",
+    trustAuditHistory: "https://github.com/waxsway/agentresolver/actions/workflows/trust-surface-audit.yml"
   },
   telemetry: {
     rawPrivateKeysCollected: false,

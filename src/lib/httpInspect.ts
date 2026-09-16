@@ -396,7 +396,10 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
     }, (res) => {
       const status = res.statusCode || 0;
       const headers = res.headers;
-      res.resume();
+      // Preflight needs response headers and TLS metadata, not the response body.
+      // Pause immediately and close the response once evidence is captured so an
+      // untrusted endpoint cannot force large downstream egress or long body reads.
+      res.pause();
 
       const socket = res.socket as TLSSocket;
       const certificate = typeof socket.getPeerCertificate === "function"
@@ -443,7 +446,7 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
         ? infrastructureScore
         : Math.round((infrastructureScore * 0.4) + (x402.score * 0.6));
 
-      finish(() => resolve({
+      const report: HttpInspectReport = {
         url: url.toString(),
         status,
         ok: status >= 200 && status < 300,
@@ -487,7 +490,10 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
           verdict: score >= 80 ? "strong" : score >= 60 ? "mixed" : "weak",
           checks
         }
-      }));
+      };
+
+      res.destroy();
+      finish(() => resolve(report));
     });
 
     req.on("timeout", () => req.destroy(new Error("Inspection timed out.")));

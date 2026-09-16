@@ -102,6 +102,9 @@ jobs:
             ' "/tmp/$slug.json" >/dev/null
           }
 
+          resolve_check 'resolve-x402-preflight' \
+            'verify this x402 endpoint before paying and check payTo price network asset and resource binding' \
+            'https://agentresolver.vercel.app/api/x402-ping' 'x402-payment-preflight' 0.001
           resolve_check 'resolve-http-inspect' \
             'inspect this HTTPS URL for status latency cache headers and security headers' \
             'https://example.com' 'http-inspect' 0.001
@@ -184,6 +187,7 @@ jobs:
           check_402 'UUID v4' '/api/uuid-v4' '{"count":1}' 'uuid-v4' '1000'
           check_402 'Slugify' '/api/slugify' '{"text":"Hello Agent World"}' 'slugify' '1000'
           check_402 'Hash & Encode' '/api/hash-encode' '{"operation":"sha256","input":"agentresolver"}' 'hash-encode' '1000'
+          check_402 'X402 Payment Preflight' '/api/x402-payment-preflight' '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}' 'x402-payment-preflight' '1000'
           check_402 'HTTP Inspect' '/api/http-inspect' '{"url":"https://example.com"}' 'http-inspect' '1000'
 
           payment_required=$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-inspect-headers.txt)
