@@ -15,7 +15,7 @@ function writeJson(path: string, value: unknown) {
 writeJson("public/.well-known/x402", {
   x402Version: 2,
   name: "AgentResolver",
-  description: "Free capability discovery plus pay-per-call live utilities and deterministic compatibility checks for autonomous agents. No signup or API key.",
+  description: "Free machine-readable product discovery plus pay-per-call capability resolution, live utilities and deterministic compatibility checks for autonomous agents. No signup or API key.",
   resources: PAID_CAPABILITY_LIST.map((product) => ({
     resource: `POST ${product.endpoint}`,
     description: product.description,
@@ -35,15 +35,29 @@ writeJson("public/.well-known/x402", {
   })),
   freeDiscovery: {
     mcp: `${CANONICAL_ORIGIN}/mcp`,
-    resolve: `${CANONICAL_ORIGIN}/api/resolve`
+    capabilities: `${CANONICAL_ORIGIN}/capabilities.json`,
+    openapi: `${CANONICAL_ORIGIN}/openapi.json`
   },
-  instructions: "Use free resolve first. Paid products require independent caller authorization. A 402 is a quote, never spending authorization."
+  instructions: "Inspect free metadata first. Goal-specific resolve and execution are paid x402 products requiring independent caller authorization. A 402 is a quote, never spending authorization."
 });
 
 const capabilities = readJson("public/capabilities.json");
 const freeCapabilities = Array.isArray(capabilities.capabilities)
-  ? capabilities.capabilities.filter((item: any) => Number(item?.priceUsd) === 0)
+  ? capabilities.capabilities.filter(
+      (item: any) =>
+        Number(item?.priceUsd) === 0 &&
+        item?.id !== "capability-search" &&
+        item?.endpoint !== "/api/resolve"
+    )
   : [];
+const resolveProduct = PAID_CAPABILITY_LIST.find((product) => product.id === "resolve");
+if (!resolveProduct) throw new Error("Paid resolve product is missing.");
+capabilities.resolver = {
+  method: "POST",
+  url: `${CANONICAL_ORIGIN}/api/resolve`,
+  priceUsd: resolveProduct.priceUsd,
+  payment: { protocol: "x402", scheme: "exact", network: NETWORK, asset: "USDC" }
+};
 capabilities.capabilities = [
   ...freeCapabilities,
   ...PAID_CAPABILITY_LIST.map((product) => ({
@@ -63,6 +77,24 @@ capabilities.capabilities = [
 writeJson("public/capabilities.json", capabilities);
 
 const integrations = readJson("public/integrations.json");
+integrations.purpose = "Machine-readable capability discovery with paid goal-specific resolution and paid live evidence";
+integrations.mcp = {
+  ...(integrations.mcp || {}),
+  url: `${CANONICAL_ORIGIN}/mcp`,
+  primaryTool: "resolve",
+  free: false,
+  resolvePriceUsd: resolveProduct.priceUsd,
+  readOnly: true,
+  spendingAuthorized: false
+};
+integrations.restFallback = {
+  ...(integrations.restFallback || {}),
+  method: "POST",
+  url: `${CANONICAL_ORIGIN}/api/resolve`,
+  openapi: `${CANONICAL_ORIGIN}/openapi.json`,
+  priceUsd: resolveProduct.priceUsd,
+  protocol: "x402"
+};
 integrations.paidActions = PAID_CAPABILITY_LIST.map((product) => ({
   id: product.id,
   name: product.name,
