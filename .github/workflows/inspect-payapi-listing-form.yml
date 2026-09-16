@@ -43,3 +43,46 @@ jobs:
               grep -Eo '.{0,220}(list|submit|provider|payout|wallet|email|baseUrl|base_url|price|category|endpoint).{0,420}' "$out" | sed -n '1,120p' || true
             fi
           done < /tmp/jsrefs.txt
+
+      - name: Extract exact PayAPI create flows
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 'https://payapi.market/assets/index-Fti9t7hC.js' -o /tmp/payapi.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/payapi.js').read_text(errors='ignore')
+          needles=[
+            '.from(`providers`).insert',
+            '.from("providers").insert',
+            '.from(`api_listings`).insert',
+            '.from("api_listings").insert',
+            'createProvider',
+            'createListing',
+            'company_name',
+            'wallet_address',
+            'base_url',
+            'mcp_endpoint',
+            'price_min',
+            'price_max',
+            'contact_email',
+            'provider_email',
+            'email:',
+            'status:`pending`',
+            'status:"pending"',
+            'payment_verified'
+          ]
+          seen=set()
+          for needle in needles:
+              start=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  key=(needle,i)
+                  if key in seen: break
+                  seen.add(key)
+                  print(f'\n=== {needle} @ {i} ===')
+                  print(s[max(0,i-1800):min(len(s),i+5200)])
+                  start=i+len(needle)
+                  if sum(1 for n,j in seen if n==needle)>=8: break
+          PY
