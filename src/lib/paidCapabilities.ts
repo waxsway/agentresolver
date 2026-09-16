@@ -1,6 +1,127 @@
 export const CANONICAL_ORIGIN = "https://agentresolver.vercel.app" as const;
 
 export const PAID_CAPABILITIES = {
+  "x402-ping": {
+    id: "x402-ping", name: "x402 Settlement Ping", operationId: "x402SettlementPing", endpoint: "/api/x402-ping",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Minimal paid canary that returns a timestamped pong after x402 settlement so an agent can verify wallet, facilitator, payment, and delivery end-to-end.",
+    useWhen: "An x402 client needs the cheapest possible end-to-end settlement test before trusting a larger paid workflow.",
+    costClass: "deterministic",
+    tags: ["x402", "ping", "canary", "settlement", "wallet", "facilitator", "payment test", "health"],
+    inputSchema: { type: "object", additionalProperties: false, properties: { echo: { type: "string", maxLength: 256 } } },
+    example: { echo: "hello" },
+    quoteTool: { name: "x402_ping", title: "x402 settlement ping — $0.001", description: "Paid $0.001 USDC/Base settlement canary. Returns a timestamped pong only after successful x402 payment so clients can verify their wallet/facilitator path." }
+  },
+  "sha256": {
+    id: "sha256", name: "SHA-256 Hash", operationId: "sha256Hash", endpoint: "/api/sha256",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Compute a deterministic SHA-256 hex digest for bounded UTF-8 text.",
+    useWhen: "An agent needs a SHA-256 digest for integrity, cache keys, signatures, deduplication, or workflow IDs.",
+    costClass: "deterministic", tags: ["sha256", "sha-256", "hash", "digest", "integrity", "checksum"],
+    inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
+    example: { input: "agentresolver" },
+    quoteTool: { name: "sha256", title: "SHA-256 hash — $0.001", description: "Paid $0.001 USDC/Base SHA-256 digest of bounded UTF-8 text." }
+  },
+  "sha512": {
+    id: "sha512", name: "SHA-512 Hash", operationId: "sha512Hash", endpoint: "/api/sha512",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Compute a deterministic SHA-512 hex digest for bounded UTF-8 text.",
+    useWhen: "An agent needs a SHA-512 digest for integrity, signing workflows, or deterministic identifiers.",
+    costClass: "deterministic", tags: ["sha512", "sha-512", "hash", "digest", "integrity", "checksum"],
+    inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
+    example: { input: "agentresolver" },
+    quoteTool: { name: "sha512", title: "SHA-512 hash — $0.001", description: "Paid $0.001 USDC/Base SHA-512 digest of bounded UTF-8 text." }
+  },
+  "hmac-sha256": {
+    id: "hmac-sha256", name: "HMAC SHA-256", operationId: "hmacSha256", endpoint: "/api/hmac-sha256",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Compute a deterministic HMAC-SHA256 hex digest from bounded UTF-8 input and a caller-supplied secret.",
+    useWhen: "An agent needs an HMAC-SHA256 signature for webhook verification, API signing, or integrity checks.",
+    costClass: "deterministic", tags: ["hmac", "hmac-sha256", "sha256", "signature", "webhook", "integrity"],
+    inputSchema: { type: "object", required: ["input", "secret"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 }, secret: { type: "string", minLength: 1, maxLength: 4096 } } },
+    example: { input: "payload", secret: "secret" },
+    quoteTool: { name: "hmac_sha256", title: "HMAC SHA-256 — $0.001", description: "Paid $0.001 USDC/Base HMAC-SHA256 hex digest." }
+  },
+  "base64-encode": {
+    id: "base64-encode", name: "Base64 Encode", operationId: "base64Encode", endpoint: "/api/base64-encode",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Encode bounded UTF-8 text as Base64.",
+    useWhen: "An agent needs text-to-Base64 conversion for payloads, headers, fixtures, or transport.",
+    costClass: "deterministic", tags: ["base64", "encode", "encoder", "text", "utf8"],
+    inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
+    example: { input: "hello" },
+    quoteTool: { name: "base64_encode", title: "Base64 encode — $0.001", description: "Paid $0.001 USDC/Base UTF-8 to Base64 encoding." }
+  },
+  "base64-decode": {
+    id: "base64-decode", name: "Base64 Decode", operationId: "base64Decode", endpoint: "/api/base64-decode",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Decode bounded Base64 text to UTF-8.",
+    useWhen: "An agent needs Base64-to-text decoding for payloads, tokens, fixtures, or transport.",
+    costClass: "deterministic", tags: ["base64", "decode", "decoder", "text", "utf8"],
+    inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
+    example: { input: "aGVsbG8=" },
+    quoteTool: { name: "base64_decode", title: "Base64 decode — $0.001", description: "Paid $0.001 USDC/Base Base64 to UTF-8 decoding." }
+  },
+  "jwt-decode": {
+    id: "jwt-decode", name: "JWT Decode", operationId: "jwtDecode", endpoint: "/api/jwt-decode",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Decode a JWT header and payload without accepting secrets or claiming signature verification.",
+    useWhen: "An agent needs to inspect JWT claims and metadata without verifying the token signature.",
+    costClass: "deterministic", tags: ["jwt", "json web token", "decode", "claims", "token"],
+    inputSchema: { type: "object", required: ["input"], additionalProperties: false, properties: { input: { type: "string", maxLength: 131072 } } },
+    example: { input: "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature" },
+    quoteTool: { name: "jwt_decode", title: "JWT decode — $0.001", description: "Paid $0.001 USDC/Base non-verifying JWT header/payload decode." }
+  },
+  "json-normalize": {
+    id: "json-normalize", name: "JSON Normalize", operationId: "jsonNormalize", endpoint: "/api/json-normalize",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Recursively sort JSON object keys and return canonical compact JSON plus a SHA-256 digest.",
+    useWhen: "An agent needs stable JSON for hashing, deduplication, cache keys, signatures, diffs, or deterministic comparisons.",
+    costClass: "deterministic", tags: ["json", "normalize", "canonical", "stable", "sort keys", "sha256"],
+    inputSchema: { type: "object", required: ["value"], additionalProperties: false, properties: { value: {} } },
+    example: { value: { b: 2, a: 1 } },
+    quoteTool: { name: "json_normalize", title: "JSON normalize — $0.001", description: "Paid $0.001 USDC/Base canonical JSON normalization plus SHA-256 digest." }
+  },
+  "json-schema-validate": {
+    id: "json-schema-validate", name: "JSON Schema Validate", operationId: "jsonSchemaValidate", endpoint: "/api/json-schema-validate",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Validate JSON data against a practical deterministic JSON Schema subset and return exact path-level errors.",
+    useWhen: "An agent needs a cheap validation gate before passing structured data to another tool.",
+    costClass: "deterministic", tags: ["json schema", "validate", "validation", "schema", "structured data"],
+    inputSchema: { type: "object", required: ["data", "schema"], additionalProperties: false, properties: { data: {}, schema: { type: "object" } } },
+    example: { data: { id: "123" }, schema: { type: "object", required: ["id"], properties: { id: { type: "string" } } } },
+    quoteTool: { name: "json_schema_validate", title: "JSON Schema validate — $0.001", description: "Paid $0.001 USDC/Base deterministic JSON Schema subset validation." }
+  },
+  "url-parse": {
+    id: "url-parse", name: "URL Parse", operationId: "urlParse", endpoint: "/api/url-parse",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Parse an absolute URL into normalized components and machine-readable query parameters.",
+    useWhen: "An agent needs reliable URL components or query parameters without writing parser glue.",
+    costClass: "deterministic", tags: ["url", "parse", "query parameters", "hostname", "pathname", "uri"],
+    inputSchema: { type: "object", required: ["url"], additionalProperties: false, properties: { url: { type: "string", maxLength: 4096 } } },
+    example: { url: "https://example.com/a?x=1&x=2#frag" },
+    quoteTool: { name: "url_parse", title: "URL parse — $0.001", description: "Paid $0.001 USDC/Base absolute URL parser." }
+  },
+  "uuid-v4": {
+    id: "uuid-v4", name: "UUID v4", operationId: "uuidV4", endpoint: "/api/uuid-v4",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Generate one or more cryptographically random UUID v4 values for IDs, traces, fixtures, and workflow keys.",
+    useWhen: "An agent needs fresh UUID v4 identifiers without maintaining a utility dependency.",
+    costClass: "deterministic", tags: ["uuid", "uuid v4", "id", "identifier", "trace id", "random"],
+    inputSchema: { type: "object", additionalProperties: false, properties: { count: { type: "integer", minimum: 1, maximum: 20 } } },
+    example: { count: 1 },
+    quoteTool: { name: "uuid_v4", title: "UUID v4 — $0.001", description: "Paid $0.001 USDC/Base UUID v4 generation, up to 20 IDs." }
+  },
+  "slugify": {
+    id: "slugify", name: "Slugify", operationId: "slugifyText", endpoint: "/api/slugify",
+    price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
+    description: "Convert bounded text into a stable lowercase URL slug with deterministic separator handling.",
+    useWhen: "An agent needs a safe URL/path slug for titles, labels, routes, or filenames.",
+    costClass: "deterministic", tags: ["slugify", "slug", "url slug", "filename", "route"],
+    inputSchema: { type: "object", required: ["text"], additionalProperties: false, properties: { text: { type: "string", maxLength: 8192 }, separator: { type: "string", enum: ["-", "_"] } } },
+    example: { text: "Hello Agent World", separator: "-" },
+    quoteTool: { name: "slugify", title: "Slugify — $0.001", description: "Paid $0.001 USDC/Base deterministic slug generation." }
+  },
   "hash-encode": {
     id: "hash-encode",
     name: "Hash & Encode",
