@@ -94,5 +94,5 @@ jobs:
           git config user.name "agentresolver-evidence-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add evidence/settlements.json
-          git commit -m "evidence: publish confirmed x402 settlement history"
+          git commit -m "evidence: publish independently verified x402 settlement history"
           git push origin HEAD:evidence-history
