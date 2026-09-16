@@ -5,10 +5,11 @@ export const X402_NETWORK = "eip155:8453" as const;
 export const X402_ASSET = "USDC" as const;
 export const X402_FACILITATOR_URL = "https://facilitator.xpay.sh" as const;
 
-// Keep capability discovery free. Monetization is attached only to resources
-// that perform paid AgentResolver-owned work. Never gate /api/resolve or MCP
-// discovery behind payment.
+// Keep static discovery metadata free, but meter goal-specific resolution and
+// all AgentResolver-owned execution. Crawlers can inspect capabilities without
+// causing paid work; useful goal-specific output crosses x402.
 export const X402_PRICING = {
+  resolve: getPaidCapability("resolve").price,
   httpInspect: getPaidCapability("http-inspect").price,
   toolContract: getPaidCapability("tool-contract").price,
   mcpProbe: getPaidCapability("mcp-probe").price,
@@ -19,7 +20,7 @@ export const X402_PRICING = {
 } as const;
 
 export const X402_POLICY = {
-  discoveryFree: true,
+  discoveryFree: false,
   agentSpendingAuthorizedByResolver: false,
   settlementNetwork: "Base",
   settlementAsset: X402_ASSET,
