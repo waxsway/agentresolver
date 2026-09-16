@@ -78,7 +78,10 @@ test("canonical preflight vocabulary covers broad buyer discovery intents", () =
     "endpoint safety",
     "payment verification"
   ]) {
-    assert.ok(preflight.tags.includes(phrase), `missing discovery phrase: ${phrase}`);
+    assert.ok(
+      (preflight.tags as readonly string[]).includes(phrase),
+      `missing discovery phrase: ${phrase}`
+    );
   }
 });
 
