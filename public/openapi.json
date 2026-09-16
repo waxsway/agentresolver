@@ -1,10 +1,10 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "AgentResolver — Find Missing Agent Tools",
-    "version": "0.1.4",
-    "description": "Free read-only fallback discovery for autonomous agents, plus low-cost x402 live verification. Resolution never authorizes spending; paid execution requires the calling agent to satisfy the advertised x402 payment challenge under its own spending policy.",
-    "x-guidance": "Use POST /api/resolve first for free capability discovery. Use paid routes only when exact live evidence or deterministic computation is worth the listed per-call price. Payment is always caller-authorized."
+    "title": "AgentResolver — x402 Payment Safety & Seller Trust",
+    "version": "0.1.5",
+    "description": "Pre-payment verification for autonomous agents using x402. Before paying an unfamiliar API or seller, inspect its live x402 quote, USDC price, payTo recipient, network, asset, resource binding, TLS and reachability. Secondary routes provide deterministic agent utilities and free capability discovery.",
+    "x-guidance": "Primary paid use case: before an agent pays an unfamiliar x402 API or seller, POST /api/http-inspect with the target URL to verify the live payment contract and seller trust evidence for $0.001. It checks quoted price, payTo recipient, network, asset, resource binding, TLS, reachability and optional caller policy limits. Use /api/resolve only when a capability itself is missing. Spending is always caller-authorized."
   },
   "servers": [
     {
@@ -19,6 +19,18 @@
     {
       "name": "Paid Agent Capabilities",
       "description": "Optional AgentResolver-owned live evidence protected by an x402 payment challenge. The caller controls whether to spend."
+    },
+    {
+      "name": "x402 Payment Safety",
+      "description": "Pre-payment verification of live x402 payment terms before an autonomous agent spends."
+    },
+    {
+      "name": "Seller Trust",
+      "description": "Live seller and endpoint trust evidence: payTo, price, network, resource binding, TLS and reachability."
+    },
+    {
+      "name": "Security",
+      "description": "Bounded live security evidence for agent payment decisions."
     }
   ],
   "paths": {
@@ -75,12 +87,14 @@
     },
     "/api/http-inspect": {
       "post": {
-        "operationId": "inspectApiTrust",
+        "operationId": "inspectX402ApiTrust",
         "tags": [
-          "Paid Agent Capabilities"
+          "x402 Payment Safety",
+          "Seller Trust",
+          "Security"
         ],
-        "summary": "Preflight an API or x402 endpoint before an agent spends money",
-        "description": "Price: $0.001 USDC on Base via x402. Returns a live 0-100 trust score, grade and weighted evidence across TLS authorization/protocol/expiry, reachability, latency, redirects and baseline security headers.",
+        "summary": "x402 Seller Trust & Payment Preflight",
+        "description": "Price: $0.001 USDC on Base or Solana via x402. Before an AI agent pays an unfamiliar x402 API or seller, verify the live payment contract and endpoint trust evidence. Decode PAYMENT-REQUIRED and check quoted USDC price, payTo recipient, network, asset, scheme, x402 version, resource binding, TLS, reachability and latency. Optional max-price, expected-payee and expected-network constraints provide a deterministic pre-payment policy gate.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
