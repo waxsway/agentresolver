@@ -1,0 +1,57 @@
+name: Register x402dash Trust Preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-x402dash-trust.yml'
+      - 'src/lib/paidCapabilities.ts'
+      - 'src/lib/httpInspect.ts'
+      - 'src/app/api/http-inspect/route.ts'
+      - 'public/openapi.json'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Register trust verifier with x402dash
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://api.x402dash.com/v1/register' \
+            -H 'content-type: application/json' \
+            --data '{
+              "url":"https://agentresolver.vercel.app/api/http-inspect",
+              "name":"AgentResolver x402 API Trust Preflight",
+              "description":"Verify a live x402 payment contract before agent spend: quoted price, payee, network, asset, resource binding, challenge structure, TLS and reachability, with optional caller policy limits.",
+              "category":"Developer Tools",
+              "tags":["x402","trust","security","payment-preflight","api","base","usdc"]
+            }')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "x402dash registration failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Verify free-directory visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..6}; do
+            curl -fsS 'https://api.x402dash.com/v1/endpoints?limit=50&q=agentresolver' -o /tmp/endpoints.json
+            cat /tmp/endpoints.json
+            if grep -q 'agentresolver.vercel.app/api/http-inspect' /tmp/endpoints.json; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "AgentResolver was accepted by registration but is not yet visible in x402dash free endpoint search." >&2
+          exit 1
