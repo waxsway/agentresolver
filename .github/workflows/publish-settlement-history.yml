@@ -1,4 +1,4 @@
-name: Publish Settlement History
+name: Publish Verified Settlement History
 
 on:
   workflow_dispatch:
