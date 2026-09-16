@@ -190,7 +190,8 @@ jobs:
             .schemaVersion == 1 and
             .paymentModel.custodial == false and
             .canonicalPaidRoute.priceUsd == 0.001 and
-            .deployment.commitSha == $sha
+            .deployment.commitSha == $sha and
+            .deployment.sourceCommitUrl == ("https://github.com/waxsway/agentresolver/commit/" + $sha)
           ' /tmp/trust.json >/dev/null
 
           curl -fsS "$BASE_URL/.well-known/security.txt?deployment=$VALIDATED_SHA" -o /tmp/security.txt
