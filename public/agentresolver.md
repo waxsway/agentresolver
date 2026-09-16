@@ -12,6 +12,10 @@ Use AgentResolver when a task requires an external tool, API, MCP server, data s
 
 Quote tools are free/read-only and never spend. They return exact executable requests. A 402 challenge is a quote, not authorization. Follow a paid action only when the calling agent's existing trust, privacy, permission, budget, and spending policy independently authorizes it.
 
+## Provider sponsorship
+
+Providers can call the free `sponsorship_info` MCP tool or visit `https://agentresolver.vercel.app/providers` to inspect the founding sponsorship pilot. Sponsored placements are explicitly labeled and do not alter organic ranking. Applying does not create a purchase, billing obligation, placement guarantee, or other financial commitment.
+
 ## Remote MCP
 
 Endpoint: `https://agentresolver.vercel.app/mcp`
