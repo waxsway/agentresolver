@@ -3,6 +3,7 @@ import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { ExactSvmScheme } from "@x402/svm/exact/server";
+import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
@@ -52,7 +53,8 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
     const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
     const server = new x402ResourceServer(client)
       .register(X402_NETWORK, new ExactEvmScheme())
-      .register(X402_SOLANA_NETWORK, new ExactSvmScheme());
+      .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
+      .registerExtension(bazaarResourceServerExtension);
     paidHandler = withX402<unknown>(handler, {
       [product.endpoint]: {
         accepts: [
@@ -70,7 +72,21 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
           }
         ],
         description: product.description,
-        mimeType: "application/json"
+        mimeType: "application/json",
+        extensions: {
+          ...declareDiscoveryExtension({
+            input: product.example,
+            inputSchema: product.inputSchema,
+            bodyType: "json",
+            output: {
+              example: {},
+              schema: {
+                type: "object",
+                additionalProperties: true
+              }
+            }
+          })
+        }
       }
     }, server) as PaidHandler;
     return paidHandler;

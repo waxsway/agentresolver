@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { X402_NETWORK, X402_PAY_TO, X402_SOLANA_ASSET, X402_SOLANA_FEE_PAYER, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 
@@ -46,6 +47,18 @@ export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
       }
     ],
     extensions: {
+      ...declareDiscoveryExtension({
+        input: config.example,
+        inputSchema: config.inputSchema,
+        bodyType: "json",
+        output: {
+          example: {},
+          schema: {
+            type: "object",
+            additionalProperties: true
+          }
+        }
+      }),
       agentresolver: {
         capabilityId: config.id,
         priceUsd: config.priceUsd,
