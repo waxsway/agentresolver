@@ -1,0 +1,119 @@
+name: Free External Buyer Readiness Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/free-external-buyer-readiness-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify canonical paid canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 20 -o /tmp/ping.json -w '%{http_code}' 'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            (.accepts | any(
+              .network == "eip155:8453" and
+              (.amount == "1000" or .maxAmountRequired == "1000") and
+              .payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            ))
+          ' /tmp/ping.json >/dev/null
+
+      - name: Run Ontario free x402 readiness verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 40 -o /tmp/ontario-readiness.json -w '%{http_code}'             -X POST 'https://ontarioprotocol.com/api/verify/x402-readiness'             -H 'content-type: application/json'             --data '{"target_url":"https://agentresolver.vercel.app/api/x402-ping"}')"
+          echo "ONTARIO_READINESS_HTTP=$code"
+          jq . /tmp/ontario-readiness.json || cat /tmp/ontario-readiness.json
+          case "$code" in 200|201|202) ;; *) exit 1 ;; esac
+
+      - name: Validate Ontario launch metadata without payment or publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload='{
+            "name":"AgentResolver Settlement Canary",
+            "description":"Minimal x402 settlement canary for autonomous agents to verify wallet, facilitator, USDC payment and paid delivery end to end.",
+            "buyer_query":"verify my x402 wallet and facilitator can complete a real $0.001 USDC payment and receive paid product",
+            "endpoint":"https://agentresolver.vercel.app/api/x402-ping",
+            "method":"GET",
+            "price_atomic":1000,
+            "price_usdc":"0.001",
+            "network":"base",
+            "owner_url":"https://agentresolver.vercel.app",
+            "tags":["x402","settlement-test","payment-canary","agents"],
+            "verify_now":true
+          }'
+          code="$(curl -sS --max-time 45 -o /tmp/ontario-validate.json -w '%{http_code}'             -X POST 'https://ontarioprotocol.com/api/x402/list-service/validate'             -H 'content-type: application/json'             --data "$payload")"
+          echo "ONTARIO_VALIDATE_HTTP=$code"
+          jq . /tmp/ontario-validate.json || cat /tmp/ontario-validate.json
+          case "$code" in 200|201|202) ;; *) exit 1 ;; esac
+
+      - name: Inspect ForgeMesh free scan contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 'https://forgemesh.io/' -o /tmp/forgemesh.html
+          echo "=== FORGEMESH HTML API REFERENCES ==="
+          grep -Eo '(/api/[A-Za-z0-9_./?=&:-]+|https://[^"''' ]+/api/[A-Za-z0-9_./?=&:-]+)' /tmp/forgemesh.html | sort -u | sed -n '1,120p' || true
+          grep -Eo 'src="[^"]+\.js[^"]*"' /tmp/forgemesh.html | sed 's/^src="//;s/"$//' > /tmp/jsrefs.txt || true
+          n=0
+          while IFS= read -r src; do
+            [ -z "$src" ] && continue
+            n=$((n+1))
+            [ "$n" -gt 15 ] && break
+            case "$src" in
+              http*) url="$src" ;;
+              /*) url="https://forgemesh.io$src" ;;
+              *) url="https://forgemesh.io/$src" ;;
+            esac
+            out="/tmp/fm-$n.js"
+            if curl -fsS --max-time 30 "$url" -o "$out"; then
+              echo "=== FORGEMESH BUNDLE $n ==="
+              python3 - "$out" <<'PY'
+          import re,sys
+          s=open(sys.argv[1],errors='ignore').read()
+          for pat in [r'/api/[A-Za-z0-9_./?=&:-]+', r'https://[^"\x27 ]+/api/[A-Za-z0-9_./?=&:-]+']:
+              for x in sorted(set(re.findall(pat,s))):
+                  if any(k in x.lower() for k in ('scan','audit','x402','readiness','verify')):
+                      print(x)
+          for needle in ('Scan free','x402 endpoint','payment audit','audit never signs','scanner'):
+              i=s.lower().find(needle.lower())
+              if i>=0:
+                  print(s[max(0,i-1200):i+3500])
+          PY
+            fi
+          done < /tmp/jsrefs.txt
+
+      - name: Check free x402.direct directory visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          for page in $(seq 1 35); do
+            body="/tmp/direct-$page.json"
+            code="$(curl -sS --max-time 20 -o "$body" -w '%{http_code}'               "https://x402.direct/api/services?page=$page&limit=100&sort=newest")"
+            [ "$code" = "200" ] || continue
+            if grep -qi 'agentresolver' "$body"; then
+              echo "X402_DIRECT_FOUND_PAGE=$page"
+              python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          print(json.dumps(d,indent=2)[:12000])
+          PY
+              found=1
+              break
+            fi
+          done
+          echo "X402_DIRECT_VISIBLE=$found"
