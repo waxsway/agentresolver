@@ -72,7 +72,7 @@ jobs:
           rm -rf /tmp/agentresolver-evidence-history
           git worktree add -B evidence-history /tmp/agentresolver-evidence-history origin/evidence-history
 
-      - name: Merge settlement evidence
+      - name: Independently verify and merge settlement evidence
         shell: bash
         run: |
           set -euo pipefail
