@@ -55,8 +55,23 @@ jobs:
             local url="$1" name="$2" description="$3" category="$4" tags="$5"
             payload=$(jq -n --arg url "$url" --arg name "$name" --arg description "$description" --arg category "$category" --arg tags "$tags" '{url:$url,name:$name,description:$description,category:$category,tags:($tags|split(","))}')
             echo "Registering $name"
-            curl --fail-with-body -sS -X POST https://api.x402dash.com/v1/register               -H 'content-type: application/json'               -d "$payload"
+            body="$(mktemp)"
+            code="$(curl -sS -o "$body" -w '%{http_code}' \
+              -X POST https://api.x402dash.com/v1/register \
+              -H 'content-type: application/json' \
+              -d "$payload")"
+            cat "$body"
             echo
+            case "$code" in
+              200|201|202) ;;
+              409)
+                echo "x402dash already has $url; treating duplicate registration as idempotent success."
+                ;;
+              *)
+                echo "x402dash registration failed for $url with HTTP $code" >&2
+                exit 1
+                ;;
+            esac
           }
           # x402dash currently limits registration calls per source IP. Keep this
           # list to five high-signal products in one run rather than retrying.
