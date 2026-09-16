@@ -11,7 +11,7 @@ export function stableJson(value: unknown): string {
     }
     return input;
   }
-  const json = JSON.stringify(sort(value));
+  const json = JSON.stringify(sort(value)) ?? "null";
   if (Buffer.byteLength(json, "utf8") > MAX_JSON_BYTES) throw new Error("JSON value exceeds 131072 bytes.");
   return json;
 }
