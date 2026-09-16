@@ -1,23 +1,12 @@
-name: Register 402 Index Trust Preflight
+name: Legacy 402 Index Trust POST Registration
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Deploy Production"]
-    types: [completed]
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/register-402index-trust-once.yml'
 permissions:
   contents: read
 
 jobs:
   register:
-    if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -46,7 +35,7 @@ jobs:
           echo
           case "$code" in
             200|201) ;;
-            *) echo "402 Index registration failed with HTTP $code" >&2; exit 1 ;;
+            *) echo "::warning::402 Index cannot currently verify the POST trust-preflight route (HTTP $code). The dedicated GET canary remains live and searchable."; exit 0 ;;
           esac
 
       - name: Verify buyer-search visibility
@@ -55,4 +44,6 @@ jobs:
           set -euo pipefail
           curl -fsS 'https://402index.io/api/v1/services?protocol=x402&q=AgentResolver%20x402%20Payment%20Preflight' -o /tmp/search.json
           cat /tmp/search.json
-          grep -q 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/search.json
+          if ! grep -q 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/search.json; then
+            echo "::notice::POST preflight is not indexed; the GET canary is the canonical 402 Index buyer surface."
+          fi
