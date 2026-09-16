@@ -26,7 +26,7 @@ test("direct MCP challenges advertise Base and Solana USDC requirements", () => 
     assert.equal(solana.payTo, "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa");
     assert.equal(solana.maxTimeoutSeconds, 300);
     assert.deepEqual(solana.extra, {
-      feePayer: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+      feePayer: "CjNFTjvBhbJJd2B5ePPMHRLx1ELZpa8dwQgGL727eKww"
     });
   }
 });
