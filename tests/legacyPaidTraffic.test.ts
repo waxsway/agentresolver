@@ -60,6 +60,6 @@ test("legacy GET probes are recorded as discovery instead of buyer attempts", ()
     logLegacyPaidDiscovery(req, "tool-contract", "/api/tool-contract");
   });
   assert.equal(logs[0].event, "paid_capability_discovery");
-  assert.equal(logs[0].trafficClass, "unknown_external");
+  assert.equal(logs[0].trafficClass, "agent_discovery");
   assert.equal(logs[0].external, true);
 });
