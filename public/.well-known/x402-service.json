@@ -1,17 +1,13 @@
 {
   "x402": "1.0",
-  "name": "agentresolver-x402-payment-preflight",
+  "name": "agentresolver-settlement-ping",
   "capabilities": [
     "agents",
-    "api",
     "x402",
-    "trust",
-    "security",
-    "preflight",
-    "tls",
-    "certificate",
-    "latency",
-    "headers"
+    "payments",
+    "settlement",
+    "verification",
+    "canary"
   ],
   "pricing": {
     "currency": "USDC",
@@ -37,10 +33,12 @@
       }
     ]
   },
-  "endpoint": "https://agentresolver.vercel.app/api/x402-payment-preflight",
-  "description": "Non-custodial $0.001 USDC x402 verify-before-pay infrastructure for autonomous agents: live endpoint, payTo, quote, Base/Solana network, asset, resource binding, TLS and challenge validation before spend.",
+  "endpoint": "https://agentresolver.vercel.app/api/x402-ping",
+  "description": "Minimal $0.001 USDC x402 settlement canary. Autonomous buyers can verify wallet, facilitator, settlement and paid delivery end to end with a single GET.",
   "x402Version": 2,
   "trust": "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json",
+  "evidence": "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json",
+  "history": "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json",
   "security": "https://agentresolver.vercel.app/.well-known/security.txt",
   "legal": "https://agentresolver.vercel.app/legal"
 }
