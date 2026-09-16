@@ -112,6 +112,7 @@ jobs:
               -o "/tmp/${slug}-body.txt" \
               -w '%{http_code}' \
               -H 'content-type: application/json' \
+              -H 'x-agentresolver-internal: 1' \
               --data "$body" \
               "$BASE_URL$path")"
 
