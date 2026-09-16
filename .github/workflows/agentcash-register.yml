@@ -2,27 +2,22 @@ name: Register AgentResolver with AgentCash
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - ".github/workflows/agentcash-register.yml"
-      - "src/lib/paidCapabilities.ts"
-      - "src/lib/createDeterministicPaidRoute.ts"
-      - "src/lib/x402DiscoveryChallenge.ts"
-      - "src/lib/x402PreflightDiscovery.ts"
-      - "scripts/sync-paid-products.ts"
-      - "public/openapi.json"
-      - "public/.well-known/x402"
-      - "public/.well-known/x402-catalog.json"
-      - "public/.well-known/agent.json"
-      - "public/.well-known/x402-service.json"
-
 permissions:
   contents: read
 
 jobs:
   register:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
