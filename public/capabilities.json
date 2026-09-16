@@ -11,7 +11,14 @@
       "id": "capability-search",
       "name": "Capability Search",
       "description": "Find the best external tool, API, MCP server, or machine service for a goal.",
-      "tags": ["tool discovery", "api discovery", "mcp", "x402", "routing", "search"],
+      "tags": [
+        "tool discovery",
+        "api discovery",
+        "mcp",
+        "x402",
+        "routing",
+        "search"
+      ],
       "priceUsd": 0,
       "mode": "owned",
       "status": "live",
@@ -21,49 +28,124 @@
       "id": "mcp-probe",
       "name": "MCP Live Preflight",
       "description": "Verify one remote MCP endpoint is alive and inspect compatibility, latency, server metadata, and tool inventory before depending on it.",
-      "tags": ["mcp preflight", "mcp probe", "mcp health", "mcp server", "mcp endpoint", "verify mcp", "test mcp", "tools list", "compatibility", "latency", "server check", "x402"],
+      "tags": [
+        "mcp preflight",
+        "mcp probe",
+        "mcp health",
+        "mcp server",
+        "mcp endpoint",
+        "verify mcp",
+        "test mcp",
+        "tools list",
+        "compatibility",
+        "latency",
+        "server check",
+        "x402"
+      ],
       "priceUsd": 0.001,
       "mode": "owned",
       "status": "live",
       "endpoint": "/api/mcp-probe",
       "method": "POST",
-      "payment": {"protocol": "x402", "scheme": "exact", "network": "eip155:8453", "asset": "USDC"}
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "asset": "USDC"
+      }
     },
     {
       "id": "agent-readiness",
       "name": "Agent Readiness Audit",
       "description": "Audit a public website for agent discoverability, llms.txt, ARD, OpenAPI, sitemap, MCP metadata, and baseline headers.",
-      "tags": ["agent readiness", "agent accessibility", "llms.txt", "ard", "openapi", "mcp", "robots", "sitemap", "website audit", "domain", "x402"],
+      "tags": [
+        "agent readiness",
+        "agent accessibility",
+        "llms.txt",
+        "ard",
+        "openapi",
+        "mcp",
+        "robots",
+        "sitemap",
+        "website audit",
+        "domain",
+        "x402"
+      ],
       "priceUsd": 0.005,
       "mode": "owned",
       "status": "live",
       "endpoint": "/api/agent-readiness",
       "method": "POST",
-      "payment": {"protocol": "x402", "scheme": "exact", "network": "eip155:8453", "asset": "USDC"}
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "asset": "USDC"
+      }
     },
     {
       "id": "verified-resolve",
       "name": "Verified Resolve",
       "description": "Resolve a missing capability, live-probe up to two top MCP candidates, and return an evidence-backed recommendation.",
-      "tags": ["verified resolve", "verified tool", "tool verification", "mcp verification", "capability verification", "tool selection", "provider selection", "live check", "recommendation", "x402"],
+      "tags": [
+        "verified resolve",
+        "verified tool",
+        "tool verification",
+        "mcp verification",
+        "capability verification",
+        "tool selection",
+        "provider selection",
+        "live check",
+        "recommendation",
+        "x402"
+      ],
       "priceUsd": 0.02,
       "mode": "owned",
       "status": "live",
       "endpoint": "/api/verified-resolve",
       "method": "POST",
-      "payment": {"protocol": "x402", "scheme": "exact", "network": "eip155:8453", "asset": "USDC"}
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "asset": "USDC"
+      }
     },
     {
       "id": "batch-verified-resolve",
       "name": "Batch Verified Resolve",
       "description": "Resolve and live-verify up to four capability requests in one batch, probing up to two MCP candidates per request and returning evidence-backed recommendations.",
-      "tags": ["batch verified resolve", "batch verification", "tool procurement", "agent procurement", "mcp verification", "capability verification", "tool selection", "provider selection", "multi tool", "recommendation", "x402"],
+      "tags": [
+        "batch verified resolve",
+        "batch verification",
+        "tool procurement",
+        "agent procurement",
+        "mcp verification",
+        "capability verification",
+        "tool selection",
+        "provider selection",
+        "multi tool",
+        "recommendation",
+        "x402"
+      ],
       "priceUsd": 0.05,
       "mode": "owned",
       "status": "live",
       "endpoint": "/api/batch-verified-resolve",
       "method": "POST",
-      "payment": {"protocol": "x402", "scheme": "exact", "network": "eip155:8453", "asset": "USDC"}
+      "payment": {
+        "protocol": "x402",
+        "scheme": "exact",
+        "network": "eip155:8453",
+        "asset": "USDC"
+      }
     }
-  ]
+  ],
+  "sponsorship": {
+    "model": "provider-funded-discovery",
+    "status": "pilot_inventory_open",
+    "organicRankingIndependent": true,
+    "details": "https://agentresolver.vercel.app/api/sponsorship",
+    "machineReadable": "https://agentresolver.vercel.app/.well-known/sponsorship.json"
+  }
 }

@@ -48,7 +48,16 @@ export function referrerHost(req: Request): string | null {
   }
 }
 
-export function logPaidCapabilityAttempt(req: Request, capabilityId: string) {
+export function logPaidCapabilityAttempt(
+  req: Request,
+  capabilityId: string,
+  traffic?: {
+    trafficClass: string;
+    external: boolean;
+    sponsorEligible: boolean;
+    reason: string;
+  }
+) {
   const hasPaymentSignature = Boolean(req.headers.get("payment-signature"));
   console.log(JSON.stringify({
     event: "paid_capability_attempt",
@@ -58,7 +67,13 @@ export function logPaidCapabilityAttempt(req: Request, capabilityId: string) {
     userAgent: safeUserAgent(req),
     referrerHost: referrerHost(req),
     hasPaymentSignature,
-    phase: hasPaymentSignature ? "paid_retry" : "challenge_request"
+    phase: hasPaymentSignature ? "paid_retry" : "challenge_request",
+    ...(traffic ? {
+      trafficClass: traffic.trafficClass,
+      external: traffic.external,
+      sponsorEligible: traffic.sponsorEligible,
+      trafficClassReason: traffic.reason
+    } : {})
   }));
 }
 

@@ -6,6 +6,7 @@ import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO } from "@/lib/x402Config";
+import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 
 type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
@@ -64,7 +65,8 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
 
   return {
     POST: async (req: NextRequest) => {
-      logPaidCapabilityAttempt(req, capabilityId);
+      const traffic = classifyTraffic(req, { path: product.endpoint, hasUserIntent: true });
+      logPaidCapabilityAttempt(req, capabilityId, traffic);
       try {
         const response = await getPaidHandler()(req);
         logX402Settlement(response, capabilityId);
@@ -79,7 +81,16 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
         return NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED" }, { status: 503 });
       }
     },
-    GET: async () => x402DiscoveryChallenge(capabilityId),
+    GET: async (req: NextRequest) => {
+      const traffic = classifyTraffic(req, { path: product.endpoint });
+      console.log(JSON.stringify({
+        event: "paid_capability_discovery",
+        at: new Date().toISOString(),
+        capabilityId,
+        ...trafficLogFields(req, traffic)
+      }));
+      return x402DiscoveryChallenge(capabilityId);
+    },
     OPTIONS: async () => new NextResponse(null, {
       status: 204,
       headers: {
