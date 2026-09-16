@@ -1,0 +1,99 @@
+name: Postdeploy Agent402 Routing Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/postdeploy-agent402-routing-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Wait for router-intent metadata to reach production
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..48}; do
+            if curl -fsS --max-time 20 'https://agentresolver.vercel.app/openapi.json' -o /tmp/openapi.json; then
+              if jq -e '
+                (.paths["/api/x402-ping"].get.summary | test("Settlement Test"; "i")) and
+                (.paths["/api/x402-ping"].get.tags | index("x402 settlement test")) and
+                (.paths["/api/x402-payment-preflight"].post.tags | index("endpoint safety")) and
+                (.paths["/api/x402-payment-preflight"].post["x-agentresolver-product"].keywords | index("USDC payment check"))
+              ' /tmp/openapi.json >/dev/null 2>&1; then
+                echo "Router-intent metadata is live."
+                jq '{
+                  canary:{
+                    summary:.paths["/api/x402-ping"].get.summary,
+                    tags:.paths["/api/x402-ping"].get.tags,
+                    keywords:.paths["/api/x402-ping"].get["x-agentresolver-product"].keywords
+                  },
+                  preflight:{
+                    summary:.paths["/api/x402-payment-preflight"].post.summary,
+                    tags:.paths["/api/x402-payment-preflight"].post.tags,
+                    keywords:.paths["/api/x402-payment-preflight"].post["x-agentresolver-product"].keywords
+                  }
+                }' /tmp/openapi.json
+                exit 0
+              fi
+            fi
+            echo "Production not updated yet (attempt $i/48)."
+            sleep 10
+          done
+          echo "Production never exposed the new router-intent metadata." >&2
+          exit 1
+
+      - name: Re-register origin with Agent402
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 20 -o /tmp/register.json -w '%{http_code}'             -X POST 'https://agent402.tools/api/index/register'             -H 'content-type: application/json'             --data '{"origin":"https://agentresolver.vercel.app"}' || true)"
+          echo "HTTP=$code"
+          cat /tmp/register.json 2>/dev/null || true
+          echo
+          case "$code" in
+            200|201|202|204|409|429) ;;
+            *) echo "Unexpected Agent402 registration status: $code" >&2; exit 1 ;;
+          esac
+
+      - name: Measure buyer routing after semantic reindex
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            "x402 settlement test"
+            "USDC payment check"
+            "endpoint safety"
+            "verify endpoint before paying"
+            "payTo verification"
+            "wallet facilitator payment test"
+          )
+          found=0
+          for q in "${queries[@]}"; do
+            echo "=== $q ==="
+            curl -fsS --max-time 20 -G 'https://agent402.tools/api/route'               --data-urlencode "q=$q"               --data-urlencode 'include=external'               -o /tmp/route.json
+            jq --arg q "$q" '{
+              query:$q,
+              agentresolver:[
+                (.results // .routes // .data // [])[]? |
+                select(
+                  ((.seller // "") | tostring | contains("agentresolver.vercel.app")) or
+                  ((.origin // "") | tostring | contains("agentresolver.vercel.app")) or
+                  ((.host // "") | tostring | contains("agentresolver.vercel.app"))
+                ) |
+                {
+                  seller,name,route,slug,priceUsd,score,health,networks,
+                  routerDispatchEligible,routerDispatchReason,executeVia
+                }
+              ]
+            }' /tmp/route.json
+            if grep -Fq 'agentresolver.vercel.app' /tmp/route.json; then
+              found=$((found+1))
+            fi
+          done
+          echo "AGENTRESOLVER_MATCHED_QUERIES=$found/${#queries[@]}"
