@@ -1,0 +1,95 @@
+name: Publish Settlement History
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-settlement-history.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: settlement-history-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout publisher code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Require Vercel read credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@48.8.0 --no-audit --no-fund
+
+      - name: Link read-only project context
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Read recent confirmed-settlement logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/agentresolver-settlement-logs.jsonl
+          vercel logs \
+            --environment production \
+            --query 'paid_capability_settled' \
+            --since 3h \
+            --json \
+            --token="$VERCEL_TOKEN" \
+            > /tmp/agentresolver-settlement-logs.jsonl
+          echo "matched_log_lines=$(wc -l < /tmp/agentresolver-settlement-logs.jsonl | tr -d ' ')"
+
+      - name: Prepare public evidence branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin evidence-history
+          rm -rf /tmp/agentresolver-evidence-history
+          git worktree add -B evidence-history /tmp/agentresolver-evidence-history origin/evidence-history
+
+      - name: Merge settlement evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/merge-settlement-history.mjs \
+            --history /tmp/agentresolver-evidence-history/evidence/settlements.json \
+            --logs /tmp/agentresolver-settlement-logs.jsonl \
+            --output /tmp/agentresolver-evidence-history/evidence/settlements.json
+
+      - name: Publish only when evidence changed
+        shell: bash
+        working-directory: /tmp/agentresolver-evidence-history
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- evidence/settlements.json; then
+            echo "No new confirmed settlement evidence."
+            exit 0
+          fi
+
+          git config user.name "agentresolver-evidence-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add evidence/settlements.json
+          git commit -m "evidence: publish confirmed x402 settlement history"
+          git push origin HEAD:evidence-history
