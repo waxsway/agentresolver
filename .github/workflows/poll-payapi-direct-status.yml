@@ -1,0 +1,50 @@
+name: Poll PayAPI Listing Status
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/poll-payapi-direct-status.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read exact listing status from PayAPI public client contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 'https://payapi.market/list' -o /tmp/list.html
+          js="$(grep -Eo '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/list.html | head -1)"
+          test -n "$js"
+          curl -fsS --max-time 30 "https://payapi.market$js" -o /tmp/payapi.js
+
+          python3 - <<'PY' > /tmp/env
+          import re
+          s=open('/tmp/payapi.js',errors='ignore').read()
+          m_url=re.search(r'var ul=`(https://[^`]+\.supabase\.co)`',s)
+          m_key=re.search(r'ul=`https://[^`]+\.supabase\.co`,dl=`([^`]+)`',s)
+          if not m_url or not m_key:
+              raise SystemExit('could not extract PayAPI public Supabase client')
+          print('SUPABASE_URL='+m_url.group(1))
+          print('SUPABASE_KEY='+m_key.group(1))
+          PY
+
+          set +x
+          source /tmp/env
+          rm -f /tmp/env
+          listing='3b152902-f512-4377-af53-594ef1f90534'
+          curl -fsS --max-time 30 \
+            "$SUPABASE_URL/rest/v1/api_listings?id=eq.$listing&select=id,name,status,payment_verified,triage_status,triage_reason,health_status,uptime_percentage,base_url,price_min,price_max,updated_at,created_at" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H 'Accept: application/json' \
+            -o /tmp/listing.json
+
+          count="$(jq 'length' /tmp/listing.json)"
+          test "$count" -eq 1
+          jq '.[0]' /tmp/listing.json
