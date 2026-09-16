@@ -14,6 +14,11 @@ test("trust contract declares the canonical non-custodial payment boundary", () 
     "https://agentresolver.vercel.app/api/x402-payment-preflight"
   );
   assert.equal(AGENTRESOLVER_TRUST_CONTRACT.supportedSettlement.length, 2);
+  assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.httpsOnly, true);
+  assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.privateAndReservedIpRangesBlocked, true);
+  assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.redirectsFollowed, false);
+  assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.postProbeRequiresExplicitOptIn, true);
+  assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.responseBodyConsumed, false);
 });
 
 test("public manifests point buyers at the canonical preflight", () => {
