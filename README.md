@@ -131,6 +131,8 @@ The resolver augments AgentResolver-owned capabilities with live MCP discovery a
 
 ## Trust and payment safety
 
+The canonical x402 payment preflight returns a machine-readable evidence receipt with stable SHA-256 fingerprints for the observed payment identity (network + asset + payTo), endpoint/payment pairing, and payment terms. These receipts are designed for change detection across observations; they do not claim that AgentResolver has established legal ownership of a wallet, provider legitimacy, or future fulfillment. The receipt also exposes ERC-8004-shaped candidate feedback signals (for example reachability and response time) as off-chain evidence only; AgentResolver does not submit them on-chain or bind them to an ERC-8004 identity unless that identity is independently established.
+
 AgentResolver publishes a machine-readable trust contract at `/.well-known/agentresolver-trust.json`, including the canonical paid route, supported networks/assets, non-custodial payment boundary, trust limitations, source repository, security disclosure path, and the Vercel deployment commit SHA when available.
 
 Resolution and MCP quote tools never spend money. AgentResolver's direct paid endpoints use x402 USDC on Base or Solana and execute only after a caller supplies a valid payment authorization; successful revenue is counted only from confirmed settlement receipts. `/api/execute` remains disabled for generic third-party execution.
