@@ -1,0 +1,68 @@
+name: Audit NoHumans First Payment Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-nohumans-first-payment-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Fetch AgentResolver listing status
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body -sS --retry 2 --retry-delay 2             'https://nohumans.directory/v1/listings/28e33786-f07'             -o /tmp/nohumans-listing.json
+          cat /tmp/nohumans-listing.json
+          echo
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path('/tmp/nohumans-listing.json').read_text())
+          summary = {
+              'id': data.get('id'),
+              'status': data.get('status'),
+              'score': data.get('score'),
+              'probe_count': data.get('probe_count'),
+              'last_probed_at': data.get('last_probed_at'),
+              'paid_verified': data.get('paid_verified'),
+              'evidence_tier': data.get('evidence_tier'),
+              'evidence_note': data.get('evidence_note'),
+              'onchain_unique_payers_30d': data.get('onchain_unique_payers_30d'),
+              'observed_network': data.get('observed_network'),
+          }
+          print('NOHUMANS_STATUS=' + json.dumps(summary, separators=(',', ':')))
+          if data.get('paid_verified') is True:
+              print('FIRST_INDEPENDENT_PROBE_PAYMENT_CONFIRMED=true')
+          else:
+              print('FIRST_INDEPENDENT_PROBE_PAYMENT_CONFIRMED=false')
+          PY
+
+      - name: Confirm live endpoint still passes unpaid x402 probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], 'r', encoding='utf-8'))
+          assert payload.get('x402Version') == 2
+          accepts = payload.get('accepts') or []
+          assert any(
+              item.get('network') == 'eip155:8453'
+              and str(item.get('amount')) == '1000'
+              and item.get('payTo') == '0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8'
+              for item in accepts
+          )
+          print('LIVE_CANARY_SPEC_OK=true')
+          PY
