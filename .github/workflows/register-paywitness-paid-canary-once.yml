@@ -1,0 +1,139 @@
+name: Register Paywitness Paid Canary Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-paywitness-paid-canary-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify paid GET canary before Paywitness self-list
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          assert payload.get("x402Version") == 2
+          accepts = payload.get("accepts") or []
+          assert any(
+              item.get("network") == "eip155:8453"
+              and str(item.get("amount")) == "1000"
+              and item.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          PY
+
+      - name: Fetch Paywitness live OpenAPI and build free-list payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body -sS --retry 2 --retry-delay 2             'https://paywitness.ai/openapi.json'             -o /tmp/paywitness-openapi.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          spec = json.loads(Path("/tmp/paywitness-openapi.json").read_text())
+          post = ((spec.get("paths") or {}).get("/list") or {}).get("post")
+          if not post:
+              raise SystemExit("Paywitness OpenAPI does not expose POST /list; refusing to guess.")
+
+          schema = (((post.get("requestBody") or {}).get("content") or {}).get("application/json") or {}).get("schema") or {}
+
+          def resolve(node):
+              seen = set()
+              while isinstance(node, dict) and "$ref" in node:
+                  ref = node["$ref"]
+                  if ref in seen or not ref.startswith("#/"):
+                      break
+                  seen.add(ref)
+                  cur = spec
+                  for part in ref[2:].split("/"):
+                      cur = cur[part.replace("~1", "/").replace("~0", "~")]
+                  node = cur
+              return node if isinstance(node, dict) else {}
+
+          schema = resolve(schema)
+          props = schema.get("properties") or {}
+          required = list(schema.get("required") or [])
+
+          target = "https://agentresolver.vercel.app/api/x402-ping"
+          values = {
+              "resource": target,
+              "url": target,
+              "endpoint": target,
+              "endpoint_url": target,
+              "resource_url": target,
+              "name": "AgentResolver Settlement Ping",
+              "description": "Minimal $0.001 x402 settlement canary. Returns a timestamped pong only after successful settlement so independent buyers can verify wallet, facilitator, payment and delivery end to end.",
+              "method": "GET",
+              "price": 0.001,
+              "price_usd": 0.001,
+              "priceUsd": 0.001,
+              "declared_price_usd": 0.001,
+              "network": "eip155:8453",
+              "chain": "base",
+              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+              "pay_to": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+              "tags": ["x402", "settlement", "verification", "agent-payments"]
+          }
+
+          payload = {}
+          for key in props:
+              if key in values:
+                  value = values[key]
+                  prop = resolve(props[key])
+                  enum = prop.get("enum")
+                  if enum and value not in enum:
+                      if key in ("network", "chain"):
+                          baseish = next((v for v in enum if "8453" in str(v) or str(v).lower() == "base"), None)
+                          if baseish is not None:
+                              value = baseish
+                          else:
+                              continue
+                      else:
+                          continue
+                  payload[key] = value
+
+          missing = [key for key in required if key not in payload]
+          if missing:
+              print(json.dumps({"required": required, "properties": sorted(props.keys()), "missing": missing}))
+              raise SystemExit("Unsupported required fields in Paywitness /list schema; refusing to guess.")
+
+          if not any(k in payload for k in ("resource", "url", "endpoint", "endpoint_url", "resource_url")):
+              raise SystemExit("Paywitness /list schema exposes no recognized target URL field.")
+
+          Path("/tmp/paywitness-list.json").write_text(json.dumps(payload, separators=(",", ":")))
+          print(json.dumps({"paywitness_list_fields": sorted(payload.keys())}))
+          PY
+
+      - name: Self-list AgentResolver canary with Paywitness for free
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://paywitness.ai/list'             -H 'content-type: application/json'             --data-binary @/tmp/paywitness-list.json)"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|204|409) ;;
+            402)
+              echo "Paywitness self-list unexpectedly requires payment; no payment was attempted." >&2
+              exit 1
+              ;;
+            *)
+              echo "Paywitness self-list failed with HTTP $code" >&2
+              exit 1
+              ;;
+          esac
