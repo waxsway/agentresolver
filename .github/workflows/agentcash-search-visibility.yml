@@ -1,0 +1,38 @@
+name: Audit AgentCash Buyer Search
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/agentcash-search-visibility.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Search buyer intents
+        run: |
+          set -euo pipefail
+          queries=(
+            "api trust security preflight"
+            "check api security before paying"
+            "x402 seller trust"
+            "tls security audit api"
+          )
+          found=0
+          for query in "${queries[@]}"; do
+            echo "=== QUERY: $query ==="
+            npx -y agentcash@0.17.1 search "$query" --format json | tee /tmp/search.json
+            if grep -q 'agentresolver.vercel.app' /tmp/search.json; then
+              found=$((found + 1))
+              echo "AgentResolver visible for: $query"
+            else
+              echo "::warning::AgentResolver not visible for: $query"
+            fi
+          done
+          echo "AgentResolver visible in $found of ${#queries[@]} buyer-intent searches."

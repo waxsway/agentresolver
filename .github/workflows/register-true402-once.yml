@@ -26,7 +26,7 @@ jobs:
 
             if curl -fsS https://agentresolver.vercel.app/.well-known/x402-service.json > /tmp/manifest.json; then
               if jq -e '
-                .name == "agentresolver-http-inspect" and
+                .name == "agentresolver-api-trust-preflight" and
                 .pricing.base == "0.001" and
                 .endpoint == "https://agentresolver.vercel.app/api/http-inspect"
               ' /tmp/manifest.json >/dev/null; then
@@ -47,7 +47,7 @@ jobs:
             fi
             sleep 10
           done
-          echo "Canonical manifest or HTTP Inspect x402 challenge did not become ready." >&2
+          echo "Canonical API Trust Preflight manifest or x402 challenge did not become ready." >&2
           exit 1
 
       - name: Register AgentResolver with true402
