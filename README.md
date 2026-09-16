@@ -91,11 +91,13 @@ The useful integration pattern is not to replace an agent's existing tools. Agen
 
 ## Provider program
 
-Organic inclusion remains free and relevance-based. Providers that want a claimed profile, disclosed sponsored eligibility when relevant, and qualified-demand reporting can apply for the **Founding Provider pilot at $250/month**.
+Organic inclusion remains free and relevance-based. Providers can apply for the **Founding sponsorship pilot** for explicitly labeled, relevance-limited placement alongside matching agent intent.
 
-Provider details and pilot terms: https://agentresolver.vercel.app/providers
+Commercial terms, duration, placement, and reporting are set only after operator approval. Applying creates no purchase or financial commitment.
 
-Sponsored treatment must remain relevant and disclosed. Payment never guarantees ranking, traffic, conversions, or agent spending authorization.
+Provider details and pilot intake: https://agentresolver.vercel.app/providers
+
+Sponsored treatment must remain relevant and disclosed. Sponsorship never changes organic ranking or authorizes an agent to spend money.
 
 ## Example
 
