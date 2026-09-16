@@ -3,7 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingIncludes: {
-    "/api/http-inspect": ["./node_modules/@x402/extensions/**/*"]
+    "/api/http-inspect": [
+      "./node_modules/@x402/extensions/**/*",
+      "./node_modules/ajv/**/*",
+      "./node_modules/fast-deep-equal/**/*",
+      "./node_modules/fast-uri/**/*",
+      "./node_modules/json-schema-traverse/**/*",
+      "./node_modules/require-from-string/**/*"
+    ]
   },
   async headers() {
     return [
