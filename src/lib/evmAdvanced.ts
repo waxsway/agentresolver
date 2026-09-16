@@ -88,9 +88,9 @@ export function ethereumAbiEncode(input: { types: string[]; values: unknown[] })
   assertJsonBounded(input, "ABI input");
   if (!Array.isArray(input.types) || input.types.length < 1 || input.types.length > 32) throw new Error("types must contain 1 to 32 ABI parameter definitions.");
   if (!Array.isArray(input.values) || input.values.length !== input.types.length) throw new Error("values length must equal types length.");
-  const params = parseAbiParameters(input.types);
-  const values = params.map((param, index) => coerceAbiValue(param, input.values[index], `values[${index}]`));
-  const encoded = encodeAbiParameters(params, values as never[]);
+  const params = parseAbiParameters(input.types as [string, ...string[]]) as unknown as readonly AbiParameter[];
+  const values = params.map((param: AbiParameter, index: number) => coerceAbiValue(param, input.values[index], `values[${index}]`));
+  const encoded = encodeAbiParameters(params as never, values as never);
   return { types: input.types, encoded, bytes: (encoded.length - 2) / 2 };
 }
 
@@ -99,8 +99,8 @@ export function ethereumAbiDecode(input: { types: string[]; data: string }) {
   if (!Array.isArray(input.types) || input.types.length < 1 || input.types.length > 32) throw new Error("types must contain 1 to 32 ABI parameter definitions.");
   if (typeof input.data !== "string" || !isHex(input.data, { strict: true }) || (input.data.length - 2) % 2 !== 0) throw new Error("data must be complete 0x-prefixed hex bytes.");
   if ((input.data.length - 2) / 2 > MAX_JSON_BYTES) throw new Error("data exceeds 131072 bytes.");
-  const params = parseAbiParameters(input.types);
-  const decoded = decodeAbiParameters(params, input.data as Hex);
+  const params = parseAbiParameters(input.types as [string, ...string[]]) as unknown as readonly AbiParameter[];
+  const decoded = decodeAbiParameters(params as never, input.data as Hex);
   return { types: input.types, data: input.data, values: jsonSafe(decoded) };
 }
 
@@ -158,11 +158,12 @@ export function eip712TypedDataHash(input: {
   const message = coerceTypedValue(input.primaryType, input.message, input.types, "message") as Record<string, unknown>;
   const domain: Record<string, unknown> = { ...input.domain };
   if (typeof domain.chainId === "string" && /^\d+$/.test(domain.chainId)) domain.chainId = BigInt(domain.chainId);
-  const digest = hashTypedData({
-    domain: domain as never,
-    types: input.types as never,
-    primaryType: input.primaryType as never,
-    message: message as never
+  const dynamicHashTypedData = hashTypedData as unknown as (args: Record<string, unknown>) => Hex;
+  const digest = dynamicHashTypedData({
+    domain,
+    types: input.types,
+    primaryType: input.primaryType,
+    message
   });
   return { primaryType: input.primaryType, digest };
 }
