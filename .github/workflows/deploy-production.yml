@@ -74,7 +74,7 @@ jobs:
           while IFS= read -r path; do
             [ -z "$path" ] && continue
             case "$path" in
-              .github/*) ;;
+              .github/*|README.md|tests/*) ;;
               *) deploy=true; break ;;
             esac
           done <<< "$changed"
