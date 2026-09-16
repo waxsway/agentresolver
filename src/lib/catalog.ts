@@ -115,10 +115,10 @@ export function resolveCapabilities(goal: string, limit = 3) {
 
   return CAPABILITIES
     .map((capability) => {
-      const haystack = tokens(
+      const haystack = new Set(tokens(
         `${capability.name} ${capability.description} ${capability.tags.join(" ")}`
-      );
-      const overlap = haystack.reduce(
+      ));
+      const overlap = [...haystack].reduce(
         (score, token) => score + (q.has(token) ? 1 : 0),
         0
       );
