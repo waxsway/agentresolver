@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
+import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { X402_NETWORK, X402_PAY_TO, X402_SOLANA_ASSET, X402_SOLANA_FEE_PAYER, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -13,6 +14,7 @@ export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
   const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
   const resourceUrl = `https://agentresolver.vercel.app${config.endpoint}`;
+  const wireMetadata = x402WireResourceMetadata(config);
   const discoveryOutput = capabilityId === "x402-payment-preflight"
     ? {
         example: X402_PREFLIGHT_OUTPUT_EXAMPLE,
@@ -30,10 +32,10 @@ export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
     error: "PAYMENT-SIGNATURE header is required",
     resource: {
       url: resourceUrl,
-      description: config.description,
+      description: wireMetadata.description,
       mimeType: "application/json",
-      serviceName: "AgentResolver",
-      tags: ["agents", "x402", ...config.tags]
+      serviceName: wireMetadata.serviceName,
+      tags: wireMetadata.tags
     },
     accepts: [
       {
