@@ -1,4 +1,4 @@
-name: Register 402 Index Once
+name: Register Canonical Preflight with 402 Index
 
 on:
   push:
@@ -13,98 +13,57 @@ permissions:
 jobs:
   register:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 4
     steps:
-      - name: Wait for paid endpoints on canonical production
-        shell: bash
-        env:
-          BASE_URL: https://agentresolver.vercel.app
-        run: |
-          set -euo pipefail
-
-          wait_for_402() {
-            local path="$1"
-            local body="$2"
-            for attempt in $(seq 1 24); do
-              status="$(curl -sS -o /dev/null -w '%{http_code}' \
-                -H 'content-type: application/json' \
-                --data "$body" \
-                "$BASE_URL$path" || true)"
-              if [ "$status" = "402" ]; then
-                echo "$path is live with an x402 challenge."
-                return 0
-              fi
-              echo "Waiting for $path to return 402 (attempt $attempt/24, got $status)..."
-              sleep 10
-            done
-            echo "$path did not become payable in time."
-            return 1
-          }
-
-          wait_for_402 '/api/mcp-probe' '{"endpoint":"https://agentresolver.vercel.app/mcp"}'
-          wait_for_402 '/api/agent-readiness' '{"target":"https://agentresolver.vercel.app"}'
-
-      - name: Register MCP Probe with 402 Index
+      - name: Confirm canonical preflight returns x402 challenge
         shell: bash
         run: |
           set -euo pipefail
-          status="$(curl -sS \
-            -o /tmp/mcp-register.json \
-            -w '%{http_code}' \
-            -X POST 'https://402index.io/api/v1/register' \
-            -H 'content-type: application/json' \
-            --data-binary @- <<'JSON'
+          status="$(curl -sS -o /tmp/preflight-402.json -w '%{http_code}'             -X POST 'https://agentresolver.vercel.app/api/x402-payment-preflight'             -H 'content-type: application/json'             --data '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}')"
+          cat /tmp/preflight-402.json
+          echo
+          test "$status" = "402"
+
+      - name: Register canonical x402 payment preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl -sS             -o /tmp/register.json             -w '%{http_code}'             -X POST 'https://402index.io/api/v1/register'             -H 'content-type: application/json'             --data-binary @- <<'JSON'
           {
-            "url": "https://agentresolver.vercel.app/api/mcp-probe",
-            "name": "AgentResolver MCP Probe",
-            "description": "Probe a public MCP endpoint for compatibility, latency, server metadata, and tool inventory before connecting.",
+            "url": "https://agentresolver.vercel.app/api/x402-payment-preflight",
+            "name": "AgentResolver x402 Payment Preflight / PayTo Verification",
+            "description": "Verify an unfamiliar x402 endpoint before paying: challenge reachability, quoted USDC price, payTo recipient, Base or Solana network, asset, resource binding, TLS, and optional buyer limits.",
             "protocol": "x402",
             "http_method": "POST",
-            "probe_body": "{\"endpoint\":\"https://agentresolver.vercel.app/mcp\"}",
-            "price_usd": 0.01,
+            "probe_body": "{\"url\":\"https://agentresolver.vercel.app/api/x402-ping\",\"method\":\"GET\",\"maxPriceUsd\":0.01,\"expectedNetwork\":\"eip155:8453\"}",
+            "price_usd": 0.001,
             "payment_asset": "USDC",
-            "payment_network": "Base",
-            "category": "agent-tools/mcp",
+            "payment_network": "Base / Solana",
+            "category": "security/verification",
             "provider": "AgentResolver"
           }
           JSON
           )"
-          cat /tmp/mcp-register.json
+          cat /tmp/register.json
+          echo
           if [ "$status" != "200" ] && [ "$status" != "201" ]; then
-            echo "402 Index MCP Probe registration failed with HTTP $status"
+            echo "402 Index canonical preflight registration failed with HTTP $status"
             exit 1
           fi
 
-      - name: Register Agent Readiness Audit with 402 Index
+      - name: Confirm buyer-search retrieval
         shell: bash
         run: |
           set -euo pipefail
-          status="$(curl -sS \
-            -o /tmp/readiness-register.json \
-            -w '%{http_code}' \
-            -X POST 'https://402index.io/api/v1/register' \
-            -H 'content-type: application/json' \
-            --data-binary @- <<'JSON'
-          {
-            "url": "https://agentresolver.vercel.app/api/agent-readiness",
-            "name": "AgentResolver Agent Readiness Audit",
-            "description": "Audit a public website for agent discoverability and machine-readable integration signals.",
-            "protocol": "x402",
-            "http_method": "POST",
-            "probe_body": "{\"target\":\"https://agentresolver.vercel.app\"}",
-            "price_usd": 0.05,
-            "payment_asset": "USDC",
-            "payment_network": "Base",
-            "category": "agent-tools/discovery",
-            "provider": "AgentResolver"
-          }
-          JSON
-          )"
-          cat /tmp/readiness-register.json
-          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
-            echo "402 Index Agent Readiness registration failed with HTTP $status"
-            exit 1
+          curl -fsS 'https://402index.io/api/v1/services?q=x402%20payment%20preflight&protocol=x402&limit=20' -o /tmp/search.json
+          jq '{
+            total: (.total // .meta.total // null),
+            agentresolver: [
+              (.services // .data // [])[]? |
+              select((.url // "") | contains("agentresolver.vercel.app/api/x402-payment-preflight")) |
+              {id,name,url,price_usd,payment_asset,payment_network,category,health_status,source}
+            ]
+          }' /tmp/search.json
+          if ! grep -Fq 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/search.json; then
+            echo "::warning::402 Index accepted registration but buyer-search retrieval has not refreshed yet."
           fi
-
-      - name: Registration complete
-        run: echo 'Submitted both AgentResolver x402 capabilities to 402 Index without paid placement.'
