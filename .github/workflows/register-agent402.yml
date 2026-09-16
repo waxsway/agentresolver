@@ -2,22 +2,22 @@ name: Register Agent402 Index
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
   push:
     branches: [main]
     paths:
       - '.github/workflows/register-agent402.yml'
-      - 'src/lib/paidCapabilities.ts'
-      - 'public/openapi.json'
-      - 'public/.well-known/x402'
-      - 'public/.well-known/x402-catalog.json'
-      - 'public/.well-known/agent.json'
-      - 'public/.well-known/x402-service.json'
-
 permissions:
   contents: read
 
 jobs:
   register:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
