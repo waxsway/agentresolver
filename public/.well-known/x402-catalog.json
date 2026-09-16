@@ -7,16 +7,75 @@
   "positioning": "Free capability discovery; tiny pay-per-call live evidence when an agent needs confidence before depending on an external service.",
   "resources": [
     {
+      "id": "http-inspect",
+      "name": "API Trust Preflight",
+      "description": "Preflight one public HTTPS or x402 API before an agent depends on or pays it. Returns a live 0-100 trust score, grade and weighted evidence across TLS authorization/protocol/expiry, reachability, latency, redirects and baseline security headers.",
+      "method": "POST",
+      "url": "https://agentresolver.vercel.app/api/http-inspect",
+      "contentType": "application/json",
+      "input": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "example": {
+        "url": "https://example.com"
+      },
+      "price": {
+        "amountUsd": 0.001,
+        "asset": "USDC",
+        "network": "eip155:8453",
+        "scheme": "exact"
+      },
+      "payment": {
+        "challengeStatus": 402,
+        "challengeHeader": "PAYMENT-REQUIRED",
+        "authorizationHeader": "PAYMENT-SIGNATURE",
+        "settlementHeader": "PAYMENT-RESPONSE"
+      },
+      "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
+    },
+    {
       "id": "mcp-probe",
       "name": "MCP Live Preflight",
       "description": "Given one public MCP HTTP endpoint, return current reachability, MCP protocol compatibility, latency, server metadata, and tool inventory. Designed as the cheapest pre-dependency check before an agent connects to an unfamiliar MCP server.",
       "method": "POST",
       "url": "https://agentresolver.vercel.app/api/mcp-probe",
       "contentType": "application/json",
-      "input": {"type": "object", "required": ["endpoint"], "properties": {"endpoint": {"type": "string", "format": "uri"}}},
-      "example": {"endpoint": "https://example.com/mcp"},
-      "price": {"amountUsd": 0.001, "asset": "USDC", "network": "eip155:8453", "scheme": "exact"},
-      "payment": {"challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "settlementHeader": "PAYMENT-RESPONSE"},
+      "input": {
+        "type": "object",
+        "required": [
+          "endpoint"
+        ],
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "example": {
+        "endpoint": "https://example.com/mcp"
+      },
+      "price": {
+        "amountUsd": 0.001,
+        "asset": "USDC",
+        "network": "eip155:8453",
+        "scheme": "exact"
+      },
+      "payment": {
+        "challengeStatus": 402,
+        "challengeHeader": "PAYMENT-REQUIRED",
+        "authorizationHeader": "PAYMENT-SIGNATURE",
+        "settlementHeader": "PAYMENT-RESPONSE"
+      },
       "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
     },
     {
@@ -26,10 +85,33 @@
       "method": "POST",
       "url": "https://agentresolver.vercel.app/api/agent-readiness",
       "contentType": "application/json",
-      "input": {"type": "object", "required": ["target"], "properties": {"target": {"type": "string", "format": "uri"}}},
-      "example": {"target": "https://example.com"},
-      "price": {"amountUsd": 0.005, "asset": "USDC", "network": "eip155:8453", "scheme": "exact"},
-      "payment": {"challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "settlementHeader": "PAYMENT-RESPONSE"},
+      "input": {
+        "type": "object",
+        "required": [
+          "target"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "example": {
+        "target": "https://example.com"
+      },
+      "price": {
+        "amountUsd": 0.005,
+        "asset": "USDC",
+        "network": "eip155:8453",
+        "scheme": "exact"
+      },
+      "payment": {
+        "challengeStatus": 402,
+        "challengeHeader": "PAYMENT-REQUIRED",
+        "authorizationHeader": "PAYMENT-SIGNATURE",
+        "settlementHeader": "PAYMENT-RESPONSE"
+      },
       "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
     },
     {
@@ -39,10 +121,36 @@
       "method": "POST",
       "url": "https://agentresolver.vercel.app/api/verified-resolve",
       "contentType": "application/json",
-      "input": {"type": "object", "required": ["goal"], "properties": {"goal": {"type": "string"}, "url": {"type": "string", "format": "uri"}}},
-      "example": {"goal": "Find and verify an MCP server for web search"},
-      "price": {"amountUsd": 0.02, "asset": "USDC", "network": "eip155:8453", "scheme": "exact"},
-      "payment": {"challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "settlementHeader": "PAYMENT-RESPONSE"},
+      "input": {
+        "type": "object",
+        "required": [
+          "goal"
+        ],
+        "properties": {
+          "goal": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "example": {
+        "goal": "Find and verify an MCP server for web search"
+      },
+      "price": {
+        "amountUsd": 0.02,
+        "asset": "USDC",
+        "network": "eip155:8453",
+        "scheme": "exact"
+      },
+      "payment": {
+        "challengeStatus": 402,
+        "challengeHeader": "PAYMENT-REQUIRED",
+        "authorizationHeader": "PAYMENT-SIGNATURE",
+        "settlementHeader": "PAYMENT-RESPONSE"
+      },
       "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
     },
     {
@@ -52,10 +160,56 @@
       "method": "POST",
       "url": "https://agentresolver.vercel.app/api/batch-verified-resolve",
       "contentType": "application/json",
-      "input": {"type": "object", "required": ["items"], "properties": {"items": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "object", "required": ["goal"], "properties": {"goal": {"type": "string"}, "url": {"type": "string", "format": "uri"}}}}}},
-      "example": {"items": [{"goal": "Find an MCP server for search"}, {"goal": "Find an MCP server for browser automation"}]},
-      "price": {"amountUsd": 0.05, "asset": "USDC", "network": "eip155:8453", "scheme": "exact"},
-      "payment": {"challengeStatus": 402, "challengeHeader": "PAYMENT-REQUIRED", "authorizationHeader": "PAYMENT-SIGNATURE", "settlementHeader": "PAYMENT-RESPONSE"},
+      "input": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "required": [
+                "goal"
+              ],
+              "properties": {
+                "goal": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "items": [
+          {
+            "goal": "Find an MCP server for search"
+          },
+          {
+            "goal": "Find an MCP server for browser automation"
+          }
+        ]
+      },
+      "price": {
+        "amountUsd": 0.05,
+        "asset": "USDC",
+        "network": "eip155:8453",
+        "scheme": "exact"
+      },
+      "payment": {
+        "challengeStatus": 402,
+        "challengeHeader": "PAYMENT-REQUIRED",
+        "authorizationHeader": "PAYMENT-SIGNATURE",
+        "settlementHeader": "PAYMENT-RESPONSE"
+      },
       "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
     }
   ],
