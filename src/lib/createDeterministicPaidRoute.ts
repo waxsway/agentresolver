@@ -268,6 +268,17 @@ export function createDeterministicPaidRoute(
             }
           };
 
+    const discoveryExtension = capabilityId === "x402-ping" && options.paidGet
+      ? declareDiscoveryExtension({
+          output: discoveryOutput
+        })
+      : declareDiscoveryExtension({
+          input: product.example,
+          inputSchema: product.inputSchema,
+          bodyType: "json",
+          output: discoveryOutput
+        });
+
     return withX402<unknown>(handler, {
       [product.endpoint]: {
         accepts: [
@@ -287,12 +298,7 @@ export function createDeterministicPaidRoute(
         description: wireMetadata.description,
         mimeType: "application/json",
         extensions: {
-          ...declareDiscoveryExtension({
-            input: product.example,
-            inputSchema: product.inputSchema,
-            bodyType: "json",
-            output: discoveryOutput
-          })
+          ...discoveryExtension
         }
       }
     }, server) as PaidHandler;

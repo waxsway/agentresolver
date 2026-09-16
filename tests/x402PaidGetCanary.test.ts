@@ -28,6 +28,12 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   ));
   const decodedHeader = JSON.parse(Buffer.from(getPaymentRequired!, "base64").toString("utf8"));
   assert.deepEqual(getBody, decodedHeader);
+
+  const bazaarInput = getBody.extensions?.bazaar?.info?.input;
+  assert.equal(bazaarInput?.type, "http");
+  assert.equal(bazaarInput?.method, "GET");
+  assert.equal(bazaarInput?.bodyType, undefined);
+  assert.equal(bazaarInput?.body, undefined);
   assert.equal(
     getResponse.headers.get("x-agentresolver-history"),
     "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
