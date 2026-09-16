@@ -1,0 +1,45 @@
+name: Register x402scan Public Origin Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-x402scan-public-origin-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Register AgentResolver through x402scan public mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://x402scan.com/api/trpc/public.resources.registerFromOrigin?batch=1'
+          payload='{"0":{"json":{"origin":"https://agentresolver.vercel.app"}}}'
+
+          code=$(curl -sS -o /tmp/x402scan.json -w '%{http_code}' \
+            -X POST "$endpoint" \
+            -H 'content-type: application/json' \
+            -H 'x-trpc-source: agentresolver-public-registration' \
+            --data "$payload")
+
+          cat /tmp/x402scan.json
+          echo
+
+          test "$code" -ge 200 && test "$code" -lt 300
+
+          if jq -e '
+            (.[0].result.data.json.success == true) or
+            (.[0].result.data.success == true)
+          ' /tmp/x402scan.json >/dev/null 2>&1; then
+            echo 'x402scan public origin registration succeeded.'
+            exit 0
+          fi
+
+          echo 'x402scan returned HTTP success but not a successful registration payload.' >&2
+          exit 1
