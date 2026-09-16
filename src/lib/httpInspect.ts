@@ -48,6 +48,18 @@ export type HttpInspectReport = {
     referrerPolicy: boolean;
     permissionsPolicy: boolean;
   };
+  trust: {
+    score: number;
+    grade: "A" | "B" | "C" | "D" | "F";
+    verdict: "strong" | "mixed" | "weak";
+    checks: Array<{
+      id: string;
+      label: string;
+      passed: boolean;
+      weight: number;
+      evidence: string;
+    }>;
+  };
 };
 
 function blockedIpv4(address: string) {
@@ -150,6 +162,14 @@ function headerValue(value: string | string[] | undefined): string | null {
   return typeof value === "string" ? value : null;
 }
 
+function gradeFor(score: number): "A" | "B" | "C" | "D" | "F" {
+  if (score >= 90) return "A";
+  if (score >= 80) return "B";
+  if (score >= 70) return "C";
+  if (score >= 60) return "D";
+  return "F";
+}
+
 export async function inspectHttpResource(input: string): Promise<HttpInspectReport> {
   const url = validateHttpInspectTarget(input);
   const resolved = await resolvePublicAddress(url.hostname);
@@ -197,11 +217,38 @@ export async function inspectHttpResource(input: string): Promise<HttpInspectRep
         : null;
       const location = headerValue(headers.location);
 
+      const tlsProtocol = typeof socket.getProtocol === "function" ? socket.getProtocol() : null;
+      const security = {
+        hsts: Boolean(headers["strict-transport-security"]),
+        csp: Boolean(headers["content-security-policy"]),
+        xContentTypeOptions: Boolean(headers["x-content-type-options"]),
+        xFrameOptions: Boolean(headers["x-frame-options"]),
+        referrerPolicy: Boolean(headers["referrer-policy"]),
+        permissionsPolicy: Boolean(headers["permissions-policy"])
+      };
+      const latencyMs = Date.now() - started;
+      const reachable = status >= 200 && status < 500;
+      const checks = [
+        { id: "tls_authorized", label: "TLS certificate authorized", passed: socket.authorized === true, weight: 30, evidence: socket.authorized === true ? "Certificate chain authorized." : "Certificate chain was not authorized." },
+        { id: "tls_protocol", label: "Modern TLS protocol", passed: tlsProtocol === "TLSv1.3" || tlsProtocol === "TLSv1.2", weight: 10, evidence: tlsProtocol || "TLS protocol unavailable." },
+        { id: "cert_lifetime", label: "Certificate not near expiry", passed: daysRemaining !== null && daysRemaining >= 14, weight: 10, evidence: daysRemaining === null ? "Certificate expiry unavailable." : `${daysRemaining} days remaining.` },
+        { id: "reachable", label: "Endpoint reachable without server error", passed: reachable, weight: 20, evidence: `HTTP ${status}.` },
+        { id: "redirect", label: "No immediate redirect", passed: !(status >= 300 && status < 400 && Boolean(location)), weight: 5, evidence: location ? `Redirects to ${location}.` : "No redirect observed." },
+        { id: "latency", label: "Responsive endpoint", passed: latencyMs <= 1500, weight: 10, evidence: `${latencyMs} ms HEAD latency.` },
+        { id: "hsts", label: "HSTS enabled", passed: security.hsts, weight: 5, evidence: security.hsts ? "Strict-Transport-Security present." : "Strict-Transport-Security missing." },
+        { id: "csp", label: "Content Security Policy present", passed: security.csp, weight: 3, evidence: security.csp ? "Content-Security-Policy present." : "Content-Security-Policy missing." },
+        { id: "x_content_type_options", label: "MIME sniffing protection", passed: security.xContentTypeOptions, weight: 2, evidence: security.xContentTypeOptions ? "X-Content-Type-Options present." : "X-Content-Type-Options missing." },
+        { id: "x_frame_options", label: "Framing protection", passed: security.xFrameOptions, weight: 2, evidence: security.xFrameOptions ? "X-Frame-Options present." : "X-Frame-Options missing." },
+        { id: "referrer_policy", label: "Referrer policy present", passed: security.referrerPolicy, weight: 2, evidence: security.referrerPolicy ? "Referrer-Policy present." : "Referrer-Policy missing." },
+        { id: "permissions_policy", label: "Permissions policy present", passed: security.permissionsPolicy, weight: 1, evidence: security.permissionsPolicy ? "Permissions-Policy present." : "Permissions-Policy missing." }
+      ];
+      const score = checks.reduce((sum, check) => sum + (check.passed ? check.weight : 0), 0);
+
       finish(() => resolve({
         url: url.toString(),
         status,
         ok: status >= 200 && status < 300,
-        latencyMs: Date.now() - started,
+        latencyMs,
         contentType: headerValue(headers["content-type"]),
         contentLength: headerValue(headers["content-length"]),
         cacheControl: headerValue(headers["cache-control"]),
@@ -223,7 +270,7 @@ export async function inspectHttpResource(input: string): Promise<HttpInspectRep
           family: resolved.family === 6 ? 6 : 4
         },
         tls: {
-          protocol: typeof socket.getProtocol === "function" ? socket.getProtocol() : null,
+          protocol: tlsProtocol,
           authorized: socket.authorized === true,
           validFrom: certificate && typeof certificate.valid_from === "string" ? certificate.valid_from : null,
           validTo,
@@ -231,13 +278,12 @@ export async function inspectHttpResource(input: string): Promise<HttpInspectRep
           subjectCn: certificate?.subject && typeof certificate.subject.CN === "string" ? certificate.subject.CN : null,
           issuerCn: certificate?.issuer && typeof certificate.issuer.CN === "string" ? certificate.issuer.CN : null
         },
-        security: {
-          hsts: Boolean(headers["strict-transport-security"]),
-          csp: Boolean(headers["content-security-policy"]),
-          xContentTypeOptions: Boolean(headers["x-content-type-options"]),
-          xFrameOptions: Boolean(headers["x-frame-options"]),
-          referrerPolicy: Boolean(headers["referrer-policy"]),
-          permissionsPolicy: Boolean(headers["permissions-policy"])
+        security,
+        trust: {
+          score,
+          grade: gradeFor(score),
+          verdict: score >= 80 ? "strong" : score >= 60 ? "mixed" : "weak",
+          checks
         }
       }));
     });
