@@ -386,6 +386,10 @@ for (const product of PAID_CAPABILITY_LIST) {
               description: "Machine-readable contract explaining how to verify AgentResolver execution evidence.",
               schema: { type: "string", pattern: "^https://" }
             },
+            "x-agentresolver-history": {
+              description: "Canonical independently verifiable settlement-history surface available before and after payment.",
+              schema: { type: "string", pattern: "^https://" }
+            },
             "payment-response": {
               description: "x402 settlement response supplied by the payment middleware after successful settlement.",
               schema: { type: "string" }
