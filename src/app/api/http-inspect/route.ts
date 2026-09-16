@@ -19,14 +19,28 @@ async function inspectHandler(req: NextRequest): Promise<NextResponse<unknown>> 
     maxPriceUsd?: unknown;
     expectedPayTo?: unknown;
     expectedNetwork?: unknown;
+    method?: unknown;
+    body?: unknown;
+    allowUnpaidPostProbe?: unknown;
   } | null;
   const raw = String(body?.url || "").trim();
   const maxPriceUsd = typeof body?.maxPriceUsd === "number" ? body.maxPriceUsd : undefined;
   const expectedPayTo = typeof body?.expectedPayTo === "string" ? body.expectedPayTo.trim() : undefined;
   const expectedNetwork = typeof body?.expectedNetwork === "string" ? body.expectedNetwork.trim() : undefined;
+  const methodRaw = typeof body?.method === "string" ? body.method.toUpperCase() : "GET";
+  const method = methodRaw === "GET" || methodRaw === "HEAD" || methodRaw === "POST" ? methodRaw : undefined;
+  const allowUnpaidPostProbe = body?.allowUnpaidPostProbe === true;
 
   try {
-    const report = await inspectHttpResource(raw, { maxPriceUsd, expectedPayTo, expectedNetwork });
+    if (!method) throw new Error("method must be GET, HEAD, or POST.");
+    const report = await inspectHttpResource(raw, {
+      maxPriceUsd,
+      expectedPayTo,
+      expectedNetwork,
+      method,
+      body: body?.body,
+      allowUnpaidPostProbe
+    });
     console.log(JSON.stringify({
       event: "paid_capability_completed",
       capabilityId: "http-inspect",
@@ -65,18 +79,21 @@ function getPaidHandler(): PaidHandler {
         network: X402_NETWORK,
         payTo: payTo as `0x${string}`
       },
-      description: "Preflight a public HTTPS or x402 payment endpoint before an agent depends on or pays it. Verifies TLS and endpoint hygiene, decodes PAYMENT-REQUIRED when present, checks x402 version/scheme/network/asset/payee/resource binding, computes quoted USDC price, and can enforce caller max-price/payee/network expectations.",
+      description: "Preflight a public HTTPS or x402 payment endpoint before an agent depends on or pays it. Probes the caller-selected GET/HEAD method, or an explicitly authorized unpaid POST with optional JSON body, then verifies TLS and endpoint hygiene, decodes PAYMENT-REQUIRED, checks x402 version/scheme/network/asset/payee/resource binding, computes quoted USDC price, and enforces optional caller policy limits.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          input: { url: "https://example.com/api", maxPriceUsd: 0.01, expectedNetwork: "eip155:8453" },
+          input: { url: "https://example.com/api", method: "GET", maxPriceUsd: 0.01, expectedNetwork: "eip155:8453" },
           inputSchema: {
             type: "object",
             properties: {
               url: { type: "string", pattern: "^https://", maxLength: 500 },
               maxPriceUsd: { type: "number", minimum: 0, maximum: 1000 },
               expectedPayTo: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" },
-              expectedNetwork: { type: "string", maxLength: 128 }
+              expectedNetwork: { type: "string", maxLength: 128 },
+              method: { type: "string", enum: ["GET", "HEAD", "POST"] },
+              body: {},
+              allowUnpaidPostProbe: { type: "boolean" }
             },
             required: ["url"],
             additionalProperties: false

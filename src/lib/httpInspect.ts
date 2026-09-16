@@ -11,6 +11,9 @@ export type HttpInspectOptions = {
   maxPriceUsd?: number;
   expectedPayTo?: string;
   expectedNetwork?: string;
+  method?: "GET" | "HEAD" | "POST";
+  body?: unknown;
+  allowUnpaidPostProbe?: boolean;
 };
 
 export type HttpInspectReport = {
@@ -348,6 +351,16 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
   const url = validateHttpInspectTarget(input);
   const resolved = await resolvePublicAddress(url.hostname);
   const originalHost = url.hostname.replace(/^\[/, "").replace(/\]$/, "");
+  const method = options.method ?? "GET";
+  if (!["GET", "HEAD", "POST"].includes(method)) throw new Error("Method must be GET, HEAD, or POST.");
+  if (method === "POST" && options.allowUnpaidPostProbe !== true) {
+    throw new Error("POST probing can have side effects on an endpoint that is not actually paywalled. Set allowUnpaidPostProbe=true to explicitly authorize one unpaid POST probe.");
+  }
+  let requestBody: string | null = null;
+  if (method === "POST") {
+    requestBody = JSON.stringify(options.body ?? {});
+    if (Buffer.byteLength(requestBody, "utf8") > 65_536) throw new Error("Probe body must be 64 KB or smaller.");
+  }
   const started = Date.now();
 
   return await new Promise<HttpInspectReport>((resolve, reject) => {
@@ -363,13 +376,17 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
       family: resolved.family,
       port: 443,
       path: `${url.pathname || "/"}${url.search}`,
-      method: "HEAD",
+      method,
       servername: isIP(originalHost) ? undefined : originalHost,
       rejectUnauthorized: true,
       headers: {
         Host: url.host,
         Accept: "*/*",
-        "User-Agent": "AgentResolver-HTTP-Inspect/0.2",
+        ...(requestBody ? {
+          "Content-Type": "application/json",
+          "Content-Length": String(Buffer.byteLength(requestBody, "utf8"))
+        } : {}),
+        "User-Agent": "AgentResolver-x402-Trust/0.3",
         Connection: "close"
       },
       timeout: TIMEOUT_MS
@@ -472,6 +489,7 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
 
     req.on("timeout", () => req.destroy(new Error("Inspection timed out.")));
     req.on("error", (error) => finish(() => reject(error instanceof Error ? error : new Error("Inspection failed."))));
+    if (requestBody) req.write(requestBody);
     req.end();
   });
 }

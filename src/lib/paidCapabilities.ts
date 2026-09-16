@@ -287,7 +287,7 @@ export const PAID_CAPABILITIES = {
     price: "$0.001",
     priceUsd: 0.001,
     atomicAmount: "1000",
-    description: "Verify a public HTTPS/x402 payment endpoint before an agent spends. Returns a 0-100 trust score plus TLS/reachability evidence and, when a PAYMENT-REQUIRED challenge is present, decodes x402 version, payment options, scheme, network, asset, payee, resource binding and quoted USDC price. Optional max-price, expected-payee and expected-network constraints turn it into a caller policy gate.",
+    description: "Verify a public HTTPS/x402 payment endpoint before an agent spends. Probe GET/HEAD directly or explicitly authorize one unpaid POST with a JSON body, then decode the live PAYMENT-REQUIRED challenge and verify x402 version, payment options, scheme, network, asset, payee, resource binding and quoted USDC price alongside TLS/reachability evidence. Optional max-price, expected-payee and expected-network constraints turn it into a caller policy gate.",
     useWhen: "An agent is about to pay or depend on an unfamiliar x402/API endpoint and wants to verify the live payment contract, destination, price and resource binding before authorizing spend.",
     costClass: "bounded-network",
     tags: ["x402", "trust", "security", "payment preflight", "api", "payee", "price", "resource binding", "tls", "agent payment"],
@@ -299,14 +299,17 @@ export const PAID_CAPABILITIES = {
         url: { type: "string", format: "uri", maxLength: 500 },
         maxPriceUsd: { type: "number", minimum: 0, maximum: 1000 },
         expectedPayTo: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" },
-        expectedNetwork: { type: "string", maxLength: 128 }
+        expectedNetwork: { type: "string", maxLength: 128 },
+        method: { type: "string", enum: ["GET", "HEAD", "POST"] },
+        body: {},
+        allowUnpaidPostProbe: { type: "boolean" }
       }
     },
-    example: { url: "https://example.com/api", maxPriceUsd: 0.01, expectedNetwork: "eip155:8453" },
+    example: { url: "https://example.com/api", method: "GET", maxPriceUsd: 0.01, expectedNetwork: "eip155:8453" },
     quoteTool: {
       name: "http_inspect",
       title: "x402 API trust preflight — $0.001",
-      description: "Paid $0.001 USDC/Base live x402/API payment-contract preflight. Verify quoted price, payee, network, resource binding and challenge structure plus TLS/reachability before authorizing spend. Optional caller expectations act as a policy gate. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.001 USDC/Base live x402/API payment-contract preflight. Probe the target method, verify quoted price, payee, network, resource binding and challenge structure plus TLS/reachability before authorizing spend. POST probes require explicit caller opt-in because an unprotected endpoint could have side effects."
     }
   },
   "tool-contract": {
