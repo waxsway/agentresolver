@@ -1,6 +1,26 @@
 export const CANONICAL_ORIGIN = "https://agentresolver.vercel.app" as const;
 
 export const PAID_CAPABILITIES = {
+  "resolve": {
+    id: "resolve",
+    name: "Capability Resolve",
+    operationId: "resolveCapability",
+    endpoint: "/api/resolve",
+    price: "$0.001",
+    priceUsd: 0.001,
+    atomicAmount: "1000",
+    description: "Resolve one natural-language capability need into ranked AgentResolver-owned, MCP, and marketplace candidates, with the next paid action prefilled when useful.",
+    useWhen: "An agent is missing a tool, API, MCP server, or machine service and needs a ranked machine-readable capability decision before choosing what to call next.",
+    costClass: "discovery-network",
+    tags: ["capability", "discovery", "resolver", "mcp", "marketplace", "agent", "x402"],
+    inputSchema: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 1000 }, url: { type: "string", format: "uri", maxLength: 2048 }, limit: { type: "integer", minimum: 1, maximum: 10 } } },
+    example: { goal: "find an MCP server for web search", limit: 3 },
+    quoteTool: {
+      name: "resolve",
+      title: "Capability resolve — $0.001",
+      description: "Paid $0.001 USDC/Base capability resolution. Returns ranked AgentResolver, MCP, and marketplace candidates plus a prefilled next action. x402-aware MCP clients can authorize and settle inside this tool call."
+    }
+  },
   "http-inspect": {
     id: "http-inspect",
     name: "HTTP Inspect",
