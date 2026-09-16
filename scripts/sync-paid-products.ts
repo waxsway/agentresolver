@@ -219,7 +219,11 @@ writeJson("public/.well-known/x402", {
     description: product.description,
     price: product.price,
     inputSchema: product.inputSchema,
-    ...(OUTPUT_SCHEMAS[product.id] ? { outputSchema: OUTPUT_SCHEMAS[product.id] } : {}),
+    outputSchema: OUTPUT_SCHEMAS[product.id] ?? {
+      type: "object",
+      description: `Structured JSON result from ${product.name}.`,
+      additionalProperties: true
+    },
     examples: [product.example],
     accepts: [{
       scheme: "exact",
@@ -329,15 +333,15 @@ for (const product of PAID_CAPABILITY_LIST) {
       responses: {
         "200": {
           description: `${product.name} completed after verified payment.`,
-          ...(OUTPUT_SCHEMAS[product.id]
-            ? {
-                content: {
-                  "application/json": {
-                    schema: OUTPUT_SCHEMAS[product.id]
-                  }
-                }
+          content: {
+            "application/json": {
+              schema: OUTPUT_SCHEMAS[product.id] ?? {
+                type: "object",
+                description: `Structured JSON result from ${product.name}.`,
+                additionalProperties: true
               }
-            : {})
+            }
+          }
         },
         "400": { description: "Invalid capability input." },
         "402": { description: "x402 payment required." },
