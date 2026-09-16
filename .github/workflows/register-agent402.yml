@@ -32,7 +32,7 @@ jobs:
           code=$(curl -sS -o /tmp/register.json -w '%{http_code}' \
             -X POST 'https://agent402.tools/api/index/register' \
             -H 'content-type: application/json' \
-            --data '{"url":"https://agentresolver.vercel.app"}')
+            --data '{"origin":"https://agentresolver.vercel.app"}')
           cat /tmp/register.json
           case "$code" in
             200|201|202|204|409) ;;
