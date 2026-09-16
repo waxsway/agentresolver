@@ -132,10 +132,19 @@ function increment(map, key) {
 export function mergeSettlementHistory(current, incomingEvents, updatedAt = new Date().toISOString()) {
   const existing = Array.isArray(current?.settlements) ? current.settlements : [];
   const byId = new Map();
+  const existingIds = new Set();
 
   for (const entry of existing) {
-    if (entry && typeof entry.eventId === "string") byId.set(entry.eventId, entry);
+    if (entry && typeof entry.eventId === "string") {
+      byId.set(entry.eventId, entry);
+      existingIds.add(entry.eventId);
+    }
   }
+
+  const hasNewEvidence = incomingEvents.some(
+    (entry) => entry && typeof entry.eventId === "string" && !existingIds.has(entry.eventId)
+  );
+
   for (const entry of incomingEvents) {
     if (entry && typeof entry.eventId === "string") byId.set(entry.eventId, entry);
   }
@@ -172,7 +181,7 @@ export function mergeSettlementHistory(current, incomingEvents, updatedAt = new 
     sourceEvent: EVENT_NAME,
     interpretation:
       "First-party settlement telemetry versioned in public Git. This is evidence of x402 settlement responses observed by AgentResolver, not an independent reputation score or on-chain registry.",
-    lastUpdatedAt: settlements.length > 0 ? updatedAt : current?.lastUpdatedAt ?? null,
+    lastUpdatedAt: hasNewEvidence ? updatedAt : current?.lastUpdatedAt ?? null,
     settlementCount: settlements.length,
     successfulDeliveryCount,
     settledButNon2xxCount,
