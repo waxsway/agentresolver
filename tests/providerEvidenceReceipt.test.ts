@@ -107,4 +107,11 @@ test("evidence receipt does not overclaim legal ownership or legitimacy", () => 
   assert.equal(receipt.observedPaymentIdentity.providerLegitimacyVerified, false);
   assert.ok(receipt.limitations.some((line) => /legal ownership/i.test(line)));
   assert.ok(receipt.limitations.some((line) => /provider legitimacy/i.test(line)));
+  assert.equal(receipt.interoperability.erc8004.status, "candidate_evidence_only");
+  assert.equal(receipt.interoperability.erc8004.submittedOnchain, false);
+  assert.equal(receipt.interoperability.erc8004.identityBinding, null);
+  assert.deepEqual(
+    receipt.interoperability.erc8004.feedbackCandidates.map((item) => item.tag1),
+    ["reachable", "responseTime", "x402ProtocolValid"]
+  );
 });
