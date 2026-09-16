@@ -8,6 +8,7 @@ import {
   sha256Utf8
 } from "../src/lib/executionEvidence";
 import { GET as getEvidenceContract } from "../src/app/.well-known/agentresolver-evidence.json/route";
+import { GET as getReputationRoute } from "../src/app/.well-known/agentresolver-reputation.json/route";
 
 test("execution evidence hashes exact UTF-8 response bytes deterministically", () => {
   const body = JSON.stringify({ pong: true, value: 42 });
@@ -30,7 +31,7 @@ test("execution evidence hashes exact UTF-8 response bytes deterministically", (
   assert.equal(headers["x-agentresolver-evidence"], EXECUTION_EVIDENCE_URL);
 });
 
-test("public evidence contract is explicit about what it proves and does not prove", async () => {
+test("public evidence contract separates execution proof from provider legitimacy", async () => {
   const previousSha = process.env.VERCEL_GIT_COMMIT_SHA;
   process.env.VERCEL_GIT_COMMIT_SHA = "0123456789abcdef0123456789abcdef01234567";
   try {
@@ -44,15 +45,29 @@ test("public evidence contract is explicit about what it proves and does not pro
     assert.equal(body.claims.futureFulfillmentGuaranteed, false);
     assert.equal(body.historicalReputation.aggregatePublished, true);
     assert.equal(body.historicalReputation.syntheticTrustScorePublished, false);
-    assert.match(body.historicalReputation.interpretation, /first-party/i);
-    assert.match(body.historicalReputation.scope, /402 challenges.*excluded/i);
-    assert.match(body.historicalReputation.settlementHistoryUrl, /evidence-history\/evidence\/settlements\.json/);
+    assert.equal(body.historicalReputation.independentlyVerifiableOnchain, true);
+    assert.match(body.historicalReputation.interpretation, /independent public-chain USDC transfer check/i);
+    assert.match(body.historicalReputation.scope, /unverified payment attempts are excluded/i);
+    assert.equal(
+      body.historicalReputation.aggregateUrl,
+      "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
+    );
+    assert.match(body.historicalReputation.durableSourceUrl, /evidence-history\/evidence\/settlements\.json/);
     assert.equal(body.responseEvidence.headers.responseSha256, "x-agentresolver-response-sha256");
     assert.equal(body.settlementEvidence.settlementHeader, "payment-response");
   } finally {
     if (previousSha === undefined) delete process.env.VERCEL_GIT_COMMIT_SHA;
     else process.env.VERCEL_GIT_COMMIT_SHA = previousSha;
   }
+});
+
+test("canonical reputation surface redirects to durable public evidence", () => {
+  const response = getReputationRoute();
+  assert.equal(response.status, 307);
+  assert.equal(
+    response.headers.get("location"),
+    "https://raw.githubusercontent.com/waxsway/agentresolver/evidence-history/evidence/settlements.json"
+  );
 });
 
 test("generated OpenAPI advertises execution evidence headers", () => {

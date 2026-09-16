@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   callerHash,
   classifyIntent,
+  logX402Settlement,
   referrerHost,
   safeUserAgent,
   shortHash,
@@ -36,7 +37,7 @@ test("request telemetry uses hashed caller identity and bounded metadata", () =>
   assert.equal(referrerHost(req), "example.com");
 });
 
-test("x402 settlement parsing requires an explicit success receipt and preserves transaction evidence", () => {
+test("x402 settlement parsing requires explicit success receipt data", () => {
   const payload = {
     success: true,
     transaction: "0xabc123",
@@ -55,4 +56,44 @@ test("x402 settlement parsing requires an explicit success receipt and preserves
   });
   assert.equal(parseX402SettlementHeader(null), null);
   assert.equal(parseX402SettlementHeader("not-base64-json"), null);
+});
+
+test("successful settlement telemetry exposes public transaction reference but never raw payer", () => {
+  const transaction = `0x${"ab".repeat(32)}`;
+  const payer = "0x1111111111111111111111111111111111111111";
+  const encoded = Buffer.from(JSON.stringify({
+    success: true,
+    transaction,
+    network: "eip155:8453",
+    payer,
+    amount: "1000"
+  }), "utf8").toString("base64");
+
+  const response = new Response("{}", {
+    status: 200,
+    headers: {
+      "payment-response": encoded,
+      "x-agentresolver-execution-id": "11111111-1111-4111-8111-111111111111",
+      "x-agentresolver-response-sha256": "c".repeat(64),
+      "x-agentresolver-deployment": "d".repeat(40)
+    }
+  });
+
+  const original = console.log;
+  let output = "";
+  console.log = (...args: unknown[]) => {
+    output += args.map(String).join(" ");
+  };
+  try {
+    logX402Settlement(response, "x402-ping", "request-1");
+  } finally {
+    console.log = original;
+  }
+
+  const event = JSON.parse(output);
+  assert.equal(event.event, "paid_capability_settled");
+  assert.equal(event.transactionReference, transaction);
+  assert.equal(event.transactionFingerprint, shortHash(transaction));
+  assert.equal(event.payerHash, shortHash(payer));
+  assert.equal(output.includes(payer), false);
 });
