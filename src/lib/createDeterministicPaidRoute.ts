@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
-import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO } from "@/lib/x402Config";
+import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 
 type JsonObject = Record<string, unknown>;
@@ -42,20 +43,32 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
   function getPaidHandler(): PaidHandler {
     if (paidHandler) return paidHandler;
     const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
-    const facilitatorUrl = (process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
+    const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
+    const facilitatorUrl = (process.env.AGENTRESOLVER_X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
     if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) throw new Error("AGENTRESOLVER_PAY_TO is invalid.");
-    if (!/^https:\/\//i.test(facilitatorUrl)) throw new Error("X402_FACILITATOR_URL is invalid.");
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(solanaPayTo)) throw new Error("AGENTRESOLVER_SOLANA_PAY_TO is invalid.");
+    if (!/^https:\/\//i.test(facilitatorUrl)) throw new Error("AGENTRESOLVER_X402_FACILITATOR_URL is invalid.");
 
     const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
-    const server = new x402ResourceServer(client).register(X402_NETWORK, new ExactEvmScheme());
+    const server = new x402ResourceServer(client)
+      .register(X402_NETWORK, new ExactEvmScheme())
+      .register(X402_SOLANA_NETWORK, new ExactSvmScheme());
     paidHandler = withX402<unknown>(handler, {
       [product.endpoint]: {
-        accepts: {
-          scheme: "exact",
-          price: product.price,
-          network: X402_NETWORK,
-          payTo: payTo as `0x${string}`
-        },
+        accepts: [
+          {
+            scheme: "exact",
+            price: product.price,
+            network: X402_NETWORK,
+            payTo: payTo as `0x${string}`
+          },
+          {
+            scheme: "exact",
+            price: product.price,
+            network: X402_SOLANA_NETWORK,
+            payTo: solanaPayTo
+          }
+        ],
         description: product.description,
         mimeType: "application/json"
       }
