@@ -39,7 +39,7 @@ jobs:
           rm -f /tmp/env
           listing='3b152902-f512-4377-af53-594ef1f90534'
           curl -fsS --max-time 30 \
-            "$SUPABASE_URL/rest/v1/api_listings?id=eq.$listing&select=id,name,status,payment_verified,triage_status,triage_reason,health_status,uptime_percentage,base_url,price_min,price_max,updated_at,created_at" \
+            "$SUPABASE_URL/rest/v1/api_listings?id=eq.$listing&select=*" \
             -H "apikey: $SUPABASE_KEY" \
             -H "Authorization: Bearer $SUPABASE_KEY" \
             -H 'Accept: application/json' \
@@ -47,4 +47,18 @@ jobs:
 
           count="$(jq 'length' /tmp/listing.json)"
           test "$count" -eq 1
-          jq '.[0]' /tmp/listing.json
+          jq '.[0] | {
+            id,
+            name,
+            status,
+            payment_verified,
+            triage_status,
+            triage_reasons,
+            health_status,
+            uptime_percentage,
+            base_url,
+            price_min,
+            price_max,
+            updated_at,
+            created_at
+          }' /tmp/listing.json
