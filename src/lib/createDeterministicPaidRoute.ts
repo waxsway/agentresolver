@@ -23,6 +23,51 @@ type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
 
+function decodePaymentRequiredHeader(value: string | null): JsonObject | null {
+  if (!value) return null;
+  try {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const parsed = JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as JsonObject
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function mirrorPaymentChallengeBody(response: NextResponse<unknown>) {
+  if (response.status !== 402) return response;
+  const challenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
+  if (!challenge) return response;
+
+  let current: unknown = null;
+  try {
+    current = await response.clone().json();
+  } catch {
+    current = null;
+  }
+
+  const alreadyMirrored =
+    current &&
+    typeof current === "object" &&
+    !Array.isArray(current) &&
+    "x402Version" in current &&
+    "accepts" in current;
+
+  if (alreadyMirrored) return response;
+
+  const headers = new Headers(response.headers);
+  headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("cache-control", "no-store");
+  return new NextResponse(JSON.stringify(challenge), {
+    status: 402,
+    statusText: response.statusText,
+    headers
+  });
+}
+
 export function circleGatewayEnabled(env: Readonly<Record<string, string | undefined>> = process.env) {
   return env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
 }
@@ -258,8 +303,9 @@ export function createDeterministicPaidRoute(
     try {
       const paidHandler = await getPaidHandler();
       const response = stampInfrastructureHeaders(await paidHandler(req), capabilityId, requestId);
-      logX402Settlement(response, capabilityId, requestId);
-      return response;
+      const compatibleResponse = await mirrorPaymentChallengeBody(response);
+      logX402Settlement(compatibleResponse, capabilityId, requestId);
+      return compatibleResponse;
     } catch (error) {
       console.error(JSON.stringify({
         event: "paid_capability_configuration_error",

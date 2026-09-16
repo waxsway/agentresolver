@@ -39,20 +39,24 @@ jobs:
           assert payload.get("extensions", {}).get("bazaar"), "Bazaar discovery extension missing"
           PY
 
-      - name: Submit paid canary to Aegis neutral probe registry
+      - name: Confirm Aegis paid registration remains operator-gated
         shell: bash
         run: |
           set -euo pipefail
           body="$(mktemp)"
           code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://aegis.borisinc.com/submit'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             --data-urlencode 'name=AgentResolver Settlement Ping'             --data-urlencode 'category=verification'             --data-urlencode 'price_usd=0.001')"
-          cat "$body"
-          echo
           case "$code" in
-            200|201|202|204|409) ;;
-            429)
-              echo "::warning::Aegis submission is rate-limited; existing registry state will continue probing."
+            402)
+              echo "::notice::Aegis registration is paid; no payment was attempted. Continuing with free lint/discovery only."
               ;;
-            *) echo "Aegis submission failed with HTTP $code" >&2; exit 1 ;;
+            200|201|202|204|409)
+              echo "::notice::Aegis accepted the registration without requiring operator spend."
+              cat "$body"
+              ;;
+            *)
+              echo "::warning::Aegis registration surface returned HTTP $code; no payment was attempted."
+              cat "$body" 2>/dev/null || true
+              ;;
           esac
 
       - name: Run Aegis free lint against paid canary
