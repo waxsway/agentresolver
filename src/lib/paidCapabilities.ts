@@ -290,7 +290,7 @@ export const PAID_CAPABILITIES = {
     description: "x402 preflight and USDC payment check before paying an unfamiliar endpoint. Verify endpoint safety, payTo recipient, quoted price, Base or Solana network, USDC asset, resource binding, x402 challenge structure, TLS and reachability before an autonomous agent authorizes spend. Optional max-price, expectedPayTo and expected-network constraints fail closed when payment terms change.",
     useWhen: "Verify an x402 endpoint before paying: perform payTo verification, endpoint safety checks and a USDC payment preflight before an autonomous agent signs or authorizes spend.",
     costClass: "bounded-network",
-    tags: ["x402 preflight", "payTo verification", "endpoint safety", "USDC payment check", "verify before paying", "payment preflight", "payee", "resource binding", "Base", "Solana", "agent payment safety"],
+    tags: ["x402 preflight", "payTo verification", "endpoint safety", "USDC payment check", "verify before paying", "payment preflight", "payee", "resource binding", "Base", "Solana", "agent payment safety", "http", "https", "status", "latency", "headers", "security", "tls"],
     inputSchema: {
       type: "object",
       required: ["url"],
