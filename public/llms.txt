@@ -8,6 +8,12 @@ The fastest integration is MCP: connect to https://agentresolver.vercel.app/mcp 
 
 The commercial product is not access to the directory. The paid product is fresh evidence at the moment an agent needs to decide whether to trust or depend on a candidate: live MCP preflight, site readiness evidence, or bounded live comparison of candidate services. Paid calls require no account or API key.
 
+## Provider-funded sponsorship pilot
+
+AgentResolver also operates a provider-funded discovery pilot. Organic ranking remains free and independent. Sponsored placements are explicitly labeled, must match relevant intent, and never authorize an agent to spend. Providers can inspect the pilot at https://agentresolver.vercel.app/api/sponsorship, read the manifest at https://agentresolver.vercel.app/.well-known/sponsorship.json, or apply through the no-commitment intake form at https://github.com/waxsway/agentresolver/issues/new?template=sponsorship.yml.
+
+Submitting an application is an inquiry only. Pricing, duration, placement, and reporting require separate operator approval and are not committed by this document.
+
 ## Start here
 
 - MCP: https://agentresolver.vercel.app/mcp
