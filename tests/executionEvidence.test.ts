@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import {
   buildExecutionEvidence,
   EXECUTION_EVIDENCE_URL,
@@ -51,7 +52,7 @@ test("public evidence contract is explicit about what it proves and does not pro
 });
 
 test("generated OpenAPI advertises execution evidence headers", () => {
-  const openapi = JSON.parse(require("node:fs").readFileSync("public/openapi.json", "utf8"));
+  const openapi = JSON.parse(readFileSync("public/openapi.json", "utf8"));
   const response = openapi.paths["/api/x402-payment-preflight"].post.responses["200"];
 
   assert.ok(response.headers["x-agentresolver-execution-id"]);
