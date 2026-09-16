@@ -1,0 +1,137 @@
+name: Distribute EVM Precision Pack Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/distribute-evm-precision-pack-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for EVM precision pack on canonical production
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://agentresolver.vercel.app'
+          for attempt in $(seq 1 36); do
+            if curl -fsS "$base/.well-known/x402" > /tmp/x402.json; then
+              if jq -e '
+                [.resources[]?.resource] |
+                any(. == "POST /api/evm-address-checksum") and
+                any(. == "POST /api/keccak256") and
+                any(. == "POST /api/solidity-selector") and
+                any(. == "POST /api/evm-units")
+              ' /tmp/x402.json >/dev/null; then
+                code=$(curl -sS -o /tmp/selector.json -w '%{http_code}' "$base/api/solidity-selector" || true)
+                if [ "$code" = "402" ] && jq -e '.accepts[0].amount == "10000"' /tmp/selector.json >/dev/null; then
+                  echo 'EVM precision pack is live.'
+                  exit 0
+                fi
+              fi
+            fi
+            sleep 10
+          done
+          echo 'EVM precision pack did not reach canonical production.' >&2
+          exit 1
+
+      - name: Refresh Agent402 origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/agent402.json -w '%{http_code}' \
+            -X POST 'https://agent402.tools/api/index/register' \
+            -H 'content-type: application/json' \
+            -d '{"origin":"https://agentresolver.vercel.app"}')
+          cat /tmp/agent402.json
+          echo
+          case "$code" in 200|201|202|204|409) ;; *) exit 1 ;; esac
+
+      - name: Submit EVM precision tools to Market402
+        shell: bash
+        run: |
+          set -euo pipefail
+          submit() {
+            local path="$1" price="$2"
+            local url="https://agentresolver.vercel.app/api/$path"
+            code=$(curl -sS -o /tmp/market402.json -w '%{http_code}' \
+              -X POST 'https://market402.com/submit' \
+              -H 'content-type: application/json' \
+              -d "$(jq -n --arg resource "$url" --argjson price "$price" '{resource:$resource,declared_price_usd:$price}')")
+            cat /tmp/market402.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          }
+          submit evm-address-checksum 0.003
+          submit keccak256 0.004
+          submit solidity-selector 0.01
+          submit evm-units 0.005
+
+      - name: Register EVM precision tools with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          register() {
+            local path="$1" name="$2" description="$3" price="$4" probe="$5"
+            payload=$(jq -n \
+              --arg url "https://agentresolver.vercel.app/api/$path" \
+              --arg name "$name" --arg description "$description" --arg probe "$probe" --argjson price "$price" \
+              '{url:$url,name:$name,description:$description,protocol:"x402",http_method:"POST",probe_body:$probe,price_usd:$price,payment_asset:"USDC",payment_network:"Base",category:"developer-tools/evm",provider:"AgentResolver"}')
+            code=$(curl -sS -o /tmp/402index.json -w '%{http_code}' \
+              -X POST 'https://402index.io/api/v1/register' \
+              -H 'content-type: application/json' \
+              -d "$payload")
+            cat /tmp/402index.json
+            echo
+            case "$code" in 200|201) ;; *) exit 1 ;; esac
+          }
+          register evm-address-checksum 'AgentResolver EVM Address Checksum' 'Exact EIP-55 address validation and normalization.' 0.003 '{"address":"0x52908400098527886e0f7030069857d2e4169ee7"}'
+          register keccak256 'AgentResolver Keccak-256' 'Exact Ethereum keccak256 for UTF-8 text or hex bytes.' 0.004 '{"input":"transfer(address,uint256)","encoding":"utf8"}'
+          register solidity-selector 'AgentResolver Solidity Selector' 'Exact Solidity function/error 4-byte selector and full signature hash.' 0.01 '{"signature":"transfer(address,uint256)"}'
+          register evm-units 'AgentResolver EVM Units' 'Exact decimal to base-unit and base-unit to decimal conversion.' 0.005 '{"mode":"parse","value":"1.5","decimals":18}'
+
+      - name: Register EVM precision tools with x402dash
+        shell: bash
+        run: |
+          set -euo pipefail
+          register() {
+            local path="$1" name="$2" description="$3" tags="$4"
+            payload=$(jq -n --arg url "https://agentresolver.vercel.app/api/$path" --arg name "$name" --arg description "$description" --arg tags "$tags" \
+              '{url:$url,name:$name,description:$description,category:"Agents/Developer Tools",tags:($tags|split(","))}')
+            code=$(curl -sS -o /tmp/x402dash.json -w '%{http_code}' \
+              -X POST 'https://api.x402dash.com/v1/register' \
+              -H 'content-type: application/json' \
+              -d "$payload")
+            cat /tmp/x402dash.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          }
+          register evm-address-checksum 'AgentResolver EVM Address Checksum' 'Exact EIP-55 EVM address validation and checksum.' 'evm,ethereum,eip55,address,checksum'
+          register keccak256 'AgentResolver Keccak-256' 'Exact Ethereum keccak256 digest.' 'evm,ethereum,keccak,hash'
+          register solidity-selector 'AgentResolver Solidity Selector' 'Exact Solidity 4-byte selector and signature hash.' 'evm,solidity,selector,abi'
+          register evm-units 'AgentResolver EVM Units' 'Exact token decimal/base-unit conversion.' 'evm,wei,ether,erc20,units'
+
+      - name: Refresh x402scan public origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://x402scan.com/api/trpc/public.resources.registerFromOrigin?batch=1'
+          payload='{"0":{"json":{"origin":"https://agentresolver.vercel.app"}}}'
+          code=$(curl -L -sS -o /tmp/x402scan.json -w '%{http_code}' \
+            -X POST "$endpoint" \
+            -H 'content-type: application/json' \
+            -H 'x-trpc-source: agentresolver-evm-precision' \
+            --data "$payload")
+          cat /tmp/x402scan.json
+          echo
+          test "$code" -ge 200 && test "$code" -lt 300
+          jq -e '(.[0].result.data.json.success == true) or (.[0].result.data.success == true)' /tmp/x402scan.json >/dev/null
+
+      - name: Distribution complete
+        run: echo 'EVM precision pack distributed through free x402 discovery channels.'
