@@ -1,10 +1,10 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "AgentResolver — Find Missing Agent Tools",
-    "version": "0.1.4",
-    "description": "Free read-only fallback discovery for autonomous agents, plus low-cost x402 live verification. Resolution never authorizes spending; paid execution requires the calling agent to satisfy the advertised x402 payment challenge under its own spending policy.",
-    "x-guidance": "Use POST /api/resolve first for free capability discovery. Use paid routes only when exact live evidence or deterministic computation is worth the listed per-call price. Payment is always caller-authorized."
+    "title": "AgentResolver — X402 Settlement Canary & Payment Preflight",
+    "version": "0.1.6",
+    "description": "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary. Before authorizing a target x402 purchase, POST /api/x402-payment-preflight checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision and reusable evidence fingerprints. Free capability resolution remains available as a secondary surface.",
+    "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. Immediately before authorizing a separate x402 purchase, use POST /api/x402-payment-preflight as the canonical transaction-path gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
   },
   "servers": [
     {
