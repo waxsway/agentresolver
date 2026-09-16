@@ -21,6 +21,11 @@ export function circleGatewayEnabled(env: Readonly<Record<string, string | undef
   return env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
 }
 
+function isCaip2Network(value: string): value is `${string}:${string}` {
+  const separator = value.indexOf(":");
+  return separator > 0 && separator < value.length - 1;
+}
+
 function stampInfrastructureHeaders(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
@@ -115,9 +120,30 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
             mimeType: resource.mimeType ?? "application/json"
           } : undefined
         };
-        return circleClient.settle(normalizedPayload, paymentRequirements);
+        const result = await circleClient.settle(normalizedPayload, paymentRequirements);
+        if (!isCaip2Network(result.network)) {
+          throw new Error("Circle Gateway returned a non-CAIP-2 settlement network.");
+        }
+        return {
+          ...result,
+          network: result.network
+        };
       },
-      getSupported: () => circleClient.getSupported()
+      getSupported: async () => {
+        const supported = await circleClient.getSupported();
+        return {
+          ...supported,
+          kinds: supported.kinds.map((kind) => {
+            if (!isCaip2Network(kind.network)) {
+              throw new Error("Circle Gateway returned a non-CAIP-2 supported network.");
+            }
+            return {
+              ...kind,
+              network: kind.network
+            };
+          })
+        };
+      }
     } : null;
 
     const server = circleFacilitator
