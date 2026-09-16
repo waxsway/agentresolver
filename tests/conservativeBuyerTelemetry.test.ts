@@ -34,3 +34,10 @@ test("paid capability schemas avoid unsupported uri formats", () => {
   assert.ok(source.includes('endpoint: { type: "string", pattern: "^https://", maxLength: 500 }'));
   assert.ok(source.includes('specUrl: { type: "string", pattern: "^https://", maxLength: 500 }'));
 });
+
+
+test("legacy paid-route helper does not manufacture user intent", () => {
+  const source = readFileSync("src/lib/legacyPaidTraffic.ts", "utf8");
+  assert.doesNotMatch(source, /hasUserIntent:\s*true/);
+  assert.match(source, /classifyTraffic\(req, \{ path \}\)/);
+});
