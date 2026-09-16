@@ -78,7 +78,11 @@ function candidateFromLogRecord(record) {
   if (typeof event.executionId !== "string" || !/^[0-9a-f-]{36}$/i.test(event.executionId)) return null;
   if (typeof event.responseSha256 !== "string" || !/^[0-9a-f]{64}$/i.test(event.responseSha256)) return null;
   if (typeof event.deploymentCommitSha !== "string" || !/^[0-9a-f]{40}$/i.test(event.deploymentCommitSha)) return null;
-  if (typeof event.payerHash !== "string" || !/^[0-9a-f]{16}$/i.test(event.payerHash)) return null;
+  if (
+    event.payerHash !== null &&
+    event.payerHash !== undefined &&
+    (typeof event.payerHash !== "string" || !/^[0-9a-f]{16}$/i.test(event.payerHash))
+  ) return null;
   if (typeof event.amount !== "string" || !/^\d+$/.test(event.amount) || BigInt(event.amount) <= 0n) return null;
   const settledAtMs = Date.parse(event.at);
   if (!Number.isFinite(settledAtMs)) return null;
@@ -88,7 +92,7 @@ function candidateFromLogRecord(record) {
     network: event.network,
     amount: event.amount,
     transactionReference: event.transactionReference,
-    payerHash: event.payerHash.toLowerCase(),
+    payerHash: typeof event.payerHash === "string" ? event.payerHash.toLowerCase() : null,
     executionId: event.executionId.toLowerCase(),
     responseSha256: event.responseSha256.toLowerCase(),
     deploymentCommitSha: event.deploymentCommitSha.toLowerCase()
