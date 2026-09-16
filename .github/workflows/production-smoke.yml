@@ -128,6 +128,18 @@ jobs:
             ' "/tmp/${slug}-get.json" >/dev/null
           }
 
+          check_402 'x402 Settlement Ping' '/api/x402-ping' '{"echo":"smoke"}' 'x402-ping' '1000'
+          check_402 'SHA-256' '/api/sha256' '{"input":"agentresolver"}' 'sha256' '1000'
+          check_402 'SHA-512' '/api/sha512' '{"input":"agentresolver"}' 'sha512' '1000'
+          check_402 'HMAC SHA-256' '/api/hmac-sha256' '{"input":"payload","secret":"secret"}' 'hmac-sha256' '1000'
+          check_402 'Base64 Encode' '/api/base64-encode' '{"input":"hello"}' 'base64-encode' '1000'
+          check_402 'Base64 Decode' '/api/base64-decode' '{"input":"aGVsbG8="}' 'base64-decode' '1000'
+          check_402 'JWT Decode' '/api/jwt-decode' '{"input":"eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature"}' 'jwt-decode' '1000'
+          check_402 'JSON Normalize' '/api/json-normalize' '{"value":{"b":2,"a":1}}' 'json-normalize' '1000'
+          check_402 'JSON Schema Validate' '/api/json-schema-validate' '{"data":{"id":"123"},"schema":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}}}' 'json-schema-validate' '1000'
+          check_402 'URL Parse' '/api/url-parse' '{"url":"https://example.com/a?x=1"}' 'url-parse' '1000'
+          check_402 'UUID v4' '/api/uuid-v4' '{"count":1}' 'uuid-v4' '1000'
+          check_402 'Slugify' '/api/slugify' '{"text":"Hello Agent World"}' 'slugify' '1000'
           check_402 'Hash & Encode' '/api/hash-encode' '{"operation":"sha256","input":"agentresolver"}' 'hash-encode' '1000'
           check_402 'HTTP Inspect' '/api/http-inspect' '{"url":"https://example.com"}' 'http-inspect' '1000'
 
@@ -276,5 +288,10 @@ jobs:
           check_unpaid_mcp_tool 97 'agent_readiness' '5000' 'recommendations' '{"url":"https://example.com"}'
           check_unpaid_mcp_tool 98 'batch_verified_resolve' '50000' 'durationMs' '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}'
           check_unpaid_mcp_tool 99 'hash_encode' '1000' '206c438b0ceeb41e34a19e134396e4dc317e4cc71863065c2da451326a2f5d77' '{"operation":"sha256","input":"agentresolver"}'
+          check_unpaid_mcp_tool 100 'x402_ping' '1000' '"pong":true' '{"echo":"smoke"}'
+          check_unpaid_mcp_tool 101 'sha256' '1000' '206c438b0ceeb41e34a19e134396e4dc317e4cc71863065c2da451326a2f5d77' '{"input":"agentresolver"}'
+          check_unpaid_mcp_tool 102 'base64_encode' '1000' 'aGVsbG8=' '{"input":"hello"}'
+          check_unpaid_mcp_tool 103 'json_normalize' '1000' '"normalized"' '{"value":{"b":2,"a":1}}'
+          check_unpaid_mcp_tool 104 'json_schema_validate' '1000' '"valid":true' '{"data":{"id":"123"},"schema":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}}}'
 
           echo 'All directly payable MCP tools return local challenges without signing, spending, or paid execution egress.'
