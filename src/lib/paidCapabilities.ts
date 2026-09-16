@@ -281,22 +281,22 @@ export const PAID_CAPABILITIES = {
   },
   "http-inspect": {
     id: "http-inspect",
-    name: "HTTP Inspect",
-    operationId: "inspectHttpResource",
+    name: "API Trust Preflight",
+    operationId: "inspectApiTrust",
     endpoint: "/api/http-inspect",
     price: "$0.001",
     priceUsd: 0.001,
     atomicAmount: "1000",
-    description: "Inspect a public HTTPS resource for current status, latency, response metadata, cache validators, TLS/certificate evidence and baseline security headers.",
-    useWhen: "Current HTTP reachability, redirect, cache, latency, TLS/certificate or baseline security-header evidence is needed before an agent depends on a public HTTPS resource.",
+    description: "Preflight a public HTTPS or x402 API endpoint before an agent depends on or pays it. Returns a 0-100 trust score, grade, weighted evidence, TLS/certificate state, reachability, latency, redirects and baseline security headers.",
+    useWhen: "An agent is about to call or pay a public API/x402 endpoint and needs a cheap live trust and security preflight before spending money or depending on it.",
     costClass: "bounded-network",
-    tags: ["http", "https", "status", "latency", "headers", "cache", "tls", "certificate", "security", "x402"],
+    tags: ["trust", "security", "preflight", "api", "x402", "http", "https", "tls", "certificate", "latency", "agent payment"],
     inputSchema: { type: "object", required: ["url"], additionalProperties: false, properties: { url: { type: "string", format: "uri", maxLength: 500 } } },
     example: { url: "https://example.com" },
     quoteTool: {
       name: "http_inspect",
-      title: "HTTP inspection — $0.001",
-      description: "Paid $0.001 USDC/Base inspection of one public HTTPS resource for status, latency, response metadata, cache validators, TLS/certificate evidence and baseline security headers. x402-aware MCP clients can authorize and settle inside this tool call."
+      title: "API trust preflight — $0.001",
+      description: "Paid $0.001 USDC/Base live trust preflight for one public HTTPS/x402 API endpoint. Returns a 0-100 score, grade and weighted security evidence before an agent spends money or depends on the endpoint. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "tool-contract": {
