@@ -4,8 +4,12 @@ import { AGENTRESOLVER_TRUST_CONTRACT } from "@/lib/trustContract";
 export const dynamic = "force-dynamic";
 
 export function GET() {
+  const commitSha = process.env.VERCEL_GIT_COMMIT_SHA || null;
   const deployment = {
-    commitSha: process.env.VERCEL_GIT_COMMIT_SHA || null,
+    commitSha,
+    sourceCommitUrl: commitSha
+      ? `https://github.com/waxsway/agentresolver/commit/${commitSha}`
+      : null,
     environment: process.env.VERCEL_ENV || null
   };
 
