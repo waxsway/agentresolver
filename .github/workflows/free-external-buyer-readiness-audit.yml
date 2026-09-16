@@ -60,41 +60,21 @@ jobs:
           jq . /tmp/ontario-validate.json || cat /tmp/ontario-validate.json
           case "$code" in 200|201|202) ;; *) exit 1 ;; esac
 
-      - name: Inspect ForgeMesh free scan contract
+      - name: Run Ontario free buyer-conversion diagnostic
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 'https://forgemesh.io/' -o /tmp/forgemesh.html
-          echo "=== FORGEMESH HTML API REFERENCES ==="
-          grep -Eo '(/api/[A-Za-z0-9_./?=&:-]+|https://[^"''' ]+/api/[A-Za-z0-9_./?=&:-]+)' /tmp/forgemesh.html | sort -u | sed -n '1,120p' || true
-          grep -Eo 'src="[^"]+\.js[^"]*"' /tmp/forgemesh.html | sed 's/^src="//;s/"$//' > /tmp/jsrefs.txt || true
-          n=0
-          while IFS= read -r src; do
-            [ -z "$src" ] && continue
-            n=$((n+1))
-            [ "$n" -gt 15 ] && break
-            case "$src" in
-              http*) url="$src" ;;
-              /*) url="https://forgemesh.io$src" ;;
-              *) url="https://forgemesh.io/$src" ;;
-            esac
-            out="/tmp/fm-$n.js"
-            if curl -fsS --max-time 30 "$url" -o "$out"; then
-              echo "=== FORGEMESH BUNDLE $n ==="
-              python3 - "$out" <<'PY'
-          import re,sys
-          s=open(sys.argv[1],errors='ignore').read()
-          for pat in [r'/api/[A-Za-z0-9_./?=&:-]+', r'https://[^"\x27 ]+/api/[A-Za-z0-9_./?=&:-]+']:
-              for x in sorted(set(re.findall(pat,s))):
-                  if any(k in x.lower() for k in ('scan','audit','x402','readiness','verify')):
-                      print(x)
-          for needle in ('Scan free','x402 endpoint','payment audit','audit never signs','scanner'):
-              i=s.lower().find(needle.lower())
-              if i>=0:
-                  print(s[max(0,i-1200):i+3500])
-          PY
-            fi
-          done < /tmp/jsrefs.txt
+          code="$(curl -sS --max-time 45 -o /tmp/ontario-buyer.json -w '%{http_code}' \
+            -X POST 'https://ontarioprotocol.com/api/tools/agent-buyer-conversion-diagnostic' \
+            -H 'content-type: application/json' \
+            --data '{
+              "endpoint_url":"https://agentresolver.vercel.app/api/x402-ping",
+              "buyer_query":"verify my x402 wallet and facilitator can complete a real $0.001 USDC payment and receive paid product",
+              "source":"agentresolver-zero-spend-audit"
+            }')"
+          echo "ONTARIO_BUYER_DIAGNOSTIC_HTTP=$code"
+          jq . /tmp/ontario-buyer.json || cat /tmp/ontario-buyer.json
+          case "$code" in 200|201|202) ;; *) exit 1 ;; esac
 
       - name: Check free x402.direct directory visibility
         shell: bash
