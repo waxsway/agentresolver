@@ -55,7 +55,13 @@ function stampInfrastructureHeaders(
   return response;
 }
 
-export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, execute: Execute) {
+export type DeterministicPaidRouteOptions = Readonly<{ paidGet?: boolean }>;
+
+export function createDeterministicPaidRoute(
+  capabilityId: PaidCapabilityId,
+  execute: Execute,
+  options: DeterministicPaidRouteOptions = {}
+) {
   const product = getPaidCapability(capabilityId);
   let paidHandlerPromise: Promise<PaidHandler> | null = null;
 
@@ -220,42 +226,46 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
     return paidHandlerPromise;
   }
 
-  return {
-    POST: async (req: NextRequest) => {
-      const requestId = randomUUID();
-      const traffic = classifyTraffic(req, { path: product.endpoint });
-      logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
-      try {
-        const paidHandler = await getPaidHandler();
-        const response = stampInfrastructureHeaders(await paidHandler(req), capabilityId, requestId);
-        logX402Settlement(response, capabilityId, requestId);
-        return response;
-      } catch (error) {
-        console.error(JSON.stringify({
-          event: "paid_capability_configuration_error",
-          capabilityId,
-          at: new Date().toISOString(),
-          message: error instanceof Error ? error.message : "Unknown error"
-        }));
-        return stampInfrastructureHeaders(
-          NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED" }, { status: 503 }),
-          capabilityId,
-          requestId
-        );
-      }
-    },
-    GET: async (req: NextRequest) => {
-      const requestId = randomUUID();
-      const traffic = classifyTraffic(req, { path: product.endpoint, isDiscovery: true });
-      console.log(JSON.stringify({
-        event: "paid_capability_discovery",
-        at: new Date().toISOString(),
+  async function runPaidRequest(req: NextRequest) {
+    const requestId = randomUUID();
+    const traffic = classifyTraffic(req, { path: product.endpoint });
+    logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
+    try {
+      const paidHandler = await getPaidHandler();
+      const response = stampInfrastructureHeaders(await paidHandler(req), capabilityId, requestId);
+      logX402Settlement(response, capabilityId, requestId);
+      return response;
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: "paid_capability_configuration_error",
         capabilityId,
-        requestId,
-        ...trafficLogFields(req, traffic)
+        at: new Date().toISOString(),
+        message: error instanceof Error ? error.message : "Unknown error"
       }));
-      return stampInfrastructureHeaders(x402DiscoveryChallenge(capabilityId), capabilityId, requestId);
-    },
+      return stampInfrastructureHeaders(
+        NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED" }, { status: 503 }),
+        capabilityId,
+        requestId
+      );
+    }
+  }
+
+  async function runDiscoveryRequest(req: NextRequest) {
+    const requestId = randomUUID();
+    const traffic = classifyTraffic(req, { path: product.endpoint, isDiscovery: true });
+    console.log(JSON.stringify({
+      event: "paid_capability_discovery",
+      at: new Date().toISOString(),
+      capabilityId,
+      requestId,
+      ...trafficLogFields(req, traffic)
+    }));
+    return stampInfrastructureHeaders(x402DiscoveryChallenge(capabilityId), capabilityId, requestId);
+  }
+
+  return {
+    POST: runPaidRequest,
+    GET: options.paidGet ? runPaidRequest : runDiscoveryRequest,
     OPTIONS: async () => new NextResponse(null, {
       status: 204,
       headers: {
