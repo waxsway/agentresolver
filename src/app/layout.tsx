@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     "Verify an x402 endpoint before paying: live payTo, USDC quote, network, asset, resource binding, TLS and endpoint safety for $0.001 on Base or Solana.",
   alternates: {
     canonical: "/"
+  },
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }]
   }
 };
 

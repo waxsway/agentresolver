@@ -111,6 +111,10 @@ function getPaidHandler(): PaidHandler {
           },
           bodyType: "json",
           output: {
+            schema: {
+              type: "object",
+              additionalProperties: true
+            },
             example: {
               url: "https://example.com/",
               status: 200,

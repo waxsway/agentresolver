@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { selectOpenApiOperation } from "@/lib/openapiSelect";
 import { logX402Settlement } from "@/lib/telemetry";
 import { logLegacyPaidAttempt, logLegacyPaidDiscovery } from "@/lib/legacyPaidTraffic";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
-import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
+import { bazaarResourceServerExtension, paidRouteBazaarExtension } from "@/lib/bazaarDiscovery";
+import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 
 export const dynamic = "force-dynamic";
 const MAX_URL = 500;
@@ -50,22 +52,36 @@ async function selectHandler(req: NextRequest): Promise<NextResponse<unknown>> {
 function getPaidHandler(): PaidHandler {
   if (paidHandler) return paidHandler;
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
+  const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
   const facilitatorUrl = (process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
   if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) throw new Error("AGENTRESOLVER_PAY_TO is invalid.");
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(solanaPayTo)) throw new Error("AGENTRESOLVER_SOLANA_PAY_TO is invalid.");
   if (!/^https:\/\//i.test(facilitatorUrl)) throw new Error("X402_FACILITATOR_URL is invalid.");
 
   const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
-  const resourceServer = new x402ResourceServer(facilitatorClient).register(X402_NETWORK, new ExactEvmScheme());
+  const resourceServer = new x402ResourceServer(facilitatorClient)
+    .register(X402_NETWORK, new ExactEvmScheme())
+    .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
+    .registerExtension(bazaarResourceServerExtension);
   paidHandler = withX402<unknown>(selectHandler, {
     "/api/openapi-select": {
-      accepts: {
-        scheme: "exact",
-        price: X402_PRICING.openapiSelect,
-        network: X402_NETWORK,
-        payTo: payTo as `0x${string}`
-      },
+      accepts: [
+        {
+          scheme: "exact",
+          price: X402_PRICING.openapiSelect,
+          network: X402_NETWORK,
+          payTo: payTo as `0x${string}`
+        },
+        {
+          scheme: "exact",
+          price: X402_PRICING.openapiSelect,
+          network: X402_SOLANA_NETWORK,
+          payTo: solanaPayTo
+        }
+      ],
       description: "Select the best operation from a public JSON OpenAPI specification for a natural-language goal and return a compact execution-ready request contract.",
-      mimeType: "application/json"
+      mimeType: "application/json",
+      extensions: paidRouteBazaarExtension("openapi-select")
     }
   }, resourceServer) as PaidHandler;
   return paidHandler;
