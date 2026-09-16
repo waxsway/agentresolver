@@ -1,0 +1,92 @@
+import { NextRequest, NextResponse } from "next/server";
+import { withX402 } from "@x402/next";
+import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
+import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
+import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
+import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO } from "@/lib/x402Config";
+
+type JsonObject = Record<string, unknown>;
+type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
+type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
+
+export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, execute: Execute) {
+  const product = getPaidCapability(capabilityId);
+  let paidHandler: PaidHandler | null = null;
+
+  async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
+    try {
+      const result = await execute(req);
+      console.log(JSON.stringify({
+        event: "paid_capability_completed",
+        capabilityId,
+        surface: "http",
+        at: new Date().toISOString()
+      }));
+      return NextResponse.json(result, {
+        headers: {
+          "cache-control": "no-store",
+          "access-control-allow-origin": "*"
+        }
+      });
+    } catch (error) {
+      return NextResponse.json({
+        error: "INVALID_INPUT",
+        message: error instanceof Error ? error.message : "Invalid input."
+      }, { status: 400 });
+    }
+  }
+
+  function getPaidHandler(): PaidHandler {
+    if (paidHandler) return paidHandler;
+    const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
+    const facilitatorUrl = (process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
+    if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) throw new Error("AGENTRESOLVER_PAY_TO is invalid.");
+    if (!/^https:\/\//i.test(facilitatorUrl)) throw new Error("X402_FACILITATOR_URL is invalid.");
+
+    const client = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
+    const server = new x402ResourceServer(client).register(X402_NETWORK, new ExactEvmScheme());
+    paidHandler = withX402<unknown>(handler, {
+      [product.endpoint]: {
+        accepts: {
+          scheme: "exact",
+          price: product.price,
+          network: X402_NETWORK,
+          payTo: payTo as `0x${string}`
+        },
+        description: product.description,
+        mimeType: "application/json"
+      }
+    }, server) as PaidHandler;
+    return paidHandler;
+  }
+
+  return {
+    POST: async (req: NextRequest) => {
+      logPaidCapabilityAttempt(req, capabilityId);
+      try {
+        const response = await getPaidHandler()(req);
+        logX402Settlement(response, capabilityId);
+        return response;
+      } catch (error) {
+        console.error(JSON.stringify({
+          event: "paid_capability_configuration_error",
+          capabilityId,
+          at: new Date().toISOString(),
+          message: error instanceof Error ? error.message : "Unknown error"
+        }));
+        return NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED" }, { status: 503 });
+      }
+    },
+    GET: async () => x402DiscoveryChallenge(capabilityId),
+    OPTIONS: async () => new NextResponse(null, {
+      status: 204,
+      headers: {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, POST, OPTIONS",
+        "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response"
+      }
+    })
+  };
+}
