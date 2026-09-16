@@ -10,6 +10,8 @@ on:
       - "src/lib/paidCapabilities.ts"
       - "src/lib/createDeterministicPaidRoute.ts"
       - "src/lib/x402DiscoveryChallenge.ts"
+      - "src/lib/x402PreflightDiscovery.ts"
+      - "scripts/sync-paid-products.ts"
       - "public/openapi.json"
       - "public/.well-known/x402"
       - "public/.well-known/x402-catalog.json"
