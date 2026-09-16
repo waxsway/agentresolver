@@ -9,6 +9,7 @@ import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
+import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
@@ -78,6 +79,7 @@ export function createDeterministicPaidRoute(
   options: DeterministicPaidRouteOptions = {}
 ) {
   const product = getPaidCapability(capabilityId);
+  const wireMetadata = x402WireResourceMetadata(product);
   let paidHandlerPromise: Promise<PaidHandler> | null = null;
 
   async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
@@ -133,7 +135,7 @@ export function createDeterministicPaidRoute(
           ...paymentPayload,
           resource: resource ? {
             url: resource.url,
-            description: resource.description ?? product.description,
+            description: resource.description ?? wireMetadata.description,
             mimeType: resource.mimeType ?? "application/json"
           } : undefined
         };
@@ -145,7 +147,7 @@ export function createDeterministicPaidRoute(
           ...paymentPayload,
           resource: resource ? {
             url: resource.url,
-            description: resource.description ?? product.description,
+            description: resource.description ?? wireMetadata.description,
             mimeType: resource.mimeType ?? "application/json"
           } : undefined
         };
@@ -230,7 +232,7 @@ export function createDeterministicPaidRoute(
             payTo: solanaPayTo
           }
         ],
-        description: product.description,
+        description: wireMetadata.description,
         mimeType: "application/json",
         extensions: {
           ...declareDiscoveryExtension({
