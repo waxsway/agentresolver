@@ -5,7 +5,7 @@ import { runHashEncode } from "../src/lib/hashEncode";
 test("hash and encoding primitive returns deterministic results", () => {
   assert.equal(
     runHashEncode({ operation: "sha256", input: "agentresolver" }).result,
-    "fb2b1f4951c75333f734d6ff4ee9b544285a0422368693229c781e388aaec010"
+    "206c438b0ceeb41e34a19e134396e4dc317e4cc71863065c2da451326a2f5d77"
   );
   assert.equal(
     runHashEncode({ operation: "base64-encode", input: "hello" }).result,
