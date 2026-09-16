@@ -138,11 +138,40 @@ jobs:
           fi
 
       - name: Deploy prebuilt artifact to production
+        id: production_deploy
         if: >-
           steps.initial_freshness.outputs.fresh == 'true' &&
           steps.application_changes.outputs.deploy == 'true' &&
           steps.predeploy_freshness.outputs.fresh == 'true'
-        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployment_url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "deployed=$deployment_url"
+
+      - name: Smoke-test deployed trust and payment contract
+        if: steps.production_deploy.outputs.url != ''
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.production_deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+
+          curl -fsS "$DEPLOYMENT_URL/api/health" -o /tmp/health.json
+          jq -e '.ok == true and .canonicalPaidRoute == "/api/x402-payment-preflight" and .trust == "/.well-known/agentresolver-trust.json"' /tmp/health.json >/dev/null
+
+          curl -fsS "$DEPLOYMENT_URL/.well-known/agentresolver-trust.json" -o /tmp/trust.json
+          jq -e '.schemaVersion == 1 and .paymentModel.custodial == false and .canonicalPaidRoute.priceUsd == 0.001' /tmp/trust.json >/dev/null
+
+          curl -fsS "$DEPLOYMENT_URL/.well-known/security.txt" -o /tmp/security.txt
+          grep -F 'Canonical: https://agentresolver.vercel.app/.well-known/security.txt' /tmp/security.txt >/dev/null
+
+          code="$(curl -sS -D /tmp/preflight-headers.txt -o /tmp/preflight-body.json -w '%{http_code}' "$DEPLOYMENT_URL/api/x402-payment-preflight")"
+          test "$code" = "402"
+          grep -Fi 'x-agentresolver-contract-version: 1' /tmp/preflight-headers.txt >/dev/null
+          grep -Fi 'x-agentresolver-trust: https://agentresolver.vercel.app/.well-known/agentresolver-trust.json' /tmp/preflight-headers.txt >/dev/null
+          grep -Fi 'payment-required:' /tmp/preflight-headers.txt >/dev/null
 
       - name: Report stale deploy suppression
         if: >-

@@ -56,13 +56,15 @@ export function logPaidCapabilityAttempt(
     external: boolean;
     sponsorEligible: boolean;
     reason: string;
-  }
+  },
+  requestId?: string
 ) {
   const hasPaymentSignature = Boolean(req.headers.get("payment-signature"));
   console.log(JSON.stringify({
     event: "paid_capability_attempt",
     at: new Date().toISOString(),
     capabilityId,
+    requestId: requestId || null,
     callerHash: callerHash(req),
     userAgent: safeUserAgent(req),
     referrerHost: referrerHost(req),
@@ -105,7 +107,7 @@ export function parseX402SettlementHeader(value: string | null): X402SettlementR
   }
 }
 
-export function logX402Settlement(response: Response, capabilityId: string) {
+export function logX402Settlement(response: Response, capabilityId: string, requestId?: string) {
   const receipt = parseX402SettlementHeader(response.headers.get("payment-response"));
   if (!receipt) return;
   const settled = receipt.success && Boolean(receipt.transaction);
@@ -113,6 +115,7 @@ export function logX402Settlement(response: Response, capabilityId: string) {
     event: settled ? "paid_capability_settled" : "paid_capability_settlement_unconfirmed",
     at: new Date().toISOString(),
     capabilityId,
+    requestId: requestId || null,
     responseStatus: response.status,
     success: receipt.success,
     network: receipt.network,

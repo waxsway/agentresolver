@@ -1,6 +1,6 @@
 {
   "x402": "1.0",
-  "name": "agentresolver-api-trust-preflight",
+  "name": "agentresolver-x402-payment-preflight",
   "capabilities": [
     "agents",
     "api",
@@ -37,6 +37,10 @@
       }
     ]
   },
-  "endpoint": "https://agentresolver.vercel.app/api/http-inspect",
-  "description": "Low-cost live trust and security preflight for public HTTPS and x402 API endpoints before an agent spends money or depends on them."
+  "endpoint": "https://agentresolver.vercel.app/api/x402-payment-preflight",
+  "description": "Non-custodial $0.001 USDC x402 verify-before-pay infrastructure for autonomous agents: live endpoint, payTo, quote, Base/Solana network, asset, resource binding, TLS and challenge validation before spend.",
+  "x402Version": 2,
+  "trust": "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json",
+  "security": "https://agentresolver.vercel.app/.well-known/security.txt",
+  "legal": "https://agentresolver.vercel.app/legal"
 }

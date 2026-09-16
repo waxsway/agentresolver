@@ -93,7 +93,10 @@ Results are grouped into AgentResolver-owned capabilities, live MCP directory ma
 - `/capabilities.json` — capability metadata
 - `/.well-known/ard.json` — ARD discovery manifest
 - `/.well-known/ai-catalog.json` — machine catalog compatibility alias
-- `/api/health` — cheap health/discovery probe
+- `/api/health` — cheap liveness and canonical-surface metadata
+- `/.well-known/agentresolver-trust.json` — machine-readable non-custodial trust contract plus deployed commit SHA
+- `/.well-known/security.txt` — RFC 9116 vulnerability disclosure contact
+- `/legal` — operating, acceptable-use, privacy and payment-boundary terms
 - `server.json` — Official MCP Registry metadata
 
 A2A metadata is intentionally **not** advertised until AgentResolver implements an actual A2A transport endpoint.
@@ -126,7 +129,9 @@ Agents should not need dozens of hard-coded integrations just to figure out what
 
 The resolver augments AgentResolver-owned capabilities with live MCP discovery and Circle's public, keyless x402 service catalog. Upstream discovery is cached and ranked locally so normal resolver traffic does not trigger unlimited network fan-out.
 
-## Payment safety
+## Trust and payment safety
+
+AgentResolver publishes a machine-readable trust contract at `/.well-known/agentresolver-trust.json`, including the canonical paid route, supported networks/assets, non-custodial payment boundary, trust limitations, source repository, security disclosure path, and the Vercel deployment commit SHA when available.
 
 Resolution and MCP quote tools never spend money. AgentResolver's direct paid endpoints use x402 USDC on Base or Solana and execute only after a caller supplies a valid payment authorization; successful revenue is counted only from confirmed settlement receipts. `/api/execute` remains disabled for generic third-party execution.
 
@@ -155,6 +160,10 @@ Resolver and MCP calls emit privacy-conscious structured logs with one-way calle
 npm install
 npm run dev
 ```
+
+## Security
+
+Please report vulnerabilities privately through the repository's GitHub Security Advisories. The canonical machine-readable security contact is `/.well-known/security.txt`.
 
 ## License
 

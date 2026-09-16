@@ -49,6 +49,11 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="ard" href="/.well-known/ard.json" />
+        <link
+          rel="describedby"
+          href="/.well-known/agentresolver-trust.json"
+          type="application/json"
+        />
         <link rel="describedby" href="/llms.txt" type="text/markdown" />
         <link
           rel="alternate"
