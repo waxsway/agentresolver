@@ -46,6 +46,19 @@ jobs:
               print('FIRST_INDEPENDENT_PROBE_PAYMENT_CONFIRMED=false')
           PY
 
+      - name: Fetch NoHumans claim recovery instructions
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             'https://nohumans.directory/v1/listings/28e33786-f07/claim')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|202|409) ;;
+            *) echo "NoHumans claim recovery instructions failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
       - name: Confirm live endpoint still passes unpaid x402 probe
         shell: bash
         run: |
