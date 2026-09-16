@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
@@ -14,6 +15,23 @@ import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
+
+function stampInfrastructureHeaders(
+  response: NextResponse<unknown>,
+  capabilityId: PaidCapabilityId,
+  requestId: string
+) {
+  response.headers.set("x-agentresolver-capability", capabilityId);
+  response.headers.set("x-agentresolver-request-id", requestId);
+  response.headers.set("x-agentresolver-contract-version", "1");
+  response.headers.set(
+    "x-agentresolver-trust",
+    "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json"
+  );
+  const commitSha = process.env.VERCEL_GIT_COMMIT_SHA;
+  if (commitSha) response.headers.set("x-agentresolver-deployment", commitSha);
+  return response;
+}
 
 export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, execute: Execute) {
   const product = getPaidCapability(capabilityId);
@@ -101,11 +119,12 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
 
   return {
     POST: async (req: NextRequest) => {
+      const requestId = randomUUID();
       const traffic = classifyTraffic(req, { path: product.endpoint, hasUserIntent: true });
-      logPaidCapabilityAttempt(req, capabilityId, traffic);
+      logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
       try {
-        const response = await getPaidHandler()(req);
-        logX402Settlement(response, capabilityId);
+        const response = stampInfrastructureHeaders(await getPaidHandler()(req), capabilityId, requestId);
+        logX402Settlement(response, capabilityId, requestId);
         return response;
       } catch (error) {
         console.error(JSON.stringify({
@@ -114,18 +133,24 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
           at: new Date().toISOString(),
           message: error instanceof Error ? error.message : "Unknown error"
         }));
-        return NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED" }, { status: 503 });
+        return stampInfrastructureHeaders(
+          NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED" }, { status: 503 }),
+          capabilityId,
+          requestId
+        );
       }
     },
     GET: async (req: NextRequest) => {
+      const requestId = randomUUID();
       const traffic = classifyTraffic(req, { path: product.endpoint, isDiscovery: true });
       console.log(JSON.stringify({
         event: "paid_capability_discovery",
         at: new Date().toISOString(),
         capabilityId,
+        requestId,
         ...trafficLogFields(req, traffic)
       }));
-      return x402DiscoveryChallenge(capabilityId);
+      return stampInfrastructureHeaders(x402DiscoveryChallenge(capabilityId), capabilityId, requestId);
     },
     OPTIONS: async () => new NextResponse(null, {
       status: 204,
