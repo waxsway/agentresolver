@@ -15,6 +15,16 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.equal(canary?.operationId, "x402SettlementPingGet");
   assert.equal(canary?.requestBody, undefined);
   assert.equal(canary?.["x-payment-info"]?.priceUsd, 0.001);
+  assert.match(canary?.description || "", /settlement test/i);
+  assert.ok(canary?.tags?.includes("x402 settlement test"));
+  assert.ok(canary?.["x-agentresolver-product"]?.keywords?.includes("payment canary"));
+
+  const preflight = openapi.paths?.["/api/x402-payment-preflight"]?.post;
+  assert.match(preflight?.description || "", /endpoint safety/i);
+  assert.match(preflight?.description || "", /USDC payment check/i);
+  assert.ok(preflight?.tags?.includes("endpoint safety"));
+  assert.ok(preflight?.tags?.includes("USDC payment check"));
+  assert.ok(preflight?.["x-agentresolver-product"]?.keywords?.includes("verify endpoint before paying"));
   assert.deepEqual(openapi.paths?.["/api/resolve"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/health"]?.get?.security, []);
 
