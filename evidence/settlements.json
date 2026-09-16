@@ -2,10 +2,14 @@
   "schemaVersion": 1,
   "service": "AgentResolver",
   "canonicalOrigin": "https://agentresolver.vercel.app",
-  "evidenceType": "verified-x402-settlement-history",
+  "evidenceType": "x402-settlement-evidence-history",
   "sourceEvent": "paid_capability_settled",
+  "interpretation": "First-party settlement telemetry versioned in public Git. This is evidence of x402 settlement responses observed by AgentResolver, not an independent reputation score or on-chain registry.",
   "lastUpdatedAt": null,
   "settlementCount": 0,
+  "successfulDeliveryCount": 0,
+  "settledButNon2xxCount": 0,
+  "settlementWithIncompleteDeliveryEvidenceCount": 0,
   "uniqueTransactionFingerprintCount": 0,
   "byNetwork": {},
   "byCapability": {},
@@ -20,12 +24,15 @@
     "transactionFingerprintAlgorithm": "first 16 hex characters of SHA-256(transaction id)",
     "perCallSettlementEvidenceHeader": "payment-response",
     "perCallResponseDigestHeader": "x-agentresolver-response-sha256",
-    "perCallExecutionIdHeader": "x-agentresolver-execution-id"
+    "perCallExecutionIdHeader": "x-agentresolver-execution-id",
+    "perCallDeploymentHeader": "x-agentresolver-deployment"
   },
   "limitations": [
-    "This history is derived only from AgentResolver runtime events emitted after x402 settlement middleware reports success and a transaction identifier.",
-    "It is versioned in public Git history but is not an on-chain reputation registry.",
+    "Only paid_capability_settled runtime events are eligible for this history.",
+    "The event is emitted only when x402 middleware reports success and supplies a transaction identifier.",
+    "This file is versioned in public Git history but can still be changed by the repository owner; it is not immutable or independently operated.",
     "Transaction fingerprints preserve buyer privacy and are not sufficient for a third party to locate a payment on-chain without already knowing the transaction identifier.",
-    "Crawls, registrations, 402 challenges, unsigned requests, and traffic volume are never counted as settlements."
+    "Crawls, registrations, 402 challenges, unsigned requests, and traffic volume are never counted as settlements.",
+    "Successful delivery is counted separately from settlement and requires a 2xx response plus execution ID, response SHA-256, and deployment commit evidence."
   ]
 }
