@@ -31,5 +31,6 @@ test("signed retries remain the strongest conversion signal", () => {
 test("paid capability schemas avoid unsupported uri formats", () => {
   const source = readFileSync("src/lib/paidCapabilities.ts", "utf8");
   assert.doesNotMatch(source, /format:\s*"uri"/);
-  assert.match(source, /endpoint: \{ type: "string", pattern: "\^https:\/\/"|endpoint: \{ type: "string", pattern: "\^https:\\/\\/"/);
+  assert.ok(source.includes('endpoint: { type: "string", pattern: "^https://", maxLength: 500 }'));
+  assert.ok(source.includes('specUrl: { type: "string", pattern: "^https://", maxLength: 500 }'));
 });
