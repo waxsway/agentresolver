@@ -19,6 +19,10 @@ test("trust contract declares the canonical non-custodial payment boundary", () 
   assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.redirectsFollowed, false);
   assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.postProbeRequiresExplicitOptIn, true);
   assert.equal(AGENTRESOLVER_TRUST_CONTRACT.probeSafety.responseBodyConsumed, false);
+  assert.match(
+    AGENTRESOLVER_TRUST_CONTRACT.evidence.trustAuditHistory,
+    /actions\/workflows\/trust-surface-audit\.yml$/
+  );
 });
 
 test("public manifests point buyers at the canonical preflight", () => {
