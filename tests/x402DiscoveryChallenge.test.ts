@@ -18,4 +18,12 @@ test("paid discovery challenge exposes Bazaar input/output schemas and dual rail
   ));
 
   assert.ok(response.headers.get("payment-required"));
+  assert.equal(body.resource.serviceName, "AgentResolver");
+  assert.ok(body.resource.description.length <= 240);
+  assert.ok(body.resource.tags.length <= 5);
+  assert.ok(body.resource.tags.every((tag: string) => tag.length <= 32 && /^[\\x20-\\x7E]+$/.test(tag)));
+  assert.deepEqual(
+    body.resource.tags,
+    ["x402 preflight", "verify endpoint before paying", "payTo verification", "USDC payment check", "api trust security preflight"]
+  );
 });
