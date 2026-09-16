@@ -58,13 +58,18 @@ export function GET() {
       },
       historicalReputation: {
         aggregatePublished: true,
-        interpretation: "Versioned first-party x402 settlement evidence, not an independent reputation score.",
-        scope: "Only paid_capability_settled runtime events are eligible. Crawls, registrations, 402 challenges, unsigned requests, and traffic volume are excluded.",
-        settlementHistoryUrl:
+        syntheticTrustScorePublished: false,
+        interpretation:
+          "Versioned x402 settlement history whose verified counts require an independent public-chain USDC transfer check.",
+        scope:
+          "Only paid_capability_settled runtime events with public transaction references can become independently verified. Crawls, registrations, 402 challenges, unsigned requests, traffic volume, and unverified payment attempts are excluded.",
+        aggregateUrl:
+          "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json",
+        durableSourceUrl:
           "https://raw.githubusercontent.com/waxsway/agentresolver/evidence-history/evidence/settlements.json",
         versionHistoryUrl:
           "https://github.com/waxsway/agentresolver/commits/evidence-history/evidence/settlements.json",
-        syntheticTrustScorePublished: false
+        independentlyVerifiableOnchain: true
       },
       limitations: [
         "Execution evidence proves what this AgentResolver deployment returned for a successful paid call; it does not prove a third-party provider is legitimate.",
