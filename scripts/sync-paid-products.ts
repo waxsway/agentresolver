@@ -5,6 +5,118 @@ const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const PAY_TO = "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8";
 const NETWORK = "eip155:8453";
 
+const STRING_OR_NULL = { anyOf: [{ type: "string" }, { type: "null" }] };
+const HASH_RESULT_SCHEMA = {
+  type: "object",
+  required: ["operation", "inputBytes", "encoding", "result"],
+  properties: {
+    operation: { type: "string" },
+    inputBytes: { type: "integer", minimum: 0 },
+    encoding: { type: "string" },
+    result: { type: "string" }
+  }
+};
+const OUTPUT_SCHEMAS: Record<string, Record<string, unknown>> = {
+  "x402-ping": {
+    type: "object",
+    required: ["pong", "settledDelivery", "at", "unixMs", "requestId", "echo"],
+    properties: {
+      pong: { const: true },
+      settledDelivery: { const: true },
+      at: { type: "string", format: "date-time" },
+      unixMs: { type: "integer" },
+      requestId: { type: "string", format: "uuid" },
+      echo: STRING_OR_NULL
+    }
+  },
+  sha256: HASH_RESULT_SCHEMA,
+  sha512: HASH_RESULT_SCHEMA,
+  "hmac-sha256": HASH_RESULT_SCHEMA,
+  "base64-encode": HASH_RESULT_SCHEMA,
+  "base64-decode": HASH_RESULT_SCHEMA,
+  "jwt-decode": {
+    type: "object",
+    required: ["operation", "inputBytes", "verified", "note", "header", "payload", "signature"],
+    properties: {
+      operation: { const: "jwt-decode" },
+      inputBytes: { type: "integer", minimum: 0 },
+      verified: { const: false },
+      note: { type: "string" },
+      header: {},
+      payload: {},
+      signature: { type: "string" }
+    }
+  },
+  "json-normalize": {
+    type: "object",
+    required: ["normalized", "sha256", "bytes"],
+    properties: {
+      normalized: { type: "string" },
+      sha256: { type: "string", pattern: "^[0-9a-f]{64}$" },
+      bytes: { type: "integer", minimum: 0 }
+    }
+  },
+  "json-schema-validate": {
+    type: "object",
+    required: ["valid", "errorCount", "errors"],
+    properties: {
+      valid: { type: "boolean" },
+      errorCount: { type: "integer", minimum: 0 },
+      errors: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["path", "keyword", "message"],
+          properties: {
+            path: { type: "string" },
+            keyword: { type: "string" },
+            message: { type: "string" }
+          }
+        }
+      }
+    }
+  },
+  "url-parse": {
+    type: "object",
+    required: ["href", "origin", "protocol", "hostname", "port", "pathname", "query", "fragment"],
+    properties: {
+      href: { type: "string", format: "uri" },
+      origin: { type: "string" },
+      protocol: { type: "string" },
+      hostname: { type: "string" },
+      port: STRING_OR_NULL,
+      pathname: { type: "string" },
+      query: {
+        type: "object",
+        additionalProperties: {
+          anyOf: [
+            { type: "string" },
+            { type: "array", items: { type: "string" } }
+          ]
+        }
+      },
+      fragment: STRING_OR_NULL
+    }
+  },
+  "uuid-v4": {
+    type: "object",
+    required: ["count", "values"],
+    properties: {
+      count: { type: "integer", minimum: 1, maximum: 20 },
+      values: { type: "array", items: { type: "string", format: "uuid" } }
+    }
+  },
+  slugify: {
+    type: "object",
+    required: ["slug", "separator", "changed"],
+    properties: {
+      slug: { type: "string" },
+      separator: { type: "string", enum: ["-", "_"] },
+      changed: { type: "boolean" }
+    }
+  }
+};
+
 function readJson(path: string) {
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, any>;
 }
@@ -112,7 +224,18 @@ for (const product of PAID_CAPABILITY_LIST) {
         }
       },
       responses: {
-        "200": { description: `${product.name} completed after verified payment.` },
+        "200": {
+          description: `${product.name} completed after verified payment.`,
+          ...(OUTPUT_SCHEMAS[product.id]
+            ? {
+                content: {
+                  "application/json": {
+                    schema: OUTPUT_SCHEMAS[product.id]
+                  }
+                }
+              }
+            : {})
+        },
         "400": { description: "Invalid capability input." },
         "402": { description: "x402 payment required." },
         "503": { description: "Paid execution temporarily unavailable." }
