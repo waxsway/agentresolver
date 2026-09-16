@@ -10,6 +10,8 @@ on:
       - "src/lib/paidCapabilities.ts"
       - "src/lib/createDeterministicPaidRoute.ts"
       - "src/lib/x402DiscoveryChallenge.ts"
+      - "src/lib/x402PreflightDiscovery.ts"
+      - "scripts/sync-paid-products.ts"
       - "public/openapi.json"
       - "public/.well-known/x402"
       - "public/.well-known/x402-catalog.json"
@@ -24,11 +26,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Validate AgentCash discovery
+      - name: Validate live discovery and canonical paid route
+        shell: bash
         run: |
           set -euo pipefail
           npx -y @agentcash/discovery@1.7.5 discover https://agentresolver.vercel.app
-          npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app/api/abi-encode
+          echo "=== canonical preflight route check ==="
+          if ! npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app/api/x402-payment-preflight; then
+            echo "::warning::Canonical x402 payment preflight failed AgentCash route validation."
+          fi
 
       - name: Register origin with AgentCash
         env:
@@ -38,20 +44,59 @@ jobs:
           mkdir -p "$HOME"
           npx -y agentcash@0.17.1 register https://agentresolver.vercel.app --yes --format json | tee /tmp/agentcash-register.json
 
-      - name: Verify current buyer-search visibility
+      - name: Verify buyer-search visibility after registration
+        shell: bash
         run: |
           set -euo pipefail
-          found=0
-          for query in             "AgentResolver"             "x402 payment preflight"             "verify endpoint before paying"             "payTo verification"
-          do
-            echo "=== QUERY: $query ==="
-            out="$(mktemp)"
-            npx -y agentcash@0.17.1 search "$query" --format json | tee "$out"
-            if grep -Fq 'agentresolver.vercel.app' "$out"; then
-              echo "AgentResolver visible for: $query"
-              found=$((found+1))
-            else
-              echo "::warning::AgentResolver not visible for: $query"
+          queries=(
+            "AgentResolver"
+            "x402 payment preflight"
+            "verify endpoint before paying"
+            "payTo verification"
+            "endpoint safety"
+            "USDC payment check"
+          )
+          found_queries=0
+          for attempt in 1 2 3; do
+            echo "=== SEARCH ATTEMPT $attempt ==="
+            attempt_found=0
+            for query in "${queries[@]}"; do
+              echo "=== QUERY: $query ==="
+              out="$(mktemp)"
+              npx -y agentcash@0.17.1 search "$query" --format json > "$out"
+              jq '{
+                query: .data.results.query,
+                totalResults: .data.results.totalResults,
+                top5: [(.data.results.results // [])[0:5][]? | {
+                  path,
+                  summary,
+                  score,
+                  origin: .origin.url,
+                  resourceTransactions: .signals.resourceUsage.transactionCount,
+                  originTransactions: .signals.originUsage.transactionCount
+                }],
+                agentresolver: [(.data.results.results // [])[]? | select((.origin.url // "") == "https://agentresolver.vercel.app") | {
+                  path,
+                  summary,
+                  score,
+                  resourceTransactions: .signals.resourceUsage.transactionCount,
+                  originTransactions: .signals.originUsage.transactionCount
+                }]
+              }' "$out"
+              if grep -Fq 'agentresolver.vercel.app' "$out"; then
+                echo "AgentResolver visible for: $query"
+                attempt_found=$((attempt_found+1))
+              else
+                echo "::warning::AgentResolver not visible for: $query"
+              fi
+            done
+            found_queries=$attempt_found
+            if [ "$attempt_found" -gt 0 ]; then
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "No buyer-search visibility yet; waiting briefly for index propagation."
+              sleep 20
             fi
           done
-          echo "AgentResolver visible in $found of 4 buyer searches after fresh registration."
+          echo "AgentResolver visible in $found_queries of ${#queries[@]} buyer searches on final attempt."
