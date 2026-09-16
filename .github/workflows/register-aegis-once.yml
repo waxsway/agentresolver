@@ -1,0 +1,48 @@
+name: Register AgentResolver with Aegis
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-aegis-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Submit free Aegis registry listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 -G 'https://aegis.borisinc.com/submit'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             --data-urlencode 'name=AgentResolver Settlement Canary'             --data-urlencode 'category=payments'             --data-urlencode 'price_usd=0.001'             -o /tmp/submit.json
+          echo "=== AEGIS_SUBMIT ==="
+          jq . /tmp/submit.json || cat /tmp/submit.json
+
+      - name: Lint live canary the way Aegis sees it
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 -G 'https://aegis.borisinc.com/lint'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             -o /tmp/lint.json
+          echo "=== AEGIS_LINT ==="
+          jq . /tmp/lint.json || cat /tmp/lint.json
+
+      - name: Check Aegis discovery propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..5}; do
+            curl -fsS --max-time 30 -G 'https://aegis.borisinc.com/discover'               --data-urlencode 'query=AgentResolver'               -o /tmp/discover.json
+            echo "=== AEGIS_DISCOVER attempt=$i ==="
+            jq . /tmp/discover.json || cat /tmp/discover.json
+            if grep -qi 'agentresolver.vercel.app/api/x402-ping' /tmp/discover.json; then
+              echo "AEGIS_VISIBLE=true"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "AEGIS_VISIBLE=false"
+          exit 0
