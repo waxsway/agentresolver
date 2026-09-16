@@ -54,6 +54,19 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     maxPostBodyBytes: 65536,
     responseBodyConsumed: false
   },
+  evidenceModel: {
+    receiptVersion: 1,
+    source: "live_endpoint_observation",
+    paymentIdentityBasis: "network + asset + observed payTo",
+    stableFingerprints: true,
+    walletOwnershipVerified: false,
+    providerLegitimacyVerified: false,
+    futureFulfillmentVerified: false,
+    purpose: "Change detection and reusable technical evidence across endpoint observations.",
+    erc8004Ready: true,
+    erc8004Submission: "none",
+    erc8004IdentityBindingRequiredBeforeFeedback: true
+  },
   evidence: {
     health: "https://agentresolver.vercel.app/api/health",
     openapi: "https://agentresolver.vercel.app/openapi.json",
