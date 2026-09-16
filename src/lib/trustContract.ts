@@ -49,7 +49,10 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     walletOwnershipVerified: false,
     providerLegitimacyVerified: false,
     futureFulfillmentVerified: false,
-    purpose: "Change detection and reusable technical evidence across endpoint observations."
+    purpose: "Change detection and reusable technical evidence across endpoint observations.",
+    erc8004Ready: true,
+    erc8004Submission: "none",
+    erc8004IdentityBindingRequiredBeforeFeedback: true
   },
   evidence: {
     health: "https://agentresolver.vercel.app/api/health",
