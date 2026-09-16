@@ -46,7 +46,7 @@ jobs:
           test -n "${VERCEL_TOKEN:-}"
 
       - name: Install pinned Vercel CLI
-        run: npm install --global vercel@48.8.0 --no-audit --no-fund
+        run: npm install --global vercel@59.6.0 --no-audit --no-fund
 
       - name: Link read-only project context
         shell: bash
