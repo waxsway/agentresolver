@@ -1,0 +1,85 @@
+name: Post-Fix Buyer Readiness Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/postfix-buyer-readiness-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify production x402 JSON manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 'https://agentresolver.vercel.app/.well-known/x402.json' -o /tmp/x402.json
+          jq -e '
+            .x402Version == 2 and
+            .category == "Developer Tools" and
+            (.tags | index("payment-canary") != null) and
+            .owner_url == "https://agentresolver.vercel.app" and
+            (.resources | any(.resource == "GET /api/x402-ping")) and
+            (.resources | any(.resource == "POST /api/x402-payment-preflight"))
+          ' /tmp/x402.json >/dev/null
+          echo "X402_JSON_MANIFEST_OK=true"
+
+      - name: Re-run Ontario free readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 45 -o /tmp/ontario.json -w '%{http_code}'             -X POST 'https://ontarioprotocol.com/api/verify/x402-readiness'             -H 'content-type: application/json'             --data '{"target_url":"https://agentresolver.vercel.app/api/x402-ping"}')"
+          echo "ONTARIO_HTTP=$code"
+          jq '{
+            readiness_score,
+            grade,
+            signals,
+            recommendations,
+            report_id,
+            report_url
+          }' /tmp/ontario.json
+          case "$code" in 200|201|202) ;; *) exit 1 ;; esac
+
+      - name: Check PayAI Bazaar listing state
+        shell: bash
+        run: |
+          set -euo pipefail
+          resource='https://agentresolver.vercel.app/api/x402-ping'
+          encoded="$(python3 - <<'PY'
+          import urllib.parse
+          print(urllib.parse.quote("https://agentresolver.vercel.app/api/x402-ping", safe=""))
+          PY
+          )"
+          status_code="$(curl -sS --max-time 30 -o /tmp/payai-status.json -w '%{http_code}'             "https://facilitator.payai.network/discovery/listing-status?resource=$encoded")"
+          echo "PAYAI_LISTING_STATUS_HTTP=$status_code"
+          cat /tmp/payai-status.json
+          echo
+          search_code="$(curl -sS --max-time 30 -o /tmp/payai-search.json -w '%{http_code}'             --get 'https://facilitator.payai.network/discovery/search'             --data-urlencode 'query=AgentResolver settlement test wallet facilitator'             --data-urlencode 'limit=20')"
+          echo "PAYAI_SEARCH_HTTP=$search_code"
+          jq '{
+            matches: [(.resources // [])[]? | select(.resource == "https://agentresolver.vercel.app/api/x402-ping") | {
+              resource, method, description, serviceName, tags, lastUpdated
+            }],
+            totalReturned: ((.resources // []) | length)
+          }' /tmp/payai-search.json
+          case "$search_code" in 200) ;; *) exit 1 ;; esac
+
+      - name: Check Coinbase CDP Bazaar visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/cdp-search.json -w '%{http_code}'             --get 'https://api.cdp.coinbase.com/platform/v2/x402/discovery/search'             --data-urlencode 'query=verify x402 wallet facilitator payment test'             --data-urlencode 'limit=20')"
+          echo "CDP_SEARCH_HTTP=$code"
+          if [ "$code" = "200" ]; then
+            jq '{
+              matches: [(.resources // .items // [])[]? | select((.resource // .url // "") == "https://agentresolver.vercel.app/api/x402-ping")],
+              topResources: [(.resources // .items // [])[0:10][]? | (.resource // .url // null)]
+            }' /tmp/cdp-search.json
+          else
+            cat /tmp/cdp-search.json
+          fi
