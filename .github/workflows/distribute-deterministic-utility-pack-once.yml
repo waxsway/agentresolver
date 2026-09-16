@@ -1,0 +1,128 @@
+name: Distribute Deterministic Utility Pack Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/distribute-deterministic-utility-pack-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for utility pack on canonical production
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://agentresolver.vercel.app'
+          for attempt in $(seq 1 36); do
+            manifest_ok=0
+            ping_ok=0
+            if curl -fsS "$base/.well-known/x402" > /tmp/x402.json; then
+              if jq -e '
+                [.resources[]?.resource] |
+                any(. == "POST /api/x402-ping") and
+                any(. == "POST /api/sha256") and
+                any(. == "POST /api/json-normalize")
+              ' /tmp/x402.json >/dev/null; then manifest_ok=1; fi
+            fi
+            code=$(curl -sS -o /tmp/ping.json -w '%{http_code}' "$base/api/x402-ping" || true)
+            if [ "$code" = "402" ] && jq -e '.accepts[0].amount == "1000"' /tmp/ping.json >/dev/null; then ping_ok=1; fi
+            if [ "$manifest_ok" = "1" ] && [ "$ping_ok" = "1" ]; then
+              echo 'Deterministic utility pack is live.'
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Utility pack did not reach canonical production.' >&2
+          exit 1
+
+      - name: Refresh Agent402 origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/agent402.json -w '%{http_code}' \
+            -X POST 'https://agent402.tools/api/index/register' \
+            -H 'content-type: application/json' \
+            -d '{"origin":"https://agentresolver.vercel.app"}')
+          cat /tmp/agent402.json
+          echo
+          case "$code" in 200|201|202|204|409) ;; *) exit 1 ;; esac
+
+      - name: Submit exact utilities to Market402
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://agentresolver.vercel.app/api'
+          endpoints=(
+            x402-ping sha256 sha512 hmac-sha256 base64-encode base64-decode
+            jwt-decode json-normalize json-schema-validate url-parse uuid-v4 slugify
+          )
+          for path in "${endpoints[@]}"; do
+            url="$base/$path"
+            echo "Market402: $url"
+            code=$(curl -sS -o /tmp/market402.json -w '%{http_code}' \
+              -X POST 'https://market402.com/submit' \
+              -H 'content-type: application/json' \
+              -d "$(jq -n --arg resource "$url" '{resource:$resource,declared_price_usd:0.001}')")
+            cat /tmp/market402.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          done
+
+      - name: Register high-signal utilities with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          register() {
+            local path="$1" name="$2" description="$3" probe="$4"
+            url="https://agentresolver.vercel.app/api/$path"
+            payload=$(jq -n \
+              --arg url "$url" --arg name "$name" --arg description "$description" --arg probe "$probe" \
+              '{url:$url,name:$name,description:$description,protocol:"x402",http_method:"POST",probe_body:$probe,price_usd:0.001,payment_asset:"USDC",payment_network:"Base",category:"developer-tools",provider:"AgentResolver"}')
+            code=$(curl -sS -o /tmp/402index.json -w '%{http_code}' \
+              -X POST 'https://402index.io/api/v1/register' \
+              -H 'content-type: application/json' \
+              -d "$payload")
+            cat /tmp/402index.json
+            echo
+            case "$code" in 200|201) ;; *) exit 1 ;; esac
+          }
+          register x402-ping 'AgentResolver x402 Settlement Ping' 'Minimal paid canary for wallet, facilitator, settlement, and delivery verification.' '{"echo":"hello"}'
+          register sha256 'AgentResolver SHA-256 Hash' 'Compute a SHA-256 hex digest for bounded UTF-8 text.' '{"input":"agentresolver"}'
+          register base64-encode 'AgentResolver Base64 Encode' 'Encode bounded UTF-8 text as Base64.' '{"input":"hello"}'
+          register json-normalize 'AgentResolver JSON Normalize' 'Canonicalize JSON key order and return stable JSON plus SHA-256.' '{"value":{"b":2,"a":1}}'
+          register json-schema-validate 'AgentResolver JSON Schema Validate' 'Validate JSON against a practical schema subset with path-level errors.' '{"data":{"id":"123"},"schema":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}}}'
+          register url-parse 'AgentResolver URL Parse' 'Parse an absolute URL into normalized components and query parameters.' '{"url":"https://example.com/a?x=1"}'
+          register uuid-v4 'AgentResolver UUID v4' 'Generate cryptographically random UUID v4 identifiers.' '{"count":1}'
+          register slugify 'AgentResolver Slugify' 'Convert text into a stable lowercase URL slug.' '{"text":"Hello Agent World"}'
+
+      - name: Register five utilities with x402dash
+        shell: bash
+        run: |
+          set -euo pipefail
+          register() {
+            local path="$1" name="$2" description="$3" tags="$4"
+            payload=$(jq -n --arg url "https://agentresolver.vercel.app/api/$path" --arg name "$name" --arg description "$description" --arg tags "$tags" \
+              '{url:$url,name:$name,description:$description,category:"Agents/Developer Tools",tags:($tags|split(","))}')
+            code=$(curl -sS -o /tmp/x402dash.json -w '%{http_code}' \
+              -X POST 'https://api.x402dash.com/v1/register' \
+              -H 'content-type: application/json' \
+              -d "$payload")
+            cat /tmp/x402dash.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          }
+          register x402-ping 'AgentResolver x402 Settlement Ping' 'Cheapest end-to-end x402 payment canary for agents.' 'x402,ping,settlement,wallet'
+          register sha256 'AgentResolver SHA-256 Hash' 'Compute SHA-256 digests for agent workflows.' 'sha256,hash,agent-tools'
+          register base64-encode 'AgentResolver Base64 Encode' 'Encode UTF-8 text as Base64.' 'base64,encode,agent-tools'
+          register json-normalize 'AgentResolver JSON Normalize' 'Canonical stable JSON plus SHA-256.' 'json,normalize,canonical,agent-tools'
+          register json-schema-validate 'AgentResolver JSON Schema Validate' 'Deterministic JSON Schema subset validation.' 'json,schema,validate,agent-tools'
+
+      - name: Distribution complete
+        run: echo 'Utility pack distributed through free x402 discovery channels.'
