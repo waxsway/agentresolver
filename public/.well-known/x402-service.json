@@ -21,7 +21,21 @@
   "payment": {
     "address": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
     "chain": "base",
-    "facilitator": "https://facilitator.xpay.sh"
+    "facilitator": "https://facilitator.payai.network",
+    "networks": [
+      {
+        "network": "eip155:8453",
+        "chain": "base",
+        "asset": "USDC",
+        "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+      },
+      {
+        "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        "chain": "solana",
+        "asset": "USDC",
+        "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+      }
+    ]
   },
   "endpoint": "https://agentresolver.vercel.app/api/http-inspect",
   "description": "Low-cost live trust and security preflight for public HTTPS and x402 API endpoints before an agent spends money or depends on them."
