@@ -51,6 +51,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS 'https://402index.io/api/v1/services?protocol=x402&q=AgentResolver%20x402%20API%20Trust%20Preflight' -o /tmp/search.json
+          curl -fsS 'https://402index.io/api/v1/services?protocol=x402&q=AgentResolver%20x402%20Payment%20Preflight' -o /tmp/search.json
           cat /tmp/search.json
-          grep -q 'agentresolver.vercel.app/api/http-inspect' /tmp/search.json
+          grep -q 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/search.json
