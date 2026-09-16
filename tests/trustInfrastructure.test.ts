@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { AGENTRESOLVER_TRUST_CONTRACT } from "../src/lib/trustContract";
 import { GET as getSecurityTxt } from "../src/app/.well-known/security.txt/route";
+import { GET as getTrustManifest } from "../src/app/.well-known/agentresolver-trust.json/route";
 
 test("trust contract declares the canonical non-custodial payment boundary", () => {
   assert.equal(AGENTRESOLVER_TRUST_CONTRACT.schemaVersion, 1);
@@ -53,4 +54,29 @@ test("production config traces the canonical paid route and sends HSTS", () => {
   assert.match(config, /"\/api\/x402-payment-preflight": x402Tracing/);
   assert.match(config, /Strict-Transport-Security/);
   assert.match(config, /agentresolver-trust\.json/);
+});
+
+
+test("trust manifest links the runtime SHA to the exact public source commit", async () => {
+  const previousSha = process.env.VERCEL_GIT_COMMIT_SHA;
+  const previousEnv = process.env.VERCEL_ENV;
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  process.env.VERCEL_GIT_COMMIT_SHA = sha;
+  process.env.VERCEL_ENV = "production";
+
+  try {
+    const response = getTrustManifest();
+    const body = await response.json();
+    assert.equal(body.deployment.commitSha, sha);
+    assert.equal(
+      body.deployment.sourceCommitUrl,
+      `https://github.com/waxsway/agentresolver/commit/${sha}`
+    );
+    assert.equal(body.deployment.environment, "production");
+  } finally {
+    if (previousSha === undefined) delete process.env.VERCEL_GIT_COMMIT_SHA;
+    else process.env.VERCEL_GIT_COMMIT_SHA = previousSha;
+    if (previousEnv === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = previousEnv;
+  }
 });
