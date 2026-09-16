@@ -41,6 +41,16 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     buyerMustApplyOwnBudgetAndAuthorizationPolicy: true,
     privateNetworkTargetsBlocked: true
   },
+  evidenceModel: {
+    receiptVersion: 1,
+    source: "live_endpoint_observation",
+    paymentIdentityBasis: "network + asset + observed payTo",
+    stableFingerprints: true,
+    walletOwnershipVerified: false,
+    providerLegitimacyVerified: false,
+    futureFulfillmentVerified: false,
+    purpose: "Change detection and reusable technical evidence across endpoint observations."
+  },
   evidence: {
     health: "https://agentresolver.vercel.app/api/health",
     openapi: "https://agentresolver.vercel.app/openapi.json",
