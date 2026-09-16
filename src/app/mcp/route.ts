@@ -62,6 +62,7 @@ const uuidV4Product = getPaidCapability("uuid-v4");
 const slugifyProduct = getPaidCapability("slugify");
 const hashEncodeProduct = getPaidCapability("hash-encode");
 const httpInspectProduct = getPaidCapability("http-inspect");
+const x402PaymentPreflightProduct = getPaidCapability("x402-payment-preflight");
 const toolContractProduct = getPaidCapability("tool-contract");
 const mcpProbeProduct = getPaidCapability("mcp-probe");
 const readinessProduct = getPaidCapability("agent-readiness");
@@ -160,8 +161,10 @@ const handler = createMcpHandler(() => {
       "batch-verified-resolve": true
     } ? topOwned.id as PaidCapabilityId : null;
 
-    const directInput = directOwnedId === "http-inspect" && url
+    const directInput = directOwnedId === "x402-payment-preflight" && url
       ? { url }
+      : directOwnedId === "http-inspect" && url
+        ? { url }
       : directOwnedId === "agent-readiness" && url
         ? { url }
         : directOwnedId === "openapi-select" && url
@@ -172,8 +175,10 @@ const handler = createMcpHandler(() => {
               ? { goal, ...(url ? { url } : {}) }
               : null;
 
-    const directMcpTool = directOwnedId === "http-inspect"
-      ? "http_inspect"
+    const directMcpTool = directOwnedId === "x402-payment-preflight"
+      ? "x402_payment_preflight"
+      : directOwnedId === "http-inspect"
+        ? "http_inspect"
       : directOwnedId === "mcp-probe"
         ? "mcp_preflight"
         : directOwnedId === "agent-readiness"
@@ -183,8 +188,10 @@ const handler = createMcpHandler(() => {
             : directOwnedId === "verified-resolve"
               ? "verified_resolve"
               : null;
-    const directMcpProduct = directOwnedId === "http-inspect"
-      ? httpInspectProduct
+    const directMcpProduct = directOwnedId === "x402-payment-preflight"
+      ? x402PaymentPreflightProduct
+      : directOwnedId === "http-inspect"
+        ? httpInspectProduct
       : directOwnedId === "mcp-probe"
         ? mcpProbeProduct
         : directOwnedId === "agent-readiness"
@@ -196,7 +203,7 @@ const handler = createMcpHandler(() => {
               : null;
     const directMcpRec = directMcpTool && directMcpProduct && directInput
       ? {
-          capabilityId: directOwnedId as "http-inspect" | "mcp-probe" | "agent-readiness" | "openapi-select" | "verified-resolve",
+          capabilityId: directOwnedId as "x402-payment-preflight" | "http-inspect" | "mcp-probe" | "agent-readiness" | "openapi-select" | "verified-resolve",
           surface: "mcp" as const,
           tool: directMcpTool,
           execute: `${CANONICAL}/mcp`,
@@ -451,6 +458,53 @@ const handler = createMcpHandler(() => {
     return {
       content: [{ type: "text", text: JSON.stringify(report) }],
       structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
+
+  server.registerTool("x402_payment_preflight", {
+    title: x402PaymentPreflightProduct.quoteTool.title,
+    description: x402PaymentPreflightProduct.quoteTool.description,
+    inputSchema: z.object({
+      url: z.string().url(),
+      maxPriceUsd: z.number().min(0).max(1000).optional(),
+      expectedPayTo: z.string().min(1).max(128).optional(),
+      expectedNetwork: z.string().max(128).optional(),
+      method: z.enum(["GET", "HEAD", "POST"]).optional(),
+      body: z.unknown().optional(),
+      allowUnpaidPostProbe: z.boolean().optional()
+    }),
+    annotations: { title: x402PaymentPreflightProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  }, createLazyPaidMcpTool<{
+    url: string;
+    maxPriceUsd?: number;
+    expectedPayTo?: string;
+    expectedNetwork?: string;
+    method?: "GET" | "HEAD" | "POST";
+    body?: unknown;
+    allowUnpaidPostProbe?: boolean;
+  }>("x402-payment-preflight", async ({ url, maxPriceUsd, expectedPayTo, expectedNetwork, method, body, allowUnpaidPostProbe }) => {
+    logToolCall("x402_payment_preflight", { priceUsd: x402PaymentPreflightProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await inspectHttpResource(url, {
+      maxPriceUsd,
+      expectedPayTo,
+      expectedNetwork,
+      method,
+      body,
+      allowUnpaidPostProbe
+    });
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "x402-payment-preflight",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      status: report.status,
+      latencyMs: report.latencyMs,
+      x402Detected: report.x402.detected,
+      x402Verdict: report.x402.verdict
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report
     };
   }));
 

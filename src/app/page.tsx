@@ -84,7 +84,8 @@ export default function Home() {
         <a href="/mcp/server-card">MCP Server Card</a> ·{" "}
         <a href="/.well-known/x402">x402 manifest</a> ·{" "}
         <a href="/llms.txt">llms.txt</a> ·{" "}
-        <a href="/capabilities.json">Capabilities</a>
+        <a href="/capabilities.json">Capabilities</a> ·{" "}
+        <a href="/legal">Legal & Safety</a>
       </p>
     </main>
   );

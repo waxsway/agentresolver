@@ -50,6 +50,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     weekly("/.well-known/ai-plugin.json", 0.9),
     weekly("/.well-known/mcp.json", 0.9),
     weekly("/.well-known/mcp/server-card.json", 0.9),
-    weekly("/mcp/server-card", 0.9)
+    weekly("/mcp/server-card", 0.9),
+    weekly("/legal", 0.5)
   ];
 }

@@ -7,6 +7,7 @@ import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
+import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 
@@ -55,6 +56,18 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
       .register(X402_NETWORK, new ExactEvmScheme())
       .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
       .registerExtension(bazaarResourceServerExtension);
+    const discoveryOutput = capabilityId === "x402-payment-preflight"
+      ? {
+          example: X402_PREFLIGHT_OUTPUT_EXAMPLE,
+          schema: X402_PREFLIGHT_OUTPUT_SCHEMA
+        }
+      : {
+          example: {},
+          schema: {
+            type: "object",
+            additionalProperties: true
+          }
+        };
     paidHandler = withX402<unknown>(handler, {
       [product.endpoint]: {
         accepts: [
@@ -78,13 +91,7 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
             input: product.example,
             inputSchema: product.inputSchema,
             bodyType: "json",
-            output: {
-              example: {},
-              schema: {
-                type: "object",
-                additionalProperties: true
-              }
-            }
+            output: discoveryOutput
           })
         }
       }

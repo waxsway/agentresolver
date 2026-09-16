@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { CANONICAL_ORIGIN, PAID_CAPABILITY_LIST } from "../src/lib/paidCapabilities";
+import { X402_PREFLIGHT_OUTPUT_SCHEMA } from "../src/lib/x402PreflightDiscovery";
 
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const SOLANA_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -21,6 +22,7 @@ const HASH_RESULT_SCHEMA = {
   }
 };
 const OUTPUT_SCHEMAS: Record<string, Record<string, unknown>> = {
+  "x402-payment-preflight": X402_PREFLIGHT_OUTPUT_SCHEMA,
   "abi-encode": {
     type: "object",
     required: ["types", "encoded", "bytes"],
@@ -303,8 +305,10 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  version: "0.1.4",
-  "x-guidance": "Use POST /api/resolve first for free capability discovery. Use paid routes only when exact live evidence or deterministic computation is worth the listed per-call price. Payment is always caller-authorized."
+  title: "AgentResolver — X402 Payment Preflight & PayTo Verification",
+  description: "Machine-readable verify-before-pay infrastructure for autonomous x402 buyers. The canonical $0.001 USDC route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana network, asset and resource binding before spend. Free capability resolution remains available as a secondary surface.",
+  version: "0.1.5",
+  "x-guidance": "For x402 verify-before-pay, use POST /api/x402-payment-preflight. It costs $0.001 USDC on Base or Solana and returns structured payment, endpoint and trust evidence before agent spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
