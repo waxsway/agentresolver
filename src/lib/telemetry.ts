@@ -122,6 +122,9 @@ export function logX402Settlement(response: Response, capabilityId: string, requ
     amount: receipt.amount,
     transactionHash: receipt.transaction ? shortHash(receipt.transaction) : null,
     payerHash: receipt.payer ? shortHash(receipt.payer) : null,
-    errorReason: receipt.errorReason
+    errorReason: receipt.errorReason,
+    executionId: response.headers.get("x-agentresolver-execution-id"),
+    responseSha256: response.headers.get("x-agentresolver-response-sha256"),
+    deploymentCommitSha: response.headers.get("x-agentresolver-deployment")
   }));
 }

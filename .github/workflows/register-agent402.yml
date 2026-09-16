@@ -24,11 +24,23 @@ jobs:
       - name: Verify live x402 challenge
         run: |
           set -euo pipefail
-          code=$(curl -sS -o /tmp/challenge.json -w '%{http_code}' \
+          code=$(curl -sS -D /tmp/challenge-headers.txt -o /tmp/challenge.json -w '%{http_code}' \
             -X GET 'https://agentresolver.vercel.app/api/x402-ping' \
             -H 'x-agentresolver-internal: agent402-registration')
           test "$code" = "402"
-          grep -q 'accepts' /tmp/challenge.json
+          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/challenge-headers.txt)"
+          PAYMENT_REQUIRED="$payment_required" python3 - <<'PY'
+          import base64
+          import json
+          import os
+          
+          raw = os.environ["PAYMENT_REQUIRED"].strip()
+          assert raw, "PAYMENT-REQUIRED header missing"
+          raw += "=" * (-len(raw) % 4)
+          payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
+          accepts = payload.get("accepts") or []
+          assert any(str(item.get("amount")) == "1000" for item in accepts), "x402-ping $0.001 option missing"
+          PY
 
       - name: Register origin with Agent402 free index
         run: |

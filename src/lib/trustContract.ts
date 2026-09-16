@@ -67,6 +67,10 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
   },
   evidenceModel: {
     receiptVersion: 1,
+    executionEvidenceVersion: 1,
+    responseBodySha256: true,
+    deploymentCommitBound: true,
+    settlementEvidenceHeader: "payment-response",
     source: "live_endpoint_observation",
     paymentIdentityBasis: "network + asset + observed payTo",
     stableFingerprints: true,
@@ -86,7 +90,8 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     legal: "https://agentresolver.vercel.app/legal",
     securityDisclosure: "https://agentresolver.vercel.app/.well-known/security.txt",
     sourceCode: "https://github.com/waxsway/agentresolver",
-    trustAuditHistory: "https://github.com/waxsway/agentresolver/actions/workflows/trust-surface-audit.yml"
+    trustAuditHistory: "https://github.com/waxsway/agentresolver/actions/workflows/trust-surface-audit.yml",
+    executionEvidence: "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json"
   },
   telemetry: {
     rawPrivateKeysCollected: false,

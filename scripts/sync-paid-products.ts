@@ -369,6 +369,28 @@ for (const product of PAID_CAPABILITY_LIST) {
       responses: {
         "200": {
           description: `${product.name} completed after verified payment.`,
+          headers: {
+            "x-agentresolver-execution-id": {
+              description: "Unique identifier for this successful AgentResolver execution.",
+              schema: { type: "string", pattern: "^[0-9a-f-]{36}$" }
+            },
+            "x-agentresolver-response-sha256": {
+              description: "SHA-256 of the exact UTF-8 JSON response payload before HTTP content encoding.",
+              schema: { type: "string", pattern: "^[0-9a-f]{64}$" }
+            },
+            "x-agentresolver-deployment": {
+              description: "Git commit SHA of the deployed AgentResolver source.",
+              schema: { type: "string", pattern: "^[0-9a-f]{40}$" }
+            },
+            "x-agentresolver-evidence": {
+              description: "Machine-readable contract explaining how to verify AgentResolver execution evidence.",
+              schema: { type: "string", pattern: "^https://" }
+            },
+            "payment-response": {
+              description: "x402 settlement response supplied by the payment middleware after successful settlement.",
+              schema: { type: "string" }
+            }
+          },
           content: {
             "application/json": {
               schema: OUTPUT_SCHEMAS[product.id] ?? {
