@@ -46,10 +46,19 @@ jobs:
               "endpoint_url":"https://agentresolver.vercel.app/api/x402-ping",
               "category":"tools.verification",
               "price_amount":0.001,
-              "chains":["base","solana"],
-              "sample_query":"https://agentresolver.vercel.app/api/x402-ping"
+              "price_currency":"USDC",
+              "chains":["base","solana"]
             }')"
-          cat "$body" | tee /tmp/nohumans-submit.json
+          cp "$body" /tmp/nohumans-submit.json
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          if isinstance(payload, dict) and "claim_token" in payload:
+              payload["claim_token"] = "[REDACTED]"
+          if isinstance(payload, dict) and isinstance(payload.get("data"), dict) and "claim_token" in payload["data"]:
+              payload["data"]["claim_token"] = "[REDACTED]"
+          print(json.dumps(payload, separators=(",", ":")))
+          PY
           echo
           case "$code" in
             200|201|202|409) ;;
