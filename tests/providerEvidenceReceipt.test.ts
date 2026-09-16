@@ -54,6 +54,9 @@ const report = {
     ]
   },
   trust: {
+    scope: "technical_endpoint_and_x402_payment_challenge" as const,
+    identityVerified: false as const,
+    fulfillmentVerified: false as const,
     score: 100,
     infrastructureScore: 100,
     x402Score: 100,
@@ -103,6 +106,9 @@ test("wallet changes alter observed identity and payment-terms fingerprints", ()
 test("evidence receipt does not overclaim legal ownership or legitimacy", () => {
   const receipt = buildProviderEvidenceReceipt(report);
 
+  assert.equal(report.trust.scope, "technical_endpoint_and_x402_payment_challenge");
+  assert.equal(report.trust.identityVerified, false);
+  assert.equal(report.trust.fulfillmentVerified, false);
   assert.equal(receipt.observedPaymentIdentity.ownershipVerified, false);
   assert.equal(receipt.observedPaymentIdentity.providerLegitimacyVerified, false);
   assert.ok(receipt.limitations.some((line) => /legal ownership/i.test(line)));
