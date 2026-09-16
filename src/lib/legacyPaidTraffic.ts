@@ -10,7 +10,7 @@ export function logLegacyPaidAttempt(
   capabilityId: PaidCapabilityId,
   path: string
 ) {
-  const traffic = classifyTraffic(req, { path, hasUserIntent: true });
+  const traffic = classifyTraffic(req, { path });
   logPaidCapabilityAttempt(req, capabilityId, traffic);
   return traffic;
 }
