@@ -1,6 +1,7 @@
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import type { PaymentRequirements } from "@x402/core/types";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { createPaymentWrapper } from "@x402/mcp";
 import { CANONICAL_ORIGIN, getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
@@ -8,7 +9,11 @@ import { shortHash } from "@/lib/telemetry";
 import {
   X402_FACILITATOR_URL,
   X402_NETWORK,
-  X402_PAY_TO
+  X402_PAY_TO,
+  X402_SOLANA_ASSET,
+  X402_SOLANA_FEE_PAYER,
+  X402_SOLANA_NETWORK,
+  X402_SOLANA_PAY_TO
 } from "@/lib/x402Config";
 
 type JsonObject = Record<string, unknown>;
@@ -38,7 +43,7 @@ function getResourceServer() {
   if (resourceServer) return resourceServer;
 
   const facilitatorUrl = (
-    process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL
+    process.env.AGENTRESOLVER_X402_FACILITATOR_URL || X402_FACILITATOR_URL
   ).trim();
   if (!/^https:\/\//i.test(facilitatorUrl)) {
     throw new Error("X402_FACILITATOR_URL is invalid.");
@@ -54,7 +59,8 @@ function getResourceServer() {
   // receive a challenge without any facilitator/network request. The resource
   // server contacts the configured facilitator only when verify/settle is needed.
   resourceServer = new x402ResourceServer(facilitatorClient)
-    .register(X402_NETWORK, new ExactEvmScheme());
+    .register(X402_NETWORK, new ExactEvmScheme())
+    .register(X402_SOLANA_NETWORK, new ExactSvmScheme());
 
   return resourceServer;
 }
@@ -64,23 +70,40 @@ export function buildStaticMcpPaymentRequirements(
 ): PaymentRequirements[] {
   const product = getPaidCapability(capabilityId);
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
+  const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
 
   if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) {
     throw new Error("AGENTRESOLVER_PAY_TO is invalid.");
   }
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(solanaPayTo)) {
+    throw new Error("AGENTRESOLVER_SOLANA_PAY_TO is invalid.");
+  }
 
-  return [{
-    scheme: "exact",
-    network: X402_NETWORK,
-    amount: product.atomicAmount,
-    asset: BASE_USDC,
-    payTo,
-    maxTimeoutSeconds: 300,
-    extra: {
-      name: "USD Coin",
-      version: "2"
+  return [
+    {
+      scheme: "exact",
+      network: X402_NETWORK,
+      amount: product.atomicAmount,
+      asset: BASE_USDC,
+      payTo,
+      maxTimeoutSeconds: 300,
+      extra: {
+        name: "USD Coin",
+        version: "2"
+      }
+    },
+    {
+      scheme: "exact",
+      network: X402_SOLANA_NETWORK,
+      amount: product.atomicAmount,
+      asset: X402_SOLANA_ASSET,
+      payTo: solanaPayTo,
+      maxTimeoutSeconds: 300,
+      extra: {
+        feePayer: X402_SOLANA_FEE_PAYER
+      }
     }
-  }];
+  ];
 }
 
 function logMcpPaymentOutcome(result: McpToolResult, capabilityId: PaidCapabilityId) {
