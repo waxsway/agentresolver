@@ -1,0 +1,60 @@
+name: Submit AgentResolver to Aegis
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/submit-aegis-current.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify live canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 20 -o /tmp/ping.json -w '%{http_code}' 'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          jq -e '.x402Version==2 and (.accepts | any(.network=="eip155:8453" and .amount=="1000" and .payTo=="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"))' /tmp/ping.json >/dev/null
+
+      - name: Lint through Aegis
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -G -o /tmp/lint.json -w '%{http_code}' \
+            'https://aegis.borisinc.com/lint' \
+            --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping')"
+          echo "AEGIS_LINT_HTTP=$code"
+          jq . /tmp/lint.json 2>/dev/null || cat /tmp/lint.json
+          case "$code" in 200) ;; *) exit 1 ;; esac
+
+      - name: Submit free accountless Aegis listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 40 -G -o /tmp/submit.json -w '%{http_code}' \
+            'https://aegis.borisinc.com/submit' \
+            --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping' \
+            --data-urlencode 'name=AgentResolver Settlement Canary' \
+            --data-urlencode 'category=verification' \
+            --data-urlencode 'price_usd=0.001')"
+          echo "AEGIS_SUBMIT_HTTP=$code"
+          jq . /tmp/submit.json 2>/dev/null || cat /tmp/submit.json
+          case "$code" in 200|201|202|409) ;; *) exit 1 ;; esac
+
+      - name: Read current Aegis discovery state
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          code="$(curl -sS --max-time 30 -G -o /tmp/discover.json -w '%{http_code}' \
+            'https://aegis.borisinc.com/discover' \
+            --data-urlencode 'query=AgentResolver Settlement Canary')"
+          echo "AEGIS_DISCOVER_HTTP=$code"
+          jq . /tmp/discover.json 2>/dev/null || cat /tmp/discover.json
+          case "$code" in 200) ;; *) exit 1 ;; esac
