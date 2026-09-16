@@ -17,7 +17,7 @@ type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
 
-export function circleGatewayEnabled(env: NodeJS.ProcessEnv = process.env) {
+export function circleGatewayEnabled(env: Readonly<Record<string, string | undefined>> = process.env) {
   return env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
 }
 
@@ -87,11 +87,41 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
 
     const standardFacilitator = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
     const gatewayEnabled = circleGatewayEnabled();
-    const server = gatewayEnabled
-      ? new x402ResourceServer([
-          standardFacilitator,
-          new BatchFacilitatorClient()
-        ])
+
+    type CurrentPaymentPayload = Parameters<HTTPFacilitatorClient["verify"]>[0];
+    type CurrentPaymentRequirements = Parameters<HTTPFacilitatorClient["verify"]>[1];
+
+    const circleClient = gatewayEnabled ? new BatchFacilitatorClient() : null;
+    const circleFacilitator = circleClient ? {
+      verify: async (paymentPayload: CurrentPaymentPayload, paymentRequirements: CurrentPaymentRequirements) => {
+        const resource = paymentPayload.resource;
+        const normalizedPayload = {
+          ...paymentPayload,
+          resource: resource ? {
+            url: resource.url,
+            description: resource.description ?? product.description,
+            mimeType: resource.mimeType ?? "application/json"
+          } : undefined
+        };
+        return circleClient.verify(normalizedPayload, paymentRequirements);
+      },
+      settle: async (paymentPayload: CurrentPaymentPayload, paymentRequirements: CurrentPaymentRequirements) => {
+        const resource = paymentPayload.resource;
+        const normalizedPayload = {
+          ...paymentPayload,
+          resource: resource ? {
+            url: resource.url,
+            description: resource.description ?? product.description,
+            mimeType: resource.mimeType ?? "application/json"
+          } : undefined
+        };
+        return circleClient.settle(normalizedPayload, paymentRequirements);
+      },
+      getSupported: () => circleClient.getSupported()
+    } : null;
+
+    const server = circleFacilitator
+      ? new x402ResourceServer([standardFacilitator, circleFacilitator])
       : new x402ResourceServer(standardFacilitator);
 
     if (gatewayEnabled) {
