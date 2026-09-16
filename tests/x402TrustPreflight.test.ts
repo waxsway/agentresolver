@@ -47,3 +47,31 @@ test("assessX402Payment does not invent x402 support", () => {
   assert.equal(result.score, null);
   assert.equal(result.verdict, "not-detected");
 });
+
+
+test("assessX402Payment prices and validates Solana USDC quotes", () => {
+  const solanaPayTo = "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa";
+  const solanaChallenge = {
+    x402Version: 2,
+    resource: { url: target },
+    accepts: [{
+      scheme: "exact",
+      network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      payTo: solanaPayTo,
+      resource: target,
+      amount: "5000",
+      extra: { feePayer: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4" }
+    }]
+  };
+  const encoded = Buffer.from(JSON.stringify(solanaChallenge), "utf8").toString("base64");
+  const result = assessX402Payment(402, target, encoded, {
+    maxPriceUsd: 0.01,
+    expectedNetwork: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    expectedPayTo: solanaPayTo
+  });
+
+  assert.equal(result.amountUsd, 0.005);
+  assert.equal(result.score, 100);
+  assert.equal(result.verdict, "strong");
+});
