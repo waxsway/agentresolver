@@ -82,6 +82,11 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.ok(pathItem.post);
   assert.equal(pathItem.get.requestBody, undefined);
   assert.equal(pathItem.get["x-payment-info"].priceUsd, 0.001);
+  assert.match(pathItem.get.summary || "", /settlement test/i);
+  assert.match(pathItem.get.description || "", /wallet/i);
+  assert.match(pathItem.get.description || "", /facilitator/i);
+  const getManifest = manifest.resources.find((item: any) => item.resource === "GET /api/x402-ping");
+  assert.match(getManifest?.description || "", /settlement test/i);
 });
 
 
