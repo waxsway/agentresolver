@@ -1,55 +1,267 @@
 {
   "x402Version": 2,
   "name": "AgentResolver",
-  "description": "Free capability discovery plus tiny pay-per-call live utilities and compatibility checks for autonomous agents. No signup or API key.",
+  "description": "Free capability discovery plus low-cost pay-per-call trust, security and live-verification tools for autonomous agents. No signup or API key.",
   "resources": [
     {
       "resource": "POST /api/http-inspect",
-      "description": "Inspect a public HTTPS resource for current status, latency, response metadata, cache validators and baseline security headers.",
+      "description": "Preflight a public HTTPS or x402 API before an agent depends on or pays it. Returns a live 0-100 trust score, grade and weighted TLS, reachability, latency, redirect and security-header evidence.",
       "price": "$0.001",
-      "inputSchema": {"type":"object","required":["url"],"properties":{"url":{"type":"string","format":"uri"}}},
-      "examples": [{"url":"https://example.com"}],
-      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"1000","extra":{"name":"USD Coin","version":"2"}}]
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "examples": [
+        {
+          "url": "https://example.com"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        }
+      ]
     },
     {
       "resource": "POST /api/tool-contract",
       "description": "Deterministically check whether one tool's structured output can satisfy another tool's required JSON-schema input contract, with exact incompatibility reasons and safe normalized field mappings.",
       "price": "$0.005",
-      "inputSchema": {"type":"object","required":["producerOutputSchema","consumerInputSchema"],"properties":{"producerOutputSchema":{"type":"object"},"consumerInputSchema":{"type":"object"}}},
-      "examples": [{"producerOutputSchema":{"type":"object","properties":{"user_id":{"type":"string"}},"required":["user_id"]},"consumerInputSchema":{"type":"object","properties":{"userId":{"type":"string"}},"required":["userId"]}}],
-      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"5000","extra":{"name":"USD Coin","version":"2"}}]
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "producerOutputSchema",
+          "consumerInputSchema"
+        ],
+        "properties": {
+          "producerOutputSchema": {
+            "type": "object"
+          },
+          "consumerInputSchema": {
+            "type": "object"
+          }
+        }
+      },
+      "examples": [
+        {
+          "producerOutputSchema": {
+            "type": "object",
+            "properties": {
+              "user_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "user_id"
+            ]
+          },
+          "consumerInputSchema": {
+            "type": "object",
+            "properties": {
+              "userId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "userId"
+            ]
+          }
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        }
+      ]
     },
     {
       "resource": "POST /api/mcp-probe",
       "description": "Live-preflight one public MCP endpoint for reachability, protocol compatibility, latency, server metadata, and tool inventory.",
       "price": "$0.001",
-      "inputSchema": {"type":"object","required":["endpoint"],"properties":{"endpoint":{"type":"string","format":"uri"}}},
-      "examples": [{"endpoint":"https://example.com/mcp"}],
-      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"1000","extra":{"name":"USD Coin","version":"2"}}]
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "endpoint"
+        ],
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "examples": [
+        {
+          "endpoint": "https://example.com/mcp"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        }
+      ]
     },
     {
       "resource": "POST /api/agent-readiness",
       "description": "Audit a public site for machine-readable agent discoverability and integration signals.",
       "price": "$0.005",
-      "inputSchema": {"type":"object","required":["target"],"properties":{"target":{"type":"string","format":"uri"}}},
-      "examples": [{"target":"https://example.com"}],
-      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"5000","extra":{"name":"USD Coin","version":"2"}}]
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "target"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "examples": [
+        {
+          "target": "https://example.com"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "maxAmountRequired": "5000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        }
+      ]
     },
     {
       "resource": "POST /api/verified-resolve",
       "description": "Resolve one missing capability, live-check up to two top MCP candidates, and return an evidence-backed recommendation.",
       "price": "$0.02",
-      "inputSchema": {"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"url":{"type":"string","format":"uri"}}},
-      "examples": [{"goal":"Find and verify an MCP server for web search"}],
-      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"20000","extra":{"name":"USD Coin","version":"2"}}]
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "goal"
+        ],
+        "properties": {
+          "goal": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "examples": [
+        {
+          "goal": "Find and verify an MCP server for web search"
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "maxAmountRequired": "20000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        }
+      ]
     },
     {
       "resource": "POST /api/batch-verified-resolve",
       "description": "Resolve and live-verify up to four missing capabilities in one bounded call.",
       "price": "$0.05",
-      "inputSchema": {"type":"object","required":["items"],"properties":{"items":{"type":"array","minItems":1,"maxItems":4,"items":{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"url":{"type":"string","format":"uri"}}}}}},
-      "examples": [{"items":[{"goal":"Find an MCP server for search"},{"goal":"Find an MCP server for browser automation"}]}],
-      "accepts": [{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","maxAmountRequired":"50000","extra":{"name":"USD Coin","version":"2"}}]
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "required": [
+                "goal"
+              ],
+              "properties": {
+                "goal": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "items": [
+            {
+              "goal": "Find an MCP server for search"
+            },
+            {
+              "goal": "Find an MCP server for browser automation"
+            }
+          ]
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "maxAmountRequired": "50000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        }
+      ]
     }
   ],
   "freeDiscovery": {
