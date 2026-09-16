@@ -4,7 +4,8 @@ import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { inspectHttpResource } from "@/lib/httpInspect";
-import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
+import { logX402Settlement } from "@/lib/telemetry";
+import { logLegacyPaidAttempt, logLegacyPaidDiscovery } from "@/lib/legacyPaidTraffic";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
@@ -101,7 +102,7 @@ function getPaidHandler(): PaidHandler {
 }
 
 async function paidRequest(req: NextRequest) {
-  logPaidCapabilityAttempt(req, "http-inspect");
+  logLegacyPaidAttempt(req, "http-inspect", "/api/http-inspect");
   try {
     const response = await getPaidHandler()(req);
     logX402Settlement(response, "http-inspect");
@@ -118,7 +119,10 @@ async function paidRequest(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) { return paidRequest(req); }
-export async function GET() { return x402DiscoveryChallenge("http-inspect"); }
+export async function GET(req: NextRequest) {
+  logLegacyPaidDiscovery(req, "http-inspect", "/api/http-inspect");
+  return x402DiscoveryChallenge("http-inspect");
+}
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
