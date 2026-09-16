@@ -25,6 +25,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+      - name: Verify generated discovery artifacts
+        run: |
+          npm run sync:products
+          git diff --exit-code -- public/.well-known/x402 public/capabilities.json public/integrations.json public/openapi.json
 
       - name: Typecheck
         run: npm run typecheck
