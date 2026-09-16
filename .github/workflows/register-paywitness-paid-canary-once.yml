@@ -130,6 +130,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ -f /tmp/paywitness-unavailable ]; then
+            echo "::notice::Skipping Paywitness self-list because its OpenAPI was unavailable."
+            exit 0
+          fi
           body="$(mktemp)"
           code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://paywitness.ai/list'             -H 'content-type: application/json'             --data-binary @/tmp/paywitness-list.json)"
           cat "$body"
@@ -137,11 +141,15 @@ jobs:
           case "$code" in
             200|201|202|204|409) ;;
             402)
-              echo "Paywitness self-list unexpectedly requires payment; no payment was attempted." >&2
-              exit 1
+              echo "::warning::Paywitness self-list now requires payment; no payment was attempted."
+              exit 0
+              ;;
+            429|500|502|503|504)
+              echo "::warning::Paywitness is temporarily unavailable/rate-limited (HTTP $code); registration deferred."
+              exit 0
               ;;
             *)
-              echo "Paywitness self-list failed with HTTP $code" >&2
+              echo "Paywitness self-list failed with unexpected HTTP $code" >&2
               exit 1
               ;;
           esac
