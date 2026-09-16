@@ -15,5 +15,7 @@
     "eligible-impressions",
     "qualified-intent-impressions"
   ],
-  "details": "https://agentresolver.vercel.app/api/sponsorship"
+  "details": "https://agentresolver.vercel.app/api/sponsorship",
+  "apply": "https://github.com/waxsway/agentresolver/issues/new?template=sponsorship.yml",
+  "terms": "Inquiry only; activation and commercial terms require operator approval."
 }

@@ -3,7 +3,8 @@ import { withX402 } from "@x402/next";
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { verifiedResolve } from "@/lib/verifiedResolve";
-import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
+import { logX402Settlement } from "@/lib/telemetry";
+import { logLegacyPaidAttempt, logLegacyPaidDiscovery } from "@/lib/legacyPaidTraffic";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING } from "@/lib/x402Config";
 
@@ -37,7 +38,7 @@ function getPaidHandler(): PaidHandler {
 }
 
 async function paidRequest(req: NextRequest) {
-  logPaidCapabilityAttempt(req, "verified-resolve");
+  logLegacyPaidAttempt(req, "verified-resolve", "/api/verified-resolve");
   if (process.env.VERIFIED_RESOLVE_ENABLED === "false") return NextResponse.json({ error: "CAPABILITY_NOT_LIVE", capabilityId: "verified-resolve", message: "Verified Resolve is temporarily disabled." }, { status: 503 });
   try { const response = await getPaidHandler()(req); logX402Settlement(response, "verified-resolve"); return response; }
   catch (error) {
@@ -47,7 +48,10 @@ async function paidRequest(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) { return paidRequest(req); }
-export async function GET() { return x402DiscoveryChallenge("verified-resolve"); }
+export async function GET(req: NextRequest) {
+  logLegacyPaidDiscovery(req, "verified-resolve", "/api/verified-resolve");
+  return x402DiscoveryChallenge("verified-resolve");
+}
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response" } });
 }

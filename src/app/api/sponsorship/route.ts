@@ -15,7 +15,7 @@ export function GET(req: Request) {
       operatorApprovalRequired: true,
       contact: {
         type: "github",
-        url: "https://github.com/waxsway/agentresolver/issues/new",
+        url: "https://github.com/waxsway/agentresolver/issues/new?template=sponsorship.yml",
         suggestedTitle: "AgentResolver sponsorship pilot"
       }
     },

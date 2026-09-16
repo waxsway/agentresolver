@@ -17,6 +17,14 @@ The commercial product is not access to the directory. The paid product is fresh
 - Structured capability catalog: https://agentresolver.vercel.app/capabilities.json
 - Full machine documentation: https://agentresolver.vercel.app/llms-full.txt
 
+## Provider sponsorship
+
+AgentResolver is opening a provider-funded discovery pilot. Providers can apply for explicitly labeled sponsored placement alongside relevant agent capability intents. Sponsorship never changes organic rankings, and submitting an application creates no placement or financial commitment.
+
+- Machine-readable inventory: https://agentresolver.vercel.app/.well-known/sponsorship.json
+- Sponsorship details: https://agentresolver.vercel.app/api/sponsorship
+- Apply: https://github.com/waxsway/agentresolver/issues/new?template=sponsorship.yml
+
 ## Paid machine utilities
 
 - MCP Live Preflight: POST https://agentresolver.vercel.app/api/mcp-probe — $0.001 USDC on Base via x402. Given one public MCP endpoint, return current reachability, protocol compatibility, latency, server metadata, and tool inventory. This is the default paid step when free discovery finds one concrete MCP endpoint.

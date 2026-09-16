@@ -82,7 +82,7 @@ export function createDeterministicPaidRoute(capabilityId: PaidCapabilityId, exe
       }
     },
     GET: async (req: NextRequest) => {
-      const traffic = classifyTraffic(req, { path: product.endpoint });
+      const traffic = classifyTraffic(req, { path: product.endpoint, isDiscovery: true });
       console.log(JSON.stringify({
         event: "paid_capability_discovery",
         at: new Date().toISOString(),
