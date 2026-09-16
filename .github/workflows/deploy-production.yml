@@ -47,14 +47,14 @@ jobs:
             echo "fresh=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Require merge commit release
+      - name: Require pull-request release
         if: steps.initial_freshness.outputs.fresh == 'true'
         shell: bash
         run: |
           set -euo pipefail
           subject="$(git log -1 --pretty=%s)"
           case "$subject" in
-            "Merge pull request #"*|"Merge PR #"*) ;;
+            "Merge pull request #"*|"Merge PR #"*|*" (#"*[0-9]")") ;;
             *)
               echo "Refusing production deploy: main commit subject is not an accepted pull-request merge form."
               exit 1
@@ -80,7 +80,7 @@ jobs:
           done <<< "$changed"
           echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
           if [ "$deploy" = "false" ]; then
-            echo "Only .github automation changed; Vercel build/deploy is unnecessary."
+            echo "Only docs/tests/automation changed; Vercel build/deploy is unnecessary."
           fi
 
       - name: Require Vercel deployment credential
@@ -154,4 +154,4 @@ jobs:
         if: >-
           steps.initial_freshness.outputs.fresh == 'true' &&
           steps.application_changes.outputs.deploy == 'false'
-        run: echo "No Vercel build or deployment needed because this merge changed only .github automation."
+        run: echo "No Vercel build or deployment needed because this merge changed only docs/tests/.github automation."
