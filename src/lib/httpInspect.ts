@@ -5,6 +5,13 @@ import { isIP } from "node:net";
 
 const MAX_URL = 500;
 const TIMEOUT_MS = 4_500;
+const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913".toLowerCase();
+
+export type HttpInspectOptions = {
+  maxPriceUsd?: number;
+  expectedPayTo?: string;
+  expectedNetwork?: string;
+};
 
 export type HttpInspectReport = {
   url: string;
@@ -48,8 +55,33 @@ export type HttpInspectReport = {
     referrerPolicy: boolean;
     permissionsPolicy: boolean;
   };
+  x402: {
+    detected: boolean;
+    challengeHeaderPresent: boolean;
+    parseable: boolean;
+    version: number | null;
+    acceptCount: number;
+    scheme: string | null;
+    network: string | null;
+    asset: string | null;
+    payTo: string | null;
+    resource: string | null;
+    amountAtomic: string | null;
+    amountUsd: number | null;
+    score: number | null;
+    verdict: "strong" | "mixed" | "weak" | "not-detected";
+    checks: Array<{
+      id: string;
+      label: string;
+      passed: boolean;
+      weight: number;
+      evidence: string;
+    }>;
+  };
   trust: {
     score: number;
+    infrastructureScore: number;
+    x402Score: number | null;
     grade: "A" | "B" | "C" | "D" | "F";
     verdict: "strong" | "mixed" | "weak";
     checks: Array<{
@@ -170,7 +202,149 @@ function gradeFor(score: number): "A" | "B" | "C" | "D" | "F" {
   return "F";
 }
 
-export async function inspectHttpResource(input: string): Promise<HttpInspectReport> {
+function sameUrl(a: string | null, b: string) {
+  if (!a) return false;
+  try {
+    const left = new URL(a);
+    const right = new URL(b);
+    left.hash = "";
+    right.hash = "";
+    return left.toString() === right.toString();
+  } catch {
+    return false;
+  }
+}
+
+function decodePaymentRequired(value: string | null): any | null {
+  if (!value) return null;
+  try {
+    const decoded = Buffer.from(value, "base64").toString("utf8");
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+export function assessX402Payment(
+  status: number,
+  targetUrl: string,
+  paymentRequired: string | null,
+  options: HttpInspectOptions = {}
+) {
+  const decoded = decodePaymentRequired(paymentRequired);
+  const accepts = Array.isArray(decoded?.accepts) ? decoded.accepts : [];
+  const offer = accepts[0] && typeof accepts[0] === "object" ? accepts[0] : null;
+  const scheme = typeof offer?.scheme === "string" ? offer.scheme : null;
+  const network = typeof offer?.network === "string" ? offer.network : null;
+  const asset = typeof offer?.asset === "string" ? offer.asset : null;
+  const payTo = typeof offer?.payTo === "string" ? offer.payTo : null;
+  const resource = typeof offer?.resource === "string"
+    ? offer.resource
+    : typeof decoded?.resource?.url === "string"
+      ? decoded.resource.url
+      : null;
+  const amountAtomicRaw = offer?.amount ?? offer?.maxAmountRequired;
+  const amountAtomic = typeof amountAtomicRaw === "string" || typeof amountAtomicRaw === "number"
+    ? String(amountAtomicRaw)
+    : null;
+  let amountUsd: number | null = null;
+  if (
+    network === "eip155:8453" &&
+    asset?.toLowerCase() === BASE_USDC &&
+    amountAtomic &&
+    /^\d+$/.test(amountAtomic)
+  ) {
+    const atomic = Number(amountAtomic);
+    if (Number.isSafeInteger(atomic)) amountUsd = atomic / 1_000_000;
+  }
+
+  const detected = status === 402 || Boolean(paymentRequired);
+  if (!detected) {
+    return {
+      detected: false,
+      challengeHeaderPresent: Boolean(paymentRequired),
+      parseable: false,
+      version: null,
+      acceptCount: 0,
+      scheme: null,
+      network: null,
+      asset: null,
+      payTo: null,
+      resource: null,
+      amountAtomic: null,
+      amountUsd: null,
+      score: null,
+      verdict: "not-detected" as const,
+      checks: []
+    };
+  }
+
+  const checks = [
+    { id: "status_402", label: "Returns HTTP 402", passed: status === 402, weight: 15, evidence: `HTTP ${status}.` },
+    { id: "payment_required_header", label: "PAYMENT-REQUIRED header present", passed: Boolean(paymentRequired), weight: 15, evidence: paymentRequired ? "Payment challenge header present." : "Payment challenge header missing." },
+    { id: "challenge_parseable", label: "Payment challenge decodes as JSON", passed: Boolean(decoded), weight: 15, evidence: decoded ? "Base64 challenge decoded successfully." : "Challenge could not be decoded." },
+    { id: "x402_v2", label: "x402 v2 challenge", passed: decoded?.x402Version === 2, weight: 10, evidence: decoded?.x402Version == null ? "x402 version missing." : `x402Version=${decoded.x402Version}.` },
+    { id: "accepts", label: "At least one payment option", passed: accepts.length > 0, weight: 10, evidence: `${accepts.length} payment option(s).` },
+    { id: "exact_scheme", label: "Exact payment scheme", passed: scheme === "exact", weight: 5, evidence: scheme ? `scheme=${scheme}.` : "Payment scheme missing." },
+    { id: "network", label: "Network declared", passed: Boolean(network), weight: 5, evidence: network ? `network=${network}.` : "Network missing." },
+    { id: "asset", label: "Asset declared", passed: Boolean(asset), weight: 5, evidence: asset ? `asset=${asset}.` : "Asset missing." },
+    { id: "pay_to", label: "Payment recipient declared", passed: Boolean(payTo), weight: 5, evidence: payTo ? `payTo=${payTo}.` : "Payment recipient missing." },
+    { id: "amount", label: "Positive bounded amount declared", passed: Boolean(amountAtomic && /^\d+$/.test(amountAtomic) && BigInt(amountAtomic) > 0n), weight: 5, evidence: amountAtomic ? `amount=${amountAtomic} atomic units.` : "Payment amount missing." },
+    { id: "resource_binding", label: "Challenge bound to requested resource", passed: sameUrl(resource, targetUrl), weight: 10, evidence: resource ? `resource=${resource}.` : "Resource binding missing." }
+  ];
+
+  if (typeof options.maxPriceUsd === "number" && Number.isFinite(options.maxPriceUsd) && options.maxPriceUsd >= 0) {
+    checks.push({
+      id: "max_price",
+      label: "Quote is within caller max price",
+      passed: amountUsd !== null && amountUsd <= options.maxPriceUsd,
+      weight: 10,
+      evidence: amountUsd === null ? "USD quote unavailable." : `quote=${amountUsd.toFixed(6)}, max=${options.maxPriceUsd.toFixed(6)}.`
+    });
+  }
+  if (options.expectedPayTo) {
+    checks.push({
+      id: "expected_pay_to",
+      label: "Payment recipient matches expectation",
+      passed: payTo?.toLowerCase() === options.expectedPayTo.toLowerCase(),
+      weight: 10,
+      evidence: payTo ? `observed=${payTo}.` : "Payment recipient unavailable."
+    });
+  }
+  if (options.expectedNetwork) {
+    checks.push({
+      id: "expected_network",
+      label: "Network matches expectation",
+      passed: network === options.expectedNetwork,
+      weight: 10,
+      evidence: network ? `observed=${network}.` : "Network unavailable."
+    });
+  }
+
+  const totalWeight = checks.reduce((sum, check) => sum + check.weight, 0);
+  const earned = checks.reduce((sum, check) => sum + (check.passed ? check.weight : 0), 0);
+  const score = totalWeight ? Math.round((earned / totalWeight) * 100) : 0;
+
+  return {
+    detected: true,
+    challengeHeaderPresent: Boolean(paymentRequired),
+    parseable: Boolean(decoded),
+    version: typeof decoded?.x402Version === "number" ? decoded.x402Version : null,
+    acceptCount: accepts.length,
+    scheme,
+    network,
+    asset,
+    payTo,
+    resource,
+    amountAtomic,
+    amountUsd,
+    score,
+    verdict: score >= 80 ? "strong" as const : score >= 60 ? "mixed" as const : "weak" as const,
+    checks
+  };
+}
+
+export async function inspectHttpResource(input: string, options: HttpInspectOptions = {}): Promise<HttpInspectReport> {
   const url = validateHttpInspectTarget(input);
   const resolved = await resolvePublicAddress(url.hostname);
   const originalHost = url.hostname.replace(/^\[/, "").replace(/\]$/, "");
@@ -242,7 +416,12 @@ export async function inspectHttpResource(input: string): Promise<HttpInspectRep
         { id: "referrer_policy", label: "Referrer policy present", passed: security.referrerPolicy, weight: 2, evidence: security.referrerPolicy ? "Referrer-Policy present." : "Referrer-Policy missing." },
         { id: "permissions_policy", label: "Permissions policy present", passed: security.permissionsPolicy, weight: 1, evidence: security.permissionsPolicy ? "Permissions-Policy present." : "Permissions-Policy missing." }
       ];
-      const score = checks.reduce((sum, check) => sum + (check.passed ? check.weight : 0), 0);
+      const infrastructureScore = checks.reduce((sum, check) => sum + (check.passed ? check.weight : 0), 0);
+      const paymentRequired = headerValue(headers["payment-required"]);
+      const x402 = assessX402Payment(status, url.toString(), paymentRequired, options);
+      const score = x402.score === null
+        ? infrastructureScore
+        : Math.round((infrastructureScore * 0.4) + (x402.score * 0.6));
 
       finish(() => resolve({
         url: url.toString(),
@@ -279,8 +458,11 @@ export async function inspectHttpResource(input: string): Promise<HttpInspectRep
           issuerCn: certificate?.issuer && typeof certificate.issuer.CN === "string" ? certificate.issuer.CN : null
         },
         security,
+        x402,
         trust: {
           score,
+          infrastructureScore,
+          x402Score: x402.score,
           grade: gradeFor(score),
           verdict: score >= 80 ? "strong" : score >= 60 ? "mixed" : "weak",
           checks

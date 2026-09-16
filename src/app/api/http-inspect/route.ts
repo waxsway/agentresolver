@@ -14,18 +14,29 @@ type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
 let paidHandler: PaidHandler | null = null;
 
 async function inspectHandler(req: NextRequest): Promise<NextResponse<unknown>> {
-  const body = (await req.json().catch(() => null)) as { url?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as {
+    url?: unknown;
+    maxPriceUsd?: unknown;
+    expectedPayTo?: unknown;
+    expectedNetwork?: unknown;
+  } | null;
   const raw = String(body?.url || "").trim();
+  const maxPriceUsd = typeof body?.maxPriceUsd === "number" ? body.maxPriceUsd : undefined;
+  const expectedPayTo = typeof body?.expectedPayTo === "string" ? body.expectedPayTo.trim() : undefined;
+  const expectedNetwork = typeof body?.expectedNetwork === "string" ? body.expectedNetwork.trim() : undefined;
 
   try {
-    const report = await inspectHttpResource(raw);
+    const report = await inspectHttpResource(raw, { maxPriceUsd, expectedPayTo, expectedNetwork });
     console.log(JSON.stringify({
       event: "paid_capability_completed",
       capabilityId: "http-inspect",
       surface: "http",
       at: new Date().toISOString(),
       status: report.status,
-      latencyMs: report.latencyMs
+      latencyMs: report.latencyMs,
+      x402Detected: report.x402.detected,
+      x402Score: report.x402.score,
+      trustScore: report.trust.score
     }));
     return NextResponse.json(report, {
       headers: { "cache-control": "no-store", "access-control-allow-origin": "*" }
@@ -54,15 +65,21 @@ function getPaidHandler(): PaidHandler {
         network: X402_NETWORK,
         payTo: payTo as `0x${string}`
       },
-      description: "Preflight a public HTTPS or x402 API endpoint before an agent depends on or pays it. Returns a 0-100 trust score, grade, weighted evidence, TLS/certificate state, reachability, latency, redirects and baseline security headers.",
+      description: "Preflight a public HTTPS or x402 payment endpoint before an agent depends on or pays it. Verifies TLS and endpoint hygiene, decodes PAYMENT-REQUIRED when present, checks x402 version/scheme/network/asset/payee/resource binding, computes quoted USDC price, and can enforce caller max-price/payee/network expectations.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          input: { url: "https://example.com" },
+          input: { url: "https://example.com/api", maxPriceUsd: 0.01, expectedNetwork: "eip155:8453" },
           inputSchema: {
             type: "object",
-            properties: { url: { type: "string", pattern: "^https://", maxLength: 2048 } },
-            required: ["url"]
+            properties: {
+              url: { type: "string", pattern: "^https://", maxLength: 500 },
+              maxPriceUsd: { type: "number", minimum: 0, maximum: 1000 },
+              expectedPayTo: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" },
+              expectedNetwork: { type: "string", maxLength: 128 }
+            },
+            required: ["url"],
+            additionalProperties: false
           },
           bodyType: "json",
           output: {
@@ -92,8 +109,29 @@ function getPaidHandler(): PaidHandler {
                 referrerPolicy: true,
                 permissionsPolicy: false
               },
+              x402: {
+                detected: true,
+                challengeHeaderPresent: true,
+                parseable: true,
+                version: 2,
+                acceptCount: 1,
+                scheme: "exact",
+                network: "eip155:8453",
+                asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                payTo: "0x1111111111111111111111111111111111111111",
+                resource: "https://example.com/api",
+                amountAtomic: "5000",
+                amountUsd: 0.005,
+                score: 100,
+                verdict: "strong",
+                checks: [
+                  { id: "resource_binding", label: "Challenge bound to requested resource", passed: true, weight: 10, evidence: "resource=https://example.com/api." }
+                ]
+              },
               trust: {
-                score: 91,
+                score: 96,
+                infrastructureScore: 91,
+                x402Score: 100,
                 grade: "A",
                 verdict: "strong",
                 checks: [
