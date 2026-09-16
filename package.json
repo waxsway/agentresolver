@@ -46,7 +46,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "viem": "2.56.5",
-    "zod": "4.6.4"
+    "zod": "4.6.4",
+    "@coinbase/cdp-sdk": "1.56.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",
