@@ -5,6 +5,10 @@ import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities
 import { inspectHttpResource } from "@/lib/httpInspect";
 import { selectOpenApiOperation } from "@/lib/openapiSelect";
 import { verifiedResolve } from "@/lib/verifiedResolve";
+import { evaluateToolContract } from "@/lib/toolContract";
+import { probeMcpEndpoint } from "@/lib/mcpProbe";
+import { auditAgentReadiness } from "@/lib/agentReadiness";
+import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 
@@ -66,7 +70,7 @@ async function logMcpRequest(req: Request) {
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
-    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. `http_inspect` is a directly payable $0.001 x402 MCP tool: an x402-aware client can receive the payment challenge, apply its own spending policy, and retry the same tools/call with payment. Other priced tools currently return free HTTP x402 purchase actions and never authorize spending themselves. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
+    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. priced AgentResolver tools are directly payable over x402 inside MCP: an x402-aware client can receive a local payment challenge, apply its own spending policy, and retry the same tools/call with payment. Unpaid tool calls never execute paid capability work. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
   });
 
   server.registerTool("resolve", {
@@ -104,21 +108,29 @@ const handler = createMcpHandler(() => {
 
     const directMcpTool = directOwnedId === "http-inspect"
       ? "http_inspect"
-      : directOwnedId === "openapi-select"
-        ? "openapi_select"
-        : directOwnedId === "verified-resolve"
-          ? "verified_resolve"
-          : null;
+      : directOwnedId === "mcp-probe"
+        ? "mcp_preflight"
+        : directOwnedId === "agent-readiness"
+          ? "agent_readiness"
+          : directOwnedId === "openapi-select"
+            ? "openapi_select"
+            : directOwnedId === "verified-resolve"
+              ? "verified_resolve"
+              : null;
     const directMcpProduct = directOwnedId === "http-inspect"
       ? httpInspectProduct
-      : directOwnedId === "openapi-select"
-        ? openApiSelectProduct
-        : directOwnedId === "verified-resolve"
-          ? verifiedResolveProduct
-          : null;
+      : directOwnedId === "mcp-probe"
+        ? mcpProbeProduct
+        : directOwnedId === "agent-readiness"
+          ? readinessProduct
+          : directOwnedId === "openapi-select"
+            ? openApiSelectProduct
+            : directOwnedId === "verified-resolve"
+              ? verifiedResolveProduct
+              : null;
     const directMcpRec = directMcpTool && directMcpProduct && directInput
       ? {
-          capabilityId: directOwnedId as "http-inspect" | "openapi-select" | "verified-resolve",
+          capabilityId: directOwnedId as "http-inspect" | "mcp-probe" | "agent-readiness" | "openapi-select" | "verified-resolve",
           surface: "mcp" as const,
           tool: directMcpTool,
           execute: `${CANONICAL}/mcp`,
@@ -154,7 +166,20 @@ const handler = createMcpHandler(() => {
 
     const rec = directMcpRec
       || directHttpRec
-      || (singleMcpEndpoint ? { ...paid("mcp-probe", { endpoint: singleMcpEndpoint }), surface: "http" as const, reason: "One MCP candidate found; live-preflight it before depending on it." }
+      || (singleMcpEndpoint ? {
+        capabilityId: "mcp-probe" as const,
+        surface: "mcp" as const,
+        tool: "mcp_preflight" as const,
+        execute: `${CANONICAL}/mcp`,
+        input: { endpoint: singleMcpEndpoint },
+        priceUsd: mcpProbeProduct.priceUsd,
+        asset: "USDC" as const,
+        network: "eip155:8453" as const,
+        protocol: "x402" as const,
+        spendingAuthorizationRequired: true as const,
+        spendingAuthorized: false as const,
+        reason: "One MCP candidate found; mcp_preflight can live-check it inside MCP after the caller authorizes payment."
+      }
       : resolution.mcp.length > 0 || candidateCount > 1 ? verifiedResolveMcpRec : null);
 
     logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags: classifyIntent(goal), mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null, paidRecommendationSurface: rec?.surface || null });
@@ -195,11 +220,21 @@ const handler = createMcpHandler(() => {
       consumerInputSchema: z.record(z.string(), z.unknown())
     }),
     annotations: { title: toolContractProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
-  }, async ({ producerOutputSchema, consumerInputSchema }) => {
-    logToolCall("tool_contract", { quotedPriceUsd: toolContractProduct.priceUsd });
-    const action = paid("tool-contract", { producerOutputSchema, consumerInputSchema });
-    return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action };
-  });
+  }, createLazyPaidMcpTool<{ producerOutputSchema: Record<string, unknown>; consumerInputSchema: Record<string, unknown> }>("tool-contract", async ({ producerOutputSchema, consumerInputSchema }) => {
+    logToolCall("tool_contract", { priceUsd: toolContractProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = evaluateToolContract(producerOutputSchema, consumerInputSchema);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "tool-contract",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      verdict: report.verdict
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
 
   server.registerTool("openapi_select", {
     title: openApiSelectProduct.quoteTool.title,
@@ -230,12 +265,42 @@ const handler = createMcpHandler(() => {
   server.registerTool("mcp_preflight", {
     title: mcpProbeProduct.quoteTool.title, description: mcpProbeProduct.quoteTool.description,
     inputSchema: z.object({ endpoint: z.string().url() }), annotations: { title: mcpProbeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ endpoint }) => { logToolCall("mcp_preflight", { quotedPriceUsd: mcpProbeProduct.priceUsd }); const action = paid("mcp-probe", { endpoint }); return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action }; });
+  }, createLazyPaidMcpTool<{ endpoint: string }>("mcp-probe", async ({ endpoint }) => {
+    logToolCall("mcp_preflight", { priceUsd: mcpProbeProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await probeMcpEndpoint(endpoint);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "mcp-probe",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      reachable: report.reachable,
+      mcpCompatible: report.mcpCompatible
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
 
   server.registerTool("agent_readiness", {
     title: readinessProduct.quoteTool.title, description: readinessProduct.quoteTool.description,
     inputSchema: z.object({ url: z.string().url() }), annotations: { title: readinessProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ url }) => { logToolCall("agent_readiness", { quotedPriceUsd: readinessProduct.priceUsd }); const action = paid("agent-readiness", { url }); return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action }; });
+  }, createLazyPaidMcpTool<{ url: string }>("agent-readiness", async ({ url }) => {
+    logToolCall("agent_readiness", { priceUsd: readinessProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await auditAgentReadiness(url);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "agent-readiness",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      score: report.score,
+      grade: report.grade
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
 
   server.registerTool("verified_resolve", {
     title: verifiedResolveProduct.quoteTool.title, description: verifiedResolveProduct.quoteTool.description,
@@ -261,7 +326,22 @@ const handler = createMcpHandler(() => {
   server.registerTool("batch_verified_resolve", {
     title: batchVerifiedResolveProduct.quoteTool.title, description: batchVerifiedResolveProduct.quoteTool.description,
     inputSchema: z.object({ items: z.array(z.object({ goal: z.string().min(1), url: z.string().url().optional() })).min(2).max(4) }), annotations: { title: batchVerifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, async ({ items }) => { logToolCall("batch_verified_resolve", { itemCount: items.length, quotedPriceUsd: batchVerifiedResolveProduct.priceUsd }); const action = paid("batch-verified-resolve", { items }); return { content: [{ type: "text", text: JSON.stringify(action) }], structuredContent: action }; });
+  }, createLazyPaidMcpTool<{ items: Array<{ goal: string; url?: string }> }>("batch-verified-resolve", async ({ items }) => {
+    logToolCall("batch_verified_resolve", { itemCount: items.length, priceUsd: batchVerifiedResolveProduct.priceUsd, mode: "direct_paid_mcp" });
+    const report = await batchVerifiedResolve(items);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "batch-verified-resolve",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      itemCount: report.count,
+      durationMs: report.durationMs
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
 
   return server;
 });

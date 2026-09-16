@@ -37,8 +37,8 @@ export const PAID_CAPABILITIES = {
     example: { producerOutputSchema: { type: "object", properties: { user_id: { type: "string" } }, required: ["user_id"] }, consumerInputSchema: { type: "object", properties: { userId: { type: "string" } }, required: ["userId"] } },
     quoteTool: {
       name: "tool_contract",
-      title: "Quote tool-contract fit — $0.005",
-      description: "Quote a $0.005 USDC/Base deterministic JSON-schema compatibility check between one tool output and the next tool input. Returns exact incompatibility reasons and conservative normalized mappings; never spends."
+      title: "Tool contract fit — $0.005",
+      description: "Paid $0.005 USDC/Base deterministic JSON-schema compatibility check between one tool output and the next tool input. Returns exact incompatibility reasons and conservative normalized mappings. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "mcp-probe": {
@@ -57,8 +57,8 @@ export const PAID_CAPABILITIES = {
     example: { endpoint: "https://example.com/mcp" },
     quoteTool: {
       name: "mcp_preflight",
-      title: "Quote MCP live preflight — $0.001",
-      description: "Quote a $0.001 USDC/Base live MCP endpoint preflight for reachability, compatibility, latency, server metadata and tool inventory. Returns the exact x402 action; never spends."
+      title: "MCP live preflight — $0.001",
+      description: "Paid $0.001 USDC/Base live MCP endpoint preflight for reachability, compatibility, latency, server metadata and tool inventory. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "agent-readiness": {
@@ -77,8 +77,8 @@ export const PAID_CAPABILITIES = {
     example: { url: "https://example.com" },
     quoteTool: {
       name: "agent_readiness",
-      title: "Quote agent-readiness audit — $0.005",
-      description: "Quote a $0.005 USDC/Base audit of a public website for agent discoverability and machine-readable integration signals. Returns the exact x402 action; never spends."
+      title: "Agent-readiness audit — $0.005",
+      description: "Paid $0.005 USDC/Base audit of a public website for agent discoverability and machine-readable integration signals. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "openapi-select": {
@@ -133,12 +133,12 @@ export const PAID_CAPABILITIES = {
     useWhen: "An agent has multiple missing capability decisions and wants one bounded purchase with live external-candidate evidence.",
     costClass: "bounded-network",
     tags: ["batch", "capability", "discovery", "mcp", "verification", "x402"],
-    inputSchema: { type: "object", required: ["items"], additionalProperties: false, properties: { items: { type: "array", minItems: 1, maxItems: 4, items: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", format: "uri", maxLength: 500 } } } } } },
+    inputSchema: { type: "object", required: ["items"], additionalProperties: false, properties: { items: { type: "array", minItems: 2, maxItems: 4, items: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", format: "uri", maxLength: 500 } } } } } },
     example: { items: [{ goal: "Find an MCP server for search" }, { goal: "Find an MCP server for browser automation" }] },
     quoteTool: {
       name: "batch_verified_resolve",
-      title: "Quote batch verified resolve — $0.05",
-      description: "Quote a $0.05 USDC/Base batch live verification for up to four capability decisions using unpaid MCP and x402/HTTP evidence. Returns the exact x402 action; never spends."
+      title: "Batch verified resolve — $0.05",
+      description: "Paid $0.05 USDC/Base batch live verification for 2–4 capability decisions using unpaid MCP and x402/HTTP evidence. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   }
 } as const;
