@@ -49,5 +49,14 @@ jobs:
           curl -fsS 'https://agent402.tools/api/find?q=api%20trust%20security%20preflight&k=10' -o /tmp/find.json
           cat /tmp/find.json
           if ! grep -q 'agentresolver.vercel.app' /tmp/find.json; then
-            echo "::warning::AgentResolver is registered but not yet visible in this buyer-search query; crawler/index refresh may still be pending."
+            echo "::warning::AgentResolver is registered but not yet visible in the local buyer-search query; checking cross-seller router."
+          fi
+
+      - name: Check cross-seller router visibility
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://agent402.tools/api/route?q=api%20trust%20security%20preflight&include=external' -o /tmp/route.json
+          cat /tmp/route.json
+          if ! grep -q 'agentresolver.vercel.app' /tmp/route.json; then
+            echo "::warning::AgentResolver is registered/routable but not yet returned for this cross-seller buyer query; hourly crawler refresh may still be pending."
           fi
