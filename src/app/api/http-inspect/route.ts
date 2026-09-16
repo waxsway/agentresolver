@@ -54,7 +54,7 @@ function getPaidHandler(): PaidHandler {
         network: X402_NETWORK,
         payTo: payTo as `0x${string}`
       },
-      description: "Inspect a public HTTPS resource for current status, latency, response metadata, cache validators, TLS/certificate evidence and baseline security headers.",
+      description: "Preflight a public HTTPS or x402 API endpoint before an agent depends on or pays it. Returns a 0-100 trust score, grade, weighted evidence, TLS/certificate state, reachability, latency, redirects and baseline security headers.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
@@ -91,6 +91,14 @@ function getPaidHandler(): PaidHandler {
                 xFrameOptions: true,
                 referrerPolicy: true,
                 permissionsPolicy: false
+              },
+              trust: {
+                score: 91,
+                grade: "A",
+                verdict: "strong",
+                checks: [
+                  { id: "tls_authorized", label: "TLS certificate authorized", passed: true, weight: 30, evidence: "Certificate chain authorized." }
+                ]
               }
             }
           }
