@@ -19,6 +19,16 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     callerControlsAuthorization: true,
     revenueModel: "AgentResolver is paid directly for AgentResolver-owned digital verification services."
   },
+  optionalPaymentRails: {
+    circleGatewayNanopayments: {
+      enabled: process.env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1",
+      defaultEnabled: false,
+      scope: "AgentResolver-owned service payments only",
+      buyerAuthorizationRequired: true,
+      holdsBuyerFunds: false,
+      note: "Optional gas-free EVM nanopayment rail; standard PayAI/Base and Solana x402 remain available."
+    }
+  },
   supportedSettlement: [
     {
       network: "eip155:8453",
