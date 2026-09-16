@@ -22,6 +22,7 @@ if (!postResource) throw new Error("x402-ping POST resource is missing from the 
 
 const getResource = clone(postResource);
 getResource.resource = GET_RESOURCE;
+getResource.description = "Lowest-friction $0.001 x402 settlement canary. GET requires no request body and returns a timestamped pong only after successful payment.";
 getResource.inputSchema = { type: "object", additionalProperties: false };
 getResource.examples = [{}];
 manifest.resources = [
