@@ -1,7 +1,7 @@
 {
   "x402Version": 2,
   "name": "AgentResolver",
-  "description": "Free capability discovery plus low-cost pay-per-call trust, security and live-verification tools for autonomous agents. No signup or API key.",
+  "description": "Machine-native $0.001 x402 settlement canary plus verify-before-pay, API trust/security preflight, endpoint safety evidence, payTo verification and USDC payment verification for autonomous agents. No signup or API key.",
   "resources": [
     {
       "resource": "POST /api/http-inspect",
@@ -268,5 +268,5 @@
     "mcp": "https://agentresolver.vercel.app/mcp",
     "resolve": "https://agentresolver.vercel.app/api/resolve"
   },
-  "instructions": "Use free resolve first. Pay for direct live work or deterministic compatibility checks only when useful. A 402 is a quote, never spending authorization."
+  "instructions": "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, use POST /api/x402-payment-preflight. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization."
 }
