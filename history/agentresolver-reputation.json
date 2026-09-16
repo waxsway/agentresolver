@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "service": "AgentResolver",
+  "model": "verified-settlement-history",
+  "generatedAt": "2026-09-16T19:52:30.000Z",
+  "verifiedSuccessfulSettlements": 0,
+  "successfulExecutionCount": 0,
+  "uniquePayerCount": 0,
+  "firstVerifiedSettlementAt": null,
+  "latestVerifiedSettlementAt": null,
+  "networks": [],
+  "deploymentCommitShas": [],
+  "headEntryHash": null,
+  "ledgerUrl": "https://raw.githubusercontent.com/waxsway/agentresolver/settlement-history/history/verified-settlements.jsonl",
+  "methodology": {
+    "source": "Vercel runtime settlement telemetry",
+    "requiresSuccessfulX402Receipt": true,
+    "requiresExecutionId": true,
+    "requiresResponseSha256": true,
+    "requiresDeploymentCommitSha": true,
+    "requiresIndependentOnchainVerification": true,
+    "countsCrawls": false,
+    "counts402Challenges": false,
+    "countsDirectoryRegistrations": false,
+    "countsUnsignedTraffic": false,
+    "syntheticTrustScore": false
+  },
+  "limitations": [
+    "This history proves independently verified AgentResolver payment settlements and associated execution evidence; it does not prove third-party provider legitimacy.",
+    "Unique payer count uses a one-way hashed payer identifier from settlement telemetry and should not be treated as a verified real-world identity count.",
+    "A successful past settlement does not guarantee future behavior or fulfillment."
+  ]
+}
