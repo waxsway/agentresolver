@@ -1,0 +1,87 @@
+name: Audit PayAI Bazaar Baseline
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-payai-bazaar-baseline.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Read PayAI Bazaar public stats
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://facilitator.payai.network'
+          code="$(curl -sS --max-time 30 -o /tmp/stats.json -w '%{http_code}' "$base/discovery/stats")"
+          echo "PAYAI_STATS_HTTP=$code"
+          case "$code" in 200) ;; *) cat /tmp/stats.json; exit 1 ;; esac
+          jq . /tmp/stats.json
+
+      - name: Establish pre-payment AgentResolver catalog baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://facilitator.payai.network'
+          target='agentresolver.vercel.app'
+          found=0
+          total_seen=0
+          page_size=100
+          max_pages=80
+
+          for page in $(seq 0 $((max_pages-1))); do
+            offset=$((page * page_size))
+            out="/tmp/payai-$page.json"
+            code="$(curl -sS --max-time 30 -o "$out" -w '%{http_code}' \
+              "$base/discovery/resources?limit=$page_size&offset=$offset")"
+            if [ "$code" != "200" ]; then
+              echo "PAGE=$page HTTP=$code"
+              cat "$out" || true
+              exit 1
+            fi
+
+            count="$(jq 'if type=="array" then length elif (.resources|type)=="array" then (.resources|length) elif (.items|type)=="array" then (.items|length) else 0 end' "$out")"
+            total_seen=$((total_seen + count))
+            matches="$(jq --arg target "$target" '[.. | strings | select(contains($target))] | length' "$out")"
+            if [ "$matches" -gt 0 ]; then
+              echo "AGENTRESOLVER_FOUND_PAGE=$page OFFSET=$offset STRING_MATCHES=$matches"
+              jq --arg target "$target" '[.. | objects | select((tostring | contains($target)))]' "$out"
+              found=1
+            fi
+
+            echo "PAGE=$page OFFSET=$offset COUNT=$count MATCHES=$matches"
+            [ "$count" -lt "$page_size" ] && break
+          done
+
+          echo "PAYAI_BAZAAR_TOTAL_SEEN=$total_seen"
+          echo "PAYAI_BAZAAR_AGENTRESOLVER_VISIBLE=$found"
+
+      - name: Check exact resource stats if supported
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >/tmp/urls.txt
+          from urllib.parse import quote
+          base='https://facilitator.payai.network/discovery/resources/'
+          for u in [
+              'https://agentresolver.vercel.app/api/x402-ping',
+              'https://agentresolver.vercel.app/api/x402-payment-preflight',
+          ]:
+              print(u+'\t'+base+quote(u,safe='')+'/stats')
+          PY
+          while IFS=$'\t' read -r resource url; do
+            out="$(mktemp)"
+            code="$(curl -sS --max-time 20 -o "$out" -w '%{http_code}' "$url" || true)"
+            echo "RESOURCE=$resource HTTP=$code"
+            case "$code" in
+              200) jq . "$out" || cat "$out" ;;
+              404) echo 'RESOURCE_NOT_INDEXED_OR_STATS_UNAVAILABLE' ;;
+              *) cat "$out" || true ;;
+            esac
+          done </tmp/urls.txt
