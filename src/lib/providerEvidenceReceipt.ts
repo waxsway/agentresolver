@@ -105,6 +105,35 @@ export function buildProviderEvidenceReceipt(report: HttpInspectReport, observed
       x402Score: report.trust.x402Score,
       checksObserved: report.trust.checks.length + report.x402.checks.length
     },
+    interoperability: {
+      erc8004: {
+        status: "candidate_evidence_only" as const,
+        submittedOnchain: false,
+        identityBinding: null,
+        endpoint: report.url,
+        evidenceDigestSha256: evidenceDigest,
+        feedbackCandidates: [
+          {
+            tag1: "reachable",
+            tag2: "",
+            value: report.status >= 200 && report.status < 500 ? 1 : 0,
+            valueDecimals: 0
+          },
+          {
+            tag1: "responseTime",
+            tag2: "milliseconds",
+            value: Math.max(0, Math.round(report.latencyMs)),
+            valueDecimals: 0
+          },
+          {
+            tag1: "x402ProtocolValid",
+            tag2: "technical",
+            value: report.x402.score !== null && report.x402.score >= 80 ? 1 : 0,
+            valueDecimals: 0
+          }
+        ]
+      }
+    },
     limitations: [
       "This receipt records what AgentResolver observed at one point in time.",
       "It does not establish legal ownership of the payTo wallet.",
