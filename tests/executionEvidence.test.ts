@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   buildExecutionEvidence,
   EXECUTION_EVIDENCE_URL,
+  VERIFIED_SETTLEMENT_HISTORY_URL,
   executionEvidenceHeaders,
   sha256Utf8
 } from "../src/lib/executionEvidence";
