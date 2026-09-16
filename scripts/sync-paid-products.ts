@@ -219,7 +219,10 @@ function writeJson(path: string, value: unknown) {
 writeJson("public/.well-known/x402", {
   x402Version: 2,
   name: "AgentResolver",
-  description: "Free capability discovery plus pay-per-call live utilities and deterministic compatibility checks for autonomous agents. No signup or API key.",
+  description: "Machine-native x402 verify-before-pay, API trust/security preflight, endpoint safety evidence, payTo verification and USDC payment verification for autonomous agents, plus free capability discovery. No signup or API key.",
+  trust: `${CANONICAL_ORIGIN}/.well-known/agentresolver-trust.json`,
+  executionEvidence: `${CANONICAL_ORIGIN}/.well-known/agentresolver-evidence.json`,
+  verifiedSettlementHistory: `${CANONICAL_ORIGIN}/.well-known/agentresolver-reputation.json`,
   resources: PAID_CAPABILITY_LIST.map((product) => ({
     resource: `POST ${product.endpoint}`,
     description: product.description,
