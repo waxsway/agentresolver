@@ -30,6 +30,7 @@ test("execution evidence hashes exact UTF-8 response bytes deterministically", (
   assert.equal(headers["x-agentresolver-execution-id"], evidence.executionId);
   assert.equal(headers["x-agentresolver-response-sha256"], evidence.responseSha256);
   assert.equal(headers["x-agentresolver-evidence"], EXECUTION_EVIDENCE_URL);
+  assert.equal(headers["x-agentresolver-history"], VERIFIED_SETTLEMENT_HISTORY_URL);
 });
 
 test("public evidence contract separates execution proof from provider legitimacy", async () => {
