@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          paths=(http-inspect mcp-probe agent-readiness tool-contract verified-resolve)
+          paths=(x402-payment-preflight mcp-probe agent-readiness tool-contract verified-resolve)
           for i in {1..36}; do
             ok=1
             for path in "${paths[@]}"; do
@@ -75,7 +75,7 @@ jobs:
           }
           # x402dash currently limits registration calls per source IP. Keep this
           # list to five high-signal products in one run rather than retrying.
-          register 'https://agentresolver.vercel.app/api/http-inspect' 'AgentResolver HTTP Inspect' 'Inspect current HTTPS status, latency, response metadata, cache validators, and baseline security headers.' 'Agents/Developer Tools' 'http,agents,latency,headers'
+          register 'https://agentresolver.vercel.app/api/x402-payment-preflight' 'AgentResolver X402 Preflight — Verify Before Paying' 'Bounded no-key x402 verify-before-pay: check payTo, USDC quote, network, asset, resource binding, reachability and challenge structure before agent spend.' 'Agents/Developer Tools' 'x402,agents,payment-preflight,payto,verification,usdc'
           register 'https://agentresolver.vercel.app/api/mcp-probe' 'AgentResolver MCP Live Preflight' 'Verify a public MCP HTTP endpoint is live, compatible, responsive, and inspect its current tool inventory.' 'Agents/Developer Tools' 'mcp,agents,verification,liveness'
           register 'https://agentresolver.vercel.app/api/agent-readiness' 'AgentResolver Agent Readiness Audit' 'Audit a public website for machine-readable agent discovery and integration signals.' 'Agents/Developer Tools' 'agents,discovery,openapi,mcp'
           register 'https://agentresolver.vercel.app/api/tool-contract' 'AgentResolver Tool Contract Fit' 'Check deterministic JSON-schema compatibility between one tool output and the next tool input.' 'Agents/Developer Tools' 'agents,schema,workflow,compatibility'
