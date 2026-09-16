@@ -181,6 +181,8 @@ jobs:
           grep -Fi 'x-agentresolver-trust: https://agentresolver.vercel.app/.well-known/agentresolver-trust.json' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'x-agentresolver-request-id:' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'payment-required:' /tmp/preflight-headers.txt >/dev/null
+          grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-request-id' >/dev/null
+          grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-deployment' >/dev/null
 
           curl -fsS "$BASE_URL/api/health?deployment=$VALIDATED_SHA" -o /tmp/health.json
           jq -e '.ok == true and .canonicalPaidRoute == "/api/x402-payment-preflight" and .trust == "/.well-known/agentresolver-trust.json"' /tmp/health.json >/dev/null
