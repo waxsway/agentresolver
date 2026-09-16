@@ -52,6 +52,13 @@ jobs:
             200|201|202) ;;
             *) echo "Market402 canary self-test failed with HTTP $code" >&2; exit 1 ;;
           esac
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          verdict = payload.get("summary", {}).get("verdict")
+          if verdict != "spec_compliant":
+              raise SystemExit(f"Market402 canary verdict is {verdict!r}, expected 'spec_compliant'")
+          PY
 
       - name: Submit paid GET canary and opt into real paid delivery probes
         shell: bash
