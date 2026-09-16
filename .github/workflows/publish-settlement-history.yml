@@ -30,6 +30,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify on-chain collector invariants
+        run: node scripts/merge-settlement-history.mjs --self-test
+
       - name: Require Vercel read credential
         shell: bash
         run: |
