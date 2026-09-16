@@ -46,7 +46,11 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402-catalog.json" | grep -F 'batch-verified-resolve' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402" | grep -F 'mcp-probe' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/mcp/server-card" | grep -F '0.1.3' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS -H 'x-agentresolver-internal: 1' "$BASE_URL/mcp/server-card" | tee /tmp/server-card.json >/dev/null
+          grep -F '0.1.3' /tmp/server-card.json >/dev/null
+          jq -e '.sponsorship.model == "provider-funded-discovery" and .sponsorship.organicRankingIndependent == true' /tmp/server-card.json >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/sponsorship.json" | grep -F 'pilot_inventory_open' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/sponsorship" | jq -e '.inventory.model == "provider-funded-discovery" and .activation.operatorApprovalRequired == true' >/dev/null
 
           resolve_check() {
             local slug="$1" goal="$2" url="$3" expected_id="$4" expected_price="$5"
