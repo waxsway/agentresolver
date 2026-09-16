@@ -6,6 +6,12 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/register-agent402.yml'
+      - 'src/lib/paidCapabilities.ts'
+      - 'public/openapi.json'
+      - 'public/.well-known/x402'
+      - 'public/.well-known/x402-catalog.json'
+      - 'public/.well-known/agent.json'
+      - 'public/.well-known/x402-service.json'
 
 permissions:
   contents: read
@@ -36,3 +42,12 @@ jobs:
             200|201|202|204|409) ;;
             *) echo "Unexpected registration status: $code" >&2; exit 1 ;;
           esac
+
+      - name: Check buyer-search visibility
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://agent402.tools/api/find?q=api%20trust%20security%20preflight&k=10' -o /tmp/find.json
+          cat /tmp/find.json
+          if ! grep -q 'agentresolver.vercel.app' /tmp/find.json; then
+            echo "::warning::AgentResolver is registered but not yet visible in this buyer-search query; crawler/index refresh may still be pending."
+          fi
