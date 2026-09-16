@@ -38,6 +38,31 @@ jobs:
           jq . /tmp/ontario-readiness.json || cat /tmp/ontario-readiness.json
           case "$code" in 200|201|202) ;; *) exit 1 ;; esac
 
+      - name: Validate canary with Coinbase CDP Bazaar
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 45 -o /tmp/cdp-canary.json -w '%{http_code}' \
+            -X POST 'https://api.cdp.coinbase.com/platform/v2/x402/validate' \
+            -H 'content-type: application/json' \
+            --data '{"resource":"https://agentresolver.vercel.app/api/x402-ping","method":"GET"}')"
+          echo "CDP_CANARY_VALIDATE_HTTP=$code"
+          jq . /tmp/cdp-canary.json || cat /tmp/cdp-canary.json
+          case "$code" in 200|201|202) ;; *) exit 1 ;; esac
+          jq -e '.valid == true and .simulation.outcome == "accepted"' /tmp/cdp-canary.json >/dev/null
+
+      - name: Validate canonical preflight with Coinbase CDP Bazaar
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 45 -o /tmp/cdp-preflight.json -w '%{http_code}' \
+            -X POST 'https://api.cdp.coinbase.com/platform/v2/x402/validate' \
+            -H 'content-type: application/json' \
+            --data '{"resource":"https://agentresolver.vercel.app/api/x402-payment-preflight","method":"POST"}')"
+          echo "CDP_PREFLIGHT_VALIDATE_HTTP=$code"
+          jq . /tmp/cdp-preflight.json || cat /tmp/cdp-preflight.json
+          case "$code" in 200|201|202) ;; *) exit 1 ;; esac
+
       - name: Validate Ontario launch metadata without payment or publication
         shell: bash
         run: |
