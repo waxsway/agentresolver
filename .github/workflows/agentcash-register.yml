@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           npx -y @agentcash/discovery@1.7.5 discover https://agentresolver.vercel.app
-          npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app
+          npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app/api/abi-encode
 
       - name: Register origin with AgentCash
         env:
