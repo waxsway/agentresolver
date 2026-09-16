@@ -1,0 +1,83 @@
+name: Audit Public Buyer Surfaces
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-public-buyer-surfaces.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check Circle keyless discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 -G 'https://api.circle.com/v2/x402/discovery/resources'             --data-urlencode 'query=AgentResolver'             --data-urlencode 'limit=50'             -o /tmp/circle.json
+          echo "=== CIRCLE_DISCOVERY ==="
+          jq '{
+            total: (.pagination.total // null),
+            matches: [.. | objects | select((((.resource? // "")|tostring)|contains("agentresolver.vercel.app")) or ((((.metadata.provider.name? // "")|tostring)|ascii_downcase)|contains("agentresolver")))]
+          }' /tmp/circle.json
+
+      - name: Check probe402 free grade lookup
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/probe.json -w '%{http_code}' -G 'https://probe402.com/grade'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             -H 'accept: application/json')"
+          echo "PROBE402_HTTP=$code"
+          jq . /tmp/probe.json 2>/dev/null || cat /tmp/probe.json
+
+      - name: Check Aegis free lint and discovery only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 -G 'https://aegis.borisinc.com/lint'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             -o /tmp/lint.json
+          echo "=== AEGIS_LINT ==="
+          jq . /tmp/lint.json 2>/dev/null || cat /tmp/lint.json
+
+          curl -fsS --max-time 30 -G 'https://aegis.borisinc.com/discover'             --data-urlencode 'query=AgentResolver'             -o /tmp/discover.json
+          echo "=== AEGIS_DISCOVER ==="
+          jq . /tmp/discover.json 2>/dev/null || cat /tmp/discover.json
+
+      - name: Inspect Circle seller page for free ingestion APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 'https://agents.circle.com/sell' -o /tmp/sell.html
+          grep -Eo 'src="[^"]+\.js[^"]*"' /tmp/sell.html | sed 's/^src="//;s/"$//' > /tmp/jsrefs || true
+          n=0
+          while IFS= read -r src; do
+            [ -z "$src" ] && continue
+            n=$((n+1))
+            [ "$n" -gt 20 ] && break
+            case "$src" in
+              http*) url="$src" ;;
+              /*) url="https://agents.circle.com$src" ;;
+              *) url="https://agents.circle.com/$src" ;;
+            esac
+            out="/tmp/circle-$n.js"
+            curl -fsS --max-time 30 "$url" -o "$out" || continue
+            python3 - "$out" <<'PY'
+          import re,sys
+          s=open(sys.argv[1],errors='ignore').read()
+          for needle in ('score','submit','publish','seller','readiness','discovery','resource'):
+              start=0
+              printed=0
+              while printed<4:
+                  i=s.lower().find(needle,start)
+                  if i<0: break
+                  ctx=s[max(0,i-900):min(len(s),i+2600)]
+                  if '/api/' in ctx or 'fetch(' in ctx or 'https://' in ctx:
+                      urls=sorted(set(re.findall(r'https?://[^"\x27 ]+|/api/[A-Za-z0-9_./?=&:-]+',ctx)))
+                      if urls:
+                          print(needle, urls[:20])
+                          printed+=1
+                  start=i+len(needle)
+          PY
+          done < /tmp/jsrefs
