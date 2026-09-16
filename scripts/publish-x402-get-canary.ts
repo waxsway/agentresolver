@@ -22,7 +22,7 @@ if (!postResource) throw new Error("x402-ping POST resource is missing from the 
 
 const getResource = clone(postResource);
 getResource.resource = GET_RESOURCE;
-getResource.description = "Lowest-friction $0.001 x402 settlement canary. GET requires no request body and returns a timestamped pong only after successful payment.";
+getResource.description = "No-body $0.001 x402 settlement test for funded agents. Verifies wallet, facilitator, USDC payment, and paid delivery end-to-end; returns a timestamped pong only after successful settlement.";
 getResource.inputSchema = { type: "object", additionalProperties: false };
 getResource.examples = [{}];
 manifest.resources = [
@@ -54,8 +54,8 @@ const postOperation = pathItem?.post;
 if (!postOperation) throw new Error("x402-ping POST is missing from openapi.json.");
 const getOperation = clone(postOperation);
 getOperation.operationId = "x402SettlementPingGet";
-getOperation.summary = "x402 Settlement Ping (GET)";
-getOperation.description = "Price: $0.001 USDC on Base or Solana via x402. Lowest-friction paid settlement canary; GET requires no request body and returns a timestamped pong only after successful payment.";
+getOperation.summary = "x402 Settlement Test — Wallet & Facilitator Canary (GET)";
+getOperation.description = "Price: $0.001 USDC on Base or Solana via x402. No-body settlement test for funded agents to verify wallet, facilitator, USDC payment, and paid delivery end-to-end before larger purchases. Returns a timestamped pong only after successful settlement.";
 delete getOperation.requestBody;
 getOperation["x-agentresolver-product"] = {
   ...(getOperation["x-agentresolver-product"] ?? {}),
