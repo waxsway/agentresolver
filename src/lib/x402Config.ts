@@ -6,7 +6,7 @@ export const X402_NETWORK = "eip155:8453" as const;
 export const X402_SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" as const;
 export const X402_ASSET = "USDC" as const;
 export const X402_SOLANA_ASSET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" as const;
-export const X402_SOLANA_FEE_PAYER = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4" as const;
+export const X402_SOLANA_FEE_PAYER = "CjNFTjvBhbJJd2B5ePPMHRLx1ELZpa8dwQgGL727eKww" as const;
 export const X402_FACILITATOR_URL = "https://facilitator.payai.network" as const;
 
 // Keep capability discovery free. Monetization is attached only to resources
