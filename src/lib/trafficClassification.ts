@@ -56,6 +56,7 @@ export function classifyTraffic(
     mcpMethod?: string | null;
     tool?: string | null;
     hasUserIntent?: boolean;
+    hasPayment?: boolean;
   } = {}
 ): TrafficClassification {
   const ua = safeUserAgent(req).toLowerCase();
@@ -63,7 +64,7 @@ export function classifyTraffic(
     try { return new URL(req.url).pathname; } catch { return ""; }
   })();
 
-  if (req.headers.get("payment-signature")) {
+  if (context.hasPayment || req.headers.get("payment-signature")) {
     return { trafficClass: "paid_retry", external: true, sponsorEligible: false, reason: "payment_signature_present" };
   }
 
