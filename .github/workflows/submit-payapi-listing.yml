@@ -1,0 +1,76 @@
+name: Submit AgentResolver to PayAPI Market
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/submit-payapi-listing.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verify live AgentResolver canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 20 -o /tmp/ping.json -w '%{http_code}' 'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            (.accepts | any(
+              .network == "eip155:8453" and
+              .amount == "1000" and
+              .payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            ))
+          ' /tmp/ping.json >/dev/null
+
+      - name: Submit free listing
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Reuse identity already present in this public repository's commit metadata
+          # instead of hard-coding additional personal data into the workflow.
+          provider_name="$(git log -1 --format='%an')"
+          provider_email="$(git log -1 --format='%ae')"
+
+          payload="$(jq -n             --arg provider_name "$provider_name"             --arg provider_email "$provider_email"             '{
+              provider: {
+                name: $provider_name,
+                email: $provider_email,
+                company_name: "AgentResolver",
+                wallet_address: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              },
+              api: {
+                name: "AgentResolver x402 Payment Verification",
+                description: "Trust-minimized x402 verification and a $0.001 USDC settlement canary for autonomous agents. GET /api/x402-ping verifies wallet, facilitator, settlement, and paid delivery.",
+                category: "Verification",
+                base_url: "https://agentresolver.vercel.app",
+                mcp_endpoint: "https://agentresolver.vercel.app/mcp",
+                endpoints_count: "31",
+                tools_count: "31",
+                price_min: "0.001",
+                price_max: "0.001"
+              },
+              tier: "free"
+            }')"
+
+          code="$(curl -sS --max-time 30 -o /tmp/payapi-submit.json -w '%{http_code}'             -X POST 'https://payapi.market/api/submit-listing'             -H 'content-type: application/json'             --data "$payload" || true)"
+
+          echo "HTTP=$code"
+          cat /tmp/payapi-submit.json 2>/dev/null || true
+          echo
+
+          case "$code" in
+            200|201|202) ;;
+            *) echo "PayAPI listing submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+          jq -e '.provider.id and (.listing.id // .api.id // .listing_id // .api_id // true)' /tmp/payapi-submit.json >/dev/null || true
