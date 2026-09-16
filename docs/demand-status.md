@@ -1,32 +1,39 @@
 # AgentResolver Demand Status
 
-Last updated: 2026-09-15 UTC
+Last updated: 2026-09-16 UTC
 
-This ledger separates machine discovery traffic from actual resolver usage. It intentionally excludes raw IP addresses and raw goal text.
+This ledger separates machine discovery traffic from actual commercial demand and revenue. It intentionally excludes raw IP addresses and raw goal text.
 
-## Verified milestones
+## Verified state
 
-- **External MCP `resolve` use observed:** 2026-09-15 14:39 UTC.
-- A Deno-based external client completed two full MCP sessions: `initialize` → `notifications/initialized` → `tools/list` → `tools/call` for `resolve`.
-- Both resolver calls returned successful HTTP 200 responses and non-empty owned/marketplace result groups.
-- These calls are materially stronger evidence than crawler handshakes or `tools/list`, but they do **not** by themselves prove a unique human user, provider conversion, or revenue.
+- Production resolver, MCP server, and x402 payment challenges are live.
+- Historical external MCP `resolve` use has been observed.
+- Traffic is classified as `internal_test`, `directory_probe`, `liveness_crawler`, `agent_discovery`, `qualified_intent`, or `paid_retry` before it is interpreted commercially.
+- Provider-funded discovery inventory is exposed through the provider page, sponsorship API/manifest, resolver surfaces, and MCP `sponsorship_info`.
+- Sponsorship has no public fixed rate. Any commercial terms require operator approval.
+- **Verified independent third-party revenue: $0.**
+- **Verified independent settlements: 0.**
 
 ## Measurement rules
 
-1. Do not count health checks, server-card fetches, MCP initialization, or `tools/list` as resolver users.
-2. Treat an actual `tools/call` for `resolve` or a valid `POST /api/resolve` as resolver usage.
-3. Use one-way caller hashes for repeat-caller measurement; never publish raw IPs.
-4. Use hashed goals and coarse intent tags for demand analysis; never write raw goals to application logs.
-5. Keep deployment/smoke-test traffic separate from unaffiliated external demand.
+1. Do not count health checks, deployment smoke, server-card fetches, MCP initialization, `tools/list`, directory probes, or crawler requests as buyer demand.
+2. A 402 challenge is not revenue.
+3. A valid external `tools/call`, resolver goal, or paid-route POST can indicate qualified intent, but it is not revenue unless an independent caller signs and settlement succeeds.
+4. Revenue counts only after an independent third-party settlement/payment is verified.
+5. Use one-way caller hashes for repeat-caller measurement; never publish raw IPs or raw goal text.
+6. Keep provider/sponsor inquiries separate from traffic and payment metrics.
 
-## Revenue milestones
+## Current commercial milestones
 
 - [x] Production resolver and MCP server live.
 - [x] Official MCP Registry listing published.
-- [x] External MCP `resolve` calls observed.
-- [x] Founding Provider offer exists at `$250/month` with organic inclusion preserved.
-- [ ] Three repeat external callers identified.
-- [ ] First attributable provider referral.
-- [ ] First paid Founding Provider.
-- [ ] Repeatable provider acquisition motion established.
-- [ ] `$10,000 MRR` reached.
+- [x] External machine discovery and historical resolver use observed.
+- [x] Provider-funded sponsorship inventory and inquiry-only intake published.
+- [x] Paid-route traffic classification separates probes from commercial intent.
+- [ ] First independent signed paid retry.
+- [ ] First independent verified settlement / dollar collected.
+- [ ] First qualified provider/sponsor inquiry.
+- [ ] $1,000 collected revenue.
+- [ ] $5,000 collected revenue.
+
+The operating priority is transaction #1 and evidence-backed provider monetization, not raw request volume.
