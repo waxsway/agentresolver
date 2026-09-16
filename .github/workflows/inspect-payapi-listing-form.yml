@@ -12,43 +12,17 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - name: Fetch listing page and inspect forms/scripts
+      - name: Extract exact PayAPI listing create flows
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 'https://payapi.market/list' -o /tmp/list.html
-          echo "=== forms ==="
-          grep -Eio '<form[^>]*>|<input[^>]*>|<select[^>]*>|<textarea[^>]*>|<button[^>]*>' /tmp/list.html | sed -n '1,220p' || true
-          echo "=== actions / fetch / api refs ==="
-          grep -Eo '(/api/[A-Za-z0-9_./?=&:-]+|action="[^"]+"|fetch\([^)]*\)|XMLHttpRequest|axios\.[a-z]+\([^)]*\))' /tmp/list.html | sed -n '1,220p' || true
-          echo "=== js bundle refs ==="
-          grep -Eo 'src="[^"]+\.js[^"]*"' /tmp/list.html | sed 's/^src="//;s/"$//' | tee /tmp/jsrefs.txt || true
-
-          base='https://payapi.market'
-          n=0
-          while IFS= read -r src; do
-            [ -z "$src" ] && continue
-            n=$((n+1))
-            [ "$n" -gt 20 ] && break
-            case "$src" in
-              http*) url="$src" ;;
-              /*) url="$base$src" ;;
-              *) url="$base/$src" ;;
-            esac
-            out="/tmp/js-$n.js"
-            if curl -fsS --max-time 30 "$url" -o "$out"; then
-              echo "=== bundle $n: $url ==="
-              grep -Eo '.{0,220}(list|submit|provider|payout|wallet|email|baseUrl|base_url|price|category|endpoint).{0,420}' "$out" | sed -n '1,120p' || true
-            fi
-          done < /tmp/jsrefs.txt
-
-      - name: Extract exact PayAPI create flows
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsS --max-time 30 'https://payapi.market/assets/index-Fti9t7hC.js' -o /tmp/payapi.js
+          curl -fsS --max-time 20 'https://payapi.market/list' -o /tmp/list.html
+          js="$(grep -Eo '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/list.html | head -1)"
+          test -n "$js"
+          echo "JS=$js"
+          curl -fsS --max-time 30 "https://payapi.market$js" -o /tmp/payapi.js
           python3 - <<'PY'
           from pathlib import Path
           s=Path('/tmp/payapi.js').read_text(errors='ignore')
@@ -57,32 +31,32 @@ jobs:
             '.from("providers").insert',
             '.from(`api_listings`).insert',
             '.from("api_listings").insert',
-            'createProvider',
-            'createListing',
+            'function Ll(',
+            'function Rl(',
             'company_name',
             'wallet_address',
+            'contact_email',
             'base_url',
             'mcp_endpoint',
             'price_min',
             'price_max',
-            'contact_email',
-            'provider_email',
-            'email:',
-            'status:`pending`',
-            'status:"pending"',
-            'payment_verified'
+            'Deployed URL',
+            'Your name',
+            'Your email',
+            'Payout',
+            'Review and submit',
+            'Submit for verification',
+            '/api/'
           ]
-          seen=set()
           for needle in needles:
+              hits=[]
               start=0
-              while True:
+              while len(hits)<6:
                   i=s.find(needle,start)
                   if i<0: break
-                  key=(needle,i)
-                  if key in seen: break
-                  seen.add(key)
-                  print(f'\n=== {needle} @ {i} ===')
-                  print(s[max(0,i-1800):min(len(s),i+5200)])
+                  hits.append(i)
                   start=i+len(needle)
-                  if sum(1 for n,j in seen if n==needle)>=8: break
+              for k,i in enumerate(hits,1):
+                  print(f'\n=== {needle} #{k} @ {i} ===')
+                  print(s[max(0,i-1600):min(len(s),i+5200)])
           PY
