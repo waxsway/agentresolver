@@ -21,7 +21,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     assert.equal(info?.price?.currency, "USD");
     assert.match(String(info?.price?.amount || ""), /^\d+(?:\.\d+)?$/);
     assert.deepEqual(info?.protocols, [{ x402: {} }]);
-    assert.equal("protocol" in info, false);
-    assert.equal("priceUsd" in info, false);
+    assert.equal(info?.protocol, "x402");
+    assert.equal(typeof info?.priceUsd, "number");
   }
 });
