@@ -23,6 +23,14 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()"
+          },
+          {
+            key: "X-AgentResolver-Sponsorship",
+            value: "https://agentresolver.vercel.app/.well-known/sponsorship.json"
+          },
+          {
+            key: "Link",
+            value: "<https://agentresolver.vercel.app/.well-known/sponsorship.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver sponsorship inventory\""
           }
         ]
       }
