@@ -1,0 +1,33 @@
+name: Audit Aegis Submit Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-aegis-submit-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect Aegis submit quote without payment
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -D /tmp/headers.txt -o /tmp/body.json -w '%{http_code}' -G 'https://aegis.borisinc.com/submit'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             --data-urlencode 'name=AgentResolver Settlement Canary'             --data-urlencode 'category=payments'             --data-urlencode 'price_usd=0.001')"
+          echo "AEGIS_SUBMIT_HTTP=$code"
+          echo "=== BODY ==="
+          jq . /tmp/body.json 2>/dev/null || cat /tmp/body.json
+          echo "=== PAYMENT HEADERS ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          for line in Path('/tmp/headers.txt').read_text(errors='ignore').splitlines():
+              k=line.split(':',1)[0].lower()
+              if k in {'payment-required','www-authenticate','x-payment'}:
+                  print(line[:4000])
+          PY
+          test "$code" = "402"
