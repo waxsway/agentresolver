@@ -15,22 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Query Agent402 cross-seller router
+      - name: Query exact paid buyer intents
         shell: bash
         run: |
           set -euo pipefail
           queries=(
-            "check whether one tool JSON schema output can satisfy another tool required input schema"
-            "preflight an MCP endpoint and list its tools before connecting"
-            "resolve a missing agent capability and live verify the best MCP candidates"
-            "select the best OpenAPI operation for a natural language goal"
-            "audit a website for agent discoverability llms.txt openapi mcp"
-            "sha256 hash text"
-            "x402 settlement ping"
+            "x402 preflight"
+            "verify endpoint before paying"
+            "payTo verification"
+            "endpoint safety"
+            "USDC payment check"
+            "verify before paying x402 endpoint"
           )
 
-          found_any=0
-          eligible_any=0
           for q in "${queries[@]}"; do
             echo "=== ROUTE INTENT: $q ==="
             payload=$(jq -cn --arg query "$q" '{query:$query,top:10,include:"external"}')
@@ -43,64 +40,20 @@ jobs:
             jq '{
               query,
               count,
-              results: [
-                .results[]? | {
-                  rank,
-                  seller,
-                  origin,
-                  host,
-                  name,
-                  tool,
-                  route,
-                  price,
-                  priceUsd,
-                  matchScore,
-                  health,
-                  networks,
-                  paymentNetworksKnown,
-                  routerDispatchEligible,
-                  routerDispatchReason,
-                  executeVia,
-                  executeViaWhenEligible
-                }
-              ]
-            }' /tmp/route.json
-
-            if jq -e '[.results[]? | select(
-              ((.origin // "") | contains("agentresolver.vercel.app")) or
-              ((.host // "") | contains("agentresolver.vercel.app")) or
-              ((.seller // "") | contains("agentresolver"))
-            )] | length > 0' /tmp/route.json >/dev/null; then
-              found_any=1
-              echo 'AGENTRESOLVER_PRESENT=true'
-              jq '[.results[]? | select(
+              top5: [(.results // [])[0:5][]? | {
+                rank,seller,origin,host,name,tool,route,price,priceUsd,matchScore,health,
+                networks,routerDispatchEligible,executeVia,executeViaWhenEligible
+              }],
+              agentresolver: [(.results // [])[]? | select(
                 ((.origin // "") | contains("agentresolver.vercel.app")) or
                 ((.host // "") | contains("agentresolver.vercel.app")) or
-                ((.seller // "") | contains("agentresolver"))
+                ((.seller // "") | ascii_downcase | contains("agentresolver"))
               ) | {
                 rank,seller,origin,host,name,tool,route,price,priceUsd,matchScore,health,
-                networks,paymentNetworksKnown,routerDispatchEligible,routerDispatchReason,
-                executeVia,executeViaWhenEligible
-              }]' /tmp/route.json
-            else
-              echo 'AGENTRESOLVER_PRESENT=false'
-            fi
-
-            if jq -e '[.results[]? | select(
-              (
-                ((.origin // "") | contains("agentresolver.vercel.app")) or
-                ((.host // "") | contains("agentresolver.vercel.app")) or
-                ((.seller // "") | contains("agentresolver"))
-              ) and .routerDispatchEligible == true
-            )] | length > 0' /tmp/route.json >/dev/null; then
-              eligible_any=1
-              echo 'AGENTRESOLVER_DISPATCH_ELIGIBLE=true'
-            else
-              echo 'AGENTRESOLVER_DISPATCH_ELIGIBLE=false'
-            fi
+                networks,routerDispatchEligible,routerDispatchReason,executeVia,executeViaWhenEligible
+              }]
+            }' /tmp/route.json
           done
-          echo "found_any=$found_any"
-          echo "eligible_any=$eligible_any"
 
       - name: Inspect indexed AgentResolver seller
         shell: bash
