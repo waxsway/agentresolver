@@ -1,0 +1,90 @@
+name: Facilitator Invalid Signature Dry Run
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/facilitator-invalid-signature-dry-run.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Exercise production facilitator verification with impossible payment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          endpoint='https://agentresolver.vercel.app/api/x402-ping'
+          code="$(curl -sS -D /tmp/challenge.headers -o /tmp/challenge.json -w '%{http_code}' "$endpoint")"
+          test "$code" = "402"
+
+          python3 - <<'PY'
+          import base64, json, time
+          from pathlib import Path
+
+          challenge = json.loads(Path("/tmp/challenge.json").read_text())
+          accepted = next(x for x in challenge["accepts"] if x["network"] == "eip155:8453")
+          now = int(time.time())
+          payload = {
+              "x402Version": 2,
+              "resource": challenge["resource"],
+              "accepted": accepted,
+              "payload": {
+                  "signature": "0x" + ("00" * 65),
+                  "authorization": {
+                      "from": "0x0000000000000000000000000000000000000001",
+                      "to": accepted["payTo"],
+                      "value": str(accepted["amount"]),
+                      "validAfter": str(now - 30),
+                      "validBefore": str(now + 120),
+                      "nonce": "0x" + ("00" * 32),
+                  },
+              },
+              "extensions": challenge.get("extensions", {}),
+          }
+          raw = json.dumps(payload, separators=(",", ":")).encode()
+          Path("/tmp/payment-signature.txt").write_text(base64.b64encode(raw).decode())
+          Path("/tmp/payment-payload-redacted.json").write_text(json.dumps({
+              "x402Version": payload["x402Version"],
+              "accepted": payload["accepted"],
+              "resource": payload["resource"],
+              "payload": {
+                  "signature": "<intentionally invalid 65-byte zero signature>",
+                  "authorization": payload["payload"]["authorization"],
+              },
+              "extensions": payload["extensions"],
+          }, indent=2))
+          PY
+
+          payment_signature="$(cat /tmp/payment-signature.txt)"
+          code="$(curl -sS -D /tmp/result.headers -o /tmp/result.body -w '%{http_code}'             "$endpoint"             -H "PAYMENT-SIGNATURE: $payment_signature")"
+
+          echo "=== payload shape ==="
+          cat /tmp/payment-payload-redacted.json
+          echo
+          echo "=== response status ==="
+          echo "$code"
+          echo "=== response headers ==="
+          sed -n '1,80p' /tmp/result.headers
+          echo "=== response body ==="
+          cat /tmp/result.body
+          echo
+
+          case "$code" in
+            400|402)
+              echo "Dry run reached payment verification and was safely rejected."
+              ;;
+            200)
+              echo "CRITICAL: deliberately invalid authorization was accepted." >&2
+              exit 1
+              ;;
+            *)
+              echo "Unexpected verifier path status: $code" >&2
+              exit 1
+              ;;
+          esac
