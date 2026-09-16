@@ -36,6 +36,7 @@ jobs:
           grep -F '"ok":true' /tmp/health.json >/dev/null
           grep -F '"version":"0.1.3"' /tmp/health.json >/dev/null
           grep -F '"paidManifest":"/.well-known/x402"' /tmp/health.json >/dev/null
+          grep -F '"evidence":"/.well-known/agentresolver-evidence.json"' /tmp/health.json >/dev/null
 
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/agentresolver.md" | grep -F 'AgentResolver' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/integrations.json" | grep -F "$BASE_URL/mcp" >/dev/null
