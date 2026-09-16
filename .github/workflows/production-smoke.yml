@@ -58,6 +58,7 @@ jobs:
             fi
             curl --retry 5 --retry-delay 2 --retry-all-errors -fsS \
               -H 'content-type: application/json' \
+              -H 'x-agentresolver-internal: 1' \
               --data "$body" \
               "$BASE_URL/api/resolve" > "/tmp/$slug.json"
             jq -e --arg id "$expected_id" --argjson price "$expected_price" '
@@ -117,7 +118,7 @@ jobs:
               exit 1
             fi
 
-            get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS -o "/tmp/${slug}-get.json" -w '%{http_code}' "$BASE_URL$path")"
+            get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS -H 'x-agentresolver-internal: 1' -o "/tmp/${slug}-get.json" -w '%{http_code}' "$BASE_URL$path")"
             if [ "$get_status" != "402" ]; then
               echo "Expected $name GET discovery probe to receive 402, got $get_status"
               exit 1
