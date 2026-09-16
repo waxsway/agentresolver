@@ -21,6 +21,21 @@ export default function Legal() {
       </section>
 
       <section>
+        <h2>Trust model</h2>
+        <p>
+          AgentResolver distinguishes technical payment evidence from provider
+          identity and fulfillment. A result may show that an endpoint presented
+          a valid x402 challenge, a specific payTo wallet, price, network, asset,
+          and resource binding. That observation does not prove that the wallet
+          is legally owned by a named business, that the business is legitimate,
+          or that a provider will deliver a promised service. Evidence receipts
+          use stable fingerprints to help buyers detect changes across
+          observations without making those stronger identity or fulfillment
+          claims.
+        </p>
+      </section>
+
+      <section>
         <h2>Payments and custody</h2>
         <p>
           Payments to AgentResolver purchase AgentResolver&apos;s own digital
