@@ -15,6 +15,9 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.equal(canary?.operationId, "x402SettlementPingGet");
   assert.equal(canary?.requestBody, undefined);
   assert.equal(canary?.["x-payment-info"]?.priceUsd, 0.001);
+  assert.match(canary?.summary || "", /settlement test/i);
+  assert.match(canary?.description || "", /USDC payment check/i);
+  assert.match(canary?.description || "", /wallet\/facilitator canary/i);
   assert.deepEqual(openapi.paths?.["/api/resolve"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/health"]?.get?.security, []);
 
