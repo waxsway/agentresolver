@@ -1,0 +1,66 @@
+name: Final Buyer Readiness Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/final-buyer-readiness-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify live production manifest and canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 'https://agentresolver.vercel.app/.well-known/x402.json' -o /tmp/manifest.json
+          jq '{
+            x402Version,
+            generated_at,
+            facilitator,
+            canary: (.services[] | select(.id=="x402-ping") | {id,endpoint,method,methods,price_usdc,network_id,asset,facilitator}),
+            preflight: (.services[] | select(.id=="x402-payment-preflight") | {id,endpoint,method,price_usdc,network_id,asset,facilitator})
+          }' /tmp/manifest.json
+          jq -e '
+            .x402Version == 2 and
+            (.services | any(.id=="x402-ping" and .method=="GET" and .price_usdc=="0.001")) and
+            (.services | any(.id=="x402-payment-preflight")) and
+            .facilitator.default == "https://facilitator.payai.network"
+          ' /tmp/manifest.json >/dev/null
+
+      - name: Run Ontario readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 45 -o /tmp/ontario.json -w '%{http_code}'             -X POST 'https://ontarioprotocol.com/api/verify/x402-readiness'             -H 'content-type: application/json'             --data '{"target_url":"https://agentresolver.vercel.app/api/x402-ping"}')"
+          echo "ONTARIO_HTTP=$code"
+          jq '{readiness_score,grade,recommendations,signals,report_id,report_url}' /tmp/ontario.json
+          case "$code" in 200|201|202) ;; *) exit 1 ;; esac
+
+      - name: Validate canary with Coinbase CDP
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 45 -o /tmp/cdp.json -w '%{http_code}'             -X POST 'https://api.cdp.coinbase.com/platform/v2/x402/validate'             -H 'content-type: application/json'             --data '{"resource":"https://agentresolver.vercel.app/api/x402-ping","method":"GET"}')"
+          echo "CDP_HTTP=$code"
+          jq '{valid,simulation,index,requiredFailures:[.preflight[]? | select(.severity=="required" and .passed==false)]}' /tmp/cdp.json
+          jq -e '.valid==true and .simulation.outcome=="accepted"' /tmp/cdp.json >/dev/null
+
+      - name: Check Bazaar semantic visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          for q in             "x402 settlement test"             "wallet facilitator payment test"             "verify endpoint before paying"             "payTo verification"             "USDC payment check"; do
+            out="$(mktemp)"
+            curl -fsS --max-time 30 -G 'https://api.cdp.coinbase.com/platform/v2/x402/discovery/search'               --data-urlencode "query=$q"               --data-urlencode 'limit=20' -o "$out"
+            count="$(jq '[.. | objects | select(((.resource? // .url? // "") | startswith("https://agentresolver.vercel.app/")))] | length' "$out")"
+            echo "QUERY=$q TARGET_MATCHES=$count"
+            if [ "$count" -gt 0 ]; then found=$((found+1)); fi
+          done
+          echo "BAZAAR_VISIBLE_QUERIES=$found"
