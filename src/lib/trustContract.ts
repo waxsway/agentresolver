@@ -20,6 +20,14 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     revenueModel: "AgentResolver is paid directly for AgentResolver-owned digital verification services."
   },
   optionalPaymentRails: {
+    cdpFacilitator: {
+      enabled: process.env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1",
+      defaultEnabled: false,
+      scope: "AgentResolver-owned service payments only",
+      buyerAuthorizationRequired: true,
+      holdsBuyerFunds: false,
+      note: "Optional Coinbase CDP settlement path for Bazaar indexing. Requires explicit production approval and CDP API credentials; existing payTo addresses remain unchanged."
+    },
     circleGatewayNanopayments: {
       enabled: process.env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1",
       defaultEnabled: false,
