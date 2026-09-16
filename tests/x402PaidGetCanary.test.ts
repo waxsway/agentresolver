@@ -61,12 +61,21 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
 
 test("generated machine surfaces prefer GET for the settlement canary", () => {
   const manifest = readJson("public/.well-known/x402");
+  const jsonManifest = readJson("public/.well-known/x402.json");
   const capabilities = readJson("public/capabilities.json");
   const integrations = readJson("public/integrations.json");
   const openapi = readJson("public/openapi.json");
 
+  assert.deepEqual(jsonManifest, manifest);
+  assert.equal(manifest.category, "Developer Tools");
+  assert.ok(manifest.tags.includes("payment-canary"));
+  assert.equal(manifest.owner_url, "https://agentresolver.vercel.app");
+  assert.equal(manifest.owner_contact, "https://github.com/waxsway/agentresolver");
+  assert.equal(manifest.openapi, "https://agentresolver.vercel.app/openapi.json");
+  assert.equal(manifest.mcp, "https://agentresolver.vercel.app/mcp");
   assert.ok(manifest.resources.some((item: any) => item.resource === "GET /api/x402-ping"));
   assert.ok(manifest.resources.some((item: any) => item.resource === "POST /api/x402-ping"));
+  assert.ok(manifest.resources.some((item: any) => item.resource === "POST /api/x402-payment-preflight"));
 
   const capability = capabilities.capabilities.find((item: any) => item.id === "x402-ping");
   assert.equal(capability.method, "GET");
