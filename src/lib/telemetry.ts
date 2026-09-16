@@ -121,6 +121,7 @@ export function logX402Settlement(response: Response, capabilityId: string, requ
     network: receipt.network,
     amount: receipt.amount,
     transactionHash: receipt.transaction ? shortHash(receipt.transaction) : null,
+    transactionReference: settled && receipt.transaction ? receipt.transaction.slice(0, 200) : null,
     payerHash: receipt.payer ? shortHash(receipt.payer) : null,
     errorReason: receipt.errorReason,
     executionId: response.headers.get("x-agentresolver-execution-id"),
