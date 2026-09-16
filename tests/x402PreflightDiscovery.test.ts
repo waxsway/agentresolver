@@ -14,8 +14,9 @@ test("canonical x402 preflight owns verify-before-pay buyer language", () => {
 
   assert.equal(legacy.endpoint, "/api/http-inspect");
   assert.match(legacy.name, /legacy/i);
-  assert.ok(!legacy.tags.includes("payTo verification"));
-  assert.ok(!legacy.tags.includes("x402 preflight"));
+  const legacyTags = new Set<string>(legacy.tags);
+  assert.ok(!legacyTags.has("payTo verification"));
+  assert.ok(!legacyTags.has("x402 preflight"));
 });
 
 test("canonical x402 preflight publishes a structured output contract", () => {
