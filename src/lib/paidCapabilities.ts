@@ -281,14 +281,14 @@ export const PAID_CAPABILITIES = {
   },
   "http-inspect": {
     id: "http-inspect",
-    name: "x402 API Trust Preflight",
+    name: "x402 Seller Trust & Payment Preflight",
     operationId: "inspectX402ApiTrust",
     endpoint: "/api/http-inspect",
     price: "$0.001",
     priceUsd: 0.001,
     atomicAmount: "1000",
-    description: "Verify a public HTTPS/x402 payment endpoint before an agent spends. Probe GET/HEAD directly or explicitly authorize one unpaid POST with a JSON body, then decode the live PAYMENT-REQUIRED challenge and verify x402 version, payment options, scheme, network, asset, payee, resource binding and quoted USDC price alongside TLS/reachability evidence. Optional max-price, expected-payee and expected-network constraints turn it into a caller policy gate.",
-    useWhen: "An agent is about to pay or depend on an unfamiliar x402/API endpoint and wants to verify the live payment contract, destination, price and resource binding before authorizing spend.",
+    description: "Before an AI agent pays an unfamiliar x402 API or seller, verify the live payment contract and endpoint trust evidence. Decode PAYMENT-REQUIRED and check quoted USDC price, payTo recipient, network, asset, scheme, x402 version, resource binding, TLS, reachability and latency. Optional max-price, expected-payee and expected-network constraints provide a deterministic pre-payment policy gate.",
+    useWhen: "Use immediately before paying an unfamiliar x402 seller or API when the agent needs to verify price, payment recipient, network, resource binding and endpoint trust before authorizing spend.",
     costClass: "bounded-network",
     tags: ["x402", "trust", "security", "payment preflight", "api", "payee", "price", "resource binding", "tls", "agent payment"],
     inputSchema: {
@@ -308,8 +308,8 @@ export const PAID_CAPABILITIES = {
     example: { url: "https://example.com/api", method: "GET", maxPriceUsd: 0.01, expectedNetwork: "eip155:8453" },
     quoteTool: {
       name: "http_inspect",
-      title: "x402 API trust preflight — $0.001",
-      description: "Paid $0.001 USDC on Base or Solana live x402/API payment-contract preflight. Probe the target method, verify quoted price, payee, network, resource binding and challenge structure plus TLS/reachability before authorizing spend. POST probes require explicit caller opt-in because an unprotected endpoint could have side effects."
+      title: "x402 seller trust & payment preflight — $0.001",
+      description: "Paid $0.001 USDC on Base or Solana pre-payment check for an unfamiliar x402 seller/API. Verify quoted price, payTo recipient, network, asset, resource binding, challenge structure, TLS and reachability before authorizing spend. POST probes require explicit caller opt-in because an unprotected endpoint could have side effects."
     }
   },
   "tool-contract": {
