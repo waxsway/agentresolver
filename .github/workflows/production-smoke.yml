@@ -39,8 +39,31 @@ jobs:
 
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/agentresolver.md" | grep -F 'AgentResolver' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/integrations.json" | grep -F "$BASE_URL/mcp" >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'resolveCapability' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | grep -F 'probeMcpEndpoint' >/dev/null
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | tee /tmp/openapi.json >/dev/null
+          grep -F 'resolveCapability' /tmp/openapi.json >/dev/null
+          grep -F 'probeMcpEndpoint' /tmp/openapi.json >/dev/null
+          jq -e '
+            (.info["x-guidance"] | type == "string" and length > 0) and
+            (.paths["/api/resolve"].post.security == []) and
+            (.paths["/api/health"].get.security == []) and
+            (
+              [
+                .paths[] | .[] |
+                select(type == "object") |
+                select((.tags // []) | index("Paid Agent Capabilities"))
+              ] as $paid |
+              ($paid | length >= 10) and
+              ($paid | all(
+                (.["x-payment-info"].price.mode == "fixed") and
+                (.["x-payment-info"].price.currency == "USD") and
+                (.["x-payment-info"].price.amount | type == "string" and length > 0) and
+                (.["x-payment-info"].protocols | any(has("x402"))) and
+                (.requestBody.content["application/json"].schema != null) and
+                (.responses["200"].content["application/json"].schema != null) and
+                (.responses["402"] != null)
+              ))
+            )
+          ' /tmp/openapi.json >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/capabilities.json" | grep -F 'verified-resolve' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/capabilities.json" | grep -F 'hash-encode' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402-catalog.json" | grep -F 'batch-verified-resolve' >/dev/null
