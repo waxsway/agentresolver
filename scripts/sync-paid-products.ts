@@ -329,9 +329,9 @@ for (const product of PAID_CAPABILITY_LIST) {
   openapi.paths[product.endpoint] = {
     post: {
       operationId: product.operationId,
-      tags: ["Paid Agent Capabilities"],
+      tags: ["Paid Agent Capabilities", ...product.tags],
       summary: product.name,
-      description: `Price: ${product.price} USDC on Base or Solana via x402. ${product.description}`,
+      description: `Price: ${product.price} USDC on Base or Solana via x402. ${product.description} Use when: ${product.useWhen}`,
       "x-payment-info": {
         price: {
           mode: "fixed",
@@ -358,7 +358,8 @@ for (const product of PAID_CAPABILITY_LIST) {
       "x-agentresolver-product": {
         id: product.id,
         costClass: product.costClass,
-        useWhen: product.useWhen
+        useWhen: product.useWhen,
+        keywords: product.tags
       },
       requestBody: {
         required: true,
