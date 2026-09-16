@@ -306,9 +306,9 @@ const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
   title: "AgentResolver — X402 Payment Preflight & PayTo Verification",
-  description: "Machine-readable verify-before-pay infrastructure for autonomous x402 buyers. The canonical $0.001 USDC route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana network, asset and resource binding before spend. Free capability resolution remains available as a secondary surface.",
+  description: "Machine-readable verify-before-pay infrastructure for autonomous x402 buyers. The canonical $0.001 USDC route checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, Base or Solana network, asset and resource binding before spend, then returns a reusable evidence receipt with stable observed-payment fingerprints for change detection. Free capability resolution remains available as a secondary surface.",
   version: "0.1.5",
-  "x-guidance": "For x402 verify-before-pay, use POST /api/x402-payment-preflight. It costs $0.001 USDC on Base or Solana and returns structured payment, endpoint and trust evidence before agent spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
+  "x-guidance": "For x402 verify-before-pay, use POST /api/x402-payment-preflight. It costs $0.001 USDC on Base or Solana and returns structured endpoint/payment evidence plus stable fingerprints for the observed payment identity and terms. Those fingerprints support change detection; they do not establish legal wallet ownership or provider legitimacy. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
