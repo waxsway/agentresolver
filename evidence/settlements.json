@@ -1,38 +1,64 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "service": "AgentResolver",
   "canonicalOrigin": "https://agentresolver.vercel.app",
-  "evidenceType": "x402-settlement-evidence-history",
+  "evidenceType": "independently-verifiable-x402-settlement-history",
   "sourceEvent": "paid_capability_settled",
-  "interpretation": "First-party settlement telemetry versioned in public Git. This is evidence of x402 settlement responses observed by AgentResolver, not an independent reputation score or on-chain registry.",
+  "interpretation": "Successful x402 settlement telemetry is admitted only after an independent public-chain check confirms a USDC transfer to AgentResolver on the stated network. This is verifiable usage history, not a synthetic reputation score.",
   "lastUpdatedAt": null,
   "settlementCount": 0,
-  "successfulDeliveryCount": 0,
-  "settledButNon2xxCount": 0,
-  "settlementWithIncompleteDeliveryEvidenceCount": 0,
-  "uniqueTransactionFingerprintCount": 0,
+  "independentlyVerifiedSettlementCount": 0,
+  "successfulVerifiedExecutionCount": 0,
+  "verifiedButNon2xxOrIncompleteCount": 0,
+  "unverifiedLegacySettlementCount": 0,
+  "firstVerifiedSettlementAt": null,
+  "latestVerifiedSettlementAt": null,
+  "uniqueVerifiedTransactionCount": 0,
   "byNetwork": {},
   "byCapability": {},
+  "verifiedAmountsByNetwork": {},
   "settlements": [],
   "privacy": {
     "rawPayerAddressesPublished": false,
     "payerFingerprintsPublished": false,
-    "rawTransactionIdsPublished": false,
-    "transactionFingerprintsPublished": true
+    "rawTransactionIdsPublished": true,
+    "rationale": "Transaction identifiers are public-chain references required for independent settlement verification; payer identity is not republished by this history."
   },
   "verification": {
-    "transactionFingerprintAlgorithm": "first 16 hex characters of SHA-256(transaction id)",
+    "independentOnchainVerificationRequired": true,
+    "deploymentCommitMustExistInRepositoryHistory": true,
+    "eventMustBe": "paid_capability_settled",
+    "base": {
+      "network": "eip155:8453",
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+      "method": "successful transaction receipt plus exact USDC Transfer amount to payTo"
+    },
+    "solana": {
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+      "method": "successful transaction plus exact USDC token-balance increase for payTo owner"
+    },
+    "maxSettlementToBlockTimeDifferenceSeconds": 7200,
     "perCallSettlementEvidenceHeader": "payment-response",
     "perCallResponseDigestHeader": "x-agentresolver-response-sha256",
     "perCallExecutionIdHeader": "x-agentresolver-execution-id",
     "perCallDeploymentHeader": "x-agentresolver-deployment"
   },
+  "exclusions": {
+    "crawls": true,
+    "registrations": true,
+    "paymentChallenges402": true,
+    "unsignedRequests": true,
+    "trafficVolume": true,
+    "unverifiedPaymentAttempts": true,
+    "syntheticTrustScore": true
+  },
   "limitations": [
-    "Only paid_capability_settled runtime events are eligible for this history.",
-    "The event is emitted only when x402 middleware reports success and supplies a transaction identifier.",
-    "This file is versioned in public Git history but can still be changed by the repository owner; it is not immutable or independently operated.",
-    "Transaction fingerprints preserve buyer privacy and are not sufficient for a third party to locate a payment on-chain without already knowing the transaction identifier.",
-    "Crawls, registrations, 402 challenges, unsigned requests, and traffic volume are never counted as settlements.",
-    "Successful delivery is counted separately from settlement and requires a 2xx response plus execution ID, response SHA-256, and deployment commit evidence."
+    "AgentResolver runtime telemetry selects candidate settlements; the payment itself is then checked independently against public-chain data before it can increase independentlyVerifiedSettlementCount.",
+    "The Git history is operated by the repository owner and is not immutable, but every published verified transaction reference can be rechecked independently on its network.",
+    "A verified past settlement and successful delivery do not prove third-party provider legitimacy or guarantee future behavior or fulfillment.",
+    "Older first-party entries lacking a public transaction reference, if any, remain visible as unverifiedLegacySettlementCount and never increase independently verified counts."
   ]
 }
