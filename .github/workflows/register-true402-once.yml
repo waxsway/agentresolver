@@ -1,6 +1,10 @@
 name: Register true402 Once
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-true402-once.yml'
   workflow_dispatch:
   push:
     branches: [main]
@@ -55,10 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           body="/tmp/true402-register.json"
-          code="$(curl -sS -o "$body" -w '%{http_code}' \
+          code="$(curl -sS --max-time 30 -o "$body" -w '%{http_code}' \
             -X POST https://true402.dev/api/v1/services \
             -H 'content-type: application/json' \
             -d '{"url":"https://agentresolver.vercel.app"}')"
+          echo "true402 registration HTTP $code"
           cat "$body"
           echo
           case "$code" in
