@@ -44,18 +44,22 @@ export function parseRailEvidence(logText) {
 export function annotateSettlementHistory(history, logText) {
   const evidence = parseRailEvidence(logText);
   const settlements = Array.isArray(history?.settlements) ? history.settlements : [];
-  let changed = false;
+  let railAnnotationAdded = false;
 
   const annotatedSettlements = settlements.map((settlement) => {
     const key = eventKey(settlement);
     const rail = key ? evidence.get(key) : null;
     if (!rail || settlement.reportedPaymentRail === rail) return settlement;
-    changed = true;
+    railAnnotationAdded = true;
     return {
       ...settlement,
       reportedPaymentRail: rail
     };
   });
+
+  if (!railAnnotationAdded) {
+    return { history, changed: false };
+  }
 
   const provenance = {
     field: "reportedPaymentRail",
@@ -65,16 +69,13 @@ export function annotateSettlementHistory(history, logText) {
       "reportedPaymentRail identifies the facilitator configuration AgentResolver reports as active for that request. Public-chain verification independently proves the USDC transfer and delivery evidence, but does not prove facilitator identity."
   };
 
-  const existingProvenance = history?.paymentRailProvenance;
-  if (JSON.stringify(existingProvenance) !== JSON.stringify(provenance)) changed = true;
-
   return {
     history: {
       ...history,
       settlements: annotatedSettlements,
       paymentRailProvenance: provenance
     },
-    changed
+    changed: true
   };
 }
 
@@ -103,7 +104,7 @@ function selfTest() {
     configuredPaymentRail: "coinbase-cdp"
   });
   const first = annotateSettlementHistory(base, logs);
-  if (first.history.settlements[0].reportedPaymentRail !== "coinbase-cdp") {
+  if (!first.changed || first.history.settlements[0].reportedPaymentRail !== "coinbase-cdp") {
     throw new Error("self-test failed: CDP rail was not preserved");
   }
   if (first.history.paymentRailProvenance.independentlyVerified !== false) {
@@ -112,8 +113,12 @@ function selfTest() {
   const second = annotateSettlementHistory(first.history, logs);
   if (second.changed) throw new Error("self-test failed: annotator is not idempotent");
   const invalid = annotateSettlementHistory(base, logs.replace("coinbase-cdp", "invented-rail"));
-  if (invalid.history.settlements[0].reportedPaymentRail) {
-    throw new Error("self-test failed: unknown rail was published");
+  if (invalid.changed || invalid.history !== base) {
+    throw new Error("self-test failed: unknown rail changed public history");
+  }
+  const absent = annotateSettlementHistory(base, "");
+  if (absent.changed || absent.history !== base) {
+    throw new Error("self-test failed: absent rail evidence changed public history");
   }
   process.stdout.write("settlement payment rail annotator self-test PASSED\n");
 }
@@ -133,7 +138,9 @@ function main() {
   const history = JSON.parse(readFileSync(historyPath, "utf8"));
   const logs = readFileSync(logsPath, "utf8");
   const result = annotateSettlementHistory(history, logs);
-  writeFileSync(historyPath, JSON.stringify(result.history, null, 2) + "\n");
+  if (result.changed) {
+    writeFileSync(historyPath, JSON.stringify(result.history, null, 2) + "\n");
+  }
   process.stdout.write(JSON.stringify({ changed: result.changed }) + "\n");
 }
 
