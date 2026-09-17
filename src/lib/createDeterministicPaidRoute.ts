@@ -143,7 +143,10 @@ function stampInfrastructureHeaders(
   return response;
 }
 
-export type DeterministicPaidRouteOptions = Readonly<{ paidGet?: boolean }>;
+export type DeterministicPaidRouteOptions = Readonly<{
+  paidGet?: boolean;
+  endpoint?: string;
+}>;
 
 export function createDeterministicPaidRoute(
   capabilityId: PaidCapabilityId,
@@ -151,6 +154,10 @@ export function createDeterministicPaidRoute(
   options: DeterministicPaidRouteOptions = {}
 ) {
   const product = getPaidCapability(capabilityId);
+  const endpoint = options.endpoint?.trim() || product.endpoint;
+  if (!endpoint.startsWith("/api/")) {
+    throw new Error("Paid route endpoint override must start with /api/.");
+  }
   const wireMetadata = x402WireResourceMetadata(product);
   let paidHandlerPromise: Promise<PaidHandler> | null = null;
 
@@ -328,7 +335,7 @@ export function createDeterministicPaidRoute(
         });
 
     return withX402<unknown>(handler, {
-      [product.endpoint]: {
+      [endpoint]: {
         accepts: [
           {
             scheme: "exact",
@@ -359,7 +366,7 @@ export function createDeterministicPaidRoute(
 
   async function runPaidRequest(req: NextRequest) {
     const requestId = randomUUID();
-    const traffic = classifyTraffic(req, { path: product.endpoint });
+    const traffic = classifyTraffic(req, { path: endpoint });
     logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
     try {
       const paidHandler = await getPaidHandler();
@@ -384,7 +391,7 @@ export function createDeterministicPaidRoute(
 
   async function runDiscoveryRequest(req: NextRequest) {
     const requestId = randomUUID();
-    const traffic = classifyTraffic(req, { path: product.endpoint, isDiscovery: true });
+    const traffic = classifyTraffic(req, { path: endpoint, isDiscovery: true });
     console.log(JSON.stringify({
       event: "paid_capability_discovery",
       at: new Date().toISOString(),
@@ -392,7 +399,11 @@ export function createDeterministicPaidRoute(
       requestId,
       ...trafficLogFields(req, traffic)
     }));
-    return stampInfrastructureHeaders(x402DiscoveryChallenge(capabilityId), capabilityId, requestId);
+    return stampInfrastructureHeaders(
+      x402DiscoveryChallenge(capabilityId, { endpoint }),
+      capabilityId,
+      requestId
+    );
   }
 
   return {
