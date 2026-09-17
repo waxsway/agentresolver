@@ -166,6 +166,7 @@ export default function NoHumansVerificationCheckout() {
         headers: paymentHeaders,
       });
 
+      const attemptId = paidResponse.headers.get("x-agentresolver-verification-attempt");
       const raw = await paidResponse.text();
       let parsed: Record<string, unknown>;
       try {
@@ -175,14 +176,16 @@ export default function NoHumansVerificationCheckout() {
       }
 
       if (!paidResponse.ok) {
-        throw new Error(
+        const upstreamMessage =
           typeof parsed.message === "string"
             ? parsed.message
-            : `NoHumans returned HTTP ${paidResponse.status}`,
-        );
+            : typeof parsed.error === "string"
+              ? parsed.error
+              : `NoHumans returned HTTP ${paidResponse.status}`;
+        throw new Error(attemptId ? `${upstreamMessage} [attempt ${attemptId}]` : upstreamMessage);
       }
 
-      setResult(parsed);
+      setResult(attemptId ? { ...parsed, agentresolver_attempt_id: attemptId } : parsed);
       setStatus("Paid. NoHumans verification purchase is queued.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Payment failed");
