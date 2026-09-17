@@ -26,6 +26,31 @@ export function classifyIntent(goal: string): string[] {
   return matched.length > 0 ? matched.slice(0, 4) : ["other"];
 }
 
+export type ConfiguredPaymentRail =
+  | "payai"
+  | "coinbase-cdp"
+  | "payai+circle-gateway"
+  | "coinbase-cdp+circle-gateway";
+
+export function configuredPaymentRail(
+  capabilityId: string,
+  env: Readonly<Record<string, string | undefined>> = process.env
+): ConfiguredPaymentRail {
+  const circleEnabled = env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
+  const cdpEnabled = env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1";
+  const configuredCapabilities =
+    env.AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES?.trim() || "x402-ping";
+  const cdpCapabilities = new Set(
+    configuredCapabilities.split(",").map((value) => value.trim()).filter(Boolean)
+  );
+  const cdpEnabledForCapability = cdpEnabled && cdpCapabilities.has(capabilityId);
+
+  if (cdpEnabledForCapability && circleEnabled) return "coinbase-cdp+circle-gateway";
+  if (cdpEnabledForCapability) return "coinbase-cdp";
+  if (circleEnabled) return "payai+circle-gateway";
+  return "payai";
+}
+
 export function callerHash(req: Request): string {
   const ip =
     req.headers.get("x-real-ip") ||
@@ -68,6 +93,7 @@ export function logPaidCapabilityAttempt(
     callerHash: callerHash(req),
     userAgent: safeUserAgent(req),
     referrerHost: referrerHost(req),
+    configuredPaymentRail: configuredPaymentRail(capabilityId),
     hasPaymentSignature,
     phase: hasPaymentSignature ? "paid_retry" : "challenge_request",
     ...(traffic ? {
@@ -107,7 +133,12 @@ export function parseX402SettlementHeader(value: string | null): X402SettlementR
   }
 }
 
-export function logX402Settlement(response: Response, capabilityId: string, requestId?: string) {
+export function logX402Settlement(
+  response: Response,
+  capabilityId: string,
+  requestId?: string,
+  env: Readonly<Record<string, string | undefined>> = process.env
+) {
   const receipt = parseX402SettlementHeader(response.headers.get("payment-response"));
   if (!receipt) return;
   const settled = receipt.success && Boolean(receipt.transaction);
@@ -116,6 +147,7 @@ export function logX402Settlement(response: Response, capabilityId: string, requ
     at: new Date().toISOString(),
     capabilityId,
     requestId: requestId || null,
+    configuredPaymentRail: configuredPaymentRail(capabilityId, env),
     responseStatus: response.status,
     success: receipt.success,
     network: receipt.network,

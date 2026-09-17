@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   callerHash,
   classifyIntent,
+  configuredPaymentRail,
   logX402Settlement,
   referrerHost,
   safeUserAgent,
@@ -21,6 +22,30 @@ test("shortHash is stable and does not expose the original value", () => {
 test("classifyIntent returns coarse demand categories", () => {
   assert.deepEqual(classifyIntent("Find a browser tool to scrape a product page"), ["web", "search", "commerce"]);
   assert.deepEqual(classifyIntent("something unusual"), ["other"]);
+});
+
+test("configured payment rail keeps CDP bounded to its capability scope", () => {
+  assert.equal(configuredPaymentRail("x402-ping", {}), "payai");
+  assert.equal(configuredPaymentRail("x402-ping", {
+    AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1"
+  }), "coinbase-cdp");
+  assert.equal(configuredPaymentRail("x402-payment-preflight", {
+    AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1"
+  }), "payai");
+  assert.equal(configuredPaymentRail("x402-payment-preflight", {
+    AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1",
+    AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES: "x402-ping,x402-payment-preflight"
+  }), "coinbase-cdp");
+});
+
+test("configured payment rail reports additive Circle configuration without hiding CDP", () => {
+  assert.equal(configuredPaymentRail("x402-ping", {
+    AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "1"
+  }), "payai+circle-gateway");
+  assert.equal(configuredPaymentRail("x402-ping", {
+    AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1",
+    AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "1"
+  }), "coinbase-cdp+circle-gateway");
 });
 
 test("request telemetry uses hashed caller identity and bounded metadata", () => {
@@ -85,13 +110,17 @@ test("successful settlement telemetry exposes public transaction reference but n
     output += args.map(String).join(" ");
   };
   try {
-    logX402Settlement(response, "x402-ping", "request-1");
+    logX402Settlement(response, "x402-ping", "request-1", {
+      AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1",
+      AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES: "x402-ping"
+    });
   } finally {
     console.log = original;
   }
 
   const event = JSON.parse(output);
   assert.equal(event.event, "paid_capability_settled");
+  assert.equal(event.configuredPaymentRail, "coinbase-cdp");
   assert.equal(event.transactionReference, transaction);
   assert.equal(event.transactionFingerprint, shortHash(transaction));
   assert.equal(event.payerHash, shortHash(payer));
