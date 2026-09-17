@@ -39,7 +39,12 @@ export function directOwnedRecommendationInput(
   return undefined;
 }
 
-function paidNextAction(capabilityId: "verified-resolve" | "batch-verified-resolve") {
+function paidNextAction(
+  capabilityId:
+    | "x402-payment-preflight"
+    | "verified-resolve"
+    | "batch-verified-resolve"
+) {
   const capability = getPaidCapability(capabilityId);
   return {
     capabilityId: capability.id,
@@ -53,12 +58,14 @@ function paidNextAction(capabilityId: "verified-resolve" | "batch-verified-resol
 
 /**
  * Machine-readable handoff after the low-cost settlement canary succeeds.
- * This intentionally presents a single-decision and batch alternative instead
- * of claiming the higher-priced option is appropriate for every buyer.
+ * The canonical trust product is presented explicitly while preserving the
+ * existing single/batch resolver handoffs for compatibility and other buyer needs.
+ * None of these entries authorizes or initiates a follow-on payment.
  */
 export function postSettlementCanaryNextActions() {
   return {
     catalogUrl: `${CANONICAL_ORIGIN}/.well-known/x402`,
+    preflight: paidNextAction("x402-payment-preflight"),
     single: paidNextAction("verified-resolve"),
     batch: paidNextAction("batch-verified-resolve")
   };
