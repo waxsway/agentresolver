@@ -3,6 +3,7 @@ import * as z from "zod/v4";
 import { resolveGoal } from "@/lib/resolver";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { inspectHttpResource } from "@/lib/httpInspect";
+import { buildX402PaymentGuardResult } from "@/lib/x402PaymentGuard";
 import { selectOpenApiOperation } from "@/lib/openapiSelect";
 import { verifiedResolve } from "@/lib/verifiedResolve";
 import { evaluateToolContract } from "@/lib/toolContract";
@@ -462,20 +463,17 @@ const handler = createMcpHandler(() => {
     };
   }));
 
-  server.registerTool("x402_payment_preflight", {
-    title: x402PaymentPreflightProduct.quoteTool.title,
-    description: x402PaymentPreflightProduct.quoteTool.description,
-    inputSchema: z.object({
-      url: z.string().url(),
-      maxPriceUsd: z.number().min(0).max(1000).optional(),
-      expectedPayTo: z.string().min(1).max(128).optional(),
-      expectedNetwork: z.string().max(128).optional(),
-      method: z.enum(["GET", "HEAD", "POST"]).optional(),
-      body: z.unknown().optional(),
-      allowUnpaidPostProbe: z.boolean().optional()
-    }),
-    annotations: { title: x402PaymentPreflightProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, createLazyPaidMcpTool<{
+  const paymentGuardInputSchema = z.object({
+    url: z.string().url(),
+    maxPriceUsd: z.number().min(0).max(1000).optional(),
+    expectedPayTo: z.string().min(1).max(128).optional(),
+    expectedNetwork: z.string().max(128).optional(),
+    method: z.enum(["GET", "HEAD", "POST"]).optional(),
+    body: z.unknown().optional(),
+    allowUnpaidPostProbe: z.boolean().optional()
+  });
+
+  type PaymentGuardInput = {
     url: string;
     maxPriceUsd?: number;
     expectedPayTo?: string;
@@ -483,31 +481,58 @@ const handler = createMcpHandler(() => {
     method?: "GET" | "HEAD" | "POST";
     body?: unknown;
     allowUnpaidPostProbe?: boolean;
-  }>("x402-payment-preflight", async ({ url, maxPriceUsd, expectedPayTo, expectedNetwork, method, body, allowUnpaidPostProbe }) => {
-    logToolCall("x402_payment_preflight", { priceUsd: x402PaymentPreflightProduct.priceUsd, mode: "direct_paid_mcp" });
-    const report = await inspectHttpResource(url, {
-      maxPriceUsd,
-      expectedPayTo,
-      expectedNetwork,
-      method,
-      body,
-      allowUnpaidPostProbe
-    });
-    console.log(JSON.stringify({
-      event: "paid_capability_completed",
-      capabilityId: "x402-payment-preflight",
-      surface: "mcp",
-      at: new Date().toISOString(),
-      status: report.status,
-      latencyMs: report.latencyMs,
-      x402Detected: report.x402.detected,
-      x402Verdict: report.x402.verdict
-    }));
-    return {
-      content: [{ type: "text", text: JSON.stringify(report) }],
-      structuredContent: report
-    };
-  }));
+  };
+
+  const runPaymentGuard = (toolName: string) => createLazyPaidMcpTool<PaymentGuardInput>(
+    "x402-payment-preflight",
+    async ({ url, maxPriceUsd, expectedPayTo, expectedNetwork, method, body, allowUnpaidPostProbe }) => {
+      logToolCall(toolName, {
+        priceUsd: x402PaymentPreflightProduct.priceUsd,
+        mode: "direct_paid_mcp",
+        product: "AgentResolver Guard"
+      });
+      const constraints = { maxPriceUsd, expectedPayTo, expectedNetwork };
+      const report = await inspectHttpResource(url, {
+        ...constraints,
+        method,
+        body,
+        allowUnpaidPostProbe
+      });
+      const result = buildX402PaymentGuardResult(report, constraints);
+      console.log(JSON.stringify({
+        event: "paid_capability_completed",
+        capabilityId: "x402-payment-preflight",
+        product: "AgentResolver Guard",
+        surface: "mcp",
+        tool: toolName,
+        at: new Date().toISOString(),
+        status: report.status,
+        latencyMs: report.latencyMs,
+        x402Detected: report.x402.detected,
+        x402Verdict: report.x402.verdict,
+        guardDecision: result.prepaymentDecision.decision,
+        eligibleForCallerAuthorization: result.prepaymentDecision.eligibleForCallerAuthorization
+      }));
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+        structuredContent: result
+      };
+    }
+  );
+
+  server.registerTool("payment_guard", {
+    title: "AgentResolver Guard — verify before every x402 payment — $0.001",
+    description: "Paid $0.001 USDC fail-closed payment authorization preflight. Use immediately before an autonomous agent signs a target x402 payment. Returns eligible/blocked, exact observed payment terms, reason codes, evidence receipt and stable fingerprints. The caller retains sole spending authority.",
+    inputSchema: paymentGuardInputSchema,
+    annotations: { title: "AgentResolver Guard — $0.001", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  }, runPaymentGuard("payment_guard"));
+
+  server.registerTool("x402_payment_preflight", {
+    title: x402PaymentPreflightProduct.quoteTool.title,
+    description: x402PaymentPreflightProduct.quoteTool.description,
+    inputSchema: paymentGuardInputSchema,
+    annotations: { title: x402PaymentPreflightProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  }, runPaymentGuard("x402_payment_preflight"));
 
   server.registerTool("http_inspect", {
     title: httpInspectProduct.quoteTool.title,
