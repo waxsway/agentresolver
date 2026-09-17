@@ -24,10 +24,10 @@ jobs:
     steps:
       - name: Page PayAI Bazaar and locate AgentResolver
         env:
-          CATALOG_URL: https://facilitator.payai.network/discovery/resources
-          AGENTRESOLVER_ORIGIN: https://agentresolver.vercel.app
-          BASE_PAY_TO: 0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8
-          SOLANA_PAY_TO: AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa
+          CATALOG_URL: "https://facilitator.payai.network/discovery/resources"
+          AGENTRESOLVER_ORIGIN: "https://agentresolver.vercel.app"
+          BASE_PAY_TO: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+          SOLANA_PAY_TO: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
         run: |
           python3 - <<'PY'
           import json

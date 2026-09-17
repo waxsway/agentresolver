@@ -12,6 +12,7 @@ import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
 import { X402_PING_OUTPUT_EXAMPLE, X402_PING_OUTPUT_SCHEMA } from "@/lib/x402PingDiscovery";
+import { X402_BUYER_SETUP_URL } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -112,6 +113,7 @@ function stampInfrastructureHeaders(
   response.headers.set("x-agentresolver-capability", capabilityId);
   response.headers.set("x-agentresolver-request-id", requestId);
   response.headers.set("x-agentresolver-contract-version", "1");
+  response.headers.set("x-agentresolver-buyer-setup", X402_BUYER_SETUP_URL);
   response.headers.set(
     "x-agentresolver-trust",
     "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json"
@@ -129,6 +131,7 @@ function stampInfrastructureHeaders(
       "x-agentresolver-capability",
       "x-agentresolver-request-id",
       "x-agentresolver-contract-version",
+      "x-agentresolver-buyer-setup",
       "x-agentresolver-trust",
       "x-agentresolver-evidence",
       "x-agentresolver-history",

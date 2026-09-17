@@ -12,6 +12,8 @@ AgentResolver also remains a machine-first fallback for agents that need an exte
 
 The fastest integration is MCP: connect to https://agentresolver.vercel.app/mcp and call `resolve`. REST clients can POST the same goal to https://agentresolver.vercel.app/api/resolve. Resolution is free, read-only, and never authorizes spending.
 
+If a host can discover AgentResolver but stops after a 402 challenge, read the free buyer bootstrap at https://agentresolver.vercel.app/api/x402-client-setup. For TypeScript MCP clients, the official x402 package is `@x402/mcp` with `createx402MCPClient`; for HTTP fetch clients, use `@x402/fetch` with `wrapFetchWithPayment`. The caller must provide its own signer and enforce its own spend controls before signing. Never send a private key or seed phrase to AgentResolver. AgentResolver does not authorize spend.
+
 The commercial product is not access to the directory. The paid product is fresh evidence at the moment an agent needs to decide whether to trust or depend on a candidate: live MCP preflight, site readiness evidence, or bounded live comparison of candidate services. Paid calls require no account or API key.
 
 ## Provider-funded sponsorship pilot
@@ -24,6 +26,7 @@ Submitting an application is an inquiry only. Pricing, duration, placement, and 
 
 - MCP: https://agentresolver.vercel.app/mcp
 - Free REST resolver: POST https://agentresolver.vercel.app/api/resolve
+- Free x402 buyer setup: https://agentresolver.vercel.app/api/x402-client-setup
 - x402 discovery manifest: https://agentresolver.vercel.app/.well-known/x402
 - OpenAPI: https://agentresolver.vercel.app/openapi.json
 - Structured capability catalog: https://agentresolver.vercel.app/capabilities.json
@@ -46,6 +49,17 @@ AgentResolver is opening a provider-funded discovery pilot. Providers can apply 
 - Batch Verified Resolve: POST https://agentresolver.vercel.app/api/batch-verified-resolve — $0.05 USDC on Base or Solana via x402. Resolve and live-verify up to four capability requests in one bounded purchase.
 
 These launch prices are intentionally small enough to fit typical autonomous-agent micropayment policies while real paid demand is being established. Prices are always disclosed before payment. An unpaid paid-operation request returns HTTP 402 with payment requirements. A 402 challenge is a quote, not authorization. Callers must independently approve spending under their own budget and safety policy before retrying with payment.
+
+## Becoming payment-capable
+
+A plain HTTP or MCP client can receive the payment challenge but cannot create a signed retry by itself. Read GET https://agentresolver.vercel.app/api/x402-client-setup for a machine-readable handoff to the official x402 client libraries.
+
+- MCP TypeScript: `@x402/mcp` → `createx402MCPClient`
+- HTTP TypeScript: `@x402/fetch` → `wrapFetchWithPayment`
+- Base exact scheme: `@x402/evm/exact/client`
+- Solana exact scheme: `@x402/svm/exact/client`
+
+Use only a caller-controlled signer. Apply a local policy that checks price, asset, network, payTo and resource before signing. AgentResolver never needs the caller's private key or seed phrase and never grants spending authority.
 
 ## Why an agent should pay
 
@@ -81,6 +95,7 @@ Content-Type: application/json
 - Agent card / Open 402 metadata: https://agentresolver.vercel.app/.well-known/agent.json
 - Official MCP Registry identity: io.github.waxsway/agentresolver
 - Machine-readable integration recipes: https://agentresolver.vercel.app/integrations.json
+- Free x402 buyer setup: https://agentresolver.vercel.app/api/x402-client-setup
 - Agent capability declaration: https://agentresolver.vercel.app/agents.txt
 - Structured agent catalog: https://agentresolver.vercel.app/agents.json
 - Sitemap: https://agentresolver.vercel.app/sitemap.xml
