@@ -19,6 +19,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/.well-known/agent-skills/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Cache-Control", value: "public, max-age=300, s-maxage=3600" }
+        ]
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
@@ -35,7 +42,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Link",
-            value: "<https://agentresolver.vercel.app/.well-known/agentresolver-trust.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver trust contract\", <https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver execution evidence contract\", <https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver verified settlement history\", <https://agentresolver.vercel.app/.well-known/sponsorship.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver sponsorship inventory\""
+            value: "<https://agentresolver.vercel.app/.well-known/agentresolver-trust.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver trust contract\", <https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver execution evidence contract\", <https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver verified settlement history\", <https://agentresolver.vercel.app/.well-known/sponsorship.json>; rel=\"describedby\"; type=\"application/json\"; title=\"AgentResolver sponsorship inventory\", <https://agentresolver.vercel.app/.well-known/agent-skills/index.json>; rel=\"agent-skills\"; type=\"application/json\"; title=\"AgentResolver installable skills\""
           }
         ]
       }
