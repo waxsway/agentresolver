@@ -4,8 +4,12 @@ import { X402_PING_NEXT_ACTIONS } from "@/lib/x402PingDiscovery";
 
 export const dynamic = "force-dynamic";
 const route = createDeterministicPaidRoute("x402-ping", async (req) => {
-  const body = await req.json().catch(() => ({})) as { echo?: unknown };
-  const echo = typeof body?.echo === "string" ? body.echo.slice(0, 256) : null;
+  const queryEcho = req.method === "GET" ? req.nextUrl.searchParams.get("echo") : null;
+  const body = req.method === "GET"
+    ? {}
+    : await req.json().catch(() => ({})) as { echo?: unknown };
+  const bodyEcho = typeof body?.echo === "string" ? body.echo : null;
+  const echo = (queryEcho ?? bodyEcho)?.slice(0, 256) ?? null;
   return {
     pong: true,
     settledDelivery: true,
