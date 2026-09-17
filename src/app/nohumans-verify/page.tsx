@@ -5,6 +5,7 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  formatUnits,
   http,
   type Account,
   type WalletClient,
@@ -25,6 +26,16 @@ import {
 type EthereumProvider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
 };
+
+const ERC20_BALANCE_OF_ABI = [
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "balance", type: "uint256" }],
+  },
+] as const;
 
 function injectedProvider(): EthereumProvider | undefined {
   if (typeof window === "undefined") return undefined;
@@ -94,13 +105,38 @@ async function ensureBase(provider: EthereumProvider) {
   }
 }
 
+function requireQueuedOutcome(parsed: Record<string, unknown>) {
+  const status = parsed.status;
+  const feeTx = parsed.fee_tx;
+  const requestId = parsed.request_id;
+
+  if (
+    status !== "queued" ||
+    typeof feeTx !== "string" ||
+    !feeTx ||
+    typeof requestId !== "string" ||
+    !requestId
+  ) {
+    throw new Error(
+      "NoHumans returned success without a queued request, fee_tx, and request_id. No additional payment attempt will be made from this page.",
+    );
+  }
+}
+
 export default function NoHumansVerificationCheckout() {
-  const [status, setStatus] = useState("Ready to authorize the $3 verification purchase.");
+  const [status, setStatus] = useState("Ready to validate the wallet and authorize the $3 verification purchase.");
   const [busy, setBusy] = useState(false);
+  const [signedOnce, setSignedOnce] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
+  const [balance, setBalance] = useState<string | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
   const pay = useCallback(async () => {
+    if (signedOnce) {
+      setStatus("A signed attempt has already been submitted from this page. Reload before any retry.");
+      return;
+    }
+
     setBusy(true);
     setResult(null);
 
@@ -129,6 +165,22 @@ export default function NoHumansVerificationCheckout() {
         transport: http(),
       });
 
+      setStatus("Checking Base USDC balance…");
+      const usdcBalance = await publicClient.readContract({
+        address: BASE_USDC as `0x${string}`,
+        abi: ERC20_BALANCE_OF_ABI,
+        functionName: "balanceOf",
+        args: [selected],
+      });
+      const readableBalance = formatUnits(usdcBalance, 6);
+      setBalance(readableBalance);
+
+      if (usdcBalance < BigInt(NOHUMANS_SINGLE_AMOUNT)) {
+        throw new Error(
+          `Selected wallet has ${readableBalance} USDC on Base. The verified NoHumans invoice requires 3.00 USDC, so signing is blocked.`,
+        );
+      }
+
       setStatus("Verifying NoHumans invoice terms…");
       const challengeResponse = await fetch("/api/nohumans-verification-pay", {
         method: "POST",
@@ -156,10 +208,11 @@ export default function NoHumansVerificationCheckout() {
 
       setStatus("MetaMask will ask you to authorize exactly 3 USDC…");
       const payload = await client.createPaymentPayload(paymentRequired);
+      setSignedOnce(true);
       const httpClient = new x402HTTPClient(client);
       const paymentHeaders = httpClient.encodePaymentSignatureHeader(payload);
 
-      setStatus("Submitting signed x402 payment to NoHumans…");
+      setStatus("Submitting the single signed x402 payment to NoHumans…");
       const paidResponse = await fetch("/api/nohumans-verification-pay", {
         method: "POST",
         cache: "no-store",
@@ -182,17 +235,20 @@ export default function NoHumansVerificationCheckout() {
             : typeof parsed.error === "string"
               ? parsed.error
               : `NoHumans returned HTTP ${paidResponse.status}`;
-        throw new Error(attemptId ? `${upstreamMessage} [attempt ${attemptId}]` : upstreamMessage);
+        throw new Error(
+          `${attemptId ? `${upstreamMessage} [attempt ${attemptId}]` : upstreamMessage} Reload before any retry.`,
+        );
       }
 
+      requireQueuedOutcome(parsed);
       setResult(attemptId ? { ...parsed, agentresolver_attempt_id: attemptId } : parsed);
-      setStatus("Paid. NoHumans verification purchase is queued.");
+      setStatus("Payment accepted. NoHumans returned a queued verification request with settlement evidence.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Payment failed");
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [signedOnce]);
 
   const metamaskUrl =
     "https://metamask.app.link/dapp/agentresolver.vercel.app/nohumans-verify";
@@ -211,9 +267,8 @@ export default function NoHumansVerificationCheckout() {
         <p style={{ opacity: 0.65, marginBottom: 8 }}>AgentResolver operator action</p>
         <h1 style={{ fontSize: 32, margin: "0 0 12px" }}>Queue NoHumans paid verification</h1>
         <p style={{ lineHeight: 1.6, opacity: 0.85 }}>
-          This signs one x402 authorization for exactly <strong>$3.00 USDC</strong> on Base.
-          No private key leaves MetaMask. The authorization is bound to the NoHumans payment
-          address and amount below.
+          This validates the selected wallet first, then signs one x402 authorization for exactly <strong>$3.00 USDC</strong> on Base.
+          No private key leaves MetaMask. The authorization is bound to the NoHumans payment address and amount below.
         </p>
 
         <div
@@ -232,12 +287,13 @@ export default function NoHumansVerificationCheckout() {
           <div style={{ overflowWrap: "anywhere" }}><strong>USDC:</strong> {BASE_USDC}</div>
           <div style={{ overflowWrap: "anywhere" }}><strong>Pay to:</strong> {NOHUMANS_PAY_TO}</div>
           <div><strong>Purpose:</strong> one independent purchase of AgentResolver within 24 hours</div>
-          {address ? <div style={{ marginTop: 8 }}><strong>Wallet:</strong> {address}</div> : null}
+          {address ? <div style={{ marginTop: 8 }}><strong>Paying from:</strong> {address}</div> : null}
+          {balance ? <div><strong>Base USDC balance:</strong> {balance}</div> : null}
         </div>
 
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || signedOnce}
           onClick={pay}
           style={{
             width: "100%",
@@ -246,11 +302,11 @@ export default function NoHumansVerificationCheckout() {
             padding: "15px 18px",
             fontSize: 17,
             fontWeight: 700,
-            cursor: busy ? "not-allowed" : "pointer",
-            opacity: busy ? 0.6 : 1,
+            cursor: busy || signedOnce ? "not-allowed" : "pointer",
+            opacity: busy || signedOnce ? 0.6 : 1,
           }}
         >
-          {busy ? "Processing…" : "Pay $3 USDC with MetaMask"}
+          {busy ? "Processing…" : signedOnce ? "Reload before retry" : "Validate wallet and pay $3 USDC"}
         </button>
 
         {!injectedProvider() ? (
