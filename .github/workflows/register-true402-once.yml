@@ -55,51 +55,75 @@ jobs:
         run: |
           set -euo pipefail
           body="/tmp/true402-register.json"
-          code="$(curl -sS -o "$body" -w '%{http_code}' \
-            -X POST https://true402.dev/api/v1/services \
-            -H 'content-type: application/json' \
-            -d '{"url":"https://agentresolver.vercel.app"}')"
-          cat "$body"
-          echo
+          code="000"
+          for attempt in 1 2 3 4; do
+            : > "$body"
+            code="$(curl -4 -sS -o "$body" -w '%{http_code}' \
+              --connect-timeout 8 --max-time 20 \
+              -X POST https://true402.dev/api/v1/services \
+              -H 'content-type: application/json' \
+              -d '{"url":"https://agentresolver.vercel.app"}' || printf '000')"
+            echo "true402 registration attempt $attempt -> HTTP $code"
+            cat "$body" || true
+            echo
+            case "$code" in
+              200|201|202|409) break ;;
+              000|408|425|429|500|502|503|504)
+                if [ "$attempt" -lt 4 ]; then
+                  sleep $((attempt * 3))
+                  continue
+                fi
+                ;;
+              *) break ;;
+            esac
+          done
+
           case "$code" in
             200|201|202|409) ;;
             *)
-              echo "true402 registration failed with HTTP $code" >&2
+              echo "true402 registration failed after bounded retries with HTTP $code" >&2
               exit 1
               ;;
           esac
-
-          if jq -e '.reputation' "$body" >/dev/null 2>&1; then
-            jq '{registration:{id,url}, reputation:{
-              transactions:.reputation.transactions,
-              settled:.reputation.settled,
-              settledVolumeUsd:.reputation.settledVolumeUsd,
-              distinctPayers:.reputation.distinctPayers,
-              trustScore:.reputation.trustScore,
-              lastSettledAt:.reputation.lastSettledAt
-            }}' "$body"
-          fi
 
       - name: Verify live true402 buyer catalog visibility
         shell: bash
         run: |
           set -euo pipefail
-          code="$(curl -sS -D /tmp/services.headers -o /tmp/services.body -w '%{http_code}' 'https://true402.dev/api/v1/services')"
-          echo "true402 catalog HTTP $code"
-          grep -i '^content-type:' /tmp/services.headers || true
+          code="000"
+          for attempt in 1 2 3; do
+            code="$(curl -4 -sS -D /tmp/services.headers -o /tmp/services.body -w '%{http_code}' \
+              --connect-timeout 8 --max-time 20 \
+              'https://true402.dev/api/v1/services' || printf '000')"
+            echo "true402 catalog attempt $attempt -> HTTP $code"
+            if [ "$code" = "200" ]; then break; fi
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 2)); fi
+          done
           test "$code" = "200"
+          grep -i '^content-type:' /tmp/services.headers || true
           if grep -Fq 'agentresolver-settlement-ping' /tmp/services.body || grep -Fq 'agentresolver.vercel.app/api/x402-ping' /tmp/services.body; then
             echo "AgentResolver settlement canary is present in the live true402 buyer catalog."
             python - <<'PY'
+          import json
           from pathlib import Path
-          text=Path("/tmp/services.body").read_text(errors="replace")
-          needle="agentresolver-settlement-ping"
-          if needle not in text:
-              needle="agentresolver.vercel.app/api/x402-ping"
-          i=text.find(needle)
-          print(text[max(0,i-400):i+1800])
+          data=json.loads(Path('/tmp/services.body').read_text())
+          rows=data.get('data', []) if isinstance(data, dict) else []
+          for row in rows:
+              text=json.dumps(row).lower()
+              if 'agentresolver-settlement-ping' in text or 'agentresolver.vercel.app/api/x402-ping' in text:
+                  manifest=row.get('manifest') or {}
+                  reputation=row.get('reputation') or {}
+                  print(json.dumps({
+                      'id': row.get('id'),
+                      'url': row.get('url'),
+                      'name': manifest.get('name'),
+                      'endpoint': manifest.get('endpoint'),
+                      'price': (manifest.get('pricing') or {}).get('base'),
+                      'trustScore': reputation.get('trustScore'),
+                      'registeredAt': reputation.get('registeredAt')
+                  }, indent=2))
           PY
           else
-            echo "::warning::true402 accepted AgentResolver registration but the public buyer catalog does not contain the settlement canary yet."
-            echo "This is buyer-visibility/reputation state, not a production-health failure."
+            echo "true402 registration returned success but AgentResolver is absent from the live buyer catalog." >&2
+            exit 1
           fi
