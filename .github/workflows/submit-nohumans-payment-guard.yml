@@ -1,0 +1,101 @@
+name: Submit NoHumans Payment Guard
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/submit-nohumans-payment-guard.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      GUARD_URL: https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
+    steps:
+      - name: Verify paid Guard example without spending
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          code="$(curl -sS -D "$headers" -o "$body" -w '%{http_code}' "$GUARD_URL")"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          assert payload.get("x402Version") == 2
+          accepts = payload.get("accepts") or []
+          assert any(
+              item.get("network") == "eip155:8453"
+              and str(item.get("amount")) == "1000"
+              and item.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          bazaar = (payload.get("extensions") or {}).get("bazaar") or {}
+          output = ((bazaar.get("info") or {}).get("output") or {}).get("example") or {}
+          assert (output.get("prepaymentDecision") or {}).get("decision") in ("eligible", "blocked")
+          PY
+
+      - name: Submit Guard to NoHumans free verification queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg endpoint "$GUARD_URL" '{
+            name:"AgentResolver Guard — Payment Authorization",
+            description:"$0.001 x402 pre-payment authorization gate for autonomous agents. This live GET example verifies a target x402 challenge and returns a fail-closed eligible/blocked decision plus exact payment terms and evidence. Integrators replace the target URL query parameter and run Guard immediately before each autonomous spend.",
+            endpoint_url:$endpoint,
+            category:"tools.verification",
+            price_amount:0.001,
+            price_currency:"USDC",
+            chains:["base","solana"]
+          }')"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://nohumans.directory/v1/listings' \
+            -H 'content-type: application/json' \
+            --data "$payload")"
+
+          python3 - "$body" <<'PY'
+          import json, sys
+          raw = open(sys.argv[1], "r", encoding="utf-8").read()
+          try:
+              payload = json.loads(raw)
+          except Exception:
+              print(raw)
+              raise
+          if isinstance(payload, dict) and "claim_token" in payload:
+              payload["claim_token"] = "[REDACTED]"
+          if isinstance(payload, dict) and isinstance(payload.get("data"), dict) and "claim_token" in payload["data"]:
+              payload["data"]["claim_token"] = "[REDACTED]"
+          print(json.dumps(payload, separators=(",", ":")))
+          PY
+
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "NoHumans Guard submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Check NoHumans discovery visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          curl -fsS -G 'https://nohumans.directory/v1/discover' \
+            --data-urlencode 'q=AgentResolver Guard Payment Authorization' \
+            -o /tmp/nohumans-guard-discover.json || true
+          cat /tmp/nohumans-guard-discover.json 2>/dev/null || true
+          echo
+          if ! grep -qi 'agentresolver' /tmp/nohumans-guard-discover.json 2>/dev/null; then
+            echo "::notice::NoHumans accepted or already knew the Guard listing; public search may refresh on its next indexing cycle."
+          fi
