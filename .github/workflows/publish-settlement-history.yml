@@ -67,7 +67,7 @@ jobs:
           vercel logs \
             --environment production \
             --query 'paid_capability_settled' \
-            --since 3h \
+            --since 24h \
             --json \
             --token="$VERCEL_TOKEN" \
             > /tmp/agentresolver-settlement-logs.raw.jsonl
