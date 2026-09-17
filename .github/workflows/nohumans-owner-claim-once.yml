@@ -60,7 +60,7 @@ jobs:
           echo "::add-mask::$challenge"
 
           vercel env rm NOHUMANS_CLAIM_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
-          printf '%s' "$challenge" | vercel env add NOHUMANS_CLAIM_TOKEN production --sensitive --yes --token="$VERCEL_TOKEN" >/dev/null
+          printf '%s' "$challenge" | vercel env add NOHUMANS_CLAIM_TOKEN production --sensitive --token="$VERCEL_TOKEN" >/dev/null
 
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null
           vercel build --prod --token="$VERCEL_TOKEN" >/dev/null
@@ -86,7 +86,7 @@ jobs:
           echo "::add-mask::$owner"
 
           vercel env rm NOHUMANS_EDIT_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
-          printf '%s' "$owner" | vercel env add NOHUMANS_EDIT_TOKEN production --sensitive --yes --token="$VERCEL_TOKEN" >/dev/null
+          printf '%s' "$owner" | vercel env add NOHUMANS_EDIT_TOKEN production --sensitive --token="$VERCEL_TOKEN" >/dev/null
 
           jq 'del(.edit_token,.owner_token,.token,.data.edit_token,.email)' /tmp/claim.json
 
