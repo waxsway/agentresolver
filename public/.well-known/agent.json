@@ -1,8 +1,8 @@
 {
-  "version": "1.4",
+  "version": "1.5",
   "origin": "agentresolver.vercel.app",
   "display_name": "AgentResolver",
-  "description": "$0.001 USDC x402 verify-before-pay and PayTo verification infrastructure for autonomous agents, with free fallback capability discovery.",
+  "description": "AgentResolver Guard is $0.001 USDC verify-before-pay infrastructure for autonomous x402 buyers, with free fallback capability discovery.",
   "payout_address": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
   "payments": {
     "x402": {
@@ -29,20 +29,40 @@
       "name": "x402_payment_preflight",
       "description": "Verify an x402 endpoint before paying USDC: payTo recipient, quote price, Base/Solana network, asset, resource binding, challenge structure, TLS and reachability.",
       "endpoint": "/api/x402-payment-preflight",
-      "method": "POST",
+      "method": "GET",
       "price": {
         "amount": 0.001,
         "currency": "USDC"
       },
-      "use_when": "Before an autonomous agent authorizes payment to an unfamiliar or changed x402 endpoint.",
+      "use_when": "Immediately before an autonomous agent authorizes payment to an unfamiliar or changed x402 endpoint.",
       "tags": [
+        "AgentResolver Guard",
         "x402 preflight",
         "payTo verification",
         "endpoint safety",
         "USDC payment check",
         "Base",
         "Solana"
-      ]
+      ],
+      "brand": "AgentResolver Guard",
+      "alias_endpoint": "/api/payment-guard",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "preferred_method": "GET",
+      "required_query": [
+        "url"
+      ],
+      "optional_query": [
+        "method",
+        "maxPriceUsd",
+        "expectedPayTo",
+        "expectedNetwork",
+        "allowUnpaidPostProbe"
+      ],
+      "repeat_use": "before_each_autonomous_x402_spend",
+      "spending_authorized": false
     },
     {
       "name": "mcp_live_preflight",
@@ -92,5 +112,8 @@
   "trust_url": "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json",
   "security_url": "https://agentresolver.vercel.app/.well-known/security.txt",
   "legal_url": "https://agentresolver.vercel.app/legal",
-  "non_custodial": true
+  "non_custodial": true,
+  "buyer_setup": "https://agentresolver.vercel.app/api/x402-client-setup",
+  "evidence_url": "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json",
+  "settlement_history_url": "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
 }
