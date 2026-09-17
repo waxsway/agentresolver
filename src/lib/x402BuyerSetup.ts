@@ -1,5 +1,7 @@
 export const X402_BUYER_SETUP_PATH = "/api/x402-client-setup" as const;
 export const X402_BUYER_SETUP_URL = `https://agentresolver.vercel.app${X402_BUYER_SETUP_PATH}` as const;
+export const AGENT_SKILLS_INDEX_URL = "https://agentresolver.vercel.app/.well-known/agent-skills/index.json" as const;
+export const PAYMENT_GUARD_SKILL_URL = "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md" as const;
 
 export type X402BuyerSetup = ReturnType<typeof x402BuyerSetup>;
 
@@ -17,6 +19,8 @@ export function x402BuyerSetup() {
       mcp: "https://agentresolver.vercel.app/mcp",
       paidManifest: "https://agentresolver.vercel.app/.well-known/x402",
       buyerSetup: X402_BUYER_SETUP_URL,
+      agentSkillsIndex: AGENT_SKILLS_INDEX_URL,
+      paymentGuardSkill: PAYMENT_GUARD_SKILL_URL,
       canonicalPreflight: "https://agentresolver.vercel.app/api/x402-payment-preflight",
       paymentGuard: "https://agentresolver.vercel.app/api/payment-guard",
       paymentGuardRequest: {
@@ -118,6 +122,8 @@ export function x402BuyerSetupHint(capabilityId: string) {
     type: "agentresolver_x402_buyer_setup",
     capabilityId,
     url: X402_BUYER_SETUP_URL,
+    agentSkillsIndex: AGENT_SKILLS_INDEX_URL,
+    paymentGuardSkill: PAYMENT_GUARD_SKILL_URL,
     paymentAuthorizationRequired: true,
     signerControlledByCaller: true,
     message: "This host reached a valid x402 challenge but must use an x402-aware client plus its own signer and spend policy to make an authorized retry. For target x402 purchases, run AgentResolver Guard before each autonomous spend. AgentResolver never requests wallet secrets or authorizes spend."

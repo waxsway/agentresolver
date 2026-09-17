@@ -3,6 +3,7 @@
 
 Origin: https://agentresolver.vercel.app
 MCP: https://agentresolver.vercel.app/mcp
+Skills: https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md
 OpenAPI: https://agentresolver.vercel.app/openapi.json
 X402-Manifest: https://agentresolver.vercel.app/.well-known/x402
 Buyer-Setup: https://agentresolver.vercel.app/api/x402-client-setup
@@ -66,6 +67,7 @@ Description: Resolve and live-verify up to four missing capabilities in one boun
 
 # Discovery companions
 Agents-JSON: https://agentresolver.vercel.app/agents.json
+Agent-Skills-Index: https://agentresolver.vercel.app/.well-known/agent-skills/index.json
 LLMs: https://agentresolver.vercel.app/llms.txt
 LLMs-Full: https://agentresolver.vercel.app/llms-full.txt
 Agent-Card: https://agentresolver.vercel.app/.well-known/agent.json

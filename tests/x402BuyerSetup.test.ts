@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  AGENT_SKILLS_INDEX_URL,
+  PAYMENT_GUARD_SKILL_URL,
   X402_BUYER_SETUP_URL,
   x402BuyerSetup,
   x402BuyerSetupHint
@@ -15,6 +17,8 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.equal(setup.payment.challengeHeader, "PAYMENT-REQUIRED");
   assert.equal(setup.payment.retryHeader, "PAYMENT-SIGNATURE");
   assert.equal(setup.payment.paymentIsAuthorizedByAgentResolver, false);
+  assert.equal(setup.agentResolver.agentSkillsIndex, AGENT_SKILLS_INDEX_URL);
+  assert.equal(setup.agentResolver.paymentGuardSkill, PAYMENT_GUARD_SKILL_URL);
   assert.equal(
     setup.agentResolver.canonicalPreflight,
     "https://agentresolver.vercel.app/api/x402-payment-preflight"
@@ -49,6 +53,8 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
 test("buyer setup hint points to the canonical free handoff", () => {
   const hint = x402BuyerSetupHint("x402-payment-preflight");
   assert.equal(hint.url, X402_BUYER_SETUP_URL);
+  assert.equal(hint.agentSkillsIndex, AGENT_SKILLS_INDEX_URL);
+  assert.equal(hint.paymentGuardSkill, PAYMENT_GUARD_SKILL_URL);
   assert.equal(hint.paymentAuthorizationRequired, true);
   assert.equal(hint.signerControlledByCaller, true);
 });
