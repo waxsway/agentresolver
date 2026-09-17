@@ -48,6 +48,20 @@ jobs:
           test "$(jq -r '.paths["/api/usdc-payment-check"].post.summary' /tmp/openapi.json)" = 'USDC Payment Check'
           test "$(jq -r '.paths["/api/usdc-payment-check"].post.operationId' /tmp/openapi.json)" = 'usdcPaymentCheck'
 
+      - name: Request free Agent402 seller recrawl
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/register.json -w '%{http_code}' \
+            -X POST 'https://agent402.tools/api/index/register' \
+            -H 'content-type: application/json' \
+            --data '{"origin":"https://agentresolver.vercel.app"}')"
+          echo "register_http=$code"
+          cat /tmp/register.json
+          test "$code" -ge 200
+          test "$code" -lt 300
+          sleep 4
+
       - name: Inspect Agent402 seller snapshot read-only
         shell: bash
         run: |
