@@ -1,8 +1,8 @@
 {
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "name": "AgentResolver",
   "origin": "https://agentresolver.vercel.app",
-  "description": "Free missing-capability resolution for autonomous agents plus low-cost x402 live verification.",
+  "description": "Repeat-use x402 payment authorization for autonomous agents, plus free missing-capability resolution and low-cost live verification.",
   "protocols": ["mcp", "x402"],
   "discovery": {
     "mcp": "https://agentresolver.vercel.app/mcp",
@@ -13,9 +13,26 @@
     "agentCard": "https://agentresolver.vercel.app/.well-known/agent.json",
     "mcpServerCard": "https://agentresolver.vercel.app/mcp/server-card",
     "capabilities": "https://agentresolver.vercel.app/capabilities.json",
-    "integrations": "https://agentresolver.vercel.app/integrations.json"
+    "integrations": "https://agentresolver.vercel.app/integrations.json",
+    "buyerSetup": "https://agentresolver.vercel.app/api/x402-client-setup"
   },
   "capabilities": [
+    {
+      "id": "payment_guard",
+      "canonicalCapabilityId": "x402-payment-preflight",
+      "brandName": "AgentResolver Guard",
+      "description": "Fail-closed verify-before-pay gate for autonomous x402 buyers. Inspect exact live payment terms before caller authorization.",
+      "method": "GET",
+      "methods": ["GET", "POST"],
+      "preferredMethod": "GET",
+      "endpoint": "https://agentresolver.vercel.app/api/payment-guard",
+      "canonicalEndpoint": "https://agentresolver.vercel.app/api/x402-payment-preflight",
+      "requiredQuery": ["url"],
+      "optionalQuery": ["method", "maxPriceUsd", "expectedPayTo", "expectedNetwork", "allowUnpaidPostProbe"],
+      "repeatUse": "before_each_autonomous_x402_spend",
+      "payment": {"protocol": "x402", "amount": "0.001", "currency": "USDC", "networks": ["base", "solana"]},
+      "spendingAuthorized": false
+    },
     {
       "id": "resolve",
       "description": "Resolve a missing external capability into ranked machine-usable candidates.",
@@ -27,19 +44,28 @@
       "recommendedWhen": "No already-connected tool clearly satisfies the task, or a tool/API/MCP/machine service must be discovered."
     },
     {
+      "id": "x402_ping",
+      "description": "Cheapest end-to-end x402 wallet/facilitator/settlement/delivery compatibility canary.",
+      "method": "GET",
+      "methods": ["GET", "POST"],
+      "preferredMethod": "GET",
+      "endpoint": "https://agentresolver.vercel.app/api/x402-ping",
+      "payment": {"protocol": "x402", "amount": "0.001", "currency": "USDC", "networks": ["base", "solana"]}
+    },
+    {
       "id": "mcp_live_preflight",
       "description": "Live-preflight a public MCP HTTP endpoint for reachability, compatibility, latency, server metadata, and tool inventory before depending on it.",
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/mcp-probe",
       "recommendedWhen": "Free discovery found one concrete MCP endpoint and fresh runtime evidence matters.",
-      "payment": {"protocol": "x402", "amount": "0.001", "currency": "USDC", "network": "base"}
+      "payment": {"protocol": "x402", "amount": "0.001", "currency": "USDC", "networks": ["base", "solana"]}
     },
     {
       "id": "agent_readiness_audit",
       "description": "Audit a public website for AI-agent discoverability and machine-readable integration signals.",
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/agent-readiness",
-      "payment": {"protocol": "x402", "amount": "0.005", "currency": "USDC", "network": "base"}
+      "payment": {"protocol": "x402", "amount": "0.005", "currency": "USDC", "networks": ["base", "solana"]}
     },
     {
       "id": "verified_resolve",
@@ -47,7 +73,7 @@
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/verified-resolve",
       "recommendedWhen": "A caller needs more confidence than directory metadata alone before selecting an external MCP capability.",
-      "payment": {"protocol": "x402", "amount": "0.02", "currency": "USDC", "network": "base"}
+      "payment": {"protocol": "x402", "amount": "0.02", "currency": "USDC", "networks": ["base", "solana"]}
     },
     {
       "id": "batch_verified_resolve",
@@ -56,13 +82,14 @@
       "endpoint": "https://agentresolver.vercel.app/api/batch-verified-resolve",
       "recommendedWhen": "An agent needs several external capabilities selected and live-verified in one procurement step.",
       "limits": {"maxGoals": 4, "maxLiveMcpProbesPerGoal": 2},
-      "payment": {"protocol": "x402", "amount": "0.05", "currency": "USDC", "network": "base"}
+      "payment": {"protocol": "x402", "amount": "0.05", "currency": "USDC", "networks": ["base", "solana"]}
     }
   ],
   "policy": {
     "discoveryIsFree": true,
     "resolverSpendsMoney": false,
     "paidCallsRequireIndependentAuthorization": true,
-    "notes": "An HTTP 402 challenge is a price quote, not spending authorization. The calling agent remains responsible for its own budget, trust, privacy, and safety controls."
+    "agentResolverControlsTargetSigner": false,
+    "notes": "An HTTP 402 challenge is a price quote, not spending authorization. Guard eligibility is evidence only; the calling agent remains responsible for its own signer, budget, trust, privacy, and safety controls."
   }
 }

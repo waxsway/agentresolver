@@ -1,11 +1,23 @@
 # AgentResolver agent capabilities
-# Free capability discovery plus low-cost x402 live evidence for autonomous agents.
+# Repeat-use x402 payment authorization plus free capability discovery and low-cost live evidence.
 
 Origin: https://agentresolver.vercel.app
 MCP: https://agentresolver.vercel.app/mcp
 OpenAPI: https://agentresolver.vercel.app/openapi.json
 X402-Manifest: https://agentresolver.vercel.app/.well-known/x402
+Buyer-Setup: https://agentresolver.vercel.app/api/x402-client-setup
 Protocols: MCP, x402
+
+# Payment authorization
+Capability: payment_guard
+Canonical-Capability: x402-payment-preflight
+Endpoint: GET https://agentresolver.vercel.app/api/payment-guard?url=<encoded-target>
+Canonical-Endpoint: GET https://agentresolver.vercel.app/api/x402-payment-preflight?url=<encoded-target>
+Price: 0.001 USDC
+Networks: Base, Solana
+Payment: x402
+Repeat-Use: before_each_autonomous_x402_spend
+Description: Fail-closed verify-before-pay gate. Inspect a target x402 challenge's payTo, amount, USDC asset, network, scheme, resource binding and endpoint evidence before the caller independently authorizes the target payment. POST remains supported for body-bearing compatibility.
 
 # Free discovery
 Capability: resolve
@@ -15,32 +27,40 @@ Read-only: true
 Spending-authorized: false
 Description: Resolve a missing external capability into ranked AgentResolver-owned tools, MCP services, and machine-service candidates. Use when no already-connected tool clearly satisfies the task.
 
-# Paid machine utilities
+# Settlement canary
+Capability: x402_ping
+Endpoint: GET https://agentresolver.vercel.app/api/x402-ping
+Price: 0.001 USDC
+Networks: Base, Solana
+Payment: x402
+Description: Cheapest end-to-end wallet/facilitator/settlement/delivery compatibility test. Use as a canary, not the primary repeat-use product.
+
+# Other paid machine utilities
 Capability: mcp_live_preflight
 Endpoint: POST https://agentresolver.vercel.app/api/mcp-probe
 Price: 0.001 USDC
-Network: Base
+Networks: Base, Solana
 Payment: x402
 Description: Live-preflight one public MCP HTTP endpoint for reachability, compatibility, latency, server metadata, and current tool inventory before depending on it.
 
 Capability: agent_readiness_audit
 Endpoint: POST https://agentresolver.vercel.app/api/agent-readiness
 Price: 0.005 USDC
-Network: Base
+Networks: Base, Solana
 Payment: x402
 Description: Audit a public website for AI-agent discoverability and machine-readable integration signals.
 
 Capability: verified_resolve
 Endpoint: POST https://agentresolver.vercel.app/api/verified-resolve
 Price: 0.02 USDC
-Network: Base
+Networks: Base, Solana
 Payment: x402
 Description: Resolve one missing capability, live-check up to two top MCP candidates, and return an evidence-backed recommendation.
 
 Capability: batch_verified_resolve
 Endpoint: POST https://agentresolver.vercel.app/api/batch-verified-resolve
 Price: 0.05 USDC
-Network: Base
+Networks: Base, Solana
 Payment: x402
 Description: Resolve and live-verify up to four missing capabilities in one bounded purchase.
 
@@ -54,7 +74,8 @@ MCP-Server-Card: https://agentresolver.vercel.app/mcp/server-card
 MCP-Well-Known: https://agentresolver.vercel.app/.well-known/mcp.json
 Capability-Catalog: https://agentresolver.vercel.app/capabilities.json
 Integration-Recipes: https://agentresolver.vercel.app/integrations.json
-ARD: https://agentresolver.vercel.app/.well-known/ard.json
-AI-Catalog: https://agentresolver.vercel.app/.well-known/ai-catalog.json
+Trust: https://agentresolver.vercel.app/.well-known/agentresolver-trust.json
+Evidence: https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json
+Settlement-History: https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json
 
-Policy: Discovery and resolve are free and never authorize spending. Paid operations return HTTP 402 before execution. Pay only when fresh live evidence materially helps the current task, and only under the calling agent's independent trust, budget, privacy, and safety policy.
+Policy: Discovery is free and never authorizes spending. A paid 402 is a quote, not authorization. AgentResolver Guard returns evidence and a fail-closed decision; the caller retains the signer and target-spend authority.
