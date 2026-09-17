@@ -45,3 +45,12 @@ test("PayAI Bazaar audit uses protocol-valid pagination", () => {
   assert.match(workflow, /limit = 100\b/);
   assert.doesNotMatch(workflow, /limit = 1000\b/);
 });
+
+
+test("PayAI Bazaar audit reads per-resource settlement stats without spending", () => {
+  const workflow = readFileSync(".github/workflows/audit-payai-bazaar.yml", "utf8");
+  assert.match(workflow, /urllib\.parse\.quote\(resource, safe=""\)/);
+  assert.match(workflow, /stats_url = f"\{catalog_url\}\/\{encoded_resource\}\/stats"/);
+  assert.match(workflow, /"resourceStats": resource_stats/);
+  assert.match(workflow, /Per-resource settlement stats/);
+});
