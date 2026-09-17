@@ -23,7 +23,7 @@ jobs:
             manifest_ok=0
             challenge_ok=0
 
-            if curl -fsS https://agentresolver.vercel.app/.well-known/x402 > /tmp/x402.json; then
+            if curl -fsS -H 'x-agentresolver-internal: 1' https://agentresolver.vercel.app/.well-known/x402 > /tmp/x402.json; then
               if jq -e '
                 .x402Version == 2 and
                 (.resources | type == "array" and length >= 7)
@@ -32,7 +32,7 @@ jobs:
               fi
             fi
 
-            code="$(curl -sS -o /tmp/http-inspect.json -w '%{http_code}' https://agentresolver.vercel.app/api/http-inspect || true)"
+            code="$(curl -sS -H 'x-agentresolver-internal: 1' -o /tmp/http-inspect.json -w '%{http_code}' https://agentresolver.vercel.app/api/http-inspect || true)"
             if [ "$code" = "402" ] && jq -e '
               .accepts[0].amount == "1000" and
               .accepts[0].network == "eip155:8453"
