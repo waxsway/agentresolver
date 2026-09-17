@@ -1,4 +1,8 @@
-import type { PaidCapabilityId } from "@/lib/paidCapabilities";
+import {
+  CANONICAL_ORIGIN,
+  getPaidCapability,
+  type PaidCapabilityId
+} from "@/lib/paidCapabilities";
 
 export const DIRECT_OWNED_CAPABILITY_IDS = new Set<PaidCapabilityId>([
   "x402-payment-preflight",
@@ -33,4 +37,29 @@ export function directOwnedRecommendationInput(
   if (capabilityId === "openapi-select" && url) return { specUrl: url, goal };
   if (capabilityId === "verified-resolve") return { goal, ...(url ? { url } : {}) };
   return undefined;
+}
+
+function paidNextAction(capabilityId: "verified-resolve" | "batch-verified-resolve") {
+  const capability = getPaidCapability(capabilityId);
+  return {
+    capabilityId: capability.id,
+    endpoint: `${CANONICAL_ORIGIN}${capability.endpoint}`,
+    method: "POST" as const,
+    priceUsd: capability.priceUsd,
+    useWhen: capability.useWhen,
+    inputExample: capability.example
+  };
+}
+
+/**
+ * Machine-readable handoff after the low-cost settlement canary succeeds.
+ * This intentionally presents a single-decision and batch alternative instead
+ * of claiming the higher-priced option is appropriate for every buyer.
+ */
+export function postSettlementCanaryNextActions() {
+  return {
+    catalogUrl: `${CANONICAL_ORIGIN}/.well-known/x402`,
+    single: paidNextAction("verified-resolve"),
+    batch: paidNextAction("batch-verified-resolve")
+  };
 }

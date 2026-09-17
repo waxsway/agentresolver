@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createDeterministicPaidRoute } from "@/lib/createDeterministicPaidRoute";
+import { X402_PING_NEXT_ACTIONS } from "@/lib/x402PingDiscovery";
 
 export const dynamic = "force-dynamic";
 const route = createDeterministicPaidRoute("x402-ping", async (req) => {
@@ -11,7 +12,8 @@ const route = createDeterministicPaidRoute("x402-ping", async (req) => {
     at: new Date().toISOString(),
     unixMs: Date.now(),
     requestId: randomUUID(),
-    echo
+    echo,
+    next: X402_PING_NEXT_ACTIONS
   };
 }, { paidGet: true });
 export const POST = route.POST;

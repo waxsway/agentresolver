@@ -124,13 +124,23 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   assert.equal(output?.example?.pong, true);
   assert.equal(output?.example?.settledDelivery, true);
   assert.equal(output?.example?.echo, null);
+  assert.equal(output?.example?.next?.single?.capabilityId, "verified-resolve");
+  assert.equal(output?.example?.next?.single?.endpoint, "https://agentresolver.vercel.app/api/verified-resolve");
+  assert.equal(output?.example?.next?.single?.priceUsd, 0.02);
+  assert.deepEqual(output?.example?.next?.single?.inputExample, {
+    goal: "Find and verify an MCP server for web search"
+  });
+  assert.equal(output?.example?.next?.batch?.capabilityId, "batch-verified-resolve");
+  assert.equal(output?.example?.next?.batch?.endpoint, "https://agentresolver.vercel.app/api/batch-verified-resolve");
+  assert.equal(output?.example?.next?.batch?.priceUsd, 0.05);
+  assert.equal(output?.example?.next?.catalogUrl, "https://agentresolver.vercel.app/.well-known/x402");
 
   const exampleSchema = schemaOutput?.properties?.example;
   assert.equal(exampleSchema?.type, "object");
   assert.equal(exampleSchema?.additionalProperties, false);
   assert.deepEqual(
     exampleSchema?.required,
-    ["pong", "settledDelivery", "at", "unixMs", "requestId", "echo"]
+    ["pong", "settledDelivery", "at", "unixMs", "requestId", "echo", "next"]
   );
   assert.equal(exampleSchema?.properties?.pong?.const, true);
   assert.equal(exampleSchema?.properties?.settledDelivery?.const, true);
@@ -141,4 +151,14 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   assert.equal(exampleSchema?.properties?.at?.format, undefined);
   assert.equal(exampleSchema?.properties?.at?.minLength, 20);
   assert.equal(exampleSchema?.properties?.at?.maxLength, 35);
+  assert.equal(exampleSchema?.properties?.next?.additionalProperties, false);
+  assert.deepEqual(exampleSchema?.properties?.next?.required, ["catalogUrl", "single", "batch"]);
+  assert.equal(
+    exampleSchema?.properties?.next?.properties?.single?.properties?.capabilityId?.const,
+    "verified-resolve"
+  );
+  assert.equal(
+    exampleSchema?.properties?.next?.properties?.batch?.properties?.capabilityId?.const,
+    "batch-verified-resolve"
+  );
 });
