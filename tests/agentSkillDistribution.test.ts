@@ -30,3 +30,13 @@ test("published skill mirrors the current GET-first Guard contract", () => {
     /Canonical paid verification route:\s*`POST https:\/\/agentresolver\.vercel\.app\/api\/x402-payment-preflight`/
   );
 });
+
+
+test("installable Guard skill documents the Coinbase AgentKit confirmation-first payment loop", () => {
+  assert.match(installable, /## Coinbase AgentKit/);
+  assert.match(installable, /make_http_request/);
+  assert.match(installable, /retry_http_request_with_x402/);
+  assert.match(installable, /discover_x402_services/);
+  assert.match(installable, /Do not use `make_http_request_with_x402` on an unfamiliar target/i);
+  assert.match(published, /## Coinbase AgentKit/);
+});
