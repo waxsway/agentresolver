@@ -6,6 +6,7 @@ const canonicalPath = "skills/agentresolver-payment-guard/SKILL.md";
 const publicSkillPath =
   "public/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md";
 const indexPath = "public/.well-known/agent-skills/index.json";
+const origin = "https://agentresolver.vercel.app";
 
 const skill = readFileSync(canonicalPath);
 const text = skill.toString("utf8");
@@ -33,7 +34,7 @@ const index = {
       name,
       type: "skill-md",
       description,
-      url: "/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md",
+      url: `${origin}/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md`,
       digest: `sha256:${digest}`
     }
   ]
