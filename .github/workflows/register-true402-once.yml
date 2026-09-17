@@ -24,7 +24,7 @@ jobs:
             manifest_ok=0
             challenge_ok=0
 
-            if curl -fsS https://agentresolver.vercel.app/.well-known/x402-service.json > /tmp/manifest.json; then
+            if curl -fsS -H 'x-agentresolver-internal: 1' https://agentresolver.vercel.app/.well-known/x402-service.json > /tmp/manifest.json; then
               if jq -e '
                 .name == "agentresolver-settlement-ping" and
                 .pricing.base == "0.001" and
@@ -34,7 +34,7 @@ jobs:
               fi
             fi
 
-            code="$(curl -sS -o /tmp/challenge.json -w '%{http_code}' https://agentresolver.vercel.app/api/x402-ping || true)"
+            code="$(curl -sS -H 'x-agentresolver-internal: 1' -o /tmp/challenge.json -w '%{http_code}' https://agentresolver.vercel.app/api/x402-ping || true)"
             if [ "$code" = "402" ] && jq -e '
               .accepts[0].amount == "1000" and
               .accepts[0].payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
