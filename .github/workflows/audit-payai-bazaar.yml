@@ -97,6 +97,32 @@ jobs:
               if len(items) < limit:
                   break
 
+          settlement_stats = []
+          for item in matches:
+              resource = item.get("resource") if isinstance(item, dict) else None
+              if not isinstance(resource, str) or not resource.startswith("https://"):
+                  continue
+              encoded_resource = urllib.parse.quote(resource, safe="")
+              stats_url = f"{catalog_url}/{encoded_resource}/stats"
+              try:
+                  request = urllib.request.Request(
+                      stats_url,
+                      headers={"user-agent": "AgentResolver-Bazaar-Audit/1.0"},
+                  )
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      stats = json.loads(response.read().decode("utf-8"))
+                  settlement_stats.append({
+                      "resource": resource,
+                      "statsUrl": stats_url,
+                      "stats": stats,
+                  })
+              except Exception as exc:
+                  settlement_stats.append({
+                      "resource": resource,
+                      "statsUrl": stats_url,
+                      "error": str(exc),
+                  })
+
           summary = {
               "catalogued": bool(matches),
               "catalogTotal": total,
@@ -104,6 +130,7 @@ jobs:
               "maxLastUpdated": max_last_updated,
               "matchCount": len(matches),
               "matches": matches[:20],
+              "settlementStats": settlement_stats,
           }
           print(json.dumps(summary, indent=2, sort_keys=True))
 
@@ -114,6 +141,12 @@ jobs:
               fh.write(f"- Pages scanned: **{pages}**\n")
               fh.write(f"- Newest `lastUpdated` observed: **{max_last_updated or 'unknown'}**\n")
               fh.write(f"- Matching records: **{len(matches)}**\n")
+              fh.write(f"- Settlement-stat records checked: **{len(settlement_stats)}**\n")
+              if settlement_stats:
+                  fh.write("\n## Resource settlement stats\n\n")
+                  fh.write("~~~json\n")
+                  fh.write(json.dumps(settlement_stats, indent=2, sort_keys=True)[:12000])
+                  fh.write("\n~~~\n")
               if matches:
                   fh.write("\n```json\n")
                   fh.write(json.dumps(matches[:5], indent=2, sort_keys=True)[:12000])
