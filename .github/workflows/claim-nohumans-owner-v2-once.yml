@@ -1,0 +1,142 @@
+name: Claim NoHumans Owner V2 Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/claim-nohumans-owner-v2-once.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claim-nohumans-owner-v2-once
+  cancel-in-progress: false
+
+jobs:
+  claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_SCOPE: wades-projects-949751b6
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      SOURCE_DEPLOYMENT_ID: dpl_Eb7wzpoKLW2UrjP83SjxEo2W4Xt8
+      LISTING_ID: 28e33786-f07
+      CANONICAL_URL: https://agentresolver.vercel.app
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Resolve authorized email
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          email="$(git log -1 --format='%ae')"
+          test -n "$email"
+          case "$email" in
+            *noreply.github.com) echo "Refusing GitHub noreply email." >&2; exit 1 ;;
+          esac
+          echo "::add-mask::$email"
+          echo "email=$email" >> "$GITHUB_OUTPUT"
+
+      - name: Request NoHumans claim challenge
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30             -X POST "https://api.nohumans.directory/v1/listings/$LISTING_ID/claim/challenge"             -H 'content-type: application/json'             -o /tmp/challenge.json
+          token="$(jq -r '.challenge_token // .challenge // .token // empty' /tmp/challenge.json)"
+          test -n "$token"
+          echo "::add-mask::$token"
+          printf '%s' "$token" > /tmp/challenge-token
+          echo "NOHUMANS_CHALLENGE_RECEIVED=true"
+
+      - name: Install Vercel CLI and link project
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global vercel@48.8.0 --no-audit --no-fund
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Install temporary claim token
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel env rm NOHUMANS_CLAIM_TOKEN production --yes --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          vercel env add NOHUMANS_CLAIM_TOKEN production --sensitive --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" < /tmp/challenge-token >/dev/null
+          rm -f /tmp/challenge-token
+
+      - name: Redeploy exact production source with proof token
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel redeploy "$SOURCE_DEPLOYMENT_ID" --target=production --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" >/tmp/redeploy-url.txt
+
+      - name: Wait for public ownership proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(jq -r '.challenge_token // .challenge // .token // empty' /tmp/challenge.json)"
+          for attempt in {1..45}; do
+            body="$(curl -fsS --max-time 15 "$CANONICAL_URL/.well-known/nohumans-claim" 2>/dev/null || true)"
+            if [ "$body" = "$expected" ]; then
+              echo "NOHUMANS_PUBLIC_PROOF_READY=true"
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "Public proof never converged." >&2
+          exit 1
+
+      - name: Claim listing
+        env:
+          CLAIM_EMAIL: ${{ steps.identity.outputs.email }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30             -X POST "https://api.nohumans.directory/v1/listings/$LISTING_ID/claim"             -H 'content-type: application/json'             --data "$(jq -nc --arg email "$CLAIM_EMAIL" '{email:$email}')"             -o /tmp/claim.json
+          owner_token="$(jq -r '.edit_token // .owner_token // .claim_token // .token // empty' /tmp/claim.json)"
+          test -n "$owner_token"
+          echo "::add-mask::$owner_token"
+          printf '%s' "$owner_token" > /tmp/owner-token
+          jq 'del(.edit_token,.owner_token,.claim_token,.token,.email)' /tmp/claim.json
+          echo "NOHUMANS_OWNER_CLAIMED=true"
+
+      - name: Store owner token securely
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel env rm NOHUMANS_OWNER_TOKEN production --yes --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          vercel env add NOHUMANS_OWNER_TOKEN production --sensitive --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" < /tmp/owner-token >/dev/null
+          rm -f /tmp/owner-token
+
+      - name: Remove public proof
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel env rm NOHUMANS_CLAIM_TOKEN production --yes --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          vercel redeploy "$SOURCE_DEPLOYMENT_ID" --target=production --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" >/tmp/cleanup-url.txt || true
+
+      - name: Verify proof route closed
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..45}; do
+            code="$(curl -sS --max-time 15 -o /tmp/closed.txt -w '%{http_code}' "$CANONICAL_URL/.well-known/nohumans-claim" || true)"
+            if [ "$code" = "404" ]; then
+              echo "NOHUMANS_PUBLIC_PROOF_CLOSED=true"
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "Claim succeeded but proof route did not close in time." >&2
+          exit 1
