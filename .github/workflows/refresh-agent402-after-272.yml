@@ -1,0 +1,63 @@
+name: Refresh Agent402 after 272
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-agent402-after-272.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Request free re-index and poll for fresh snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          stale=1789670992308
+          code=$(curl -sS -o /tmp/register.json -w '%{http_code}' \
+            --connect-timeout 5 --max-time 20 \
+            -X POST 'https://agent402.tools/api/index/register' \
+            -H 'content-type: application/json' \
+            --data '{"origin":"https://agentresolver.vercel.app"}' || printf '000')
+          echo "REGISTER_HTTP=$code"
+          cat /tmp/register.json 2>/dev/null || true
+          echo
+          case "$code" in 200|201|202|204|409|429) ;; *) echo "Unexpected registration status: $code" >&2; exit 1;; esac
+
+          fresh=0
+          for attempt in $(seq 1 18); do
+            curl -fsS -G 'https://agent402.tools/api/index' \
+              --data-urlencode 'seller=agentresolver.vercel.app' \
+              -o /tmp/index.json
+            fetched=$(jq -r '.fetchedAt // 0' /tmp/index.json)
+            tools=$(jq -r '((.tools // []) | length)' /tmp/index.json)
+            alias_count=$(jq '[.tools[]? | select((.route // "") == "/api/x402-transaction-path-payment-gate")] | length' /tmp/index.json)
+            echo "POLL_$attempt fetchedAt=$fetched toolCount=$tools transactionPathAlias=$alias_count"
+            if [ "$fetched" -gt "$stale" ] && [ "$alias_count" -gt 0 ]; then
+              fresh=1
+              echo '=== FRESH SELLER SNAPSHOT ==='
+              jq '{origin,fetchedAt,fetchedAtIso:(.fetchedAt/1000|todateiso8601),health,routable,routerDispatchEligible,toolCount:((.tools//[])|length),transactionPath:[.tools[]?|select((.route//"")=="/api/x402-transaction-path-payment-gate")|{name,slug,route,price,method}]}' /tmp/index.json
+              break
+            fi
+            sleep 10
+          done
+
+          if [ "$fresh" -ne 1 ]; then
+            echo 'AGENT402_SNAPSHOT_STILL_STALE=1'
+            exit 0
+          fi
+
+          q='x402 transaction path payment gate'
+          curl -fsS -G 'https://agent402.tools/api/route' \
+            --data-urlencode "q=$q" \
+            --data-urlencode 'include=external' \
+            --data-urlencode 'network=base' \
+            --data-urlencode 'top=20' \
+            -o /tmp/route.json
+          echo '=== FRESH RANK ==='
+          jq --arg q "$q" '{query:$q,agentresolver:[(.results // .routes // .data // []) | to_entries[]? | select(((.value.seller//"")|tostring|contains("agentresolver.vercel.app"))) | {rank:(.key+1),seller:.value.seller,name:.value.name,slug:.value.slug,route:.value.route,priceUsd:.value.priceUsd,score:.value.score,health:.value.health,routerDispatchEligible:.value.routerDispatchEligible,routerDispatchReason:.value.routerDispatchReason,executeViaCallableNow:.value.executeViaCallableNow,networks:.value.networks}]}' /tmp/route.json
