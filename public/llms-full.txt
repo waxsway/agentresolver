@@ -1,6 +1,6 @@
 # AgentResolver — Full Machine Documentation
 
-AgentResolver is machine-native authorization and trust infrastructure for autonomous payments, with free capability discovery and optional x402-paid live evidence.
+AgentResolver is machine-native verify-before-pay infrastructure for autonomous x402 payments, with free capability discovery and optional paid live evidence.
 
 ## Core payment behavior
 
