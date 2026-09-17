@@ -22,7 +22,7 @@ test("well-known Agent Skills discovery mirrors the canonical Guard skill", () =
   assert.equal(index.skills[0].type, "skill-md");
   assert.equal(
     index.skills[0].url,
-    "/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md"
+    "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md"
   );
 });
 
@@ -38,4 +38,21 @@ test("well-known Agent Skills are browser-readable and cacheable", () => {
   assert.match(config, /Access-Control-Allow-Origin/);
   assert.match(config, /value: "\*"/);
   assert.match(config, /s-maxage=3600/);
+});
+
+
+test("agent discovery announcements agree with the well-known skill URL", () => {
+  const agentsTxt = readFileSync("public/agents.txt", "utf8");
+  const agentsJson = JSON.parse(readFileSync("public/agents.json", "utf8"));
+  const config = readFileSync("next.config.ts", "utf8");
+  const skillUrl =
+    "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md";
+
+  assert.equal(index.skills[0].url, skillUrl);
+  assert.ok(agentsTxt.includes(`Skills: ${skillUrl}`));
+  assert.ok(agentsTxt.includes("Agent-Skills-Index: https://agentresolver.vercel.app/.well-known/agent-skills/index.json"));
+  assert.equal(agentsJson.discovery.agentSkills, "https://agentresolver.vercel.app/.well-known/agent-skills/index.json");
+  assert.equal(agentsJson.skills?.[0]?.url, skillUrl);
+  assert.ok(config.includes('rel=\\\"agent-skills\\\"'));
+  assert.ok(config.includes("https://agentresolver.vercel.app/.well-known/agent-skills/index.json"));
 });
