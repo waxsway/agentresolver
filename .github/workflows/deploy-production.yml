@@ -89,32 +89,50 @@ jobs:
           echo "number=$release_pr_number" >> "$GITHUB_OUTPUT"
           echo "Release authorized by merged PR #$release_pr_number: $release_pr_title"
 
-      - name: Detect application changes
+      - name: Detect application drift from production
         if: steps.initial_freshness.outputs.fresh == 'true'
         id: application_changes
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          RELEASE_PR_NUMBER: ${{ steps.release_pr.outputs.number }}
+          BASE_URL: https://agentresolver.vercel.app
         run: |
           set -euo pipefail
-          test -n "$RELEASE_PR_NUMBER"
 
-          changed_file="$(mktemp)"
-          : > "$changed_file"
-          for page in {1..10}; do
-            page_json="$(curl -fsSL \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$RELEASE_PR_NUMBER/files?per_page=100&page=$page")"
-            count="$(jq 'length' <<< "$page_json")"
-            [ "$count" -eq 0 ] && break
-            jq -r '.[].filename' <<< "$page_json" >> "$changed_file"
-            [ "$count" -lt 100 ] && break
+          production_sha=""
+          for attempt in {1..5}; do
+            code="$(curl -sS \
+              -D /tmp/live-preflight-headers.txt \
+              -o /tmp/live-preflight-body.json \
+              -w '%{http_code}' \
+              "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01" || true)"
+            candidate="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\\r",""); print $2; exit}' /tmp/live-preflight-headers.txt)"
+            if [ "$code" = "402" ] && [[ "$candidate" =~ ^[0-9a-f]{40}$ ]]; then
+              production_sha="$candidate"
+              break
+            fi
+            sleep "$attempt"
           done
 
-          echo "Files from merged PR #$RELEASE_PR_NUMBER:"
+          if [ -z "$production_sha" ]; then
+            echo "Unable to determine the canonical production commit SHA; refusing to guess deployment drift." >&2
+            sed -n '1,40p' /tmp/live-preflight-headers.txt || true
+            exit 1
+          fi
+
+          echo "production_sha=$production_sha"
+          echo "validated_sha=$VALIDATED_SHA"
+
+          if [ "$production_sha" = "$VALIDATED_SHA" ]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Canonical production already serves the validated main commit."
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=1 origin "$production_sha"
+
+          changed_file="$(mktemp)"
+          git diff --name-only "$production_sha" "$VALIDATED_SHA" > "$changed_file"
+          echo "Files changed since canonical production $production_sha:"
           cat "$changed_file"
 
           deploy=false
@@ -128,7 +146,7 @@ jobs:
 
           echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
           if [ "$deploy" = "false" ]; then
-            echo "Only docs/tests/automation changed; Vercel build/deploy is unnecessary."
+            echo "Validated main has no application drift from canonical production; Vercel build/deploy is unnecessary."
           fi
 
       - name: Require Vercel deployment credential
