@@ -59,6 +59,19 @@ AgentResolver accepts its own service payment on:
 
 Use only a caller-controlled signer. Never send a private key or seed phrase to AgentResolver.
 
+
+## Coinbase AgentKit
+
+For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead of writing a custom payment loop:
+
+1. Call `make_http_request` on the exact target first. This exposes the target's 402 terms without paying.
+2. Build the AgentResolver Guard URL with that target plus caller-owned constraints and call `make_http_request` on Guard. This exposes Guard's separate $0.001 challenge without paying.
+3. Only if the caller's own policy authorizes the Guard fee, call `retry_http_request_with_x402` for Guard.
+4. Require `decision === "eligible"` and compare the observed amount, asset, network, payTo, scheme and resource binding against caller policy.
+5. Only after separate authorization for the target amount, call `retry_http_request_with_x402` for the original target challenge.
+
+AgentKit also exposes `discover_x402_services` for x402 discovery. Do not use `make_http_request_with_x402` on an unfamiliar target before Guard and caller authorization because that action combines challenge handling and payment.
+
 ## MCP
 
 Remote MCP:
