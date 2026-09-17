@@ -123,7 +123,7 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.match(pathItem.get.summary || "", /settlement test/i);
   assert.match(pathItem.get.description || "", /wallet/i);
   assert.match(pathItem.get.description || "", /facilitator/i);
-  assert.equal(openapi.info.version, "0.1.7");
+  assert.equal(openapi.info.version, "0.1.8");
   assert.match(openapi.info["x-guidance"] || "", /verified-resolve/);
   assert.match(openapi.info["x-guidance"] || "", /batch-verified-resolve/);
 
