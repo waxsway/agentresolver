@@ -115,6 +115,30 @@ export function x402BuyerSetup() {
             'const response = await fetchWithPayment("https://agentresolver.vercel.app/api/x402-ping");'
           ]
         },
+        axios: {
+          package: "@x402/axios",
+          packages: ["axios", "@x402/axios", "@x402/evm", "@x402/svm"],
+          installCommand: "npm install axios @x402/axios @x402/evm @x402/svm",
+          wrapper: "wrapAxiosWithPayment",
+          client: "x402Client",
+          evmExactScheme: "@x402/evm/exact/client",
+          svmExactScheme: "@x402/svm/exact/client",
+          baseEvmQuickstart: [
+            'import axios from "axios";',
+            'import { x402Client, wrapAxiosWithPayment } from "@x402/axios";',
+            'import { ExactEvmScheme } from "@x402/evm/exact/client";',
+            "",
+            "// callerOwnedSigner is supplied by the host wallet/runtime. Do not send it to AgentResolver.",
+            "// Only call the wrapped client after the caller has authorized the displayed x402 requirement.",
+            "const client = new x402Client()",
+            '  .register("eip155:8453", new ExactEvmScheme(callerOwnedSigner));',
+            "const axiosWithPayment = wrapAxiosWithPayment(axios.create(), client);",
+            "",
+            'const response = await axiosWithPayment.get("https://agentresolver.vercel.app/api/x402-ping");'
+          ],
+          authorizationRule:
+            "The Axios wrapper automatically retries a 402 with payment. Use it only after caller-owned policy has authorized the exact requirement or behind a caller-defined paymentRequirementsSelector."
+        },
         python: {
           package: "x402",
           installCommand: "pip install x402",
@@ -145,7 +169,7 @@ export function x402BuyerSetup() {
         },
         behavior: [
           "Create an x402Client and register only exact schemes backed by the caller's own signer.",
-          "Wrap the caller's fetch implementation with wrapFetchWithPayment(fetch, client), or use x402HttpxClient for Python/httpx.",
+          "Wrap the caller's fetch implementation with wrapFetchWithPayment(fetch, client), use wrapAxiosWithPayment for Axios, or use x402HttpxClient for Python/httpx.",
           "Apply caller-owned payment selection and spend policy before signing.",
           "Send the original paid request; the x402 wrapper handles PAYMENT-REQUIRED and the authorized PAYMENT-SIGNATURE retry."
         ]
@@ -206,6 +230,7 @@ export function x402BuyerSetup() {
       mcpGuide: "https://github.com/x402-foundation/x402/blob/main/docs/guides/mcp-server-with-x402.md",
       bazaar: "https://github.com/x402-foundation/x402/blob/main/docs/extensions/bazaar.mdx",
       protocol: "https://github.com/x402-foundation/x402",
+      axios: "https://github.com/x402-foundation/x402/blob/main/typescript/packages/http/axios/README.md",
       coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md"
     }
   } as const;
