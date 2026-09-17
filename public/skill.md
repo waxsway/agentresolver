@@ -1,57 +1,44 @@
-# AgentResolver
+---
+name: agentresolver-x402-preflight
+description: Verify a live x402 payment challenge before an autonomous agent authorizes spend. Use when an agent is about to pay an x402 endpoint and needs fail-closed evidence for price, asset, network, payTo, resource binding, and payment terms.
+license: MIT
+---
 
-Use AgentResolver when an autonomous agent needs an external capability, or when it needs fresh evidence that an MCP endpoint or candidate is usable right now.
+# AgentResolver x402 Pre-Payment Trust
 
-Canonical origin: https://agentresolver.vercel.app
-Remote MCP: https://agentresolver.vercel.app/mcp
-x402 manifest: https://agentresolver.vercel.app/.well-known/x402
-OpenAPI: https://agentresolver.vercel.app/openapi.json
+Use AgentResolver immediately before authorizing a payment to an unfamiliar or changed x402 endpoint.
 
-## Free discovery
+Canonical paid verification route: `POST https://agentresolver.vercel.app/api/x402-payment-preflight`. Price: `$0.001 USDC` per verification. AgentResolver is non-custodial: it never receives your private key or seed phrase, never authorizes the target payment, and never forwards target payment principal.
 
-### resolve — free
-Find ranked tools, APIs, MCP servers, and machine services for a missing capability.
+## Before paying an x402 target
 
-MCP tool: `resolve`
-REST: `POST https://agentresolver.vercel.app/api/resolve`
+1. Obtain the target endpoint and intended HTTP method.
+2. Decide your own maximum acceptable target price and, when known, expected network and expected payTo.
+3. Call `x402-payment-preflight` with the target URL, method, maximum price, and your expectations.
+4. Pay AgentResolver's separate `$0.001` verification fee only through your own x402-aware client, signer, and spend policy.
+5. Require a successful preflight result whose eligibility decision is `eligible` and whose observed terms satisfy your own policy.
+6. Independently apply your wallet's budget, allowlist, and authorization policy.
+7. Only then may your wallet authorize the target payment. AgentResolver eligibility is evidence, not spending authorization.
+8. If preflight is blocked, malformed, unavailable, stale, or conflicts with expectations, fail closed and do not sign the target payment.
 
-Resolution is free and read-only. It never authorizes spending.
+## Settlement and evidence
 
-## Paid live evidence
+AgentResolver accepts its own service payment on Base (`eip155:8453`) and Solana (`solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`) as declared by the live x402 challenge. Retain the execution ID, response SHA-256, deployment commit, evidence receipt, payment/infrastructure fingerprints, payment-terms fingerprint, observed network, asset, payTo, amount, resource binding, and AgentResolver settlement receipt returned by your x402 client.
 
-All paid operations use x402 with USDC on Base (`eip155:8453`). An unpaid request returns HTTP 402 as a price quote. The caller must independently authorize any payment under its own budget and permission policy.
+Trust contract: `https://agentresolver.vercel.app/.well-known/agentresolver-trust.json`
 
-### MCP Live Preflight — $0.001
-MCP quote tool: `mcp_preflight`
-Paid REST: `POST https://agentresolver.vercel.app/api/mcp-probe`
-Input: `{ "endpoint": "https://public-mcp.example/mcp" }`
-Returns current reachability, MCP compatibility, latency, server metadata, and tool inventory for one public MCP HTTP endpoint.
+Execution-evidence contract: `https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json`
 
-### Agent Readiness Audit — $0.005
-MCP quote tool: `agent_readiness`
-Paid REST: `POST https://agentresolver.vercel.app/api/agent-readiness`
-Input: `{ "url": "https://example.com" }`
-Audits a public website for agent discovery/integration signals including machine-readable metadata, OpenAPI/MCP surfaces, crawler readiness, and related headers.
+Verified settlement history: `https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json`
 
-### Verified Resolve — $0.02
-MCP quote tool: `verified_resolve`
-Paid REST: `POST https://agentresolver.vercel.app/api/verified-resolve`
-Input: `{ "goal": "capability needed", "url": "https://optional-target.example" }`
-Finds candidates and adds current live evidence for top MCP options before an agent depends on one.
+Paid capability manifest: `https://agentresolver.vercel.app/.well-known/x402`
 
-### Batch Verified Resolve — $0.05
-MCP quote tool: `batch_verified_resolve`
-Paid REST: `POST https://agentresolver.vercel.app/api/batch-verified-resolve`
-Input: `{ "items": [{ "goal": "first capability" }, { "goal": "second capability" }] }`
-Resolves and live-checks 2–4 capability decisions in one paid batch.
+OpenAPI: `https://agentresolver.vercel.app/openapi.json`
 
-## Agent decision policy
+## Wallet-capable clients
 
-1. Missing capability: call `resolve` for free.
-2. Already have one MCP endpoint but need to know whether it works now: quote `mcp_preflight`.
-3. Comparing uncertain MCP candidates: quote `verified_resolve`.
-4. Several capability decisions at once: quote `batch_verified_resolve`.
-5. Evaluating whether a public site is agent-ready: quote `agent_readiness`.
-6. Never treat a 402 or a quote-tool response as spending authorization.
+For MCP, use an x402-aware client such as official `@x402/mcp` with caller-owned schemes, spend controls, and policies. For HTTP, use an x402-aware wrapper such as official `@x402/fetch` with a caller-controlled signer.
 
-No account or API key is required for the AgentResolver-owned x402 resources. Do not send secrets, credentials, private keys, or seed phrases.
+Free machine-readable buyer setup: `https://agentresolver.vercel.app/api/x402-client-setup`
+
+Never send wallet secrets to AgentResolver. Never treat a 402 quote or an `eligible` verdict as authorization to spend.
