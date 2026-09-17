@@ -1,0 +1,114 @@
+
+name: NoHumans Owner Claim Once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/nohumans-owner-claim-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      LISTING_ID: 28e33786-f07
+      CLAIM_EMAIL: waxsway@gmail.com
+      EXPECTED_SHA: 373d9303229949516e4f6fa93c09cf6ba2e37950
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Wait for claim route in production
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            code="$(curl -sS -D /tmp/h -o /tmp/b -w '%{http_code}' 'https://agentresolver.vercel.app/api/x402-payment-preflight' || true)"
+            sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/h)"
+            echo "attempt=$attempt http=$code deployed_sha=$sha"
+            [ "$code" = "402" ] && [ "$sha" = "$EXPECTED_SHA" ] && exit 0
+            sleep 5
+          done
+          exit 1
+
+      - name: Install and link Vercel CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Claim listing and store owner token securely
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fsS --max-time 30             -X POST "https://api.nohumans.directory/v1/listings/$LISTING_ID/claim/challenge"             -H 'content-type: application/json'             -o /tmp/challenge.json
+          challenge="$(jq -r '.challenge_token // .token // .challenge // .data.challenge_token // empty' /tmp/challenge.json)"
+          test -n "$challenge"
+          echo "::add-mask::$challenge"
+
+          vercel env rm NOHUMANS_CLAIM_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          printf '%s' "$challenge" | vercel env add NOHUMANS_CLAIM_TOKEN production --sensitive --yes --token="$VERCEL_TOKEN" >/dev/null
+
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null
+          vercel build --prod --token="$VERCEL_TOKEN" >/dev/null
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" >/dev/null
+
+          live=0
+          for attempt in {1..40}; do
+            code="$(curl -sS --max-time 20 -o /tmp/proof -w '%{http_code}' 'https://agentresolver.vercel.app/.well-known/nohumans-claim' || true)"
+            if [ "$code" = "200" ] && [ "$(cat /tmp/proof)" = "$challenge" ]; then
+              live=1
+              break
+            fi
+            sleep 3
+          done
+          test "$live" = "1"
+
+          code="$(curl -sS --max-time 30 -o /tmp/claim.json -w '%{http_code}'             -X POST "https://api.nohumans.directory/v1/listings/$LISTING_ID/claim"             -H 'content-type: application/json'             --data "$(jq -nc --arg email "$CLAIM_EMAIL" '{email:$email}')")"
+          echo "NOHUMANS_CLAIM_HTTP=$code"
+          case "$code" in 200|201|202) ;; *) jq . /tmp/claim.json; exit 1 ;; esac
+
+          owner="$(jq -r '.edit_token // .owner_token // .token // .data.edit_token // empty' /tmp/claim.json)"
+          test -n "$owner"
+          echo "::add-mask::$owner"
+
+          vercel env rm NOHUMANS_EDIT_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          printf '%s' "$owner" | vercel env add NOHUMANS_EDIT_TOKEN production --sensitive --yes --token="$VERCEL_TOKEN" >/dev/null
+
+          jq 'del(.edit_token,.owner_token,.token,.data.edit_token,.email)' /tmp/claim.json
+
+          for path in             "/v1/listings/$LISTING_ID"             "/v1/listings/$LISTING_ID/owner"             "/v1/listings/$LISTING_ID/paid-verification"             "/v1/listings/$LISTING_ID/purchase-verification"; do
+            out="$(mktemp)"
+            status="$(curl -sS --max-time 20 -o "$out" -w '%{http_code}'               -H "authorization: Bearer $owner"               -H "x-edit-token: $owner"               "https://api.nohumans.directory$path" || true)"
+            echo "SELLER_READ path=$path http=$status"
+            if [ "$status" = "200" ]; then
+              jq 'del(.edit_token,.owner_token,.token,.email)' "$out" 2>/dev/null || true
+            fi
+          done
+
+          vercel env rm NOHUMANS_CLAIM_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null
+          vercel build --prod --token="$VERCEL_TOKEN" >/dev/null
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" >/dev/null
+
+          closed=0
+          for attempt in {1..40}; do
+            code="$(curl -sS --max-time 20 -o /tmp/closed -w '%{http_code}' 'https://agentresolver.vercel.app/.well-known/nohumans-claim' || true)"
+            if [ "$code" = "404" ]; then closed=1; break; fi
+            sleep 3
+          done
+          test "$closed" = "1"
+          echo "NOHUMANS_OWNER_CLAIM_COMPLETE=true"
