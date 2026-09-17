@@ -1,0 +1,51 @@
+name: Diagnostic NoHumans Payment Audit V2
+
+on:
+  push:
+    branches:
+      - 'diag/nohumans-payment-audit-20260916'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch live NoHumans state
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== LISTING ==='
+          curl -sS --max-time 20 'https://api.nohumans.directory/v1/listings/28e33786-f07' -o /tmp/listing.json
+          cat /tmp/listing.json
+          echo
+          echo '=== VERIFY-NOW UNPAID STATE ==='
+          code="$(curl -sS --max-time 20 -D /tmp/verify.headers -o /tmp/verify.body -w '%{http_code}' -X POST 'https://api.nohumans.directory/v1/listings/28e33786-f07/verify-now?plan=single' || true)"
+          echo "VERIFY_HTTP=$code"
+          grep -Ei '^(payment-required|payment-response|x-payment-response|content-type|location):' /tmp/verify.headers || true
+          cat /tmp/verify.body || true
+          echo
+
+      - name: Scan recent Base USDC transfers
+        shell: bash
+        run: |
+          set -euo pipefail
+          rpc='https://base-rpc.publicnode.com'
+          usdc='0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+          transfer='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+          latest_hex="$(curl -sS --max-time 20 "$rpc" -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}' | jq -r .result)"
+          latest=$((latest_hex))
+          start=$((latest-1500))
+          printf -v start_hex '0x%x' "$start"
+          echo "BASE_BLOCK_WINDOW=$start_hex-$latest_hex"
+          for spec in 'NOHUMANS 0xA733875f2F7E8A2817040B5c60B63Ae07D58a1d6 3000000' 'AGENTRESOLVER 0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8 1000'; do
+            set -- $spec
+            label="$1"; addr="$2"; amount="$3"
+            addr_no0x="${addr#0x}"
+            topic_to="0x000000000000000000000000$addr_no0x"
+            jq -nc --arg from "$start_hex" --arg to "$latest_hex" --arg asset "$usdc" --arg t0 "$transfer" --arg t2 "$topic_to" '{jsonrpc:"2.0",id:1,method:"eth_getLogs",params:[{fromBlock:$from,toBlock:$to,address:$asset,topics:[$t0,null,$t2]}]}' > /tmp/rpc.json
+            curl -sS --max-time 30 "$rpc" -H 'content-type: application/json' --data-binary @/tmp/rpc.json > "/tmp/$label.json"
+            python3 -c "import json; d=json.load(open('/tmp/$label.json')); a=int('$amount'); rows=[{'tx':x['transactionHash'],'block':x['blockNumber'],'from':'0x'+x['topics'][1][-40:],'to':'0x'+x['topics'][2][-40:],'amount_atomic':int(x['data'],16)} for x in d.get('result',[]) if int(x['data'],16)==a]; print('$label'+'_EXACT_MATCHES='+json.dumps(rows,separators=(',',':')))"
+          done
