@@ -1,4 +1,4 @@
-# AgentResolver — payment authorization + capability discovery for agents
+# AgentResolver — x402 verify-before-pay + capability discovery for agents
 
 AgentResolver Guard is the repeat-use pre-payment check for autonomous x402 buyers. AgentResolver also provides free capability discovery and optional paid live verification.
 
