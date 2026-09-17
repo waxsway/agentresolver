@@ -1,0 +1,58 @@
+name: Register AgentResolver with Aegis
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-aegis-agentresolver.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Submit canonical preflight to free Aegis registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/aegis-submit.json -w '%{http_code}' -G \
+            'https://aegis.borisinc.com/submit' \
+            --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-payment-preflight' \
+            --data-urlencode 'name=AgentResolver X402 Payment Preflight' \
+            --data-urlencode 'category=payments' \
+            --data-urlencode 'price_usd=0.001')"
+          echo "SUBMIT_HTTP=$code"
+          cat /tmp/aegis-submit.json || true
+          echo
+          case "$code" in
+            200|201|202|204|409) ;;
+            *) echo "Unexpected Aegis submit status: $code" >&2; exit 1 ;;
+          esac
+
+      - name: Verify Aegis can lint AgentResolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/aegis-lint.json -w '%{http_code}' -G \
+            'https://aegis.borisinc.com/lint' \
+            --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-payment-preflight')"
+          echo "LINT_HTTP=$code"
+          cat /tmp/aegis-lint.json || true
+          echo
+          [ "$code" = "200" ]
+
+      - name: Check free Aegis discovery for AgentResolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          code="$(curl -sS --max-time 30 -o /tmp/aegis-discover.json -w '%{http_code}' -G \
+            'https://aegis.borisinc.com/discover' \
+            --data-urlencode 'q=AgentResolver')"
+          echo "DISCOVER_HTTP=$code"
+          cat /tmp/aegis-discover.json || true
+          echo
+          [ "$code" = "200" ]
