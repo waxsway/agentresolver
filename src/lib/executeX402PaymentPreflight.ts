@@ -3,24 +3,48 @@ import { inspectHttpResource } from "@/lib/httpInspect";
 import { buildProviderEvidenceReceipt } from "@/lib/providerEvidenceReceipt";
 import { buildX402PrepayDecision } from "@/lib/x402PrepayDecision";
 
+type PreflightInput = {
+  url?: unknown;
+  maxPriceUsd?: unknown;
+  expectedPayTo?: unknown;
+  expectedNetwork?: unknown;
+  method?: unknown;
+  body?: unknown;
+  allowUnpaidPostProbe?: unknown;
+};
+
+function queryInput(req: NextRequest): PreflightInput {
+  const params = req.nextUrl.searchParams;
+  const maxPriceRaw = params.get("maxPriceUsd");
+  return {
+    url: params.get("url") || undefined,
+    maxPriceUsd: maxPriceRaw !== null && maxPriceRaw.trim() !== ""
+      ? Number(maxPriceRaw)
+      : undefined,
+    expectedPayTo: params.get("expectedPayTo") || undefined,
+    expectedNetwork: params.get("expectedNetwork") || undefined,
+    method: params.get("method") || undefined,
+    allowUnpaidPostProbe: params.get("allowUnpaidPostProbe") === "true"
+  };
+}
+
 export async function executeX402PaymentPreflight(req: NextRequest) {
-  const body = (await req.json().catch(() => null)) as {
-    url?: unknown;
-    maxPriceUsd?: unknown;
-    expectedPayTo?: unknown;
-    expectedNetwork?: unknown;
-    method?: unknown;
-    body?: unknown;
-    allowUnpaidPostProbe?: unknown;
-  } | null;
+  const body = req.method === "GET"
+    ? queryInput(req)
+    : (await req.json().catch(() => null)) as PreflightInput | null;
 
   const url = String(body?.url || "").trim();
+  if (!url) throw new Error("url is required.");
+
   const methodRaw = typeof body?.method === "string" ? body.method.toUpperCase() : "GET";
   const method = methodRaw === "GET" || methodRaw === "HEAD" || methodRaw === "POST" ? methodRaw : undefined;
   if (!method) throw new Error("method must be GET, HEAD, or POST.");
 
+  const maxPriceUsd = typeof body?.maxPriceUsd === "number" && Number.isFinite(body.maxPriceUsd)
+    ? body.maxPriceUsd
+    : undefined;
   const constraints = {
-    maxPriceUsd: typeof body?.maxPriceUsd === "number" ? body.maxPriceUsd : undefined,
+    maxPriceUsd,
     expectedPayTo: typeof body?.expectedPayTo === "string" ? body.expectedPayTo.trim() : undefined,
     expectedNetwork: typeof body?.expectedNetwork === "string" ? body.expectedNetwork.trim() : undefined
   };
@@ -28,7 +52,7 @@ export async function executeX402PaymentPreflight(req: NextRequest) {
   const report = await inspectHttpResource(url, {
     ...constraints,
     method,
-    body: body?.body,
+    body: req.method === "GET" ? undefined : body?.body,
     allowUnpaidPostProbe: body?.allowUnpaidPostProbe === true
   });
   const evidenceReceipt = buildProviderEvidenceReceipt(report);
