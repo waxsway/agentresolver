@@ -18,3 +18,23 @@ test("GET canary manifest copy clearly advertises the bodyless settlement path",
   assert.ok(publisher.includes("No-body $0.001 x402 settlement test"));
   assert.match(publisher, /wallet, facilitator, USDC payment, and paid delivery/i);
 });
+
+
+test("registry-only metadata does not force an application deploy", () => {
+  const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
+  assert.match(workflow, /package-lock\.json\|server\.json\) ;;/);
+});
+
+test("PayAI Bazaar audit follows generated paid discovery surfaces", () => {
+  const workflow = readFileSync(".github/workflows/audit-payai-bazaar.yml", "utf8");
+  for (const path of [
+    "public/openapi.json",
+    "public/capabilities.json",
+    "public/integrations.json",
+    "public/.well-known/x402",
+    "public/.well-known/x402-catalog.json",
+    "public/.well-known/x402-service.json"
+  ]) {
+    assert.ok(workflow.includes(path), `missing PayAI audit trigger: ${path}`);
+  }
+});
