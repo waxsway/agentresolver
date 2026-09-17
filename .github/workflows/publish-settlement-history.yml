@@ -10,6 +10,7 @@ on:
       - ".github/workflows/publish-settlement-history.yml"
       - "scripts/extract-settlement-log-events.mjs"
       - "scripts/merge-settlement-history.mjs"
+      - "scripts/annotate-settlement-payment-rail.mjs"
 
 permissions:
   actions: write
@@ -39,8 +40,12 @@ jobs:
           node-version: "22"
           package-manager-cache: false
 
-      - name: Verify on-chain collector invariants
-        run: node scripts/merge-settlement-history.mjs --self-test
+      - name: Verify settlement collector invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/merge-settlement-history.mjs --self-test
+          node scripts/annotate-settlement-payment-rail.mjs --self-test
 
       - name: Require Vercel read credential
         shell: bash
@@ -94,6 +99,14 @@ jobs:
             --history /tmp/agentresolver-evidence-history/evidence/settlements.json \
             --logs /tmp/agentresolver-settlement-logs.jsonl \
             --output /tmp/agentresolver-evidence-history/evidence/settlements.json
+
+      - name: Attach bounded payment-rail provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/annotate-settlement-payment-rail.mjs \
+            --history /tmp/agentresolver-evidence-history/evidence/settlements.json \
+            --logs /tmp/agentresolver-settlement-logs.jsonl
 
       - name: Publish and amplify only when evidence changed
         shell: bash
