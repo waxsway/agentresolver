@@ -93,6 +93,9 @@ test("Guard rejects missing required input before issuing a payment challenge", 
 
     assert.equal(response.status, 400);
     assert.equal(response.headers.get("payment-required"), null);
+    assert.equal(response.headers.get("x-agentresolver-buyer-setup"), "https://agentresolver.vercel.app/api/x402-client-setup");
+    assert.equal(response.headers.get("x-agentresolver-payment-guard"), "https://agentresolver.vercel.app/api/payment-guard");
+    assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-buyer-setup/i);
     const body = await response.json() as any;
     assert.match(body.message, /url is required before payment/i);
     assert.equal(body.paymentRequired, false);
@@ -116,6 +119,9 @@ test("Guard rejects missing POST input before issuing a payment challenge", asyn
 
     assert.equal(response.status, 400);
     assert.equal(response.headers.get("payment-required"), null);
+    assert.equal(response.headers.get("x-agentresolver-buyer-setup"), "https://agentresolver.vercel.app/api/x402-client-setup");
+    assert.equal(response.headers.get("x-agentresolver-payment-guard"), "https://agentresolver.vercel.app/api/payment-guard");
+    assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-buyer-setup/i);
     const body = await response.json() as any;
     assert.match(body.message, /url is required before payment/i);
     assert.equal(body.paymentRequired, false);
