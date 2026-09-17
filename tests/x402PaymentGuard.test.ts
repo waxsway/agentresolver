@@ -6,7 +6,7 @@ import { buildX402PaymentGuardResult } from "../src/lib/x402PaymentGuard";
 const target = "https://merchant.example/api/pay";
 const payTo = "0x1111111111111111111111111111111111111111";
 
-function report(): HttpInspectReport {
+function report(constraints: Record<string, unknown> = { maxPriceUsd: 0.01, expectedPayTo: payTo, expectedNetwork: "eip155:8453" }): HttpInspectReport {
   const challenge = {
     x402Version: 2,
     resource: { url: target },
@@ -20,11 +20,7 @@ function report(): HttpInspectReport {
     }]
   };
   const encoded = Buffer.from(JSON.stringify(challenge), "utf8").toString("base64");
-  const x402 = assessX402Payment(402, target, encoded, {
-    maxPriceUsd: 0.01,
-    expectedPayTo: payTo,
-    expectedNetwork: "eip155:8453"
-  });
+  const x402 = assessX402Payment(402, target, encoded, constraints as any);
   return {
     url: target,
     status: 402,
@@ -89,9 +85,10 @@ test("AgentResolver Guard returns the same fail-closed decision and evidence env
 });
 
 test("AgentResolver Guard fails closed when caller expectations do not match", () => {
-  const result = buildX402PaymentGuardResult(report(), {
+  const constraints = {
     expectedPayTo: "0x2222222222222222222222222222222222222222"
-  });
+  };
+  const result = buildX402PaymentGuardResult(report(constraints), constraints);
 
   assert.equal(result.guard.decision, "blocked");
   assert.equal(result.guard.eligibleForCallerAuthorization, false);
