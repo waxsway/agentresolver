@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { NextRequest } from "next/server";
-import { GET } from "../src/app/api/x402-payment-preflight/route";
-import { GET as GUARD_GET } from "../src/app/api/payment-guard/route";
+import { GET, POST } from "../src/app/api/x402-payment-preflight/route";
+import { GET as GUARD_GET, POST as GUARD_POST } from "../src/app/api/payment-guard/route";
 
 test("x402 payment preflight supports a simple paid GET challenge", async () => {
   const target = "https://example.com/api";
@@ -89,6 +89,24 @@ test("Guard rejects missing required input before issuing a payment challenge", 
     const response = await handler(new NextRequest(`https://agentresolver.vercel.app${path}`, {
       method: "GET",
       headers: { "user-agent": "agentresolver-test" }
+    }));
+
+    assert.equal(response.status, 400);
+    assert.equal(response.headers.get("payment-required"), null);
+    assert.match(await response.text(), /url is required before payment/i);
+  }
+});
+
+
+test("Guard rejects missing POST input before issuing a payment challenge", async () => {
+  for (const [path, handler] of [
+    ["/api/x402-payment-preflight", POST],
+    ["/api/payment-guard", GUARD_POST]
+  ] as const) {
+    const response = await handler(new NextRequest(`https://agentresolver.vercel.app${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "user-agent": "agentresolver-test" },
+      body: JSON.stringify({})
     }));
 
     assert.equal(response.status, 400);

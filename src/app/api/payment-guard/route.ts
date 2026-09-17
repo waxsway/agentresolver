@@ -10,14 +10,21 @@ const route = createDeterministicPaidRoute(
   { paidGet: true, endpoint: "/api/payment-guard" }
 );
 
-export const POST = route.POST;
+function invalidInput() {
+  return NextResponse.json(
+    { error: "INVALID_INPUT", message: "url is required before payment." },
+    { status: 400, headers: { "cache-control": "no-store", "access-control-allow-origin": "*" } }
+  );
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.clone().json().catch(() => null) as { url?: unknown } | null;
+  if (typeof body?.url !== "string" || !body.url.trim()) return invalidInput();
+  return route.POST(req);
+}
+
 export async function GET(req: NextRequest) {
-  if (!req.nextUrl.searchParams.get("url")?.trim()) {
-    return NextResponse.json(
-      { error: "INVALID_INPUT", message: "url is required before payment." },
-      { status: 400, headers: { "cache-control": "no-store", "access-control-allow-origin": "*" } }
-    );
-  }
+  if (!req.nextUrl.searchParams.get("url")?.trim()) return invalidInput();
   return route.GET(req);
 }
 export const OPTIONS = route.OPTIONS;
