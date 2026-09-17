@@ -59,3 +59,57 @@ export function x402RuntimeDiscoveryOutput(capabilityId: PaidCapabilityId) {
     }
   } as const;
 }
+
+
+export function x402RuntimeDiscoveryInput(capabilityId: PaidCapabilityId) {
+  if (capabilityId !== "x402-payment-preflight") return null;
+
+  return {
+    example: {
+      url: "https://example.com/api",
+      method: "GET",
+      maxPriceUsd: 0.01
+    },
+    schema: {
+      type: "object",
+      required: ["url"],
+      additionalProperties: false,
+      properties: {
+        url: {
+          type: "string",
+          pattern: "^https://",
+          maxLength: 500,
+          description: "Public HTTPS x402 endpoint to inspect before payment."
+        },
+        maxPriceUsd: {
+          type: "number",
+          minimum: 0,
+          maximum: 1000,
+          description: "Optional caller maximum acceptable target price in USD."
+        },
+        expectedPayTo: {
+          type: "string",
+          minLength: 1,
+          maxLength: 128,
+          description: "Optional expected target payment recipient; mismatch fails closed."
+        },
+        expectedNetwork: {
+          type: "string",
+          maxLength: 128,
+          description: "Optional expected CAIP-2 target network, for example eip155:8453."
+        },
+        method: {
+          type: "string",
+          enum: ["GET", "HEAD", "POST"],
+          default: "GET",
+          description: "Bounded target probe method."
+        },
+        allowUnpaidPostProbe: {
+          type: "boolean",
+          default: false,
+          description: "Explicit opt-in for an unpaid POST probe; false by default."
+        }
+      }
+    }
+  } as const;
+}
