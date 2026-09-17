@@ -80,7 +80,7 @@ postOutput.schema = clone(X402_PING_OUTPUT_SCHEMA);
 
 const getOperation = clone(postOperation);
 getOperation.operationId = "x402SettlementPingGet";
-getOperation.summary = "x402 Settlement Test — Wallet & Facilitator Canary (GET)";
+getOperation.summary = `${postOperation.summary} (GET)`;
 getOperation.description = "Price: $0.001 USDC on Base or Solana via x402. No-body settlement test for funded agents to verify wallet, facilitator, USDC payment, and paid delivery end-to-end before larger purchases. Returns a timestamped pong plus exact machine-readable next paid actions only after successful settlement.";
 delete getOperation.requestBody;
 getOperation["x-agentresolver-product"] = {
