@@ -49,7 +49,7 @@ jobs:
             .deployment.sourceCommitUrl == ("https://github.com/waxsway/agentresolver/commit/" + .deployment.commitSha)
           ' /tmp/trust.json >/dev/null
 
-          code="$(curl -sS -D /tmp/preflight.headers -o /tmp/preflight.json -w '%{http_code}' "$BASE_URL/api/x402-payment-preflight")"
+          code="$(curl -sS -D /tmp/preflight.headers -o /tmp/preflight.json -w '%{http_code}' "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453")"
           test "$code" = "402"
           grep -Fi 'x-agentresolver-contract-version: 1' /tmp/preflight.headers >/dev/null
           grep -Fi 'x-agentresolver-request-id:' /tmp/preflight.headers >/dev/null
@@ -147,7 +147,7 @@ jobs:
             local wallet="$2"
             local out="/tmp/payai-$label.json"
             local code
-            code="$(curl -sS -o "$out" -w '%{http_code}' --get               'https://facilitator.payai.network/discovery/resources'               --data-urlencode 'type=http'               --data-urlencode 'limit=1000'               --data-urlencode "payTo=$wallet")"
+            code="$(curl -sS -o "$out" -w '%{http_code}' --get               'https://facilitator.payai.network/discovery/resources'               --data-urlencode 'type=http'               --data-urlencode 'limit=100'               --data-urlencode "payTo=$wallet")"
             if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
               count="$(jq --arg origin "$ORIGIN" '[.items[]? | select((.resource // "") | startswith($origin))] | length' "$out")"
               echo "PayAI $label AgentResolver resources: $count"
