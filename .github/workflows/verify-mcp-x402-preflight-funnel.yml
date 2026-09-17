@@ -52,6 +52,11 @@ jobs:
             .authorizationBoundary.agentResolverReceivesSeedPhrase == false and
             .authorizationBoundary.agentResolverAuthorizesSpend == false and
             .agentResolver.paymentGuard == "https://agentresolver.vercel.app/api/payment-guard" and
+            .agentResolver.paymentGuardRequest.method == "GET" and
+            .agentResolver.paymentGuardRequest.priceUsd == 0.001 and
+            .agentResolver.paymentGuardRequest.requiredQuery == ["url"] and
+            (.agentResolver.paymentGuardRequest.optionalQuery | index("expectedPayTo")) != null and
+            .agentResolver.paymentGuardRequest.repeatUse == "before_each_autonomous_x402_spend" and
             (.recommendedSpendLoop | any(test("before each autonomous spend"; "i")))
           ' /tmp/x402-client-setup.json >/dev/null
 
