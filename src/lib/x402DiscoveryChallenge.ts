@@ -9,12 +9,20 @@ import { X402_NETWORK, X402_PAY_TO, X402_SOLANA_ASSET, X402_SOLANA_FEE_PAYER, X4
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 export type DiscoveryCapability = PaidCapabilityId;
+export type X402DiscoveryChallengeOptions = Readonly<{ endpoint?: string }>;
 
-export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
+export function x402DiscoveryChallenge(
+  capabilityId: DiscoveryCapability,
+  options: X402DiscoveryChallengeOptions = {}
+) {
   const config = getPaidCapability(capabilityId);
+  const endpoint = options.endpoint?.trim() || config.endpoint;
+  if (!endpoint.startsWith("/api/")) {
+    throw new Error("Discovery endpoint override must start with /api/.");
+  }
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
   const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
-  const resourceUrl = `https://agentresolver.vercel.app${config.endpoint}`;
+  const resourceUrl = `https://agentresolver.vercel.app${endpoint}`;
   const wireMetadata = x402WireResourceMetadata(config);
   const discoveryOutput = capabilityId === "x402-payment-preflight"
     ? {

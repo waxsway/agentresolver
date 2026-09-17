@@ -5,7 +5,8 @@ export const dynamic = "force-dynamic";
 
 const route = createDeterministicPaidRoute(
   "x402-payment-preflight",
-  executeX402PaymentPreflight
+  executeX402PaymentPreflight,
+  { endpoint: "/api/usdc-payment-check" }
 );
 
 export const POST = route.POST;
