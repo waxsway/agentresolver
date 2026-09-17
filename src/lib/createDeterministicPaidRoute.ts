@@ -10,8 +10,7 @@ import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities
 import { logPaidCapabilityAttempt, logPaidRetryRejection, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
-import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
-import { X402_PING_OUTPUT_EXAMPLE, X402_PING_OUTPUT_SCHEMA } from "@/lib/x402PingDiscovery";
+import { x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
 import { X402_BUYER_SETUP_URL } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
@@ -308,23 +307,7 @@ export function createDeterministicPaidRoute(
       }));
     }
 
-    const discoveryOutput = capabilityId === "x402-payment-preflight"
-      ? {
-          example: X402_PREFLIGHT_OUTPUT_EXAMPLE,
-          schema: X402_PREFLIGHT_OUTPUT_SCHEMA
-        }
-      : capabilityId === "x402-ping"
-        ? {
-            example: X402_PING_OUTPUT_EXAMPLE,
-            schema: X402_PING_OUTPUT_SCHEMA
-          }
-        : {
-            example: {},
-            schema: {
-              type: "object",
-              additionalProperties: true
-            }
-          };
+    const discoveryOutput = x402RuntimeDiscoveryOutput(capabilityId);
 
     const discoveryExtension = capabilityId === "x402-ping" && options.paidGet
       ? declareDiscoveryExtension({
