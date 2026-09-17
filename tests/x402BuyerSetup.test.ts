@@ -85,6 +85,21 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
       line.includes("callerOwnedSigner")
     )
   );
+  assert.equal(setup.clients.http.axios.package, "@x402/axios");
+  assert.equal(setup.clients.http.axios.wrapper, "wrapAxiosWithPayment");
+  assert.equal(setup.clients.http.axios.client, "x402Client");
+  assert.match(setup.clients.http.axios.installCommand, /@x402\/axios/);
+  assert.ok(
+    setup.clients.http.axios.baseEvmQuickstart.some((line) =>
+      line.includes("wrapAxiosWithPayment")
+    )
+  );
+  assert.ok(
+    setup.clients.http.axios.baseEvmQuickstart.some((line) =>
+      line.includes("callerOwnedSigner")
+    )
+  );
+  assert.match(setup.clients.http.axios.authorizationRule, /caller-owned policy/i);
   assert.equal(setup.clients.http.python.package, "x402");
   assert.equal(setup.clients.http.python.client, "x402HttpxClient");
   assert.match(setup.clients.http.python.installCommand, /pip install x402/);
@@ -105,6 +120,7 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   );
   const quickstartText = [
     ...setup.clients.http.typescript.baseEvmQuickstart,
+    ...setup.clients.http.axios.baseEvmQuickstart,
     ...setup.clients.http.python.baseEvmQuickstart,
     ...setup.clients.mcp.typescript.baseEvmQuickstart
   ].join("\n");
