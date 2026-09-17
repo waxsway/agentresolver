@@ -121,6 +121,24 @@ export function x402BuyerSetup() {
           "Apply caller-owned payment selection and spend policy before signing.",
           "Send the original paid request; the x402 wrapper handles PAYMENT-REQUIRED and the authorized PAYMENT-SIGNATURE retry."
         ]
+      },
+      coinbaseAgentKit: {
+        package: "@coinbase/agentkit",
+        x402Actions: {
+          discover: "discover_x402_services",
+          challenge: "make_http_request",
+          authorizedRetry: "retry_http_request_with_x402",
+          automaticPayment: "make_http_request_with_x402"
+        },
+        paymentGuardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+        behavior: [
+          "Use make_http_request on the exact target first so its x402 terms are visible before any payment.",
+          "Build the AgentResolver Guard URL with the encoded target URL and caller-owned constraints, then use make_http_request on Guard to receive its separate $0.001 challenge without paying.",
+          "Only after the caller's own policy authorizes the $0.001 Guard spend, use retry_http_request_with_x402 to pay Guard and obtain the eligible/blocked evidence.",
+          "Require decision === eligible and re-check amount, asset, network, payTo and resource binding against caller policy.",
+          "Only after separate caller authorization for the target amount, use retry_http_request_with_x402 on the original target challenge.",
+          "Do not use make_http_request_with_x402 on an unfamiliar target before Guard and caller authorization because it combines challenge handling and payment."
+        ]
       }
     },
     recommendedSpendLoop: [
@@ -148,7 +166,8 @@ export function x402BuyerSetup() {
     officialReferences: {
       mcpGuide: "https://github.com/x402-foundation/x402/blob/main/docs/guides/mcp-server-with-x402.md",
       bazaar: "https://github.com/x402-foundation/x402/blob/main/docs/extensions/bazaar.mdx",
-      protocol: "https://github.com/x402-foundation/x402"
+      protocol: "https://github.com/x402-foundation/x402",
+      coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md"
     }
   } as const;
 }
