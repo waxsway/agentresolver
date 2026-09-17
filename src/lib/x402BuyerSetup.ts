@@ -17,7 +17,8 @@ export function x402BuyerSetup() {
       mcp: "https://agentresolver.vercel.app/mcp",
       paidManifest: "https://agentresolver.vercel.app/.well-known/x402",
       buyerSetup: X402_BUYER_SETUP_URL,
-      canonicalPreflight: "https://agentresolver.vercel.app/api/x402-payment-preflight"
+      canonicalPreflight: "https://agentresolver.vercel.app/api/x402-payment-preflight",
+      paymentGuard: "https://agentresolver.vercel.app/api/payment-guard"
     },
     payment: {
       protocol: "x402",
@@ -68,6 +69,13 @@ export function x402BuyerSetup() {
         ]
       }
     },
+    recommendedSpendLoop: [
+      "Receive the target service x402 challenge without signing it.",
+      "Run AgentResolver Guard against the exact target endpoint.",
+      "Require guard.decision === eligible and validate the returned exact targetPayment terms against caller policy.",
+      "Only then may the caller-owned wallet independently authorize and sign the target payment.",
+      "Repeat the Guard check before each autonomous spend because payment terms can change."
+    ],
     recommendedPolicyChecks: [
       "maximum amount and asset",
       "expected network and exact scheme",

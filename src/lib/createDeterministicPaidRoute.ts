@@ -309,7 +309,7 @@ export function createDeterministicPaidRoute(
 
     const discoveryOutput = x402RuntimeDiscoveryOutput(capabilityId);
 
-    const discoveryExtension = capabilityId === "x402-ping" && options.paidGet
+    const discoveryExtension = options.paidGet
       ? declareDiscoveryExtension({
           output: discoveryOutput
         })

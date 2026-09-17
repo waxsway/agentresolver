@@ -5,6 +5,7 @@ const PING_ID = "x402-ping";
 const PING_ENDPOINT = "/api/x402-ping";
 const PREFLIGHT_ID = "x402-payment-preflight";
 const PREFLIGHT_ENDPOINT = "/api/x402-payment-preflight";
+const GUARD_ENDPOINT = "/api/payment-guard";
 const X402_MANIFEST_PATHS = [
   "public/.well-known/x402",
   "public/.well-known/x402.json"
@@ -93,6 +94,9 @@ for (const path of X402_MANIFEST_PATHS) {
   if (!preflightService) throw new Error(`${PREFLIGHT_ID} service is missing from ${path}.`);
   markGetFirst(preflightService);
   preflightService.queryExample = preflightQueryExample;
+  preflightService.brandName = "AgentResolver Guard";
+  preflightService.aliases = [`${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`];
+  preflightService.repeatUse = "before_every_autonomous_x402_spend";
 
   const preflightPost = manifest.resources?.find(
     (item: any) => item.resource === `POST ${PREFLIGHT_ENDPOINT}`
@@ -101,22 +105,25 @@ for (const path of X402_MANIFEST_PATHS) {
 
   const preflightGet = clone(preflightPost);
   preflightGet.id = "x402-payment-preflight-get";
-  preflightGet.name = "X402 Payment Preflight — GET-first";
+  preflightGet.name = "AgentResolver Guard — GET-first payment authorization";
   preflightGet.method = "GET";
   preflightGet.methods = ["GET", "POST"];
   preflightGet.preferredMethod = "GET";
   preflightGet.resource = `GET ${PREFLIGHT_ENDPOINT}`;
-  preflightGet.description = "GET-first $0.001 x402 transaction-path gate for autonomous buyers. Supply the target endpoint and optional safety assertions as query parameters; AgentResolver returns a fail-closed eligible/blocked decision and observed payment evidence after successful settlement.";
+  preflightGet.description = "AgentResolver Guard: GET-first $0.001 x402 transaction-path authorization gate for autonomous buyers. Run immediately before each target x402 spend. Supply the target endpoint and optional safety assertions as query parameters; AgentResolver returns a fail-closed eligible/blocked decision and observed payment evidence after successful settlement.";
   preflightGet.inputTransport = "query";
   preflightGet.queryParameters = preflightQueryParameters;
   preflightGet.examples = [preflightQueryExample];
+  preflightGet.brandName = "AgentResolver Guard";
+  preflightGet.aliases = [`${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`];
+  preflightGet.repeatUse = "before_every_autonomous_x402_spend";
 
   manifest.resources = [
     ...manifest.resources.filter((item: any) => item.resource !== `GET ${PREFLIGHT_ENDPOINT}`),
     preflightGet
   ];
 
-  manifest.instructions = "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. A successful canary returns exact next paid actions: POST /api/verified-resolve ($0.02) for one missing capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Before authorizing a separate target x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint> for $0.001 USDC; POST /api/x402-payment-preflight remains supported for body-bearing workflows. Exact-intent preflight aliases remain POST-compatible. POST /api/resolve remains available for free capability discovery. A 402 is a quote, never spending authorization.";
+  manifest.instructions = "Use AgentResolver Guard immediately before every autonomous x402 spend: GET /api/x402-payment-preflight?url=<https-endpoint> costs $0.001 USDC and returns a fail-closed eligible/blocked decision, exact target payment terms, reason codes and evidence fingerprints. POST remains supported for body-bearing workflows. For the cheapest end-to-end paid integration check, GET /api/x402-ping costs $0.001 USDC; successful canaries hand off to POST /api/verified-resolve ($0.02) or POST /api/batch-verified-resolve ($0.05). POST /api/resolve remains free for discovery. A 402 is a quote, never spending authorization.";
 
   writeJson(path, manifest);
 }
@@ -126,7 +133,12 @@ for (const id of [PING_ID, PREFLIGHT_ID]) {
   const capability = capabilities.capabilities?.find((item: any) => item.id === id);
   if (!capability) throw new Error(`${id} is missing from capabilities.json.`);
   markGetFirst(capability);
-  if (id === PREFLIGHT_ID) capability.queryExample = preflightQueryExample;
+  if (id === PREFLIGHT_ID) {
+    capability.queryExample = preflightQueryExample;
+    capability.brandName = "AgentResolver Guard";
+    capability.aliases = [GUARD_ENDPOINT];
+    capability.repeatUse = "before_every_autonomous_x402_spend";
+  }
 }
 writeJson("public/capabilities.json", capabilities);
 
@@ -138,6 +150,9 @@ for (const id of [PING_ID, PREFLIGHT_ID]) {
   if (id === PREFLIGHT_ID) {
     integration.queryExample = preflightQueryExample;
     integration.postBodyExample = integration.bodyExample;
+    integration.brandName = "AgentResolver Guard";
+    integration.aliases = [`${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`];
+    integration.repeatUse = "before_every_autonomous_x402_spend";
   }
 }
 writeJson("public/integrations.json", integrations);
@@ -146,7 +161,7 @@ const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
   description: "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. Start with GET /api/x402-ping for the lowest-friction $0.001 USDC end-to-end settlement canary. A successful canary exposes POST /api/verified-resolve ($0.02) for one missing capability decision and POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Immediately before authorizing a separate x402 purchase, prefer GET /api/x402-payment-preflight with the target endpoint and optional safety assertions in query parameters; POST remains available for body-bearing workflows. POST /api/resolve remains available for free capability discovery. The preflight checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision and reusable evidence fingerprints.",
-  "x-guidance": "Funded agents should prefer GET for AgentResolver's two lowest-friction paid trust checks. Use GET /api/x402-ping for a $0.001 USDC end-to-end wallet/facilitator/settlement test. After a successful canary, use POST /api/verified-resolve ($0.02) for one missing capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Before authorizing a target x402 purchase, use GET /api/x402-payment-preflight?url=<https-endpoint> for a $0.001 USDC fail-closed transaction-path gate; optional query parameters are maxPriceUsd, expectedPayTo, expectedNetwork, method and allowUnpaidPostProbe. POST /api/x402-payment-preflight remains backward compatible when a request body is needed. POST /api/resolve remains available for free capability discovery. A 402 is a quote, not spending authorization."
+  "x-guidance": "Funded agents should prefer GET for AgentResolver's two lowest-friction paid trust checks. Use GET /api/x402-ping for a $0.001 USDC end-to-end wallet/facilitator/settlement test. After a successful canary, use POST /api/verified-resolve ($0.02) for one missing capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Before authorizing a target x402 purchase, use AgentResolver Guard via GET /api/payment-guard?url=<https-endpoint> or the canonical GET /api/x402-payment-preflight?url=<https-endpoint> for a $0.001 USDC fail-closed transaction-path gate. POST /api/x402-payment-preflight remains backward compatible for body-bearing workflows. POST /api/resolve remains available for free capability discovery. A 402 is a quote, not spending authorization."
 };
 
 const pingPath = openapi.paths?.[PING_ENDPOINT];
@@ -166,8 +181,8 @@ if (!preflightPost) throw new Error("x402-payment-preflight POST is missing from
 
 const preflightGet = clone(preflightPost);
 preflightGet.operationId = "x402PaymentPreflightPayToVerificationGet";
-preflightGet.summary = "X402 Payment Preflight — GET-first";
-preflightGet.description = "Price: $0.001 USDC on Base or Solana via x402. Preferred low-friction transaction-path gate for autonomous buyers. Provide the target x402 endpoint and optional safety assertions as query parameters; AgentResolver returns a fail-closed eligible/blocked decision plus observed target payment terms and evidence after successful settlement.";
+preflightGet.summary = "AgentResolver Guard — verify before every x402 payment";
+preflightGet.description = "AgentResolver Guard. Price: $0.001 USDC on Base or Solana via x402. Preferred low-friction transaction-path authorization gate for autonomous buyers. Run immediately before each target x402 spend; provide the target endpoint and optional safety assertions as query parameters. Returns a fail-closed eligible/blocked decision plus observed target payment terms and evidence after successful settlement.";
 delete preflightGet.requestBody;
 preflightGet.parameters = preflightQueryParameters;
 preflightGet["x-agentresolver-product"] = {
@@ -185,5 +200,20 @@ preflightPost["x-agentresolver-product"] = {
 };
 preflightPath.get = preflightGet;
 preflightPath["x-agentresolver-preferred-method"] = "GET";
+
+const guardPath = clone(preflightPath);
+guardPath["x-agentresolver-alias-of"] = PREFLIGHT_ENDPOINT;
+guardPath["x-agentresolver-preferred-method"] = "GET";
+if (guardPath.get) {
+  guardPath.get.operationId = "agentResolverPaymentGuardGet";
+  guardPath.get.summary = "AgentResolver Guard — verify before every x402 payment";
+  guardPath.get["x-agentresolver-alias-of"] = PREFLIGHT_ENDPOINT;
+}
+if (guardPath.post) {
+  guardPath.post.operationId = "agentResolverPaymentGuardPost";
+  guardPath.post.summary = "AgentResolver Guard — body-bearing compatibility route";
+  guardPath.post["x-agentresolver-alias-of"] = PREFLIGHT_ENDPOINT;
+}
+openapi.paths[GUARD_ENDPOINT] = guardPath;
 
 writeJson("public/openapi.json", openapi);
