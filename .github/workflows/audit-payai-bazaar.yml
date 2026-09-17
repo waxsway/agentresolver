@@ -48,7 +48,7 @@ jobs:
               os.environ["BASE_PAY_TO"].lower(),
               os.environ["SOLANA_PAY_TO"].lower(),
           }
-          limit = 1000
+          limit = 100
           offset = 0
           total = None
           matches = []
