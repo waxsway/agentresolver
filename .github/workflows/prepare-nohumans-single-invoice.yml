@@ -12,68 +12,34 @@ permissions:
 jobs:
   invoice:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    env:
-      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
-      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      LISTING_ID: 28e33786-f07
+    timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v5
-
-      - name: Install Vercel CLI and link project
+      - name: Request public $3 single-plan x402 challenge
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null
-          rm -rf .vercel
-          mkdir -p .vercel
-          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
-
-      - name: Pull private NoHumans owner token
-        shell: bash
-        run: |
-          set -euo pipefail
-          vercel env pull /tmp/prod.env --environment=production --yes --token="$VERCEL_TOKEN" >/dev/null
-          set +x
-          set -a
-          source /tmp/prod.env
-          set +a
-          test -n "${NOHUMANS_OWNER_TOKEN:-}"
-          echo "::add-mask::$NOHUMANS_OWNER_TOKEN"
-          printf '%s' "$NOHUMANS_OWNER_TOKEN" > /tmp/nohumans-owner-token
-          rm -f /tmp/prod.env
-
-      - name: Request exact $3 single-plan x402 challenge
-        shell: bash
-        run: |
-          set -euo pipefail
-          token="$(cat /tmp/nohumans-owner-token)"
-          rm -f /tmp/nohumans-owner-token
           code="$(curl -sS --max-time 30 -D /tmp/headers.txt -o /tmp/body.json -w '%{http_code}' \
-            -X POST "https://api.nohumans.directory/v1/listings/$LISTING_ID/verify-now?plan=single" \
-            -H "x-claim-token: $token")"
+            -X POST 'https://api.nohumans.directory/v1/listings/28e33786-f07/verify-now?plan=single')"
           echo "NOHUMANS_INVOICE_HTTP=$code"
           test "$code" = "402"
+
           echo '=== response body ==='
           jq . /tmp/body.json 2>/dev/null || cat /tmp/body.json
+
           echo '=== selected headers ==='
-          awk 'BEGIN{IGNORECASE=1} /^(payment-required|content-type|x402-version|x-payment|www-authenticate):/ {print}' /tmp/headers.txt
+          awk 'BEGIN{IGNORECASE=1} /^(payment-required|content-type|x402-version|www-authenticate):/ {print}' /tmp/headers.txt
+
           python3 - <<'PY'
-          import base64, json, re
-          headers=open('/tmp/headers.txt',errors='ignore').read().splitlines()
+          import base64, json
           value=None
-          for line in headers:
+          for line in open('/tmp/headers.txt', errors='ignore'):
               if line.lower().startswith('payment-required:'):
                   value=line.split(':',1)[1].strip()
                   break
-          if value:
-              pad='='*((4-len(value)%4)%4)
-              try:
-                  decoded=base64.b64decode(value+pad).decode()
-                  obj=json.loads(decoded)
-                  print('=== decoded payment-required ===')
-                  print(json.dumps(obj,indent=2))
-              except Exception as e:
-                  print('PAYMENT_REQUIRED_DECODE_ERROR='+str(e))
+          if not value:
+              raise SystemExit('payment-required header missing')
+          pad='='*((4-len(value)%4)%4)
+          obj=json.loads(base64.b64decode(value+pad).decode())
+          print('=== decoded payment-required ===')
+          print(json.dumps(obj,indent=2))
           PY
