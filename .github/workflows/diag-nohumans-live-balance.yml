@@ -1,0 +1,35 @@
+name: Diagnostic NoHumans Live Payer Balance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-nohumans-live-balance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read exact Base USDC balance for rejected payer
+        shell: bash
+        run: |
+          set -euo pipefail
+          RPC='https://mainnet.base.org'
+          USDC='0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+          PAYER='66e19457ffc829e8ed74706f5c1399c6f6466de8'
+          DATA="0x70a08231000000000000000000000000${PAYER}"
+          BODY=$(printf '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"%s","data":"%s"},"latest"],"id":1}' "$USDC" "$DATA")
+          OUT=$(curl -fsS --retry 3 -H 'content-type: application/json' --data "$BODY" "$RPC")
+          echo "$OUT"
+          HEX=$(printf '%s' "$OUT" | jq -er '.result')
+          python3 - "$HEX" <<'PY'
+          import sys
+          n=int(sys.argv[1],16)
+          print(f'USDC_ATOMIC={n}')
+          print(f'USDC={n/1_000_000:.6f}')
+          print(f'CAN_PAY_3_USDC={str(n >= 3_000_000).lower()}')
+          PY
