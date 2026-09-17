@@ -14,64 +14,72 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Find AgentResolver resources and stats
+      - name: Trace Bazaar position and first organic payer
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import json, urllib.parse, urllib.request
 
+          def get_json(url, method='GET', body=None, headers=None):
+              req=urllib.request.Request(url, method=method, headers=headers or {})
+              if body is not None:
+                  req.data=json.dumps(body).encode()
+                  req.add_header('content-type','application/json')
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  return json.load(r)
+
           base='https://facilitator.payai.network'
           needle='agentresolver.vercel.app'
-          matches=[]
-          offset=0
-          for page in range(40):
-              url=f'{base}/discovery/resources?limit=100&offset={offset}'
-              with urllib.request.urlopen(url, timeout=20) as r:
-                  data=json.load(r)
-              if isinstance(data,list):
-                  rows=data
-                  total=None
-              else:
-                  rows=data.get('resources') or data.get('items') or data.get('data') or []
-                  pag=data.get('pagination') or {}
-                  total=pag.get('total') or data.get('total')
-              for row in rows:
-                  if needle in json.dumps(row, sort_keys=True).lower():
-                      matches.append(row)
-              print(json.dumps({'page':page+1,'offset':offset,'rows':len(rows),'total':total,'matchesSoFar':len(matches)}, separators=(',',':')))
-              if not rows or len(rows)<100:
+          page=get_json(f'{base}/discovery/resources?limit=100&offset=0')
+          rows=page.get('resources') or page.get('items') or page.get('data') or (page if isinstance(page,list) else [])
+          print('=== BAZAAR_PAGE1_POSITION ===')
+          for i,row in enumerate(rows):
+              if needle in json.dumps(row, sort_keys=True).lower():
+                  print(json.dumps({'rankOnDefaultPage':i+1,'entry':row}, indent=2, sort_keys=True))
+                  lo=max(0,i-3); hi=min(len(rows),i+4)
+                  print('=== NEIGHBORS ===')
+                  for j in range(lo,hi):
+                      r=rows[j]
+                      print(json.dumps({'rank':j+1,'resource':r.get('resource'),'lastUpdated':r.get('lastUpdated'),'description':r.get('description') or (r.get('metadata') or {}).get('description'),'accepts':r.get('accepts')}, separators=(',',':')))
                   break
-              offset += len(rows)
-          print('=== AGENTRESOLVER_MATCHES ===')
-          print(json.dumps(matches, indent=2, sort_keys=True))
+          else:
+              print(json.dumps({'rankOnDefaultPage':None,'found':False}))
 
-          def candidate_resource(row):
-              for key in ('resource','resourceUrl','url','endpoint'):
-                  v=row.get(key) if isinstance(row,dict) else None
-                  if isinstance(v,str) and needle in v.lower(): return v
-              if isinstance(row,dict):
-                  req=row.get('resource')
-                  if isinstance(req,dict):
-                      v=req.get('url')
-                      if isinstance(v,str) and needle in v.lower(): return v
-              return None
+          tx='0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72'
+          payto='0x66e19457ffc829e8ed74706f5c1399c6f6466de8'
+          usdc='0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+          rpc='https://mainnet.base.org'
+          receipt=get_json(rpc, method='POST', body={'jsonrpc':'2.0','id':1,'method':'eth_getTransactionReceipt','params':[tx]})
+          result=receipt.get('result') or {}
+          transfers=[]
+          transfer_topic='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+          for log in result.get('logs') or []:
+              if (log.get('address') or '').lower()!=usdc: continue
+              topics=log.get('topics') or []
+              if len(topics)<3 or topics[0].lower()!=transfer_topic: continue
+              frm='0x'+topics[1][-40:]
+              to='0x'+topics[2][-40:]
+              amount=int(log.get('data','0x0'),16)
+              transfers.append({'from':frm,'to':to,'amountAtomic':amount,'toIsAgentResolver':to.lower()==payto})
+          print('=== FIRST_TX_USDC_TRANSFERS ===')
+          print(json.dumps(transfers, indent=2))
+          payer=next((x['from'] for x in transfers if x['toIsAgentResolver'] and x['amountAtomic']==1000), None)
+          print('FIRST_ORGANIC_PAYER='+str(payer))
 
-          seen=set()
-          for row in matches:
-              resource=candidate_resource(row)
-              if not resource or resource in seen: continue
-              seen.add(resource)
-              encoded=urllib.parse.quote(resource, safe='')
-              url=f'{base}/discovery/resources/{encoded}/stats'
-              print('=== RESOURCE_STATS',resource,'===')
-              try:
-                  with urllib.request.urlopen(url, timeout=20) as r:
-                      print(json.dumps(json.load(r), indent=2, sort_keys=True))
-              except Exception as e:
-                  print(json.dumps({'error':str(e),'url':url}))
-
-          print('=== GLOBAL_STATS ===')
-          with urllib.request.urlopen(f'{base}/discovery/stats', timeout=20) as r:
-              print(json.dumps(json.load(r), indent=2, sort_keys=True))
+          if payer:
+              encoded=urllib.parse.quote(payer, safe='')
+              for label,url in [
+                  ('BLOCKSCOUT_ADDRESS', f'https://base.blockscout.com/api/v2/addresses/{encoded}'),
+                  ('BLOCKSCOUT_TX', f'https://base.blockscout.com/api/v2/transactions/{tx}'),
+                  ('BLOCKSCOUT_TRANSFERS', f'https://base.blockscout.com/api/v2/addresses/{encoded}/token-transfers?type=ERC-20')
+              ]:
+                  print('=== '+label+' ===')
+                  try:
+                      data=get_json(url)
+                      if label=='BLOCKSCOUT_TRANSFERS' and isinstance(data,dict):
+                          data={**data,'items':(data.get('items') or [])[:25]}
+                      print(json.dumps(data, indent=2, sort_keys=True)[:30000])
+                  except Exception as e:
+                      print(json.dumps({'error':str(e),'url':url}))
           PY
