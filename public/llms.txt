@@ -1,6 +1,6 @@
 # AgentResolver
 
-> AgentResolver Guard is a $0.001 USDC pre-payment authorization check for autonomous x402 buyers on Base or Solana. Free capability resolution is also available.
+> AgentResolver Guard is a $0.001 USDC verify-before-pay check for autonomous x402 buyers on Base or Solana. Free capability resolution is also available.
 
 ## Default payment policy
 
