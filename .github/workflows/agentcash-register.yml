@@ -30,6 +30,10 @@ jobs:
           if ! npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app/api/x402-payment-preflight; then
             echo "::warning::Canonical x402 payment preflight failed AgentCash route validation."
           fi
+          echo "=== AgentResolver Guard route check ==="
+          if ! npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app/api/payment-guard; then
+            echo "::warning::AgentResolver Guard failed AgentCash route validation."
+          fi
 
       - name: Register origin with AgentCash
         env:
@@ -38,6 +42,22 @@ jobs:
           set -euo pipefail
           mkdir -p "$HOME"
           npx -y agentcash@0.17.1 register https://agentresolver.vercel.app --yes --format json | tee /tmp/agentcash-register.json
+
+      - name: Attempt exact Guard resource registration
+        env:
+          HOME: ${{ runner.temp }}/agentcash-home
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME"
+          body="$(mktemp)"
+          if npx -y agentcash@0.17.1 register https://agentresolver.vercel.app/api/payment-guard --yes --format json > "$body" 2>&1; then
+            cat "$body"
+            echo "AGENTCASH_GUARD_DIRECT_REGISTRATION=true"
+          else
+            cat "$body"
+            echo "::notice::AgentCash CLI did not accept endpoint-only Guard registration. Origin registration remains authoritative; no runtime change or spend occurred."
+          fi
 
       - name: Verify buyer-search visibility after registration
         shell: bash
@@ -50,6 +70,10 @@ jobs:
             "payTo verification"
             "endpoint safety"
             "USDC payment check"
+            "AgentResolver Guard"
+            "payment authorization"
+            "agent wallet firewall"
+            "verify x402 payment before signing"
           )
           found_queries=0
           for attempt in 1 2 3; do
