@@ -32,9 +32,10 @@ test("well-known Agent Skills digest binds the exact published bytes", () => {
   assert.equal(index.skills[0].digest, `sha256:${digest}`);
 });
 
-test("global discovery headers advertise the draft Agent Skills index", () => {
+test("well-known Agent Skills are browser-readable and cacheable", () => {
   const config = readFileSync("next.config.ts", "utf8");
-  assert.match(config, /\.well-known\/agent-skills\/index\.json/);
-  assert.match(config, /rel=\\\"agent-skills\\\"/);
-  assert.match(config, /draft v0\.2\.0/i);
+  assert.match(config, /source: "\/\.well-known\/agent-skills\/:path\*"/);
+  assert.match(config, /Access-Control-Allow-Origin/);
+  assert.match(config, /value: "\*"/);
+  assert.match(config, /s-maxage=3600/);
 });
