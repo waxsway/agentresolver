@@ -38,3 +38,10 @@ test("PayAI Bazaar audit follows generated paid discovery surfaces", () => {
     assert.ok(workflow.includes(path), `missing PayAI audit trigger: ${path}`);
   }
 });
+
+
+test("PayAI Bazaar audit uses protocol-valid pagination", () => {
+  const workflow = readFileSync(".github/workflows/audit-payai-bazaar.yml", "utf8");
+  assert.match(workflow, /limit = 100\b/);
+  assert.doesNotMatch(workflow, /limit = 1000\b/);
+});
