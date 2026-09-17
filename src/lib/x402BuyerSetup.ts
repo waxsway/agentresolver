@@ -74,7 +74,7 @@ export function x402BuyerSetup() {
             "// callerOwnedSigner is supplied by the host wallet/runtime. Do not send it to AgentResolver.",
             "const client = createx402MCPClient({",
             '  name: "agentresolver-buyer",',
-            '  version: "1.0.0",'
+            '  version: "1.0.0",',
             '  schemes: [{ network: "eip155:8453", client: new ExactEvmScheme(callerOwnedSigner) }]',
             "});",
             "",
