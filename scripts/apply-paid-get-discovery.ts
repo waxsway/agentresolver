@@ -5,6 +5,7 @@ const PING_ID = "x402-ping";
 const PING_ENDPOINT = "/api/x402-ping";
 const PREFLIGHT_ID = "x402-payment-preflight";
 const PREFLIGHT_ENDPOINT = "/api/x402-payment-preflight";
+const GUARD_ENDPOINT = "/api/payment-guard";
 const X402_MANIFEST_PATHS = [
   "public/.well-known/x402",
   "public/.well-known/x402.json"
@@ -93,6 +94,9 @@ for (const path of X402_MANIFEST_PATHS) {
   if (!preflightService) throw new Error(`${PREFLIGHT_ID} service is missing from ${path}.`);
   markGetFirst(preflightService);
   preflightService.queryExample = preflightQueryExample;
+  preflightService.brandName = "AgentResolver Guard";
+  preflightService.aliases = [`${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`];
+  preflightService.repeatUse = "before_every_autonomous_x402_spend";
 
   const preflightPost = manifest.resources?.find(
     (item: any) => item.resource === `POST ${PREFLIGHT_ENDPOINT}`
@@ -110,6 +114,9 @@ for (const path of X402_MANIFEST_PATHS) {
   preflightGet.inputTransport = "query";
   preflightGet.queryParameters = preflightQueryParameters;
   preflightGet.examples = [preflightQueryExample];
+  preflightGet.brandName = "AgentResolver Guard";
+  preflightGet.aliases = [`${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`];
+  preflightGet.repeatUse = "before_every_autonomous_x402_spend";
 
   manifest.resources = [
     ...manifest.resources.filter((item: any) => item.resource !== `GET ${PREFLIGHT_ENDPOINT}`),
@@ -126,7 +133,12 @@ for (const id of [PING_ID, PREFLIGHT_ID]) {
   const capability = capabilities.capabilities?.find((item: any) => item.id === id);
   if (!capability) throw new Error(`${id} is missing from capabilities.json.`);
   markGetFirst(capability);
-  if (id === PREFLIGHT_ID) capability.queryExample = preflightQueryExample;
+  if (id === PREFLIGHT_ID) {
+    capability.queryExample = preflightQueryExample;
+    capability.brandName = "AgentResolver Guard";
+    capability.aliases = [GUARD_ENDPOINT];
+    capability.repeatUse = "before_every_autonomous_x402_spend";
+  }
 }
 writeJson("public/capabilities.json", capabilities);
 
@@ -138,6 +150,9 @@ for (const id of [PING_ID, PREFLIGHT_ID]) {
   if (id === PREFLIGHT_ID) {
     integration.queryExample = preflightQueryExample;
     integration.postBodyExample = integration.bodyExample;
+    integration.brandName = "AgentResolver Guard";
+    integration.aliases = [`${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`];
+    integration.repeatUse = "before_every_autonomous_x402_spend";
   }
 }
 writeJson("public/integrations.json", integrations);
@@ -185,5 +200,20 @@ preflightPost["x-agentresolver-product"] = {
 };
 preflightPath.get = preflightGet;
 preflightPath["x-agentresolver-preferred-method"] = "GET";
+
+const guardPath = clone(preflightPath);
+guardPath["x-agentresolver-alias-of"] = PREFLIGHT_ENDPOINT;
+guardPath["x-agentresolver-preferred-method"] = "GET";
+if (guardPath.get) {
+  guardPath.get.operationId = "agentResolverPaymentGuardGet";
+  guardPath.get.summary = "AgentResolver Guard — verify before every x402 payment";
+  guardPath.get["x-agentresolver-alias-of"] = PREFLIGHT_ENDPOINT;
+}
+if (guardPath.post) {
+  guardPath.post.operationId = "agentResolverPaymentGuardPost";
+  guardPath.post.summary = "AgentResolver Guard — body-bearing compatibility route";
+  guardPath.post["x-agentresolver-alias-of"] = PREFLIGHT_ENDPOINT;
+}
+openapi.paths[GUARD_ENDPOINT] = guardPath;
 
 writeJson("public/openapi.json", openapi);
