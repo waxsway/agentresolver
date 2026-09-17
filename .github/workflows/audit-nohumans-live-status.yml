@@ -1,0 +1,33 @@
+name: Audit NoHumans Live Listing Status
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-nohumans-live-status.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read exact AgentResolver listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 'https://nohumans.directory/v1/listings/28e33786-f07' -o /tmp/listing.json
+          jq '{id,name,status,score,probe_count,last_probed_at,paid_verified,evidence_tier,evidence_note,onchain_unique_payers_30d,observed_network,endpoint_url,price_amount,chains,updated_at}' /tmp/listing.json
+
+      - name: Read claim/recovery state without claiming
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/claim.json
+          code="$(curl -sS --max-time 30 -o "$out" -w '%{http_code}' 'https://nohumans.directory/v1/listings/28e33786-f07/claim')"
+          echo "CLAIM_HTTP=$code"
+          cat "$out"
+          echo
+          case "$code" in 200|202|409) ;; *) exit 1 ;; esac
