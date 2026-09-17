@@ -19,6 +19,11 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
     setup.agentResolver.canonicalPreflight,
     "https://agentresolver.vercel.app/api/x402-payment-preflight"
   );
+  assert.equal(
+    setup.agentResolver.paymentGuard,
+    "https://agentresolver.vercel.app/api/payment-guard"
+  );
+  assert.ok(setup.recommendedSpendLoop.some((step) => /before each autonomous spend/i.test(step)));
   assert.equal(setup.authorizationBoundary.callerControlsSigner, true);
   assert.equal(setup.authorizationBoundary.callerControlsSpendPolicy, true);
   assert.equal(setup.authorizationBoundary.agentResolverReceivesPrivateKey, false);
