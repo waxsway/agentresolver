@@ -48,6 +48,7 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | tee /tmp/openapi.json >/dev/null
           grep -F 'resolveCapability' /tmp/openapi.json >/dev/null
           grep -F 'probeMcpEndpoint' /tmp/openapi.json >/dev/null
+          grep -F 'agentResolverPaymentGuardGet' /tmp/openapi.json >/dev/null
           jq -e '
             (.info["x-guidance"] | type == "string" and length > 0) and
             (.paths["/api/resolve"].post.security == []) and
@@ -64,7 +65,11 @@ jobs:
                 (.["x-payment-info"].price.currency == "USD") and
                 (.["x-payment-info"].price.amount | type == "string" and length > 0) and
                 (.["x-payment-info"].protocols | any(has("x402"))) and
-                ((.operationId == "x402SettlementPingGet") or (.requestBody.content["application/json"].schema != null)) and
+                (
+                  (.operationId == "x402SettlementPingGet") or
+                  (.["x-agentresolver-product"].inputTransport == "query") or
+                  (.requestBody.content["application/json"].schema != null)
+                ) and
                 (.responses["200"].content["application/json"].schema != null) and
                 (.responses["200"].headers["x-agentresolver-history"] != null) and
                 (.responses["402"] != null)
@@ -222,6 +227,7 @@ jobs:
           check_402 'Slugify' '/api/slugify' '{"text":"Hello Agent World"}' 'slugify' '1000'
           check_402 'Hash & Encode' '/api/hash-encode' '{"operation":"sha256","input":"agentresolver"}' 'hash-encode' '1000'
           check_402 'X402 Payment Preflight' '/api/x402-payment-preflight' '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}' 'x402-payment-preflight' '1000'
+          check_402 'AgentResolver Guard' '/api/payment-guard' '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}' 'payment-guard' '1000'
           check_402 'HTTP Inspect' '/api/http-inspect' '{"url":"https://example.com"}' 'http-inspect' '1000'
 
           payment_required=$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-inspect-headers.txt)

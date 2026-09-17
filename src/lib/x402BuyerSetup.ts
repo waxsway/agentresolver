@@ -55,6 +55,7 @@ export function x402BuyerSetup() {
       },
       http: {
         typescript: {
+          package: "@x402/fetch",
           packages: ["@x402/core", "@x402/fetch", "@x402/evm", "@x402/svm"],
           wrapper: "wrapFetchWithPayment",
           client: "x402Client",

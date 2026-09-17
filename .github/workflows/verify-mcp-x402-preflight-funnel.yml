@@ -42,12 +42,17 @@ jobs:
             .payment.paymentIsAuthorizedByAgentResolver == false and
             .clients.mcp.typescript.package == "@x402/mcp" and
             .clients.mcp.typescript.factory == "createx402MCPClient" and
-            .clients.http.typescript.package == "@x402/fetch" and
+            (
+              .clients.http.typescript.package == "@x402/fetch" or
+              (.clients.http.typescript.packages | index("@x402/fetch")) != null
+            ) and
             .clients.http.typescript.wrapper == "wrapFetchWithPayment" and
             .authorizationBoundary.callerControlsSigner == true and
             .authorizationBoundary.agentResolverReceivesPrivateKey == false and
             .authorizationBoundary.agentResolverReceivesSeedPhrase == false and
-            .authorizationBoundary.agentResolverAuthorizesSpend == false
+            .authorizationBoundary.agentResolverAuthorizesSpend == false and
+            .agentResolver.paymentGuard == "https://agentresolver.vercel.app/api/payment-guard" and
+            (.recommendedSpendLoop | any(test("before each autonomous spend"; "i")))
           ' /tmp/x402-client-setup.json >/dev/null
 
       - name: Verify HTTP challenge advertises buyer setup without spend
@@ -121,4 +126,26 @@ jobs:
             exit 1
           fi
 
-          echo 'MCP x402 preflight funnel and buyer bootstrap verified without signing or spending.'
+          guard_request='{"jsonrpc":"2.0","id":203,"method":"tools/call","params":{"name":"payment_guard","arguments":{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}}}'
+          guard_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -o /tmp/mcp-payment-guard.out \
+            -w '%{http_code}' \
+            -X POST "$MCP_URL" \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'user-agent: AgentResolver-MCP-X402-Preflight-Funnel-Smoke/1.0' \
+            -H 'x-agentresolver-internal: 1' \
+            --data "$guard_request")
+
+          test "$guard_code" -ge 200 && test "$guard_code" -lt 300
+          grep -F 'x402Version' /tmp/mcp-payment-guard.out >/dev/null
+          grep -F '1000' /tmp/mcp-payment-guard.out >/dev/null
+          grep -F 'payment_guard' /tmp/mcp-payment-guard.out >/dev/null
+          grep -F 'agentresolver_x402_buyer_setup' /tmp/mcp-payment-guard.out >/dev/null
+          if grep -F 'latencyMs' /tmp/mcp-payment-guard.out >/dev/null; then
+            echo 'SECURITY FAILURE: unpaid payment_guard exposed paid inspection output before settlement.'
+            cat /tmp/mcp-payment-guard.out
+            exit 1
+          fi
+
+          echo 'MCP legacy preflight + AgentResolver Guard funnel verified without signing or spending.'

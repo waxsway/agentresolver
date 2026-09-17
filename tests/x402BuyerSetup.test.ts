@@ -31,6 +31,7 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.equal(setup.authorizationBoundary.agentResolverAuthorizesSpend, false);
   assert.equal(setup.clients.mcp.typescript.package, "@x402/mcp");
   assert.equal(setup.clients.mcp.typescript.factory, "createx402MCPClient");
+  assert.equal(setup.clients.http.typescript.package, "@x402/fetch");
   assert.ok(setup.clients.http.typescript.packages.includes("@x402/fetch"));
   assert.ok(setup.clients.http.typescript.packages.includes("@x402/core"));
   assert.equal(setup.clients.http.typescript.client, "x402Client");
