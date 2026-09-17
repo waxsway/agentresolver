@@ -1,0 +1,26 @@
+name: Measure NoHumans status 20260917
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/measure-nohumans-status-20260917.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read public NoHumans listing status
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body -sS --retry 2 --retry-delay 2 \
+            'https://nohumans.directory/v1/listings/28e33786-f07' \
+            -o /tmp/nohumans.json
+          jq '{id,status,score,probe_count,last_probed_at,paid_verified,evidence_tier,evidence_note,onchain_unique_payers_30d,observed_network,updated_at,created_at}' /tmp/nohumans.json
+          echo '=== raw ==='
+          cat /tmp/nohumans.json
