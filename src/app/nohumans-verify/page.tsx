@@ -107,20 +107,21 @@ async function ensureBase(provider: EthereumProvider) {
 
 function requireQueuedOutcome(parsed: Record<string, unknown>) {
   const status = parsed.status;
-  const feeTx = parsed.fee_tx;
   const requestId = parsed.request_id;
 
   if (
     status !== "queued" ||
-    typeof feeTx !== "string" ||
-    !feeTx ||
-    typeof requestId !== "string" ||
-    !requestId
+    (typeof requestId !== "string" && typeof requestId !== "number") ||
+    String(requestId).length === 0
   ) {
     throw new Error(
-      "NoHumans returned success without a queued request, fee_tx, and request_id. No additional payment attempt will be made from this page.",
+      "NoHumans returned HTTP success without a queued request ID. No additional payment attempt will be made from this page.",
     );
   }
+
+  return {
+    settlementEvidenceProvided: typeof parsed.fee_tx === "string" && parsed.fee_tx.length > 0,
+  };
 }
 
 export default function NoHumansVerificationCheckout() {
@@ -240,9 +241,13 @@ export default function NoHumansVerificationCheckout() {
         );
       }
 
-      requireQueuedOutcome(parsed);
+      const { settlementEvidenceProvided } = requireQueuedOutcome(parsed);
       setResult(attemptId ? { ...parsed, agentresolver_attempt_id: attemptId } : parsed);
-      setStatus("Payment accepted. NoHumans returned a queued verification request with settlement evidence.");
+      setStatus(
+        settlementEvidenceProvided
+          ? "Order accepted and queued. NoHumans also returned settlement evidence."
+          : "Order accepted and queued. NoHumans did not return a settlement transaction ID, so AgentResolver will not claim the $3 settlement until it is independently verified.",
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Payment failed");
     } finally {
