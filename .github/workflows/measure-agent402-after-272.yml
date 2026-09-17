@@ -1,0 +1,79 @@
+name: Measure Agent402 after 272
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/measure-agent402-after-272.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read seller snapshot and buyer rankings
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -G 'https://agent402.tools/api/index' \
+            --data-urlencode 'seller=agentresolver.vercel.app' \
+            -o /tmp/index.json
+          echo '=== SELLER SNAPSHOT ==='
+          jq '{
+            origin,
+            fetchedAt,
+            fetchedAtIso:(if .fetchedAt then (.fetchedAt / 1000 | todateiso8601) else null end),
+            health,routable,routerDispatchEligible,routerDispatchReason,
+            toolCount:((.tools // []) | length),
+            aliases:[(.tools // [])[]? | select(
+              (.route // "") == "/api/x402-transaction-path-payment-gate" or
+              (.route // "") == "/api/api-trust-security-preflight" or
+              (.route // "") == "/api/x402-preflight" or
+              (.route // "") == "/api/prepayment-authorization-gate" or
+              (.route // "") == "/api/usdc-payment-check" or
+              (.route // "") == "/api/x402-ping"
+            ) | {name,slug,route,price,priceUsd,method}]
+          }' /tmp/index.json
+
+          queries=(
+            "x402 transaction path payment gate"
+            "api trust security preflight"
+            "x402 preflight"
+            "prepayment authorization gate"
+            "x402 settlement test"
+            "USDC payment check"
+            "endpoint safety"
+          )
+          for q in "${queries[@]}"; do
+            curl -fsS -G 'https://agent402.tools/api/route' \
+              --data-urlencode "q=$q" \
+              --data-urlencode 'include=external' \
+              --data-urlencode 'network=base' \
+              --data-urlencode 'top=20' \
+              -o /tmp/route.json
+            echo "=== QUERY: $q ==="
+            jq --arg q "$q" '{
+              query:$q,
+              agentresolver:[(.results // .routes // .data // []) | to_entries[]? | select(
+                ((.value.seller // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.value.origin // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.value.host // "") | tostring | contains("agentresolver.vercel.app"))
+              ) | {
+                rank:(.key+1),
+                seller:.value.seller,
+                name:.value.name,
+                slug:.value.slug,
+                route:.value.route,
+                priceUsd:.value.priceUsd,
+                score:.value.score,
+                health:.value.health,
+                routerDispatchEligible:.value.routerDispatchEligible,
+                routerDispatchReason:.value.routerDispatchReason,
+                executeViaCallableNow:.value.executeViaCallableNow,
+                networks:.value.networks
+              }]
+            }' /tmp/route.json
+          done
