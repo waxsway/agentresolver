@@ -118,7 +118,8 @@ export function parseX402SettlementHeader(value: string | null): X402SettlementR
   if (!value) return null;
   try {
     const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-    const parsed = JSON.parse(Buffer.from(normalized, "base64").toString("utf8")) as Record<string, unknown>;
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const parsed = JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as Record<string, unknown>;
     if (!parsed || typeof parsed !== "object") return null;
     return {
       success: parsed.success === true,
@@ -131,6 +132,92 @@ export function parseX402SettlementHeader(value: string | null): X402SettlementR
   } catch {
     return null;
   }
+}
+
+const PAYMENT_FAILURE_REASON_KEYS = [
+  "invalidReason",
+  "errorReason",
+  "rejectedReason",
+  "reason",
+  "code",
+  "errorType"
+] as const;
+
+function boundedFailureReason(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 160) return null;
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.:/ -]*$/.test(trimmed)) return null;
+  return trimmed;
+}
+
+/**
+ * Extract only an allowlisted, bounded reason token/message from a failed x402
+ * response. Never returns the payment signature, payer, transaction, arbitrary
+ * response fields, or raw response body.
+ */
+export function paymentFailureReasonFromJson(value: unknown, depth = 0): string | null {
+  if (depth > 3 || !value || typeof value !== "object") return null;
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0, 8)) {
+      const nested = paymentFailureReasonFromJson(item, depth + 1);
+      if (nested) return nested;
+    }
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of PAYMENT_FAILURE_REASON_KEYS) {
+    const reason = boundedFailureReason(record[key]);
+    if (reason) return reason;
+  }
+
+  for (const nested of Object.values(record).slice(0, 20)) {
+    const reason = paymentFailureReasonFromJson(nested, depth + 1);
+    if (reason) return reason;
+  }
+  return null;
+}
+
+export async function extractX402FailureReason(response: Response): Promise<{
+  reason: string | null;
+  source: "payment_response" | "response_body" | null;
+}> {
+  const receipt = parseX402SettlementHeader(response.headers.get("payment-response"));
+  if (receipt?.errorReason) {
+    return { reason: boundedFailureReason(receipt.errorReason), source: "payment_response" };
+  }
+
+  try {
+    const body = await response.clone().json() as unknown;
+    const reason = paymentFailureReasonFromJson(body);
+    return reason
+      ? { reason, source: "response_body" }
+      : { reason: null, source: null };
+  } catch {
+    return { reason: null, source: null };
+  }
+}
+
+export async function logPaidRetryRejection(
+  req: Request,
+  response: Response,
+  capabilityId: string,
+  requestId?: string,
+  env: Readonly<Record<string, string | undefined>> = process.env
+) {
+  if (!req.headers.get("payment-signature") || response.status < 400) return;
+  const failure = await extractX402FailureReason(response);
+  console.log(JSON.stringify({
+    event: "paid_capability_paid_retry_rejected",
+    at: new Date().toISOString(),
+    capabilityId,
+    requestId: requestId || null,
+    configuredPaymentRail: configuredPaymentRail(capabilityId, env),
+    responseStatus: response.status,
+    reason: failure.reason,
+    reasonSource: failure.source
+  }));
 }
 
 export function logX402Settlement(

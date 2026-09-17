@@ -7,7 +7,7 @@ import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { BatchFacilitatorClient, GatewayEvmScheme } from "@circle-fin/x402-batching/server";
 import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
-import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
+import { logPaidCapabilityAttempt, logPaidRetryRejection, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
@@ -371,6 +371,7 @@ export function createDeterministicPaidRoute(
     try {
       const paidHandler = await getPaidHandler();
       const response = stampInfrastructureHeaders(await paidHandler(req), capabilityId, requestId);
+      await logPaidRetryRejection(req, response, capabilityId, requestId);
       const compatibleResponse = await mirrorPaymentChallengeBody(response);
       logX402Settlement(compatibleResponse, capabilityId, requestId);
       return compatibleResponse;
