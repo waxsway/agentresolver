@@ -24,22 +24,30 @@ jobs:
           for i in {1..36}; do
             ok=1
             for path in "${paths[@]}"; do
-              code=$(curl -sS -o /tmp/challenge.json -w '%{http_code}' "https://agentresolver.vercel.app/api/$path") || true
+              code=$(curl -sS -o /tmp/challenge.json -w '%{http_code}' \
+                -H 'x-agentresolver-internal: 1' \
+                "https://agentresolver.vercel.app/api/$path") || true
               if [ "$code" != "402" ]; then
                 ok=0
                 continue
               fi
-              if ! jq -e '
+              if ! jq -e --arg expected "https://agentresolver.vercel.app/api/$path" '
                 .x402Version == 2 and
+                (.resource.url == $expected) and
                 (.accepts | type == "array" and length > 0) and
-                (.accepts[0].maxAmountRequired | type == "string" and length > 0) and
-                (.accepts[0].resource | type == "string" and startswith("https://agentresolver.vercel.app/api/"))
+                (.accepts | all(
+                  (.scheme | type == "string" and length > 0) and
+                  (.network | type == "string" and length > 0) and
+                  (.asset | type == "string" and length > 0) and
+                  (.payTo | type == "string" and length > 0) and
+                  (.amount | type == "string" and length > 0)
+                ))
               ' /tmp/challenge.json >/dev/null; then
                 ok=0
               fi
             done
             if [ "$ok" = "1" ]; then
-              echo "Production challenges are directory-compatible."
+              echo "Production challenges are x402 v2 directory-compatible."
               exit 0
             fi
             sleep 10
