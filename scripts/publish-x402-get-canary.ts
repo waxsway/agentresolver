@@ -5,8 +5,40 @@ const ENDPOINT = "/api/x402-ping";
 const GET_RESOURCE = `GET ${ENDPOINT}`;
 const POST_RESOURCE = `POST ${ENDPOINT}`;
 const PREFLIGHT_ENDPOINT = "/api/x402-payment-preflight";
-const USDC_CHECK_ENDPOINT = "/api/usdc-payment-check";
-const USDC_CHECK_RESOURCE = `POST ${USDC_CHECK_ENDPOINT}`;
+const INTENT_ALIASES = [
+  {
+    id: "usdc-payment-check",
+    name: "USDC Payment Check",
+    slug: "usdc-payment-check",
+    endpoint: "/api/usdc-payment-check",
+    operationId: "usdcPaymentCheck",
+    description: "Paid $0.001 USDC x402 endpoint-safety and payment-contract check. Exact-intent alias of AgentResolver's canonical fail-closed x402 payment preflight; execution logic is shared with /api/x402-payment-preflight."
+  },
+  {
+    id: "x402-preflight",
+    name: "X402 Preflight",
+    slug: "x402-preflight",
+    endpoint: "/api/x402-preflight",
+    operationId: "x402PreflightExactIntent",
+    description: "Paid $0.001 USDC x402 preflight for autonomous buyers. Exact-intent alias of AgentResolver's canonical fail-closed payment preflight; checks endpoint reachability and observed x402 payment terms before caller authorization."
+  },
+  {
+    id: "prepayment-authorization-gate",
+    name: "Prepayment Authorization Gate",
+    slug: "prepayment-authorization-gate",
+    endpoint: "/api/prepayment-authorization-gate",
+    operationId: "prepaymentAuthorizationGate",
+    description: "Paid $0.001 USDC prepayment authorization gate for autonomous x402 buyers. Returns the same fail-closed eligible/blocked decision and observed payment terms as AgentResolver's canonical payment preflight before the caller authorizes spend."
+  },
+  {
+    id: "api-trust-security-preflight",
+    name: "API Trust Security Preflight",
+    slug: "api-trust-security-preflight",
+    endpoint: "/api/api-trust-security-preflight",
+    operationId: "apiTrustSecurityPreflight",
+    description: "Paid $0.001 USDC API trust/security preflight focused on x402 payment safety. Checks public endpoint reachability plus observed payment recipient, price, network, asset, scheme and resource binding before caller authorization."
+  }
+] as const;
 const X402_MANIFEST_PATHS = [
   "public/.well-known/x402",
   "public/.well-known/x402.json"
@@ -46,28 +78,33 @@ const preflightResource = manifest.resources?.find(
 if (!preflightResource) {
   throw new Error("x402-payment-preflight POST resource is missing from the generated manifest.");
 }
-const usdcCheckResource = clone(preflightResource);
-usdcCheckResource.id = "usdc-payment-check";
-usdcCheckResource.name = "USDC Payment Check";
-usdcCheckResource.slug = "usdc-payment-check";
-usdcCheckResource.endpoint = `https://agentresolver.vercel.app${USDC_CHECK_ENDPOINT}`;
-usdcCheckResource.method = "POST";
-usdcCheckResource.resource = USDC_CHECK_RESOURCE;
-usdcCheckResource.description = "Paid $0.001 USDC x402 endpoint-safety and payment-contract check. Exact-intent alias of AgentResolver's canonical fail-closed x402 payment preflight; execution logic is shared with /api/x402-payment-preflight.";
-if (Array.isArray(usdcCheckResource.accepts)) {
-  for (const accept of usdcCheckResource.accepts) {
-    accept.resource = `https://agentresolver.vercel.app${USDC_CHECK_ENDPOINT}`;
+
+const aliasResources = INTENT_ALIASES.map((alias) => {
+  const resource = clone(preflightResource);
+  resource.id = alias.id;
+  resource.name = alias.name;
+  resource.slug = alias.slug;
+  resource.endpoint = `https://agentresolver.vercel.app${alias.endpoint}`;
+  resource.method = "POST";
+  resource.resource = `POST ${alias.endpoint}`;
+  resource.description = alias.description;
+  if (Array.isArray(resource.accepts)) {
+    for (const accept of resource.accepts) {
+      accept.resource = `https://agentresolver.vercel.app${alias.endpoint}`;
+    }
   }
-}
+  return resource;
+});
+const aliasResourceKeys = new Set(aliasResources.map((item: any) => item.resource));
 
 manifest.resources = [
   getResource,
-  usdcCheckResource,
+  ...aliasResources,
   ...manifest.resources.filter(
-    (item: any) => item.resource !== GET_RESOURCE && item.resource !== USDC_CHECK_RESOURCE
+    (item: any) => item.resource !== GET_RESOURCE && !aliasResourceKeys.has(item.resource)
   )
 ];
-manifest.instructions = "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. A successful canary returns exact next paid actions: POST /api/verified-resolve ($0.02) for one missing capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Before authorizing a separate target x402 purchase, use POST /api/x402-payment-preflight. POST /api/usdc-payment-check is the exact-intent alias for the same fail-closed preflight engine. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization.";
+manifest.instructions = "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. A successful canary returns exact next paid actions: POST /api/verified-resolve ($0.02) for one missing capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Before authorizing a separate target x402 purchase, use POST /api/x402-payment-preflight. Exact-intent aliases for the same fail-closed preflight engine are POST /api/usdc-payment-check, POST /api/x402-preflight, POST /api/prepayment-authorization-gate and POST /api/api-trust-security-preflight. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization.";
 
 const canaryService = manifest.services?.find((item: any) => item.id === "x402-ping");
 if (!canaryService) throw new Error("x402-ping service is missing from the generated manifest.");
@@ -81,14 +118,18 @@ const preflightService = manifest.services?.find(
 if (!preflightService) {
   throw new Error("x402-payment-preflight service is missing from the generated manifest.");
 }
-const usdcCheckService = clone(preflightService);
-usdcCheckService.id = "usdc-payment-check";
-usdcCheckService.name = "USDC Payment Check";
-usdcCheckService.endpoint = `https://agentresolver.vercel.app${USDC_CHECK_ENDPOINT}`;
-usdcCheckService.method = "POST";
+const aliasServices = INTENT_ALIASES.map((alias) => {
+  const service = clone(preflightService);
+  service.id = alias.id;
+  service.name = alias.name;
+  service.endpoint = `https://agentresolver.vercel.app${alias.endpoint}`;
+  service.method = "POST";
+  return service;
+});
+const aliasServiceIds = new Set(aliasServices.map((item: any) => item.id));
 manifest.services = [
-  usdcCheckService,
-  ...manifest.services.filter((item: any) => item.id !== "usdc-payment-check")
+  ...aliasServices,
+  ...manifest.services.filter((item: any) => !aliasServiceIds.has(item.id))
 ];
 
 for (const path of X402_MANIFEST_PATHS) {
@@ -115,9 +156,9 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  version: "0.1.7",
+  version: "0.1.8",
   description: "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary plus exact machine-readable next paid actions. After a successful canary, POST /api/verified-resolve costs $0.02 for one missing capability decision and POST /api/batch-verified-resolve costs $0.05 for 2–4 decisions. Before authorizing a separate target x402 purchase, POST /api/x402-payment-preflight checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision and reusable evidence fingerprints. Free capability resolution remains available as a secondary surface.",
-  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. The successful result includes exact next actions: use POST /api/verified-resolve ($0.02) when one missing capability decision needs live external-candidate verification, or POST /api/batch-verified-resolve ($0.05) for 2–4 such decisions. Immediately before authorizing a separate x402 purchase, use POST /api/x402-payment-preflight as the canonical transaction-path gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. POST /api/usdc-payment-check is a discovery alias for that same paid engine. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
+  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. The successful result includes exact next actions: use POST /api/verified-resolve ($0.02) when one missing capability decision needs live external-candidate verification, or POST /api/batch-verified-resolve ($0.05) for 2–4 such decisions. Immediately before authorizing a separate x402 purchase, use POST /api/x402-payment-preflight as the canonical transaction-path gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. Discovery aliases for that same paid engine include /api/usdc-payment-check, /api/x402-preflight, /api/prepayment-authorization-gate and /api/api-trust-security-preflight. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
 };
 const pathItem = openapi.paths?.[ENDPOINT];
 const postOperation = pathItem?.post;
@@ -140,9 +181,11 @@ pathItem.get = getOperation;
 
 const preflightPost = openapi.paths?.[PREFLIGHT_ENDPOINT]?.post;
 if (!preflightPost) throw new Error("x402-payment-preflight POST is missing from openapi.json.");
-const usdcCheckOperation = clone(preflightPost);
-usdcCheckOperation.operationId = "usdcPaymentCheck";
-usdcCheckOperation.summary = "USDC Payment Check";
-usdcCheckOperation.description = "Price: $0.001 USDC on Base or Solana via x402. Exact-intent alias of AgentResolver's canonical fail-closed payment preflight. Checks target endpoint safety and observed x402 payment terms before caller authorization; execution logic is shared with /api/x402-payment-preflight.";
-openapi.paths[USDC_CHECK_ENDPOINT] = { post: usdcCheckOperation };
+for (const alias of INTENT_ALIASES) {
+  const operation = clone(preflightPost);
+  operation.operationId = alias.operationId;
+  operation.summary = alias.name;
+  operation.description = alias.description;
+  openapi.paths[alias.endpoint] = { post: operation };
+}
 writeJson("public/openapi.json", openapi);
