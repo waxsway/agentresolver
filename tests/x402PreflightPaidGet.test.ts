@@ -93,7 +93,7 @@ test("Guard rejects missing required input before issuing a payment challenge", 
 
     assert.equal(response.status, 400);
     assert.equal(response.headers.get("payment-required"), null);
-    assert.match(await response.text(), /url is required before payment/i);
+    const body = await response.json() as any;\n    assert.match(body.message, /url is required before payment/i);\n    assert.equal(body.paymentRequired, false);\n    assert.equal(body.spendingAuthorized, false);\n    assert.equal(body.requiredInput?.url, "https://target.example/api");\n    assert.match(body.retry?.buyerSetup || "", /x402-client-setup/);
   }
 });
 
@@ -111,6 +111,6 @@ test("Guard rejects missing POST input before issuing a payment challenge", asyn
 
     assert.equal(response.status, 400);
     assert.equal(response.headers.get("payment-required"), null);
-    assert.match(await response.text(), /url is required before payment/i);
+    const body = await response.json() as any;\n    assert.match(body.message, /url is required before payment/i);\n    assert.equal(body.paymentRequired, false);\n    assert.equal(body.spendingAuthorized, false);\n    assert.equal(body.requiredInput?.url, "https://target.example/api");\n    assert.match(body.retry?.buyerSetup || "", /x402-client-setup/);
   }
 });
