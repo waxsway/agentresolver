@@ -115,9 +115,37 @@ export function x402BuyerSetup() {
             'const response = await fetchWithPayment("https://agentresolver.vercel.app/api/x402-ping");'
           ]
         },
+        python: {
+          package: "x402",
+          installCommand: "pip install x402",
+          client: "x402HttpxClient",
+          evmSignerAdapter: "EthAccountSigner",
+          exactEvmRegistration: "register_exact_evm_client",
+          baseEvmQuickstart: [
+            "import asyncio",
+            "from x402 import x402Client",
+            "from x402.http.clients import x402HttpxClient",
+            "from x402.mechanisms.evm import EthAccountSigner",
+            "from x402.mechanisms.evm.exact.register import register_exact_evm_client",
+            "",
+            "# caller_owned_account is supplied by the host wallet/runtime. Never send wallet secrets to AgentResolver.",
+            "async def main():",
+            "    client = x402Client()",
+            "    register_exact_evm_client(client, EthAccountSigner(caller_owned_account))",
+            "    async with x402HttpxClient(client) as http:",
+            "        response = await http.request(",
+            '            method="GET",',
+            '            url="https://agentresolver.vercel.app/api/x402-ping",',
+            "        )",
+            "        await response.aread()",
+            "        return response",
+            "",
+            "response = asyncio.run(main())"
+          ]
+        },
         behavior: [
           "Create an x402Client and register only exact schemes backed by the caller's own signer.",
-          "Wrap the caller's fetch implementation with wrapFetchWithPayment(fetch, client).",
+          "Wrap the caller's fetch implementation with wrapFetchWithPayment(fetch, client), or use x402HttpxClient for Python/httpx.",
           "Apply caller-owned payment selection and spend policy before signing.",
           "Send the original paid request; the x402 wrapper handles PAYMENT-REQUIRED and the authorized PAYMENT-SIGNATURE retry."
         ]

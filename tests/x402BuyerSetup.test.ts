@@ -85,8 +85,27 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
       line.includes("callerOwnedSigner")
     )
   );
+  assert.equal(setup.clients.http.python.package, "x402");
+  assert.equal(setup.clients.http.python.client, "x402HttpxClient");
+  assert.match(setup.clients.http.python.installCommand, /pip install x402/);
+  assert.ok(
+    setup.clients.http.python.baseEvmQuickstart.some((line) =>
+      line.includes("register_exact_evm_client")
+    )
+  );
+  assert.ok(
+    setup.clients.http.python.baseEvmQuickstart.some((line) =>
+      line.includes("x402HttpxClient")
+    )
+  );
+  assert.ok(
+    setup.clients.http.python.baseEvmQuickstart.some((line) =>
+      line.includes("caller_owned_account")
+    )
+  );
   const quickstartText = [
     ...setup.clients.http.typescript.baseEvmQuickstart,
+    ...setup.clients.http.python.baseEvmQuickstart,
     ...setup.clients.mcp.typescript.baseEvmQuickstart
   ].join("\n");
   assert.doesNotMatch(quickstartText, /privateKeyToAccount|seed phrase|0xYourPrivateKey/i);
