@@ -1,0 +1,75 @@
+name: Verify MCP x402 Preflight Funnel
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy Production
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-mcp-x402-preflight-funnel
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      MCP_URL: https://agentresolver.vercel.app/mcp
+    steps:
+      - name: Verify free resolve hands x402 buyers to canonical preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          resolve_request='{"jsonrpc":"2.0","id":201,"method":"tools/call","params":{"name":"resolve","arguments":{"goal":"verify this x402 endpoint before paying and check payTo price network asset and resource binding","url":"https://agentresolver.vercel.app/api/x402-ping","limit":3}}}'
+          resolve_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -o /tmp/mcp-x402-resolve.out \
+            -w '%{http_code}' \
+            -X POST "$MCP_URL" \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'user-agent: AgentResolver-MCP-X402-Preflight-Funnel-Smoke/1.0' \
+            -H 'x-agentresolver-internal: 1' \
+            --data "$resolve_request")
+
+          test "$resolve_code" -ge 200 && test "$resolve_code" -lt 300
+          grep -F 'recommendedPaidAction' /tmp/mcp-x402-resolve.out >/dev/null
+          grep -F 'x402-payment-preflight' /tmp/mcp-x402-resolve.out >/dev/null
+          grep -F 'x402_payment_preflight' /tmp/mcp-x402-resolve.out >/dev/null
+          grep -F '0.001' /tmp/mcp-x402-resolve.out >/dev/null
+          grep -F '"surface":"mcp"' /tmp/mcp-x402-resolve.out >/dev/null || grep -F '\"surface\":\"mcp\"' /tmp/mcp-x402-resolve.out >/dev/null
+
+      - name: Verify preflight tool challenges without execution or spend
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          paid_request='{"jsonrpc":"2.0","id":202,"method":"tools/call","params":{"name":"x402_payment_preflight","arguments":{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}}}'
+          paid_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -o /tmp/mcp-x402-preflight.out \
+            -w '%{http_code}' \
+            -X POST "$MCP_URL" \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'user-agent: AgentResolver-MCP-X402-Preflight-Funnel-Smoke/1.0' \
+            -H 'x-agentresolver-internal: 1' \
+            --data "$paid_request")
+
+          test "$paid_code" -ge 200 && test "$paid_code" -lt 300
+          grep -F 'x402Version' /tmp/mcp-x402-preflight.out >/dev/null
+          grep -F '1000' /tmp/mcp-x402-preflight.out >/dev/null
+
+          if grep -F 'latencyMs' /tmp/mcp-x402-preflight.out >/dev/null || grep -F 'x402Verdict' /tmp/mcp-x402-preflight.out >/dev/null; then
+            echo 'SECURITY FAILURE: unpaid x402_payment_preflight exposed paid inspection output before settlement.'
+            cat /tmp/mcp-x402-preflight.out
+            exit 1
+          fi
+
+          echo 'MCP x402 preflight funnel verified without signing or spending.'
