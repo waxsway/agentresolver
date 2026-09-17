@@ -18,6 +18,17 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.match(canary?.description || "", /settlement test/i);
   assert.ok(canary?.tags?.includes("x402 settlement test"));
   assert.ok(canary?.["x-agentresolver-product"]?.keywords?.includes("payment canary"));
+  const echoParam = canary?.parameters?.find((item: any) => item.name === "echo");
+  assert.equal(echoParam?.in, "query");
+  assert.equal(echoParam?.required, false);
+  assert.equal(echoParam?.schema?.type, "string");
+  assert.equal(echoParam?.schema?.maxLength, 256);
+  assert.equal(canary?.["x-agentresolver-product"]?.inputTransport, "query");
+
+  const guardGet = openapi.paths?.["/api/payment-guard"]?.get;
+  assert.match(guardGet?.summary || "", /payment requirements before wallet signing/i);
+  assert.match(guardGet?.description || "", /payTo recipient/i);
+  assert.match(guardGet?.description || "", /maxPriceUsd/i);
 
   const preflight = openapi.paths?.["/api/x402-payment-preflight"]?.post;
   assert.match(preflight?.description || "", /endpoint safety/i);

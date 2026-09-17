@@ -62,6 +62,23 @@ export function x402RuntimeDiscoveryOutput(capabilityId: PaidCapabilityId) {
 
 
 export function x402RuntimeDiscoveryInput(capabilityId: PaidCapabilityId) {
+  if (capabilityId === "x402-ping") {
+    return {
+      example: { echo: "hello" },
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          echo: {
+            type: "string",
+            maxLength: 256,
+            description: "Optional text echoed by the paid settlement response."
+          }
+        }
+      }
+    } as const;
+  }
+
   if (capabilityId !== "x402-payment-preflight") return null;
 
   return {

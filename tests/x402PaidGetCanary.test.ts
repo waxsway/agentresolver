@@ -34,6 +34,12 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   assert.equal(bazaarInput?.method, "GET");
   assert.equal(bazaarInput?.bodyType, undefined);
   assert.equal(bazaarInput?.body, undefined);
+  assert.equal(bazaarInput?.queryParams?.echo, "hello");
+  const querySchema = getBody.extensions?.bazaar?.schema?.properties?.input?.properties?.queryParams;
+  assert.equal(querySchema?.properties?.echo?.type, "string");
+  assert.equal(querySchema?.properties?.echo?.maxLength, 256);
+  assert.equal(querySchema?.required, undefined);
+  assert.ok(Buffer.byteLength(getPaymentRequired!, "utf8") < 8192);
   assert.equal(
     getResponse.headers.get("x-agentresolver-history"),
     "https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json"
@@ -123,6 +129,10 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.ok(pathItem.get);
   assert.ok(pathItem.post);
   assert.equal(pathItem.get.requestBody, undefined);
+  const echoParam = pathItem.get.parameters?.find((item: any) => item.name === "echo");
+  assert.equal(echoParam?.in, "query");
+  assert.equal(echoParam?.required, false);
+  assert.equal(echoParam?.schema?.maxLength, 256);
   assert.equal(pathItem.get["x-payment-info"].priceUsd, 0.001);
   assert.match(pathItem.get.summary || "", /settlement test/i);
   assert.match(pathItem.get.description || "", /wallet/i);
