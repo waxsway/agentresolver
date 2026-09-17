@@ -52,8 +52,22 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.match(setup.clients.mcp.typescript.installCommand, /@x402\/mcp/);
   assert.ok(
     setup.clients.mcp.typescript.baseEvmQuickstart.some((line) =>
-      line.includes("new ExactEvmScheme(callerOwnedSigner)")
+      line.includes('version: "1.0.0"')
     )
+  );
+  assert.ok(
+    setup.clients.mcp.typescript.baseEvmQuickstart.some((line) =>
+      line.includes('client: new ExactEvmScheme(callerOwnedSigner)')
+    )
+  );
+  assert.ok(
+    setup.clients.mcp.typescript.configurationShape.schemes.some(
+      (entry) => entry.client === "new ExactEvmScheme(callerOwnedSigner)"
+    )
+  );
+  assert.doesNotMatch(
+    setup.clients.mcp.typescript.baseEvmQuickstart.join("\n"),
+    /schemes: \[\{[^\n]*scheme:/
   );
   assert.equal(setup.clients.http.typescript.package, "@x402/fetch");
   assert.ok(setup.clients.http.typescript.packages.includes("@x402/fetch"));
