@@ -315,7 +315,7 @@ export const PAID_CAPABILITIES = {
   "x402-payment-preflight": {
     id: "x402-payment-preflight",
     name: "AgentResolver Guard — Verify Before Every x402 Payment",
-    operationId: "agentResolverPaymentGuard",
+    operationId: "x402PaymentPreflightPayToVerification",
     endpoint: "/api/x402-payment-preflight",
     price: "$0.001",
     priceUsd: 0.001,
