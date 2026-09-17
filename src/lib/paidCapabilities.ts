@@ -314,7 +314,7 @@ export const PAID_CAPABILITIES = {
   },
   "x402-payment-preflight": {
     id: "x402-payment-preflight",
-    name: "AgentResolver Guard — Verify Before Every x402 Payment",
+    name: "X402 Preflight — Verify Endpoint Before Paying | Endpoint Safety | USDC Payment Check",
     operationId: "x402PaymentPreflightPayToVerification",
     endpoint: "/api/x402-payment-preflight",
     price: "$0.001",
@@ -323,7 +323,7 @@ export const PAID_CAPABILITIES = {
     description: "Verify a public x402 endpoint before paying it. AgentResolver performs one bounded HTTPS preflight and returns a fail-closed router decision plus the exact observed target payment terms: payTo recipient, USDC amount, network, asset, resource binding, x402 version and scheme, together with machine-readable evidence for reachability and PAYMENT-REQUIRED structure before an autonomous agent authorizes spend. The probe does not request private keys or a target payment, does not follow redirects, blocks private/reserved network targets, stops after headers/TLS/payment evidence, and times out at 4.5 seconds. Optional max-price, expected-payee and expected-network assertions fail closed on mismatches. Response headers include a request ID, contract version and exact deployed source SHA. The paid result also returns a reusable evidence receipt with stable fingerprints for the observed payment identity and terms so agents can detect changes across observations without treating a wallet as a verified legal identity. Point-in-time evidence, not a guarantee of future uptime, provider legitimacy, or fulfillment. Works on Base and Solana.",
     useWhen: "Immediately before every autonomous x402 spend. Treat AgentResolver Guard as the fail-closed transaction-path gate: it returns eligible/blocked, exact validated target payment terms, reason codes, evidence fingerprints and caller-only authorization boundaries before the wallet signs.",
     costClass: "bounded-network",
-    tags: ["agentresolver guard", "payment guard", "agent wallet firewall", "payment authorization gate", "before every payment", "x402 preflight", "verify endpoint before paying", "payTo verification", "USDC payment check", "api trust security preflight", "endpoint safety", "payment verification", "x402 endpoint safety", "bounded preflight", "no private keys", "deployment provenance", "request correlation", "resource binding", "Base mainnet", "Solana", "payment-required", "agent payment safety"],
+    tags: ["x402 preflight", "verify endpoint before paying", "payTo verification", "USDC payment check", "api trust security preflight", "endpoint safety", "payment verification", "x402 endpoint safety", "bounded preflight", "no private keys", "deployment provenance", "request correlation", "resource binding", "Base mainnet", "Solana", "payment-required", "agent payment safety", "agentresolver guard", "payment guard", "agent wallet firewall", "payment authorization gate", "before every payment"],
     inputSchema: {
       type: "object",
       required: ["url"],
@@ -341,8 +341,8 @@ export const PAID_CAPABILITIES = {
     example: { url: "https://example.com/api", method: "GET", maxPriceUsd: 0.01 },
     quoteTool: {
       name: "x402_payment_preflight",
-      title: "AgentResolver Guard — verify before every x402 payment — $0.001",
-      description: "Paid $0.001 USDC on Base or Solana AgentResolver Guard check for autonomous buyers. Run it immediately before each target x402 spend. Returns eligible/blocked, exact target payment terms, fail-closed reason codes and verifiable evidence before caller authorization. AgentResolver never requests a private key, signs the target payment, or custodies/forwards target funds."
+      title: "X402 preflight — verify endpoint before paying — endpoint safety — USDC payment check — $0.001",
+      description: "Paid $0.001 USDC on Base or Solana transaction-path gate for autonomous buyers. Returns eligible/blocked, exact target payment terms, fail-closed reason codes and verifiable evidence before caller authorization. AgentResolver never requests a private key, signs the target payment, or custodies/forwards target funds."
     }
   },
   "tool-contract": {
