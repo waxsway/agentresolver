@@ -87,7 +87,8 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   );
   assert.equal(setup.clients.http.python.package, "x402");
   assert.equal(setup.clients.http.python.client, "x402HttpxClient");
-  assert.match(setup.clients.http.python.installCommand, /pip install x402/);
+  assert.equal(setup.clients.http.python.installCommand, 'pip install "x402[httpx,evm]"');
+  assert.deepEqual(setup.clients.http.python.extras, ["httpx", "evm"]);
   assert.ok(
     setup.clients.http.python.baseEvmQuickstart.some((line) =>
       line.includes("register_exact_evm_client")
