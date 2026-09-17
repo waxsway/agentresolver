@@ -25,6 +25,27 @@ jobs:
           test "$code" = "402"
           test "$live" = "$expected"
 
+      - name: Inspect Agent402 seller snapshot read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -G 'https://agent402.tools/api/index' \
+            --data-urlencode 'seller=agentresolver.vercel.app' \
+            -o /tmp/index.json
+          jq '{
+            origin,
+            name:(.manifest.name // .name // null),
+            fetchedAt,
+            source,
+            discoveryPath,
+            health,
+            routable,
+            routerDispatchEligible,
+            routerDispatchReason,
+            toolCount:((.tools // []) | length),
+            relevantTools:[(.tools // [])[]? | select((.route // "") == "/api/x402-ping" or (.route // "") == "/api/x402-payment-preflight") | {name,slug,route,price,priceUsd,method}]
+          }' /tmp/index.json
+
       - name: Measure six buyer intents read-only
         shell: bash
         run: |
