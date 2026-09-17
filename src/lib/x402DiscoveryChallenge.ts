@@ -48,10 +48,8 @@ export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
         scheme: "exact",
         network: X402_NETWORK,
         amount: config.atomicAmount,
-        maxAmountRequired: config.atomicAmount,
         asset: BASE_USDC,
         payTo,
-        resource: resourceUrl,
         maxTimeoutSeconds: 60,
         extra: { name: "USD Coin", version: "2" }
       },
@@ -59,10 +57,8 @@ export function x402DiscoveryChallenge(capabilityId: DiscoveryCapability) {
         scheme: "exact",
         network: X402_SOLANA_NETWORK,
         amount: config.atomicAmount,
-        maxAmountRequired: config.atomicAmount,
         asset: X402_SOLANA_ASSET,
         payTo: solanaPayTo,
-        resource: resourceUrl,
         maxTimeoutSeconds: 60,
         extra: { feePayer: X402_SOLANA_FEE_PAYER }
       }
