@@ -117,7 +117,8 @@ export function x402BuyerSetup() {
         },
         python: {
           package: "x402",
-          installCommand: "pip install x402",
+          installCommand: 'pip install "x402[httpx,evm]"',
+          extras: ["httpx", "evm"],
           client: "x402HttpxClient",
           evmSignerAdapter: "EthAccountSigner",
           exactEvmRegistration: "register_exact_evm_client",
