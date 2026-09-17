@@ -1,0 +1,42 @@
+name: Measure vet402 observatory 20260917
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/measure-vet402-observatory-20260917.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Resolve AgentResolver in vet402 and inspect public L0/L1 facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://vet402.com/api/v1'
+          target='https://agentresolver.vercel.app/api/x402-ping'
+          curl --fail-with-body -sS -G "$base/resolve" --data-urlencode "q=$target" -o /tmp/resolve.json || true
+          echo '=== resolve ==='
+          cat /tmp/resolve.json
+          echo
+          observatory_id="$(jq -r '.resource.observatory_id // .endpoints[0].observatory_id // empty' /tmp/resolve.json 2>/dev/null || true)"
+          endpoint_id="$(jq -r '.resource.endpoint_id // .endpoints[0].endpoint_id // empty' /tmp/resolve.json 2>/dev/null || true)"
+          id="$observatory_id"
+          if [ -z "$id" ]; then id="$endpoint_id"; fi
+          if [ -z "$id" ]; then
+            echo 'VET402_LISTED=false'
+            exit 0
+          fi
+          echo "VET402_LISTED=true"
+          echo "OBSERVATORY_ID=$id"
+          curl --fail-with-body -sS "$base/observatory/endpoints/$id/facts" -o /tmp/facts.json
+          echo '=== facts ==='
+          jq '{subject,facts:{l0:.facts.l0,l1:.facts.l1,l2:.facts.l2,settlement_30d_real:.facts.settlement_30d_real,settlement_30d_test:.facts.settlement_30d_test,unique_payers_30d_real:.facts.unique_payers_30d_real},freshness,evidence}' /tmp/facts.json
+          curl --fail-with-body -sS "$base/observatory/endpoints/$id/purchases" -o /tmp/purchases.json
+          echo '=== purchases summary ==='
+          jq '{attempts:(.purchases // .results // [] | length), rows:[(.purchases // .results // [])[]? | {settled,delivered,txHash,attemptedAt,observedAt,outcome,error}]}' /tmp/purchases.json
