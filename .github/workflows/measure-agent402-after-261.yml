@@ -107,6 +107,30 @@ jobs:
           echo "AGENTRESOLVER_DISPATCH_ELIGIBLE_QUERIES=$eligible"
           echo "AGENTRESOLVER_CANONICAL_NAME_QUERIES=$canonical_name_hits"
 
+      - name: Deep-inspect two Agent402 ranking misses read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          for q in 'x402 settlement test' 'USDC payment check'; do
+            echo "=== TOP20: $q ==="
+            curl -fsS -G 'https://agent402.tools/api/route' \
+              --data-urlencode "q=$q" \
+              --data-urlencode 'include=external' \
+              --data-urlencode 'network=base' \
+              --data-urlencode 'top=20' \
+              -o /tmp/deep.json
+            jq --arg q "$q" '{
+              query:$q,
+              count:(.results // .routes // .data // [] | length),
+              agentresolver:[(.results // .routes // .data // [])[]? | select(
+                ((.seller // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.origin // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.host // "") | tostring | contains("agentresolver.vercel.app"))
+              ) | {seller,name,route,slug,score,matched,matchedOn,why,health,routerDispatchEligible,routerDispatchReason}],
+              top20:[(.results // .routes // .data // [])[]? | {seller,name,route,slug,score,matched,matchedOn,why}]
+            }' /tmp/deep.json
+          done
+
       - name: Probe Circle x402 Discovery read-only
         shell: bash
         run: |
