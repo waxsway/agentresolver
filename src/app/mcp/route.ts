@@ -152,6 +152,7 @@ const handler = createMcpHandler(() => {
     const singleMcpEndpoint = singleMcp && typeof singleMcp.endpoint === "string" && /^https?:\/\//i.test(singleMcp.endpoint) ? singleMcp.endpoint : null;
     const topOwned = owned.find((match) => match.rank === 1 && match.status === "live" && match.priceUsd > 0);
     const directOwnedId = topOwned?.id && topOwned.id in {
+      "x402-payment-preflight": true,
       "http-inspect": true,
       "tool-contract": true,
       "mcp-probe": true,
