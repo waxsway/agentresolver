@@ -65,3 +65,24 @@ test("x402 settlement canary remains GET-first across catalogs", () => {
   assert.ok(pingPath?.post);
   assert.equal(pingPath["x-agentresolver-preferred-method"], "GET");
 });
+
+
+test("AgentResolver Guard is additive to the canonical preflight contract", () => {
+  const manifest = readJson("public/.well-known/x402");
+  const preflightService = manifest.services?.find((item: any) => item.id === "x402-payment-preflight");
+  assert.equal(preflightService?.brandName, "AgentResolver Guard");
+  assert.ok(preflightService?.aliases?.includes("https://agentresolver.vercel.app/api/payment-guard"));
+  assert.equal(preflightService?.repeatUse, "before_every_autonomous_x402_spend");
+
+  const openapi = readJson("public/openapi.json");
+  const canonical = openapi.paths?.["/api/x402-payment-preflight"];
+  const guard = openapi.paths?.["/api/payment-guard"];
+  assert.ok(canonical?.get);
+  assert.ok(canonical?.post);
+  assert.ok(guard?.get);
+  assert.ok(guard?.post);
+  assert.equal(guard?.["x-agentresolver-alias-of"], "/api/x402-payment-preflight");
+  assert.equal(guard.get.operationId, "agentResolverPaymentGuardGet");
+  assert.equal(guard.post.operationId, "agentResolverPaymentGuardPost");
+  assert.equal(canonical.post.operationId, "x402PaymentPreflightPayToVerification");
+});
