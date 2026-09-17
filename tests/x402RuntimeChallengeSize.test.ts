@@ -26,7 +26,14 @@ test("x402-ping PAYMENT-REQUIRED stays within an interoperability-friendly heade
 });
 
 test("runtime discovery keeps preflight decision metadata compact", () => {
-  const output = x402RuntimeDiscoveryOutput("x402-payment-preflight");
+  const output = x402RuntimeDiscoveryOutput("x402-payment-preflight") as {
+    example: {
+      prepaymentDecision: {
+        decision: string;
+        eligibleForCallerAuthorization: boolean;
+      };
+    };
+  };
   assert.equal(output.example.prepaymentDecision.decision, "eligible");
   assert.equal(output.example.prepaymentDecision.eligibleForCallerAuthorization, true);
   assert.ok(JSON.stringify(output).length < 1200);
