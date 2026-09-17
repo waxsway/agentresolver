@@ -1,0 +1,68 @@
+name: Compare settlement payers 20260917
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/compare-settlement-payers-20260917.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Compare verified settlement payers without publishing addresses
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, urllib.request
+
+          rpc='https://mainnet.base.org'
+          txs=[
+            '0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72',
+            '0xa4d504f662c554ee2bb4745352fe640e1235141311ef9e4eeec9b8aa6bf45cd8',
+          ]
+          usdc='0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+          payto='0x66e19457ffc829e8ed74706f5c1399c6f6466de8'
+          transfer='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+
+          def rpc_call(method, params):
+              body=json.dumps({'jsonrpc':'2.0','id':1,'method':method,'params':params}).encode()
+              req=urllib.request.Request(rpc,data=body,headers={'content-type':'application/json','user-agent':'AgentResolver-readonly-settlement-audit/1.0'})
+              with urllib.request.urlopen(req, timeout=15) as r:
+                  data=json.load(r)
+              if data.get('error'):
+                  raise RuntimeError(data['error'])
+              return data.get('result')
+
+          payers=[]
+          for tx in txs:
+              receipt=rpc_call('eth_getTransactionReceipt',[tx])
+              assert receipt and int(receipt['status'],16)==1, f'unsuccessful receipt {tx}'
+              matches=[]
+              for log in receipt.get('logs',[]):
+                  if log.get('address','').lower()!=usdc:
+                      continue
+                  topics=log.get('topics') or []
+                  if len(topics)<3 or topics[0].lower()!=transfer:
+                      continue
+                  to='0x'+topics[2][-40:].lower()
+                  if to!=payto:
+                      continue
+                  amount=int(log.get('data','0x0'),16)
+                  if amount!=1000:
+                      continue
+                  frm='0x'+topics[1][-40:].lower()
+                  matches.append(frm)
+              assert len(matches)==1, f'expected one exact 1000-atomic USDC transfer to payTo in {tx}, got {len(matches)}'
+              payer=matches[0]
+              payers.append(payer)
+              fp=hashlib.sha256(payer.encode()).hexdigest()[:16]
+              print(json.dumps({'txFingerprint':hashlib.sha256(tx.encode()).hexdigest()[:16],'payerFingerprint':fp,'exactTransferAtomic':'1000'}))
+
+          print('SAME_PAYER=' + ('true' if payers[0]==payers[1] else 'false'))
+          PY
