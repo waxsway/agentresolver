@@ -28,6 +28,13 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   ));
   const decodedHeader = JSON.parse(Buffer.from(getPaymentRequired!, "base64").toString("utf8"));
   assert.deepEqual(getBody, decodedHeader);
+  assert.equal(decodedHeader.resource?.serviceName, "AgentResolver");
+  assert.deepEqual(decodedHeader.resource?.tags, [
+    "x402",
+    "settlement-test",
+    "payment-canary",
+    "agent-payments"
+  ]);
 
   const bazaarInput = getBody.extensions?.bazaar?.info?.input;
   assert.equal(bazaarInput?.type, "http");
