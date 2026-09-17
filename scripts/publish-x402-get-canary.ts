@@ -37,6 +37,14 @@ const INTENT_ALIASES = [
     endpoint: "/api/api-trust-security-preflight",
     operationId: "apiTrustSecurityPreflight",
     description: "Paid $0.001 USDC API trust/security preflight focused on x402 payment safety. Checks public endpoint reachability plus observed payment recipient, price, network, asset, scheme and resource binding before caller authorization."
+  },
+  {
+    id: "x402-transaction-path-payment-gate",
+    name: "X402 Transaction Path Payment Gate",
+    slug: "x402-transaction-path-payment-gate",
+    endpoint: "/api/x402-transaction-path-payment-gate",
+    operationId: "x402TransactionPathPaymentGate",
+    description: "Paid $0.001 USDC x402 transaction-path payment gate for autonomous buyers. Uses AgentResolver's canonical fail-closed preflight engine to check endpoint reachability and observed recipient, amount, network, asset, scheme and resource binding before caller authorization."
   }
 ] as const;
 const X402_MANIFEST_PATHS = [
@@ -104,7 +112,7 @@ manifest.resources = [
     (item: any) => item.resource !== GET_RESOURCE && !aliasResourceKeys.has(item.resource)
   )
 ];
-manifest.instructions = "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. A successful canary returns exact next paid actions: POST /api/verified-resolve ($0.02) for one missing capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Before authorizing a separate target x402 purchase, use POST /api/x402-payment-preflight. Exact-intent aliases for the same fail-closed preflight engine are POST /api/usdc-payment-check, POST /api/x402-preflight, POST /api/prepayment-authorization-gate and POST /api/api-trust-security-preflight. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization.";
+manifest.instructions = "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. A successful canary returns exact next paid actions: POST /api/verified-resolve ($0.02) for one missing capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Before authorizing a separate target x402 purchase, use POST /api/x402-payment-preflight. Exact-intent aliases for the same fail-closed preflight engine are POST /api/usdc-payment-check, POST /api/x402-preflight, POST /api/prepayment-authorization-gate, POST /api/api-trust-security-preflight and POST /api/x402-transaction-path-payment-gate. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization.";
 
 const canaryService = manifest.services?.find((item: any) => item.id === "x402-ping");
 if (!canaryService) throw new Error("x402-ping service is missing from the generated manifest.");
@@ -156,9 +164,9 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  version: "0.1.8",
+  version: "0.1.9",
   description: "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary plus exact machine-readable next paid actions. After a successful canary, POST /api/verified-resolve costs $0.02 for one missing capability decision and POST /api/batch-verified-resolve costs $0.05 for 2–4 decisions. Before authorizing a separate target x402 purchase, POST /api/x402-payment-preflight checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision and reusable evidence fingerprints. Free capability resolution remains available as a secondary surface.",
-  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. The successful result includes exact next actions: use POST /api/verified-resolve ($0.02) when one missing capability decision needs live external-candidate verification, or POST /api/batch-verified-resolve ($0.05) for 2–4 such decisions. Immediately before authorizing a separate x402 purchase, use POST /api/x402-payment-preflight as the canonical transaction-path gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. Discovery aliases for that same paid engine include /api/usdc-payment-check, /api/x402-preflight, /api/prepayment-authorization-gate and /api/api-trust-security-preflight. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
+  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. The successful result includes exact next actions: use POST /api/verified-resolve ($0.02) when one missing capability decision needs live external-candidate verification, or POST /api/batch-verified-resolve ($0.05) for 2–4 such decisions. Immediately before authorizing a separate x402 purchase, use POST /api/x402-payment-preflight as the canonical transaction-path gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. Discovery aliases for that same paid engine include /api/usdc-payment-check, /api/x402-preflight, /api/prepayment-authorization-gate, /api/api-trust-security-preflight and /api/x402-transaction-path-payment-gate. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
 };
 const pathItem = openapi.paths?.[ENDPOINT];
 const postOperation = pathItem?.post;

@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 import { GET as getX402Preflight } from "../src/app/api/x402-preflight/route";
 import { GET as getPrepaymentGate } from "../src/app/api/prepayment-authorization-gate/route";
 import { GET as getApiTrustPreflight } from "../src/app/api/api-trust-security-preflight/route";
+import { GET as getTransactionPathGate } from "../src/app/api/x402-transaction-path-payment-gate/route";
 
 function readJson(path: string) {
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, any>;
@@ -28,6 +29,12 @@ const aliases = [
     name: "API Trust Security Preflight",
     endpoint: "/api/api-trust-security-preflight",
     get: getApiTrustPreflight
+  },
+  {
+    id: "x402-transaction-path-payment-gate",
+    name: "X402 Transaction Path Payment Gate",
+    endpoint: "/api/x402-transaction-path-payment-gate",
+    get: getTransactionPathGate
   }
 ] as const;
 
@@ -50,7 +57,7 @@ test("generated Agent402 surfaces publish literal intent aliases", () => {
   const manifest = readJson("public/.well-known/x402");
   const openapi = readJson("public/openapi.json");
 
-  assert.equal(openapi.info.version, "0.1.8");
+  assert.equal(openapi.info.version, "0.1.9");
   for (const alias of aliases) {
     const resource = manifest.resources.find((item: any) => item.id === alias.id);
     assert.ok(resource, `${alias.id} manifest resource`);
