@@ -74,14 +74,15 @@ export function x402BuyerSetup() {
             "// callerOwnedSigner is supplied by the host wallet/runtime. Do not send it to AgentResolver.",
             "const client = createx402MCPClient({",
             '  name: "agentresolver-buyer",',
-            '  schemes: [{ network: "eip155:8453", scheme: new ExactEvmScheme(callerOwnedSigner) }]',
+            '  version: "1.0.0",',
+            '  schemes: [{ network: "eip155:8453", client: new ExactEvmScheme(callerOwnedSigner) }]',
             "});",
             "",
             "// Connect the client transport to https://agentresolver.vercel.app/mcp,",
             "// then call the paid tool normally. The x402 client handles the authorized retry."
           ],
           configurationShape: {
-            schemes: [{ network: "eip155:8453", scheme: "new ExactEvmScheme(callerOwnedSigner)" }],
+            schemes: [{ network: "eip155:8453", client: "new ExactEvmScheme(callerOwnedSigner)" }],
             policies: ["caller-defined requirement filters before signing"],
             paymentRequirementsSelector: "caller-defined network/requirement selector"
           }
