@@ -1,0 +1,36 @@
+name: Check NoHumans Payment Status
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-nohumans-payment-status.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read live NoHumans listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 'https://nohumans.directory/v1/listings/28e33786-f07' -o /tmp/listing.json
+          jq '{
+            id,
+            status,
+            score,
+            probe_count,
+            last_probed_at,
+            paid_verified,
+            evidence_tier,
+            evidence_note,
+            onchain_unique_payers_30d,
+            observed_network,
+            updated_at,
+            verification_request,
+            verification_requests
+          }' /tmp/listing.json
