@@ -1,0 +1,48 @@
+name: Diagnose CDP Env Presence
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/diagnose-cdp-env.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  presence:
+    name: ${{ matrix.var }} present
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        var:
+          - CDP_API_KEY_ID
+          - CDP_API_KEY_SECRET
+          - AGENTRESOLVER_CDP_FACILITATOR_ENABLED
+          - AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.6.2 --no-audit --no-fund
+      - name: Pull production configuration
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Check variable without printing its value
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=.vercel/.env.production.local
+          test -f "$file"
+          line="$(grep -m1 "^${{ matrix.var }}=" "$file" || true)"
+          test -n "$line"
+          value="${line#*=}"
+          test -n "$value"
+          test "$value" != '""'
+          test "$value" != "''"
