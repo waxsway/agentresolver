@@ -21,8 +21,55 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     env:
+      BASE_URL: https://agentresolver.vercel.app
       MCP_URL: https://agentresolver.vercel.app/mcp
+      BUYER_SETUP_URL: https://agentresolver.vercel.app/api/x402-client-setup
     steps:
+      - name: Verify free buyer bootstrap is machine-readable and non-custodial
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS \
+            "$BUYER_SETUP_URL" \
+            -H 'user-agent: AgentResolver-MCP-X402-Preflight-Funnel-Smoke/1.0' \
+            -H 'x-agentresolver-internal: 1' \
+            -o /tmp/x402-client-setup.json
+
+          jq -e '
+            .free == true and
+            .payment.protocol == "x402" and
+            .payment.paymentIsAuthorizedByAgentResolver == false and
+            .clients.mcp.typescript.package == "@x402/mcp" and
+            .clients.mcp.typescript.factory == "createx402MCPClient" and
+            .clients.http.typescript.package == "@x402/fetch" and
+            .clients.http.typescript.wrapper == "wrapFetchWithPayment" and
+            .authorizationBoundary.callerControlsSigner == true and
+            .authorizationBoundary.agentResolverReceivesPrivateKey == false and
+            .authorizationBoundary.agentResolverReceivesSeedPhrase == false and
+            .authorizationBoundary.agentResolverAuthorizesSpend == false
+          ' /tmp/x402-client-setup.json >/dev/null
+
+      - name: Verify HTTP challenge advertises buyer setup without spend
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          http_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
+            -D /tmp/http-x402-preflight.headers \
+            -o /tmp/http-x402-preflight.out \
+            -w '%{http_code}' \
+            -X POST "$BASE_URL/api/x402-payment-preflight" \
+            -H 'content-type: application/json' \
+            -H 'user-agent: AgentResolver-MCP-X402-Preflight-Funnel-Smoke/1.0' \
+            -H 'x-agentresolver-internal: 1' \
+            --data '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}')
+
+          test "$http_code" = "402"
+          grep -Fi "x-agentresolver-buyer-setup: $BUYER_SETUP_URL" /tmp/http-x402-preflight.headers >/dev/null
+          grep -Fi 'access-control-expose-headers:' /tmp/http-x402-preflight.headers | grep -Fi 'x-agentresolver-buyer-setup' >/dev/null
+          grep -F '"x402Version":2' /tmp/http-x402-preflight.out >/dev/null
+
       - name: Verify free resolve hands x402 buyers to canonical preflight
         shell: bash
         run: |
@@ -65,6 +112,8 @@ jobs:
           test "$paid_code" -ge 200 && test "$paid_code" -lt 300
           grep -F 'x402Version' /tmp/mcp-x402-preflight.out >/dev/null
           grep -F '1000' /tmp/mcp-x402-preflight.out >/dev/null
+          grep -F 'agentresolver_x402_buyer_setup' /tmp/mcp-x402-preflight.out >/dev/null
+          grep -F "$BUYER_SETUP_URL" /tmp/mcp-x402-preflight.out >/dev/null
 
           if grep -F 'latencyMs' /tmp/mcp-x402-preflight.out >/dev/null || grep -F 'x402Verdict' /tmp/mcp-x402-preflight.out >/dev/null; then
             echo 'SECURITY FAILURE: unpaid x402_payment_preflight exposed paid inspection output before settlement.'
@@ -72,4 +121,4 @@ jobs:
             exit 1
           fi
 
-          echo 'MCP x402 preflight funnel verified without signing or spending.'
+          echo 'MCP x402 preflight funnel and buyer bootstrap verified without signing or spending.'
