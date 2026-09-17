@@ -1,3 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
 import { createDeterministicPaidRoute } from "@/lib/createDeterministicPaidRoute";
 import { executeX402PaymentPreflight } from "@/lib/executeX402PaymentPreflight";
 
@@ -10,5 +11,13 @@ const route = createDeterministicPaidRoute(
 );
 
 export const POST = route.POST;
-export const GET = route.GET;
+export async function GET(req: NextRequest) {
+  if (!req.nextUrl.searchParams.get("url")?.trim()) {
+    return NextResponse.json(
+      { error: "INVALID_INPUT", message: "url is required before payment." },
+      { status: 400, headers: { "cache-control": "no-store", "access-control-allow-origin": "*" } }
+    );
+  }
+  return route.GET(req);
+}
 export const OPTIONS = route.OPTIONS;

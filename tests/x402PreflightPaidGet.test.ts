@@ -79,3 +79,20 @@ test("AgentResolver Guard alias publishes the same compact GET query contract", 
     "eligible"
   );
 });
+
+
+test("Guard rejects missing required input before issuing a payment challenge", async () => {
+  for (const [path, handler] of [
+    ["/api/x402-payment-preflight", GET],
+    ["/api/payment-guard", GUARD_GET]
+  ] as const) {
+    const response = await handler(new NextRequest(`https://agentresolver.vercel.app${path}`, {
+      method: "GET",
+      headers: { "user-agent": "agentresolver-test" }
+    }));
+
+    assert.equal(response.status, 400);
+    assert.equal(response.headers.get("payment-required"), null);
+    assert.match(await response.text(), /url is required before payment/i);
+  }
+});
