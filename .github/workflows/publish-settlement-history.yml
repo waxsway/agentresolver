@@ -12,6 +12,7 @@ on:
       - "scripts/merge-settlement-history.mjs"
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -94,9 +95,11 @@ jobs:
             --logs /tmp/agentresolver-settlement-logs.jsonl \
             --output /tmp/agentresolver-evidence-history/evidence/settlements.json
 
-      - name: Publish only when evidence changed
+      - name: Publish and amplify only when evidence changed
         shell: bash
         working-directory: /tmp/agentresolver-evidence-history
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if git diff --quiet -- evidence/settlements.json; then
@@ -109,3 +112,6 @@ jobs:
           git add evidence/settlements.json
           git commit -m "evidence: publish independently verified x402 settlement history"
           git push origin HEAD:evidence-history
+
+          echo "New independently verified settlement evidence published; dispatching buyer-surface amplifier."
+          gh workflow run amplify-first-settlement.yml --repo "$GITHUB_REPOSITORY" --ref main
