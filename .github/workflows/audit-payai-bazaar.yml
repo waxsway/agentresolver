@@ -13,6 +13,12 @@ on:
       - "src/lib/x402PreflightDiscovery.ts"
       - "src/app/api/x402-ping/**"
       - "src/app/api/x402-payment-preflight/**"
+      - "public/openapi.json"
+      - "public/capabilities.json"
+      - "public/integrations.json"
+      - "public/.well-known/x402"
+      - "public/.well-known/x402-catalog.json"
+      - "public/.well-known/x402-service.json"
 
 permissions:
   contents: read
