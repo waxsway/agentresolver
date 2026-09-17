@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";\nimport { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const installable = readFileSync("skills/agentresolver-payment-guard/SKILL.md", "utf8");
@@ -31,7 +32,6 @@ test("published skill mirrors the current GET-first Guard contract", () => {
   );
 });
 
-
 test("web-native Agent Skills discovery is generated from the canonical skill", () => {
   const wellKnown = readFileSync(
     "public/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md",
@@ -40,7 +40,8 @@ test("web-native Agent Skills discovery is generated from the canonical skill", 
   const index = JSON.parse(
     readFileSync("public/.well-known/agent-skills/index.json", "utf8")
   );
-  const expectedDigest = `sha256:${createHash("sha256").update(Buffer.from(wellKnown)).digest("hex")}`;
+  const expectedDigest =
+    `sha256:${createHash("sha256").update(Buffer.from(wellKnown)).digest("hex")}`;
 
   assert.equal(wellKnown, installable);
   assert.equal(index.$schema, "https://schemas.agentskills.io/discovery/0.2.0/schema.json");
@@ -48,7 +49,7 @@ test("web-native Agent Skills discovery is generated from the canonical skill", 
   assert.deepEqual(index.skills[0], {
     name: "agentresolver-payment-guard",
     type: "skill-md",
-    description: installable.match(/^description:\\s*(.+)$/m)?.[1]?.trim(),
+    description: installable.match(/^description:\s*(.+)$/m)?.[1]?.trim(),
     url: "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md",
     digest: expectedDigest
   });
@@ -59,15 +60,16 @@ test("agent discovery surfaces advertise the installable Guard skill", () => {
   const agentsJson = JSON.parse(readFileSync("public/agents.json", "utf8"));
   const nextConfig = readFileSync("next.config.ts", "utf8");
   const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
-  const skillUrl = "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md";
+  const skillUrl =
+    "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md";
 
-  assert.match(agentsTxt, new RegExp(`^Skills: ${skillUrl.replace(/[.*+?^\\$()|[\\]\\\\]/g, "\\\\$&")}$`, "m"));
+  assert.ok(agentsTxt.includes(`Skills: ${skillUrl}`));
   assert.equal(
     agentsJson.discovery.agentSkills,
     "https://agentresolver.vercel.app/.well-known/agent-skills/index.json"
   );
   assert.equal(agentsJson.skills?.[0]?.url, skillUrl);
-  assert.match(nextConfig, /rel=\\\\\"agent-skills\\\\\"/);
-  assert.match(nextConfig, /source: "\\.well-known\\/agent-skills\\/:path\*"/);
-  assert.match(packageJson.scripts["sync:products"], /publish-agent-skills\\.ts/);
+  assert.ok(nextConfig.includes('rel=\\\"agent-skills\\\"'));
+  assert.ok(nextConfig.includes('source: "/.well-known/agent-skills/:path*"'));
+  assert.match(packageJson.scripts["sync:products"], /publish-agent-skills\.ts/);
 });
