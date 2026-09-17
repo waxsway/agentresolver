@@ -8,8 +8,8 @@ test("canonical x402 preflight owns verify-before-pay buyer language", () => {
   const legacy = getPaidCapability("http-inspect");
 
   assert.equal(canonical.endpoint, "/api/x402-payment-preflight");
-  assert.equal(canonical.operationId, "agentResolverPaymentGuard");
-  assert.match(canonical.operationId, /agentresolver.*payment.*guard/i);
+  assert.equal(canonical.operationId, "x402PaymentPreflightPayToVerification");
+  assert.match(canonical.operationId, /x402.*preflight.*payto.*verification/i);
   assert.match(canonical.name, /agentresolver guard/i);
   assert.ok(canonical.tags.includes("payment guard"));
   assert.ok(canonical.tags.includes("agent wallet firewall"));
