@@ -1,5 +1,5 @@
 # AgentResolver agent capabilities
-# Repeat-use x402 payment authorization plus free capability discovery and low-cost live evidence.
+# Repeat-use x402 verify-before-pay checks plus free capability discovery and low-cost live evidence.
 
 Origin: https://agentresolver.vercel.app
 MCP: https://agentresolver.vercel.app/mcp
@@ -9,7 +9,7 @@ X402-Manifest: https://agentresolver.vercel.app/.well-known/x402
 Buyer-Setup: https://agentresolver.vercel.app/api/x402-client-setup
 Protocols: MCP, x402
 
-# Payment authorization
+# Payment preflight
 Capability: payment_guard
 Canonical-Capability: x402-payment-preflight
 Endpoint: GET https://agentresolver.vercel.app/api/payment-guard?url=<encoded-target>

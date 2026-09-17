@@ -2,7 +2,7 @@
   "schemaVersion": "1.2",
   "name": "AgentResolver",
   "origin": "https://agentresolver.vercel.app",
-  "description": "Repeat-use x402 payment authorization for autonomous agents, plus free missing-capability resolution and low-cost live verification.",
+  "description": "Repeat-use x402 verify-before-pay checks for autonomous agents, plus free missing-capability resolution and low-cost live verification.",
   "protocols": ["mcp", "x402"],
   "discovery": {
     "mcp": "https://agentresolver.vercel.app/mcp",
