@@ -1,0 +1,121 @@
+name: Diagnostic NoHumans Payment Audit
+
+on:
+  push:
+    branches:
+      - 'diag/nohumans-payment-audit-20260916'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch NoHumans public listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in https://api.nohumans.directory https://nohumans.directory; do
+            echo "=== LISTING via $base ==="
+            code="$(curl -sS --max-time 20 -o /tmp/listing.json -w '%{http_code}' "$base/v1/listings/28e33786-f07" || true)"
+            echo "HTTP=$code"
+            cat /tmp/listing.json 2>/dev/null || true
+            echo
+            if [ "$code" = "200" ]; then
+              python3 - <<'PY'
+import json
+d=json.load(open('/tmp/listing.json'))
+keys=[
+'id','name','status','score','probe_count','last_probed_at','paid_verified',
+'evidence_tier','evidence_note','onchain_unique_payers_30d','observed_network',
+'fee_tx','request_id','verification_request_id','verification_status',
+'paid_verification','paid_verification_status','verify_now_status','verification'
+]
+print('LISTING_SUMMARY=' + json.dumps({k:d.get(k) for k in keys if k in d}, separators=(',',':')))
+print('LISTING_ALL_KEYS=' + json.dumps(sorted(d.keys())))
+PY
+              break
+            fi
+          done
+
+      - name: Probe verify-now state without payment
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== VERIFY-NOW UNPAID PROBE ==="
+          code="$(curl -sS --max-time 20 -D /tmp/verify.headers -o /tmp/verify.body -w '%{http_code}'             -X POST 'https://api.nohumans.directory/v1/listings/28e33786-f07/verify-now?plan=single' || true)"
+          echo "HTTP=$code"
+          awk 'BEGIN{IGNORECASE=1} /^(payment-required|payment-response|x-payment-response|content-type|location):/ {print}' /tmp/verify.headers || true
+          cat /tmp/verify.body 2>/dev/null || true
+          echo
+
+      - name: Audit recent Base USDC transfers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+import json, time, urllib.request
+
+RPCS=[
+  'https://mainnet.base.org',
+  'https://base-rpc.publicnode.com',
+  'https://base.llamarpc.com',
+]
+USDC='0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+TRANSFER='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+TARGETS={
+  'NOHUMANS': ('0xA733875f2F7E8A2817040B5c60B63Ae07D58a1d6', 3000000),
+  'AGENTRESOLVER': ('0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8', 1000),
+}
+
+def rpc(method, params):
+    body=json.dumps({'jsonrpc':'2.0','id':1,'method':method,'params':params}).encode()
+    last=None
+    for url in RPCS:
+        try:
+            req=urllib.request.Request(url,data=body,headers={'content-type':'application/json','user-agent':'AgentResolver-payment-audit/1.0'})
+            with urllib.request.urlopen(req,timeout=20) as r:
+                obj=json.load(r)
+            if 'error' in obj:
+                last=RuntimeError(obj['error'])
+                continue
+            return obj['result']
+        except Exception as e:
+            last=e
+    raise last
+
+latest=int(rpc('eth_blockNumber',[]),16)
+start=max(0,latest-8000)
+print(f'BASE_BLOCK_WINDOW={start}-{latest}')
+
+for label,(addr,amount) in TARGETS.items():
+    topic_to='0x'+'0'*24+addr.lower()[2:]
+    matches=[]
+    for a in range(start,latest+1,500):
+        b=min(a+499,latest)
+        logs=rpc('eth_getLogs',[{
+            'fromBlock':hex(a),
+            'toBlock':hex(b),
+            'address':USDC,
+            'topics':[TRANSFER,None,topic_to],
+        }])
+        for log in logs:
+            if int(log.get('data','0x0'),16)!=amount:
+                continue
+            block=rpc('eth_getBlockByNumber',[log['blockNumber'],False])
+            tx=rpc('eth_getTransactionByHash',[log['transactionHash']])
+            matches.append({
+                'tx':log['transactionHash'],
+                'block':int(log['blockNumber'],16),
+                'timestamp':int(block['timestamp'],16),
+                'timestamp_iso':time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(int(block['timestamp'],16))),
+                'from':'0x'+log['topics'][1][-40:],
+                'to':'0x'+log['topics'][2][-40:],
+                'amount_atomic':int(log['data'],16),
+                'tx_to':tx.get('to'),
+                'input_selector':(tx.get('input') or '')[:10],
+            })
+    print(label+'_MATCHES='+json.dumps(matches,separators=(',',':')))
+PY
