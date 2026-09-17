@@ -1,0 +1,38 @@
+name: Register AgentResolver with x402scan
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-x402scan-agentresolver.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Register canonical preflight anonymously
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://agentresolver.vercel.app/api/x402-payment-preflight'
+          body='{"0":{"json":{"url":"'"$endpoint"'"}}}'
+          code="$(curl -sS --max-time 60 -o /tmp/x402scan.json -w '%{http_code}' \
+            -X POST 'https://www.x402scan.com/api/trpc/public.resources.register?batch=1' \
+            -H 'content-type: application/json' \
+            -H 'x-trpc-source: agentresolver-operator' \
+            --data "$body")"
+          echo "REGISTER_HTTP=$code"
+          cat /tmp/x402scan.json || true
+          echo
+          [ "$code" = "200" ]
+
+      - name: Assert registration response is usable
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.[0].result.data.json.success == true or .[0].result.data.success == true' /tmp/x402scan.json >/dev/null
+          echo 'X402SCAN_REGISTERED=true'
