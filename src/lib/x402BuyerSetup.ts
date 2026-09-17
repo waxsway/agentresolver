@@ -126,14 +126,25 @@ export function x402BuyerSetup() {
         package: "@coinbase/agentkit",
         x402Actions: {
           discover: "discover_x402_services",
+          listApprovedServices: "list_registered_services",
+          approveService: "register_x402_service",
           challenge: "make_http_request",
           authorizedRetry: "retry_http_request_with_x402",
           automaticPayment: "make_http_request_with_x402"
         },
+        serviceApproval: {
+          defaultDynamicRegistration: false,
+          configKeys: ["registeredServices", "allowDynamicServiceRegistration"],
+          requiredOrigins: ["https://agentresolver.vercel.app"],
+          rule:
+            "Before make_http_request, the exact target and AgentResolver origin must already be approved. If dynamic service registration is enabled, register them explicitly; otherwise the host administrator must preconfigure them."
+        },
         paymentGuardUrl: "https://agentresolver.vercel.app/api/payment-guard",
         behavior: [
-          "Use make_http_request on the exact target first so its x402 terms are visible before any payment.",
-          "Build the AgentResolver Guard URL with the encoded target URL and caller-owned constraints, then use make_http_request on Guard to receive its separate $0.001 challenge without paying.",
+          "Call list_registered_services before the first request. AgentKit blocks make_http_request for URLs outside its registered service allowlist.",
+          "Ensure the exact target and https://agentresolver.vercel.app are approved. If allowDynamicServiceRegistration is true, register each intentionally with register_x402_service; otherwise the host administrator must preconfigure them in registeredServices.",
+          "Use make_http_request on the approved exact target first so its x402 terms are visible before any payment.",
+          "Build the AgentResolver Guard URL with that target plus caller-owned constraints and use make_http_request on the approved AgentResolver origin to receive Guard's separate $0.001 challenge without paying.",
           "Only after the caller's own policy authorizes the $0.001 Guard spend, use retry_http_request_with_x402 to pay Guard and obtain the eligible/blocked evidence.",
           "Require decision === eligible and re-check amount, asset, network, payTo and resource binding against caller policy.",
           "Only after separate caller authorization for the target amount, use retry_http_request_with_x402 on the original target challenge.",
