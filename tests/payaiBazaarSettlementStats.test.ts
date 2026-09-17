@@ -11,3 +11,13 @@ test("PayAI Bazaar audit retrieves per-resource settlement stats without spendin
   assert.doesNotMatch(workflow, /payment-signature/i);
   assert.doesNotMatch(workflow, /private.?key/i);
 });
+
+
+test("PayAI Bazaar audit filters catalog reads by AgentResolver payTo", () => {
+  const workflow = readFileSync(".github/workflows/audit-payai-bazaar.yml", "utf8");
+  assert.match(workflow, /'payTo': pay_to/);
+  assert.match(workflow, /for pay_to in pay_tos:/);
+  assert.match(workflow, /queryTotalsByPayTo/);
+  assert.match(workflow, /catalogRequests/);
+  assert.doesNotMatch(workflow, /urlencode\(\{'limit': limit, 'offset': page_offset\}\)/);
+});
