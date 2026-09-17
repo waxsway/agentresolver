@@ -134,5 +134,11 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   );
   assert.equal(exampleSchema?.properties?.pong?.const, true);
   assert.equal(exampleSchema?.properties?.settledDelivery?.const, true);
-  assert.equal(exampleSchema?.properties?.requestId?.format, "uuid");
+  assert.equal(exampleSchema?.properties?.requestId?.format, undefined);
+  assert.equal(exampleSchema?.properties?.requestId?.minLength, 36);
+  assert.equal(exampleSchema?.properties?.requestId?.maxLength, 36);
+  assert.match(exampleSchema?.properties?.requestId?.pattern || "", /0-9a-fA-F/);
+  assert.equal(exampleSchema?.properties?.at?.format, undefined);
+  assert.equal(exampleSchema?.properties?.at?.minLength, 20);
+  assert.equal(exampleSchema?.properties?.at?.maxLength, 35);
 });
