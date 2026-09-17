@@ -14,8 +14,16 @@
     "mcpServerCard": "https://agentresolver.vercel.app/mcp/server-card",
     "capabilities": "https://agentresolver.vercel.app/capabilities.json",
     "integrations": "https://agentresolver.vercel.app/integrations.json",
-    "buyerSetup": "https://agentresolver.vercel.app/api/x402-client-setup"
+    "buyerSetup": "https://agentresolver.vercel.app/api/x402-client-setup",
+    "agentSkills": "https://agentresolver.vercel.app/.well-known/agent-skills/index.json"
   },
+  "skills": [
+    {
+      "name": "agentresolver-payment-guard",
+      "url": "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md",
+      "description": "Verify live x402 payment terms before an autonomous agent authorizes USDC spend."
+    }
+  ],
   "capabilities": [
     {
       "id": "payment_guard",
