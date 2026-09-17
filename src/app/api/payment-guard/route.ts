@@ -28,7 +28,13 @@ function invalidInput() {
         buyerSetup: "https://agentresolver.vercel.app/api/x402-client-setup"
       }
     },
-    { status: 400, headers: { "cache-control": "no-store", "access-control-allow-origin": "*" } }
+    { status: 400, headers: {
+      "cache-control": "no-store",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "x-agentresolver-buyer-setup, x-agentresolver-payment-guard",
+      "x-agentresolver-buyer-setup": "https://agentresolver.vercel.app/api/x402-client-setup",
+      "x-agentresolver-payment-guard": "https://agentresolver.vercel.app/api/payment-guard"
+    } }
   );
 }
 
