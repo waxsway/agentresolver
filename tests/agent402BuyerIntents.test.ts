@@ -13,14 +13,14 @@ test("Agent402-facing canonical product names retain the four established buyer 
   assert.match(canary.name, /wallet facilitator payment test/i);
 });
 
-test("generated x402-ping GET owns the exact settlement-test buyer intent without changing POST", () => {
+test("generated x402-ping GET owns the exact settlement-test buyer intent without changing stable operation id", () => {
   const openapi = JSON.parse(readFileSync("public/openapi.json", "utf8"));
   const postSummary = openapi.paths?.["/api/x402-ping"]?.post?.summary;
   const getOperation = openapi.paths?.["/api/x402-ping"]?.get;
 
   assert.match(postSummary, /wallet facilitator payment test/i);
   assert.equal(getOperation?.summary, "x402 Settlement Test");
-  assert.equal(getOperation?.operationId, "x402SettlementTest");
+  assert.equal(getOperation?.operationId, "x402SettlementPingGet");
 });
 
 test("USDC payment-check alias is a real advertised paid route with exact buyer-intent identity", () => {
