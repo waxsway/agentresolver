@@ -1,0 +1,67 @@
+name: Diagnostic Commercial State
+
+on:
+  push:
+    branches:
+      - diag/commercial-state-20260917
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: PayAI Bazaar listing state
+        shell: bash
+        run: |
+          set -euo pipefail
+          for resource in \
+            'https://agentresolver.vercel.app/api/x402-ping' \
+            'https://agentresolver.vercel.app/api/x402-payment-preflight'
+          do
+            echo "=== PAYAI LISTING STATUS: $resource ==="
+            curl --fail-with-body -sS --get \
+              'https://facilitator.payai.network/discovery/listing-status' \
+              --data-urlencode "resource=$resource" || true
+            echo
+          done
+          echo '=== PAYAI SEARCH: AgentResolver ==='
+          curl --fail-with-body -sS --get \
+            'https://facilitator.payai.network/discovery/search' \
+            --data-urlencode 'query=AgentResolver' \
+            --data-urlencode 'limit=20' || true
+          echo
+
+      - name: NoHumans listing state
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== NOHUMANS LISTING ==='
+          curl --fail-with-body -sS --retry 2 --retry-delay 2 \
+            'https://nohumans.directory/v1/listings/28e33786-f07'
+          echo
+
+      - name: Base USDC transfer evidence for authorized NoHumans fee
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== BASE BLOCKSCOUT USDC TRANSFERS ==='
+          curl --fail-with-body -sS --get \
+            'https://base.blockscout.com/api/v2/addresses/0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8/token-transfers' \
+            --data-urlencode 'type=ERC-20' \
+          | python3 -c '
+          import json,sys
+          data=json.load(sys.stdin)
+          target="0xa733875f2f7e8a2817040b5c60b63ae07d58a1d6"
+          usdc="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+          out=[]
+          for x in data.get("items",[]):
+              to=((x.get("to") or {}).get("hash") or "").lower()
+              token=((x.get("token") or {}).get("address_hash") or "").lower()
+              amount=str(x.get("total",{}).get("value") or x.get("value") or "")
+              if to==target and token==usdc:
+                  out.append({"tx_hash":x.get("transaction_hash"),"timestamp":x.get("timestamp"),"amount":amount,"from":((x.get("from") or {}).get("hash")),"to":((x.get("to") or {}).get("hash")),"token":((x.get("token") or {}).get("symbol"))})
+          print(json.dumps(out,indent=2))
+          '
