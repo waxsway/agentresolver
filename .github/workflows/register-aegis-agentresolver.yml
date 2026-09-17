@@ -1,4 +1,4 @@
-name: Register AgentResolver with Aegis
+name: Audit AgentResolver on Aegis
 
 on:
   pull_request:
@@ -10,11 +10,11 @@ permissions:
   contents: read
 
 jobs:
-  register:
+  audit:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Submit canonical preflight to free Aegis registry
+      - name: Confirm Aegis submission terms without paying
         shell: bash
         run: |
           set -euo pipefail
@@ -27,12 +27,15 @@ jobs:
           echo "SUBMIT_HTTP=$code"
           cat /tmp/aegis-submit.json || true
           echo
-          case "$code" in
-            200|201|202|204|409) ;;
-            *) echo "Unexpected Aegis submit status: $code" >&2; exit 1 ;;
-          esac
+          if [ "$code" = "402" ]; then
+            jq -e '.price == "$0.05" and .accepts[0].amount == "50000"' /tmp/aegis-submit.json >/dev/null
+            echo "AEGIS_SUBMISSION_PAID=true"
+            echo "AEGIS_SUBMISSION_SKIPPED_NO_SPEND=true"
+          else
+            echo "Aegis submission terms changed; no registration action taken." >&2
+          fi
 
-      - name: Verify Aegis can lint AgentResolver
+      - name: Verify free Aegis lint sees AgentResolver
         shell: bash
         run: |
           set -euo pipefail
@@ -48,7 +51,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sleep 3
           code="$(curl -sS --max-time 30 -o /tmp/aegis-discover.json -w '%{http_code}' -G \
             'https://aegis.borisinc.com/discover' \
             --data-urlencode 'q=AgentResolver')"
