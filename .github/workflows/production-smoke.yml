@@ -34,7 +34,7 @@ jobs:
 
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/health" | tee /tmp/health.json
           grep -F '"ok":true' /tmp/health.json >/dev/null
-          grep -F '"version":"0.1.3"' /tmp/health.json >/dev/null
+          grep -F '"version":"0.1.4"' /tmp/health.json >/dev/null
           grep -F '"paidManifest":"/.well-known/x402"' /tmp/health.json >/dev/null
           grep -F '"evidence":"/.well-known/agentresolver-evidence.json"' /tmp/health.json >/dev/null
           grep -F '"reputation":"/.well-known/agentresolver-reputation.json"' /tmp/health.json >/dev/null
@@ -82,7 +82,7 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402" | grep -F 'mcp-probe' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS -H 'x-agentresolver-internal: 1' "$BASE_URL/mcp/server-card" | tee /tmp/server-card.json >/dev/null
-          grep -F '0.1.3' /tmp/server-card.json >/dev/null
+          grep -F '0.1.4' /tmp/server-card.json >/dev/null
           jq -e '.sponsorship.model == "provider-funded-discovery" and .sponsorship.organicRankingIndependent == true' /tmp/server-card.json >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/sponsorship.json" | grep -F 'pilot_inventory_open' >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/sponsorship" | jq -e '.inventory.model == "provider-funded-discovery" and .activation.operatorApprovalRequired == true' >/dev/null
@@ -167,12 +167,16 @@ jobs:
               exit 1
             fi
 
+            get_path="$path"
+            if [ "$path" = "/api/x402-payment-preflight" ] || [ "$path" = "/api/payment-guard" ]; then
+              get_path="$path?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453"
+            fi
             get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
               -D "/tmp/${slug}-get-headers.txt" \
               -H 'x-agentresolver-internal: 1' \
               -o "/tmp/${slug}-get.json" \
               -w '%{http_code}' \
-              "$BASE_URL$path")"
+              "$BASE_URL$get_path")"
             if [ "$get_status" != "402" ]; then
               echo "Expected $name GET discovery probe to receive 402, got $get_status"
               exit 1

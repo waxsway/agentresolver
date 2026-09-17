@@ -54,7 +54,7 @@ jobs:
           curl -fsS http://127.0.0.1:3001/integrations.json | grep -F 'https://agentresolver.vercel.app/mcp' >/dev/null
           curl -fsS http://127.0.0.1:3001/openapi.json | grep -F 'resolveCapability' >/dev/null
           grep -F '"ok":true' /tmp/health.json >/dev/null
-          grep -F '"version":"0.1.3"' /tmp/health.json >/dev/null
+          grep -F '"version":"0.1.4"' /tmp/health.json >/dev/null
           grep -F '"paidManifest":"/.well-known/x402"' /tmp/health.json >/dev/null
 
           kill "$app_pid"

@@ -7,8 +7,8 @@ export function GET() {
     {
       ok: true,
       service: "AgentResolver",
-      version: "0.1.3",
-      purpose: "Non-custodial x402 verify-before-pay infrastructure with free fallback capability discovery",
+      version: "0.1.4",
+      purpose: "GET-first $0.001 USDC non-custodial x402 verify-before-pay Guard with free fallback capability discovery",
       resolver: "/api/resolve",
       mcp: "/mcp",
       serverCard: "/mcp/server-card",
