@@ -113,6 +113,38 @@ jobs:
           jq 'del(.edit_token,.owner_token,.claim_token,.token,.email)' /tmp/claim.json
           echo "NOHUMANS_OWNER_CLAIMED=true"
 
+      - name: Request exact NoHumans single-plan x402 invoice
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner_token="$(cat /tmp/owner-token)"
+          code="$(curl -sS --max-time 30 -D /tmp/nohumans-invoice-headers.txt -o /tmp/nohumans-invoice-body.json -w '%{http_code}' \
+            -X POST "https://api.nohumans.directory/v1/listings/$LISTING_ID/verify-now?plan=single" \
+            -H "x-claim-token: $owner_token")"
+          echo "NOHUMANS_INVOICE_HTTP=$code"
+          test "$code" = "402"
+
+          echo '=== response body ==='
+          jq . /tmp/nohumans-invoice-body.json 2>/dev/null || cat /tmp/nohumans-invoice-body.json
+
+          echo '=== selected headers ==='
+          awk 'BEGIN{IGNORECASE=1} /^(payment-required|content-type|x402-version|www-authenticate):/ {print}' /tmp/nohumans-invoice-headers.txt
+
+          python3 - <<'PY'
+          import base64, json
+          value=None
+          for line in open('/tmp/nohumans-invoice-headers.txt', errors='ignore'):
+              if line.lower().startswith('payment-required:'):
+                  value=line.split(':',1)[1].strip()
+                  break
+          if not value:
+              raise SystemExit('payment-required header missing')
+          pad='='*((4-len(value)%4)%4)
+          obj=json.loads(base64.b64decode(value+pad).decode())
+          print('=== decoded payment-required ===')
+          print(json.dumps(obj,indent=2))
+          PY
+
       - name: Store NoHumans owner token securely for seller operations
         shell: bash
         run: |
