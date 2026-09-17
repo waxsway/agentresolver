@@ -182,7 +182,7 @@ jobs:
           # buyer-facing alias and require it to expose the exact validated SHA.
           live=0
           for attempt in {1..30}; do
-            code="$(curl -sS -D /tmp/preflight-headers.txt -o /tmp/preflight-body.json -w '%{http_code}' "$BASE_URL/api/x402-payment-preflight" || true)"
+            code="$(curl -sS -D /tmp/preflight-headers.txt -o /tmp/preflight-body.json -w '%{http_code}' "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01" || true)"
             deployed_sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\\r",""); print $2; exit}' /tmp/preflight-headers.txt)"
             if [ "$code" = "402" ] && [ "$deployed_sha" = "$VALIDATED_SHA" ]; then
               live=1
