@@ -45,3 +45,11 @@ test("production deploy classifies application changes from merged PR files", ()
   assert.match(workflow, /jq -r '\.\[\]\.filename'/);
   assert.doesNotMatch(workflow, /git rev-parse HEAD\^1/);
 });
+
+
+test("successful production smoke cannot be cancelled by a skipped deploy completion", () => {
+  const workflow = readFileSync(".github/workflows/production-smoke.yml", "utf8");
+  assert.doesNotMatch(workflow, /group: production-smoke/);
+  assert.doesNotMatch(workflow, /cancel-in-progress: true/);
+  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+});
