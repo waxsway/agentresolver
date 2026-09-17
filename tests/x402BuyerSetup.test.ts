@@ -86,3 +86,18 @@ test("buyer setup hint points to the canonical free handoff", () => {
   assert.equal(hint.paymentAuthorizationRequired, true);
   assert.equal(hint.signerControlledByCaller, true);
 });
+
+
+test("Coinbase AgentKit exposes a confirmation-first Guard loop", () => {
+  const setup = x402BuyerSetup();
+  const agentkit = setup.clients.coinbaseAgentKit;
+  assert.equal(agentkit.package, "@coinbase/agentkit");
+  assert.equal(agentkit.x402Actions.discover, "discover_x402_services");
+  assert.equal(agentkit.x402Actions.challenge, "make_http_request");
+  assert.equal(agentkit.x402Actions.authorizedRetry, "retry_http_request_with_x402");
+  assert.equal(agentkit.x402Actions.automaticPayment, "make_http_request_with_x402");
+  assert.equal(agentkit.paymentGuardUrl, "https://agentresolver.vercel.app/api/payment-guard");
+  assert.ok(agentkit.behavior.some((step) => /Guard spend/i.test(step)));
+  assert.ok(agentkit.behavior.some((step) => /separate caller authorization/i.test(step)));
+  assert.ok(agentkit.behavior.some((step) => /Do not use make_http_request_with_x402/i.test(step)));
+});
