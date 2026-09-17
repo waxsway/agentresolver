@@ -114,6 +114,10 @@ function stampInfrastructureHeaders(
   response.headers.set("x-agentresolver-contract-version", "1");
   response.headers.set("x-agentresolver-buyer-setup", X402_BUYER_SETUP_URL);
   response.headers.set(
+    "x-agentresolver-payment-guard",
+    "https://agentresolver.vercel.app/api/payment-guard"
+  );
+  response.headers.set(
     "x-agentresolver-trust",
     "https://agentresolver.vercel.app/.well-known/agentresolver-trust.json"
   );
@@ -131,6 +135,7 @@ function stampInfrastructureHeaders(
       "x-agentresolver-request-id",
       "x-agentresolver-contract-version",
       "x-agentresolver-buyer-setup",
+      "x-agentresolver-payment-guard",
       "x-agentresolver-trust",
       "x-agentresolver-evidence",
       "x-agentresolver-history",

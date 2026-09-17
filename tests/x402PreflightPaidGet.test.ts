@@ -17,6 +17,11 @@ test("x402 payment preflight supports a simple paid GET challenge", async () => 
   }));
 
   assert.equal(response.status, 402);
+  assert.equal(
+    response.headers.get("x-agentresolver-payment-guard"),
+    "https://agentresolver.vercel.app/api/payment-guard"
+  );
+  assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-payment-guard/i);
   const paymentRequired = response.headers.get("payment-required");
   assert.ok(paymentRequired);
   assert.ok(Buffer.byteLength(paymentRequired, "utf8") < 8192);
