@@ -181,7 +181,8 @@ function logMcpPaymentOutcome(result: McpToolResult, capabilityId: PaidCapabilit
 
 export function createLazyPaidMcpTool<TArgs>(
   capabilityId: PaidCapabilityId,
-  handler: McpToolHandler<TArgs>
+  handler: McpToolHandler<TArgs>,
+  options: Readonly<{ discoveryToolName?: string; discoveryDescription?: string }> = {}
 ) {
   const product = getPaidCapability(capabilityId);
   let wrapped: McpToolHandler<TArgs> | null = null;
@@ -199,8 +200,8 @@ export function createLazyPaidMcpTool<TArgs>(
           mimeType: "application/json"
         },
         extensions: declareDiscoveryExtension({
-          toolName: product.quoteTool.name,
-          description: product.description,
+          toolName: options.discoveryToolName || product.quoteTool.name,
+          description: options.discoveryDescription || product.description,
           transport: "streamable-http",
           inputSchema: product.inputSchema,
           example: product.example
