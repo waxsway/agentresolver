@@ -27,12 +27,21 @@ test("canonical x402 preflight recommendation carries the target URL directly", 
   );
 });
 
-test("settled canary next actions stay synchronized with authoritative paid capability metadata", () => {
+test("settled canary next actions expose canonical preflight without removing resolver handoffs", () => {
   const next = postSettlementCanaryNextActions();
+  const preflight = getPaidCapability("x402-payment-preflight");
   const single = getPaidCapability("verified-resolve");
   const batch = getPaidCapability("batch-verified-resolve");
 
   assert.equal(next.catalogUrl, `${CANONICAL_ORIGIN}/.well-known/x402`);
+  assert.deepEqual(next.preflight, {
+    capabilityId: preflight.id,
+    endpoint: `${CANONICAL_ORIGIN}${preflight.endpoint}`,
+    method: "POST",
+    priceUsd: preflight.priceUsd,
+    useWhen: preflight.useWhen,
+    inputExample: preflight.example
+  });
   assert.deepEqual(next.single, {
     capabilityId: single.id,
     endpoint: `${CANONICAL_ORIGIN}${single.endpoint}`,
@@ -49,8 +58,10 @@ test("settled canary next actions stay synchronized with authoritative paid capa
     useWhen: batch.useWhen,
     inputExample: batch.example
   });
+  assert.equal(next.preflight.priceUsd, 0.001);
   assert.equal(next.single.priceUsd, 0.02);
   assert.equal(next.batch.priceUsd, 0.05);
+  assert.equal(isDirectOwnedCapabilityId(next.preflight.capabilityId), true);
   assert.equal(isDirectOwnedCapabilityId(next.single.capabilityId), true);
   assert.equal(isDirectOwnedCapabilityId(next.batch.capabilityId), true);
 });

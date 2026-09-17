@@ -12,7 +12,12 @@ export const X402_PING_OUTPUT_EXAMPLE = {
   next: X402_PING_NEXT_ACTIONS
 } as const;
 
-function nextActionSchema(action: typeof X402_PING_NEXT_ACTIONS.single | typeof X402_PING_NEXT_ACTIONS.batch) {
+function nextActionSchema(
+  action:
+    | typeof X402_PING_NEXT_ACTIONS.preflight
+    | typeof X402_PING_NEXT_ACTIONS.single
+    | typeof X402_PING_NEXT_ACTIONS.batch
+) {
   return {
     type: "object",
     required: ["capabilityId", "endpoint", "method", "priceUsd", "useWhen", "inputExample"],
@@ -46,10 +51,11 @@ export const X402_PING_OUTPUT_SCHEMA = {
     },
     next: {
       type: "object",
-      required: ["catalogUrl", "single", "batch"],
+      required: ["catalogUrl", "preflight", "single", "batch"],
       additionalProperties: false,
       properties: {
         catalogUrl: { type: "string", const: X402_PING_NEXT_ACTIONS.catalogUrl },
+        preflight: nextActionSchema(X402_PING_NEXT_ACTIONS.preflight),
         single: nextActionSchema(X402_PING_NEXT_ACTIONS.single),
         batch: nextActionSchema(X402_PING_NEXT_ACTIONS.batch)
       }
