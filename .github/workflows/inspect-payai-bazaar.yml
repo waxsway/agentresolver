@@ -1,0 +1,77 @@
+name: Inspect PayAI Bazaar attribution
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-payai-bazaar.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Find AgentResolver resources and stats
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request
+
+          base='https://facilitator.payai.network'
+          needle='agentresolver.vercel.app'
+          matches=[]
+          offset=0
+          for page in range(40):
+              url=f'{base}/discovery/resources?limit=100&offset={offset}'
+              with urllib.request.urlopen(url, timeout=20) as r:
+                  data=json.load(r)
+              if isinstance(data,list):
+                  rows=data
+                  total=None
+              else:
+                  rows=data.get('resources') or data.get('items') or data.get('data') or []
+                  pag=data.get('pagination') or {}
+                  total=pag.get('total') or data.get('total')
+              for row in rows:
+                  if needle in json.dumps(row, sort_keys=True).lower():
+                      matches.append(row)
+              print(json.dumps({'page':page+1,'offset':offset,'rows':len(rows),'total':total,'matchesSoFar':len(matches)}, separators=(',',':')))
+              if not rows or len(rows)<100:
+                  break
+              offset += len(rows)
+          print('=== AGENTRESOLVER_MATCHES ===')
+          print(json.dumps(matches, indent=2, sort_keys=True))
+
+          def candidate_resource(row):
+              for key in ('resource','resourceUrl','url','endpoint'):
+                  v=row.get(key) if isinstance(row,dict) else None
+                  if isinstance(v,str) and needle in v.lower(): return v
+              if isinstance(row,dict):
+                  req=row.get('resource')
+                  if isinstance(req,dict):
+                      v=req.get('url')
+                      if isinstance(v,str) and needle in v.lower(): return v
+              return None
+
+          seen=set()
+          for row in matches:
+              resource=candidate_resource(row)
+              if not resource or resource in seen: continue
+              seen.add(resource)
+              encoded=urllib.parse.quote(resource, safe='')
+              url=f'{base}/discovery/resources/{encoded}/stats'
+              print('=== RESOURCE_STATS',resource,'===')
+              try:
+                  with urllib.request.urlopen(url, timeout=20) as r:
+                      print(json.dumps(json.load(r), indent=2, sort_keys=True))
+              except Exception as e:
+                  print(json.dumps({'error':str(e),'url':url}))
+
+          print('=== GLOBAL_STATS ===')
+          with urllib.request.urlopen(f'{base}/discovery/stats', timeout=20) as r:
+              print(json.dumps(json.load(r), indent=2, sort_keys=True))
+          PY
