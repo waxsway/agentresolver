@@ -10,7 +10,7 @@ import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities
 import { logPaidCapabilityAttempt, logPaidRetryRejection, logX402Settlement } from "@/lib/telemetry";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
-import { x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
+import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
 import { X402_BUYER_SETUP_URL } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
@@ -308,11 +308,20 @@ export function createDeterministicPaidRoute(
     }
 
     const discoveryOutput = x402RuntimeDiscoveryOutput(capabilityId);
+    const runtimeGetInput = options.paidGet
+      ? x402RuntimeDiscoveryInput(capabilityId)
+      : null;
 
     const discoveryExtension = options.paidGet
-      ? declareDiscoveryExtension({
-          output: discoveryOutput
-        })
+      ? runtimeGetInput
+        ? declareDiscoveryExtension({
+            input: runtimeGetInput.example,
+            inputSchema: runtimeGetInput.schema,
+            output: discoveryOutput
+          })
+        : declareDiscoveryExtension({
+            output: discoveryOutput
+          })
       : declareDiscoveryExtension({
           input: product.example,
           inputSchema: product.inputSchema,
