@@ -33,6 +33,13 @@ test("x402 payment preflight supports a simple paid GET challenge", async () => 
   assert.match(decoded.resource?.url || "", /x402-payment-preflight/);
   assert.match(decoded.resource?.description || "", /payment requirements before wallet signing/i);
   assert.match(decoded.resource?.description || "", /payTo/i);
+  assert.equal(decoded.resource?.serviceName, "AgentResolver Guard");
+  assert.deepEqual(decoded.resource?.tags, [
+    "x402",
+    "preflight",
+    "payment-safety",
+    "agent-payments"
+  ]);
   assert.equal(
     decoded.extensions?.bazaar?.info?.output?.example?.prepaymentDecision?.decision,
     "eligible"
