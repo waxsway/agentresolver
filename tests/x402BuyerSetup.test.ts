@@ -41,13 +41,41 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.equal(setup.authorizationBoundary.agentResolverReceivesPrivateKey, false);
   assert.equal(setup.authorizationBoundary.agentResolverReceivesSeedPhrase, false);
   assert.equal(setup.authorizationBoundary.agentResolverAuthorizesSpend, false);
+  assert.equal(setup.agentSkill.discoveryIndex, AGENT_SKILLS_INDEX_URL);
+  assert.equal(setup.agentSkill.url, PAYMENT_GUARD_SKILL_URL);
+  assert.equal(
+    setup.agentSkill.installCommand,
+    "npx skills add https://agentresolver.vercel.app --skill agentresolver-payment-guard"
+  );
   assert.equal(setup.clients.mcp.typescript.package, "@x402/mcp");
   assert.equal(setup.clients.mcp.typescript.factory, "createx402MCPClient");
+  assert.match(setup.clients.mcp.typescript.installCommand, /@x402\/mcp/);
+  assert.ok(
+    setup.clients.mcp.typescript.baseEvmQuickstart.some((line) =>
+      line.includes("new ExactEvmScheme(callerOwnedSigner)")
+    )
+  );
   assert.equal(setup.clients.http.typescript.package, "@x402/fetch");
   assert.ok(setup.clients.http.typescript.packages.includes("@x402/fetch"));
   assert.ok(setup.clients.http.typescript.packages.includes("@x402/core"));
   assert.equal(setup.clients.http.typescript.client, "x402Client");
   assert.equal(setup.clients.http.typescript.wrapper, "wrapFetchWithPayment");
+  assert.match(setup.clients.http.typescript.installCommand, /@x402\/fetch/);
+  assert.ok(
+    setup.clients.http.typescript.baseEvmQuickstart.some((line) =>
+      line.includes("registerExactEvmScheme")
+    )
+  );
+  assert.ok(
+    setup.clients.http.typescript.baseEvmQuickstart.some((line) =>
+      line.includes("callerOwnedSigner")
+    )
+  );
+  const quickstartText = [
+    ...setup.clients.http.typescript.baseEvmQuickstart,
+    ...setup.clients.mcp.typescript.baseEvmQuickstart
+  ].join("\n");
+  assert.doesNotMatch(quickstartText, /privateKeyToAccount|seed phrase|0xYourPrivateKey/i);
 });
 
 test("buyer setup hint points to the canonical free handoff", () => {
