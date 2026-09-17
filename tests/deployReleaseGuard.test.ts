@@ -45,3 +45,27 @@ test("PayAI Bazaar audit uses protocol-valid pagination", () => {
   assert.match(workflow, /limit = 100\b/);
   assert.doesNotMatch(workflow, /limit = 1000\b/);
 });
+
+
+test("production deploy classifies the full drift from live production to validated main", () => {
+  const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
+
+  assert.match(
+    workflow,
+    /api\/x402-payment-preflight\?url=https%3A%2F%2Fexample\.com%2Fpaid&method=GET&maxPriceUsd=0\.01/
+  );
+  assert.match(workflow, /x-agentresolver-deployment/);
+  assert.match(workflow, /production_sha="\$candidate"/);
+  assert.match(workflow, /git fetch --no-tags --depth=1 origin "\$production_sha"/);
+  assert.match(workflow, /git diff --name-only "\$production_sha" "\$VALIDATED_SHA"/);
+  assert.match(workflow, /no application drift from canonical production/i);
+  assert.doesNotMatch(workflow, /pulls\/\$RELEASE_PR_NUMBER\/files\?per_page=100&page=\$page/);
+});
+
+test("production drift detection fails closed when the live deployment SHA is unavailable", () => {
+  const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
+
+  assert.match(workflow, /if \[ -z "\$production_sha" \]; then/);
+  assert.match(workflow, /refusing to guess deployment drift/i);
+  assert.match(workflow, /\^\[0-9a-f\]\{40\}\$/);
+});
