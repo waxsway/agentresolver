@@ -121,7 +121,7 @@ jobs:
           while IFS= read -r path; do
             [ -z "$path" ] && continue
             case "$path" in
-              .github/*|README.md|tests/*|package-lock.json) ;;
+              .github/*|README.md|tests/*|package-lock.json|server.json) ;;
               *) deploy=true; break ;;
             esac
           done < "$changed_file"
