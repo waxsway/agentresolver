@@ -12,7 +12,22 @@ const route = createDeterministicPaidRoute(
 
 function invalidInput() {
   return NextResponse.json(
-    { error: "INVALID_INPUT", message: "url is required before payment." },
+    {
+      error: "INVALID_INPUT",
+      message: "url is required before payment.",
+      paymentRequired: false,
+      spendingAuthorized: false,
+      requiredInput: {
+        url: "https://target.example/api",
+        method: "GET"
+      },
+      retry: {
+        method: "GET",
+        endpoint: "https://agentresolver.vercel.app/api/payment-guard",
+        queryTemplate: "url={percent-encoded-target-url}&method=GET&maxPriceUsd={optional-max-price}",
+        buyerSetup: "https://agentresolver.vercel.app/api/x402-client-setup"
+      }
+    },
     { status: 400, headers: { "cache-control": "no-store", "access-control-allow-origin": "*" } }
   );
 }
