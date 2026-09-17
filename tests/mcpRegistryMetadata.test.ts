@@ -8,7 +8,7 @@ test("MCP registry metadata leads with the paid Guard wedge", () => {
   assert.equal(server.title, "AgentResolver Guard");
   assert.equal(server.version, "0.1.4");
   assert.match(server.description, /\$0\.001 USDC x402 verify-before-pay Guard/i);
-  assert.match(server.description, /free capability resolution/i);
+  assert.match(server.description, /free capability fallback/i);\n  assert.ok(server.description.length <= 100, "MCP Registry descriptions must be <= 100 characters");
   assert.equal(server.remotes?.[0]?.url, "https://agentresolver.vercel.app/mcp");
 });
 
