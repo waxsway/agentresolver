@@ -52,8 +52,17 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.match(setup.clients.mcp.typescript.installCommand, /@x402\/mcp/);
   assert.ok(
     setup.clients.mcp.typescript.baseEvmQuickstart.some((line) =>
-      line.includes("new ExactEvmScheme(callerOwnedSigner)")
+      line.includes("client: new ExactEvmScheme(callerOwnedSigner)")
     )
+  );
+  assert.ok(
+    setup.clients.mcp.typescript.baseEvmQuickstart.some((line) =>
+      line.includes('version: "1.0.0"')
+    )
+  );
+  assert.equal(
+    setup.clients.mcp.typescript.configurationShape.schemes[0].client,
+    "new ExactEvmScheme(callerOwnedSigner)"
   );
   assert.equal(setup.clients.http.typescript.package, "@x402/fetch");
   assert.ok(setup.clients.http.typescript.packages.includes("@x402/fetch"));
@@ -61,6 +70,11 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.equal(setup.clients.http.typescript.client, "x402Client");
   assert.equal(setup.clients.http.typescript.wrapper, "wrapFetchWithPayment");
   assert.match(setup.clients.http.typescript.installCommand, /@x402\/fetch/);
+  assert.ok(
+    setup.clients.http.typescript.baseEvmQuickstart.some((line) =>
+      line.includes('x402Client, wrapFetchWithPayment')
+    )
+  );
   assert.ok(
     setup.clients.http.typescript.baseEvmQuickstart.some((line) =>
       line.includes("registerExactEvmScheme")
