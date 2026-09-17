@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+// Runtime helper is intentionally plain Node ESM so the Actions publisher can execute it without a build step.
+// @ts-expect-error The .mjs helper has no TypeScript declaration; behavior is covered by these regression tests.
 import { extractSettlementEventsFromText } from "../scripts/extract-settlement-log-events.mjs";
 
 const settlement = {
