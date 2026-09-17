@@ -30,7 +30,7 @@ The stable underlying capability is `x402-payment-preflight`. The canonical comp
 
 1. Obtain the exact target endpoint and intended method without signing its payment.
 2. Call AgentResolver Guard with the target URL and the caller's known constraints.
-3. Pay AgentResolver's separate $0.001 verification fee only if the caller's own signer and spend policy independently authorize it.
+3. Pay AgentResolver's separate $0.001 verification fee only if the caller-owned signer and caller-owned spend policy independently authorize it.
 4. Require a successful Guard result with `decision === "eligible"`.
 5. Compare the returned target payment terms and evidence against caller policy: amount, asset, network, scheme, payTo, resource binding, and any supplied expectations.
 6. Only then may the caller-owned wallet independently decide whether to sign the target payment.
