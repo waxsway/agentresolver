@@ -32,6 +32,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Verify generated integration contract is committed
+        run: git diff --exit-code -- public/integrations.json
+
       - name: Build
         run: npm run build
 
