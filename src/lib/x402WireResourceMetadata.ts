@@ -15,7 +15,7 @@ function truncateDescription(value: string) {
 
 export function x402WireResourceMetadata(capability: PaidCapability) {
   const preferredDescription = capability.id === "x402-payment-preflight"
-    ? "Fail-closed x402 prepayment gate for autonomous buyers. Validate live payTo, USDC amount, network, asset, scheme and resource binding; return eligible/blocked plus exact observed payment terms before caller authorization."
+    ? "Validate x402 payment requirements before wallet signing. Check live payTo, quoted USDC amount, network, asset, exact scheme and resource binding; return fail-closed eligible/blocked evidence before caller authorization."
     : capability.description;
 
   const tags = [...capability.tags, "agents", "x402"]
