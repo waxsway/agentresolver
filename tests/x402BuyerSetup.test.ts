@@ -107,10 +107,17 @@ test("Coinbase AgentKit exposes a confirmation-first Guard loop", () => {
   const agentkit = setup.clients.coinbaseAgentKit;
   assert.equal(agentkit.package, "@coinbase/agentkit");
   assert.equal(agentkit.x402Actions.discover, "discover_x402_services");
+  assert.equal(agentkit.x402Actions.listApprovedServices, "list_registered_services");
+  assert.equal(agentkit.x402Actions.approveService, "register_x402_service");
   assert.equal(agentkit.x402Actions.challenge, "make_http_request");
   assert.equal(agentkit.x402Actions.authorizedRetry, "retry_http_request_with_x402");
   assert.equal(agentkit.x402Actions.automaticPayment, "make_http_request_with_x402");
   assert.equal(agentkit.paymentGuardUrl, "https://agentresolver.vercel.app/api/payment-guard");
+  assert.equal(agentkit.serviceApproval.defaultDynamicRegistration, false);
+  assert.ok(agentkit.serviceApproval.configKeys.includes("registeredServices"));
+  assert.ok(agentkit.serviceApproval.configKeys.includes("allowDynamicServiceRegistration"));
+  assert.ok(agentkit.behavior.some((step) => /list_registered_services/i.test(step)));
+  assert.ok(agentkit.behavior.some((step) => /register_x402_service/i.test(step)));
   assert.ok(agentkit.behavior.some((step) => /Guard spend/i.test(step)));
   assert.ok(agentkit.behavior.some((step) => /separate caller authorization/i.test(step)));
   assert.ok(agentkit.behavior.some((step) => /Do not use make_http_request_with_x402/i.test(step)));
