@@ -31,6 +31,8 @@ test("x402 payment preflight supports a simple paid GET challenge", async () => 
   assert.equal(decoded.accepts?.length, 2);
   assert.equal(decoded.accepts?.[0]?.network, "eip155:8453");
   assert.match(decoded.resource?.url || "", /x402-payment-preflight/);
+  assert.match(decoded.resource?.description || "", /payment requirements before wallet signing/i);
+  assert.match(decoded.resource?.description || "", /payTo/i);
   assert.equal(
     decoded.extensions?.bazaar?.info?.output?.example?.prepaymentDecision?.decision,
     "eligible"
