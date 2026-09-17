@@ -76,7 +76,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          vercel redeploy "$CANONICAL_URL" --prod --token="$VERCEL_TOKEN" --yes >/tmp/redeploy-url.txt
+          vercel redeploy "$CANONICAL_URL" --target=production --token="$VERCEL_TOKEN" --non-interactive >/tmp/redeploy-url.txt
 
       - name: Wait for public proof route to serve exact challenge
         shell: bash
@@ -125,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           vercel env rm NOHUMANS_CLAIM_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
-          vercel redeploy "$CANONICAL_URL" --prod --token="$VERCEL_TOKEN" --yes >/tmp/cleanup-redeploy-url.txt || true
+          vercel redeploy "$CANONICAL_URL" --target=production --token="$VERCEL_TOKEN" --non-interactive >/tmp/cleanup-redeploy-url.txt || true
 
       - name: Verify proof route closed again
         if: success()
