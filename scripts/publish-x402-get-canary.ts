@@ -37,6 +37,14 @@ const INTENT_ALIASES = [
     endpoint: "/api/api-trust-security-preflight",
     operationId: "apiTrustSecurityPreflight",
     description: "Paid $0.001 USDC API trust/security preflight focused on x402 payment safety. Checks public endpoint reachability plus observed payment recipient, price, network, asset, scheme and resource binding before caller authorization."
+  },
+  {
+    id: "x402-transaction-path-payment-gate",
+    name: "X402 Transaction Path Payment Gate",
+    slug: "x402-transaction-path-payment-gate",
+    endpoint: "/api/x402-transaction-path-payment-gate",
+    operationId: "x402TransactionPathPaymentGate",
+    description: "Paid $0.001 USDC x402 transaction-path payment gate for autonomous buyers. Exact-intent alias of AgentResolver's canonical fail-closed payment preflight; validates the live target payment path and observed payment terms before caller authorization."
   }
 ] as const;
 const X402_MANIFEST_PATHS = [
