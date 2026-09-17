@@ -43,6 +43,43 @@ jobs:
             *) echo "x402dash registration failed with HTTP $code" >&2; exit 1 ;;
           esac
 
+      - name: Register AgentResolver Guard with x402dash
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://api.x402dash.com/v1/register' \
+            -H 'content-type: application/json' \
+            --data '{
+              "url":"https://agentresolver.vercel.app/api/payment-guard",
+              "name":"AgentResolver Guard — Autonomous Payment Authorization",
+              "description":"Run immediately before an autonomous x402 payment. $0.001 USDC fail-closed verification of the live payment challenge, payTo recipient, quoted price, network, asset and resource binding before the caller-owned wallet signs.",
+              "category":"Developer Tools",
+              "tags":["x402","payment-guard","payment-authorization","wallet-safety","verify-before-pay","payto","usdc","agents"]
+            }')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "x402dash Guard registration failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Inspect Guard liveness/readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -G 'https://api.x402dash.com/v1/liveness' \
+            --data-urlencode 'endpoint=https://agentresolver.vercel.app/api/payment-guard' \
+            -o /tmp/guard-liveness.json || true
+          cat /tmp/guard-liveness.json 2>/dev/null || true
+          echo
+          if jq -e '.integration_readiness == "ready_now" or .integration_readiness == "ready now"' /tmp/guard-liveness.json >/dev/null 2>&1; then
+            echo "X402DASH_GUARD_READY_NOW=true"
+          else
+            echo "::notice::x402dash Guard is registered; readiness may require scheduled probes to accumulate."
+          fi
+
       - name: Register cheapest paid GET canary with x402dash
         shell: bash
         run: |
@@ -98,10 +135,11 @@ jobs:
           for i in {1..6}; do
             curl -fsS 'https://api.x402dash.com/v1/endpoints?limit=50&q=agentresolver' -o /tmp/endpoints.json
             cat /tmp/endpoints.json
-            if grep -q 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/endpoints.json; then
+            if grep -q 'agentresolver.vercel.app/api/x402-payment-preflight' /tmp/endpoints.json &&
+               grep -q 'agentresolver.vercel.app/api/payment-guard' /tmp/endpoints.json; then
               exit 0
             fi
             sleep 5
           done
-          echo "Fresh AgentResolver payment-preflight was accepted by registration but is not yet visible in x402dash free endpoint search." >&2
+          echo "AgentResolver preflight/Guard registration was accepted but both surfaces are not yet visible in x402dash free endpoint search." >&2
           exit 1
