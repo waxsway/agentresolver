@@ -159,6 +159,25 @@ export type DeterministicPaidRouteOptions = Readonly<{
   endpoint?: string;
 }>;
 
+export function x402BazaarProviderMetadata(capabilityId: PaidCapabilityId) {
+  if (capabilityId === "x402-payment-preflight") {
+    return {
+      serviceName: "AgentResolver Guard",
+      tags: ["x402", "preflight", "payment-safety", "agent-payments"]
+    } as const;
+  }
+  if (capabilityId === "x402-ping") {
+    return {
+      serviceName: "AgentResolver",
+      tags: ["x402", "settlement-test", "payment-canary", "agent-payments"]
+    } as const;
+  }
+  return {
+    serviceName: "AgentResolver",
+    tags: ["x402", "agent-tools"]
+  } as const;
+}
+
 export function createDeterministicPaidRoute(
   capabilityId: PaidCapabilityId,
   execute: Execute,
@@ -317,6 +336,7 @@ export function createDeterministicPaidRoute(
     }
 
     const discoveryOutput = x402RuntimeDiscoveryOutput(capabilityId);
+    const bazaarProviderMetadata = x402BazaarProviderMetadata(capabilityId);
     const runtimeGetInput = options.paidGet
       ? x402RuntimeDiscoveryInput(capabilityId)
       : null;
@@ -356,6 +376,8 @@ export function createDeterministicPaidRoute(
         ],
         description: wireMetadata.description,
         mimeType: "application/json",
+        serviceName: bazaarProviderMetadata.serviceName,
+        tags: [...bazaarProviderMetadata.tags],
         extensions: {
           ...discoveryExtension
         }
