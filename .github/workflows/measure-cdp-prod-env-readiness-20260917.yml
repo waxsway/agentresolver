@@ -1,0 +1,54 @@
+name: Measure CDP production env readiness 20260917
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/measure-cdp-prod-env-readiness-20260917.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Read production env readiness without exposing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null 2>&1
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('.vercel/.env.production.local')
+          text=p.read_text() if p.exists() else ''
+          env={}
+          for line in text.splitlines():
+              if not line or line.startswith('#') or '=' not in line:
+                  continue
+              k,v=line.split('=',1)
+              v=v.strip().strip('"').strip("'")
+              env[k.strip()]=v
+
+          def present(k): return bool(env.get(k,''))
+          enabled=env.get('AGENTRESOLVER_CDP_FACILITATOR_ENABLED','')
+          caps=env.get('AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES','')
+          print('CDP_API_KEY_ID_PRESENT=' + str(present('CDP_API_KEY_ID')).lower())
+          print('CDP_API_KEY_SECRET_PRESENT=' + str(present('CDP_API_KEY_SECRET')).lower())
+          print('CDP_CREDENTIALS_READY=' + str(present('CDP_API_KEY_ID') and present('CDP_API_KEY_SECRET')).lower())
+          print('CDP_ENABLED_FLAG=' + (enabled if enabled in {'0','1'} else ('unset' if not enabled else 'other')))
+          print('CDP_CAPABILITIES=' + (caps if caps else 'unset'))
+          print('CIRCLE_GATEWAY_ENABLED_FLAG=' + (env.get('AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED','unset') or 'unset'))
+          PY
