@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { inspectHttpResource } from "@/lib/httpInspect";
-import { buildProviderEvidenceReceipt } from "@/lib/providerEvidenceReceipt";
-import { buildX402PrepayDecision } from "@/lib/x402PrepayDecision";
+import { buildX402PaymentGuardResult } from "@/lib/x402PaymentGuard";
 
 type PreflightInput = {
   url?: unknown;
@@ -55,29 +54,25 @@ export async function executeX402PaymentPreflight(req: NextRequest) {
     body: req.method === "GET" ? undefined : body?.body,
     allowUnpaidPostProbe: body?.allowUnpaidPostProbe === true
   });
-  const evidenceReceipt = buildProviderEvidenceReceipt(report);
-  const prepaymentDecision = buildX402PrepayDecision(report, evidenceReceipt, constraints);
+  const result = buildX402PaymentGuardResult(report, constraints);
 
   console.log(JSON.stringify({
     event: "provider_evidence_observed",
-    at: evidenceReceipt.observedAt,
+    at: result.evidenceReceipt.observedAt,
     capabilityId: "x402-payment-preflight",
-    endpointOrigin: evidenceReceipt.endpoint.origin,
-    paymentIdentityFingerprint: evidenceReceipt.observedPaymentIdentity.paymentIdentityFingerprint,
-    endpointPaymentFingerprint: evidenceReceipt.observedPaymentIdentity.endpointPaymentFingerprint,
-    paymentTermsFingerprint: evidenceReceipt.observedPaymentTerms.paymentTermsFingerprint,
-    evidenceDigest: evidenceReceipt.evidence.digest,
-    network: evidenceReceipt.observedPaymentIdentity.network,
+    product: "AgentResolver Guard",
+    endpointOrigin: result.evidenceReceipt.endpoint.origin,
+    paymentIdentityFingerprint: result.evidenceReceipt.observedPaymentIdentity.paymentIdentityFingerprint,
+    endpointPaymentFingerprint: result.evidenceReceipt.observedPaymentIdentity.endpointPaymentFingerprint,
+    paymentTermsFingerprint: result.evidenceReceipt.observedPaymentTerms.paymentTermsFingerprint,
+    evidenceDigest: result.evidenceReceipt.evidence.digest,
+    network: result.evidenceReceipt.observedPaymentIdentity.network,
     ownershipVerified: false,
     providerLegitimacyVerified: false,
-    prepaymentDecision: prepaymentDecision.decision,
-    eligibleForCallerAuthorization: prepaymentDecision.eligibleForCallerAuthorization,
-    prepaymentReasonCodes: prepaymentDecision.reasons
+    prepaymentDecision: result.prepaymentDecision.decision,
+    eligibleForCallerAuthorization: result.prepaymentDecision.eligibleForCallerAuthorization,
+    prepaymentReasonCodes: result.prepaymentDecision.reasons
   }));
 
-  return {
-    ...report,
-    prepaymentDecision,
-    evidenceReceipt
-  };
+  return result;
 }
