@@ -1,0 +1,62 @@
+name: Apply Agent402 intent metadata patch
+
+on:
+  push:
+    branches:
+      - feat/agent402-intent-names-20260917
+    paths:
+      - .github/workflows/apply-agent402-intent-names.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/agent402-intent-names-20260917
+          fetch-depth: 0
+
+      - name: Apply exact metadata substitutions and regression test
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/lib/paidCapabilities.ts")
+          text = path.read_text()
+          replacements = {
+              'name: "x402 Settlement Test — Wallet & Facilitator Canary"':
+                  'name: "x402 Settlement Test — Wallet Facilitator Payment Test Canary"',
+              'title: "x402 settlement test — $0.001"':
+                  'title: "x402 settlement test — wallet facilitator payment test — $0.001"',
+              'name: "X402 Preflight — Verify Endpoint Before Paying"':
+                  'name: "X402 Preflight — Verify Endpoint Before Paying | Endpoint Safety | USDC Payment Check"',
+              'title: "X402 preflight — verify endpoint before paying — $0.001"':
+                  'title: "X402 preflight — verify endpoint before paying — endpoint safety — USDC payment check — $0.001"',
+          }
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one occurrence of {old!r}; found {count}")
+              text = text.replace(old, new)
+          path.write_text(text)
+
+          Path("tests/agent402BuyerIntents.test.ts").write_text('''import test from "node:test";\nimport assert from "node:assert/strict";\nimport { PAID_CAPABILITIES } from "../src/lib/paidCapabilities";\n\ntest("Agent402-facing product names retain proven and missing buyer intents", () => {\n  const preflight = PAID_CAPABILITIES["x402-payment-preflight"];\n  assert.match(preflight.name, /verify endpoint before paying/i);\n  assert.match(preflight.name, /endpoint safety/i);\n  assert.match(preflight.name, /USDC payment check/i);\n\n  const canary = PAID_CAPABILITIES["x402-ping"];\n  assert.match(canary.name, /x402 settlement test/i);\n  assert.match(canary.name, /wallet facilitator payment test/i);\n});\n''')
+          PY
+
+          rm .github/workflows/apply-agent402-intent-names.yml
+
+      - name: Commit patched branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/paidCapabilities.ts tests/agent402BuyerIntents.test.ts .github/workflows/apply-agent402-intent-names.yml
+          git commit -m "Improve Agent402 buyer-intent matching"
+          git push origin HEAD:feat/agent402-intent-names-20260917
