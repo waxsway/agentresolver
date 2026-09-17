@@ -1,5 +1,9 @@
 export const X402_BUYER_SETUP_PATH = "/api/x402-client-setup" as const;
 export const X402_BUYER_SETUP_URL = `https://agentresolver.vercel.app${X402_BUYER_SETUP_PATH}` as const;
+export const AGENT_SKILLS_INDEX_URL =
+  "https://agentresolver.vercel.app/.well-known/agent-skills/index.json" as const;
+export const PAYMENT_GUARD_SKILL_URL =
+  "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md" as const;
 
 export type X402BuyerSetup = ReturnType<typeof x402BuyerSetup>;
 
@@ -33,6 +37,15 @@ export function x402BuyerSetup() {
         repeatUse: "before_each_autonomous_x402_spend"
       }
     },
+    agentSkill: {
+      name: "agentresolver-payment-guard",
+      discoveryIndex: AGENT_SKILLS_INDEX_URL,
+      url: PAYMENT_GUARD_SKILL_URL,
+      installCommand:
+        "npx skills add https://agentresolver.vercel.app --skill agentresolver-payment-guard",
+      purpose:
+        "Install the repeat-use Guard procedure into a compatible agent runtime so pre-payment verification becomes part of the buyer workflow."
+    },
     payment: {
       protocol: "x402",
       version: 2,
@@ -50,9 +63,23 @@ export function x402BuyerSetup() {
       mcp: {
         typescript: {
           package: "@x402/mcp",
+          installCommand: "npm install @x402/mcp @x402/evm @x402/svm",
           factory: "createx402MCPClient",
           evmExactScheme: "@x402/evm/exact/client",
           svmExactScheme: "@x402/svm/exact/client",
+          baseEvmQuickstart: [
+            'import { createx402MCPClient } from "@x402/mcp";',
+            'import { ExactEvmScheme } from "@x402/evm/exact/client";',
+            "",
+            "// callerOwnedSigner is supplied by the host wallet/runtime. Do not send it to AgentResolver.",
+            "const client = createx402MCPClient({",
+            '  name: "agentresolver-buyer",',
+            '  schemes: [{ network: "eip155:8453", scheme: new ExactEvmScheme(callerOwnedSigner) }]',
+            "});",
+            "",
+            "// Connect client transport to https://agentresolver.vercel.app/mcp,",
+            "// then call the paid tool normally. The x402 client handles the authorized retry."
+          ],
           configurationShape: {
             schemes: [{ network: "eip155:8453", scheme: "new ExactEvmScheme(callerOwnedSigner)" }],
             policies: ["caller-defined requirement filters before signing"],
@@ -70,10 +97,23 @@ export function x402BuyerSetup() {
         typescript: {
           package: "@x402/fetch",
           packages: ["@x402/core", "@x402/fetch", "@x402/evm", "@x402/svm"],
+          installCommand: "npm install @x402/core @x402/evm @x402/svm @x402/fetch",
           wrapper: "wrapFetchWithPayment",
           client: "x402Client",
           evmExactScheme: "@x402/evm/exact/client",
-          svmExactScheme: "@x402/svm/exact/client"
+          svmExactScheme: "@x402/svm/exact/client",
+          baseEvmQuickstart: [
+            'import { x402Client } from "@x402/core/client";',
+            'import { registerExactEvmScheme } from "@x402/evm/exact/client";',
+            'import { wrapFetchWithPayment } from "@x402/fetch";',
+            "",
+            "// callerOwnedSigner is supplied by the host wallet/runtime. Do not send it to AgentResolver.",
+            "const client = new x402Client();",
+            'registerExactEvmScheme(client, { signer: callerOwnedSigner, networks: ["eip155:8453"] });',
+            "const fetchWithPayment = wrapFetchWithPayment(fetch, client);",
+            "",
+            'const response = await fetchWithPayment("https://agentresolver.vercel.app/api/x402-ping");'
+          ]
         },
         behavior: [
           "Create an x402Client and register only exact schemes backed by the caller's own signer.",
@@ -118,6 +158,8 @@ export function x402BuyerSetupHint(capabilityId: string) {
     type: "agentresolver_x402_buyer_setup",
     capabilityId,
     url: X402_BUYER_SETUP_URL,
+    agentSkillsIndex: AGENT_SKILLS_INDEX_URL,
+    paymentGuardSkill: PAYMENT_GUARD_SKILL_URL,
     paymentAuthorizationRequired: true,
     signerControlledByCaller: true,
     message: "This host reached a valid x402 challenge but must use an x402-aware client plus its own signer and spend policy to make an authorized retry. For target x402 purchases, run AgentResolver Guard before each autonomous spend. AgentResolver never requests wallet secrets or authorizes spend."
