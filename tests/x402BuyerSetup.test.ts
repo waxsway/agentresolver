@@ -23,6 +23,14 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
     setup.agentResolver.paymentGuard,
     "https://agentresolver.vercel.app/api/payment-guard"
   );
+  assert.equal(setup.agentResolver.paymentGuardRequest.method, "GET");
+  assert.equal(setup.agentResolver.paymentGuardRequest.priceUsd, 0.001);
+  assert.deepEqual(setup.agentResolver.paymentGuardRequest.requiredQuery, ["url"]);
+  assert.ok(setup.agentResolver.paymentGuardRequest.optionalQuery.includes("expectedPayTo"));
+  assert.equal(
+    setup.agentResolver.paymentGuardRequest.repeatUse,
+    "before_each_autonomous_x402_spend"
+  );
   assert.ok(setup.recommendedSpendLoop.some((step) => /before each autonomous spend/i.test(step)));
   assert.equal(setup.authorizationBoundary.callerControlsSigner, true);
   assert.equal(setup.authorizationBoundary.callerControlsSpendPolicy, true);

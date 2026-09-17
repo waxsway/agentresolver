@@ -18,7 +18,20 @@ export function x402BuyerSetup() {
       paidManifest: "https://agentresolver.vercel.app/.well-known/x402",
       buyerSetup: X402_BUYER_SETUP_URL,
       canonicalPreflight: "https://agentresolver.vercel.app/api/x402-payment-preflight",
-      paymentGuard: "https://agentresolver.vercel.app/api/payment-guard"
+      paymentGuard: "https://agentresolver.vercel.app/api/payment-guard",
+      paymentGuardRequest: {
+        method: "GET",
+        priceUsd: 0.001,
+        requiredQuery: ["url"],
+        optionalQuery: [
+          "method",
+          "maxPriceUsd",
+          "expectedPayTo",
+          "expectedNetwork",
+          "allowUnpaidPostProbe"
+        ],
+        repeatUse: "before_each_autonomous_x402_spend"
+      }
     },
     payment: {
       protocol: "x402",
@@ -107,6 +120,6 @@ export function x402BuyerSetupHint(capabilityId: string) {
     url: X402_BUYER_SETUP_URL,
     paymentAuthorizationRequired: true,
     signerControlledByCaller: true,
-    message: "This host reached a valid x402 challenge but must use an x402-aware client plus its own signer and spend policy to make an authorized retry. AgentResolver never requests wallet secrets or authorizes spend."
+    message: "This host reached a valid x402 challenge but must use an x402-aware client plus its own signer and spend policy to make an authorized retry. For target x402 purchases, run AgentResolver Guard before each autonomous spend. AgentResolver never requests wallet secrets or authorizes spend."
   } as const;
 }
