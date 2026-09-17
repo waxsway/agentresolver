@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "name": "AgentResolver",
   "purpose": "Verify unfamiliar x402 payment terms before authorizing spend, with free fallback discovery for missing external agent capabilities",
   "mcp": {
@@ -77,6 +77,19 @@
     "networks": ["eip155:8453", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
     "asset": "USDC",
     "spendingAuthorized": false
+  },
+  "buyerSetup": {
+    "url": "https://agentresolver.vercel.app/api/x402-client-setup",
+    "when": "Use this free handoff when the host can discover or call AgentResolver but stops after a 402 because it has no x402-aware signer/payment retry loop.",
+    "mcp": {
+      "typescriptPackage": "@x402/mcp",
+      "factory": "createx402MCPClient"
+    },
+    "http": {
+      "typescriptPackage": "@x402/fetch",
+      "wrapper": "wrapFetchWithPayment"
+    },
+    "authorizationBoundary": "The caller owns the signer and spend policy. Never send a private key or seed phrase to AgentResolver; AgentResolver does not authorize spend."
   },
   "discovery": {
     "x402": "https://agentresolver.vercel.app/.well-known/x402",
