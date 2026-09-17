@@ -49,6 +49,7 @@ jobs:
 
       - name: Require pull-request release
         if: steps.initial_freshness.outputs.fresh == 'true'
+        id: release_pr
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -75,21 +76,47 @@ jobs:
             exit 1
           fi
 
-          jq --arg sha "$VALIDATED_SHA" -r '
+          release_pr_number="$(jq --arg sha "$VALIDATED_SHA" -r '
             .[] |
             select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == $sha) |
-            "Release authorized by merged PR #\(.number): \(.title)"
-          ' <<< "$prs"
+            .number
+          ' <<< "$prs" | head -n 1)"
+          release_pr_title="$(jq --arg sha "$VALIDATED_SHA" -r '
+            .[] |
+            select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == $sha) |
+            .title
+          ' <<< "$prs" | head -n 1)"
+          echo "number=$release_pr_number" >> "$GITHUB_OUTPUT"
+          echo "Release authorized by merged PR #$release_pr_number: $release_pr_title"
 
       - name: Detect application changes
         if: steps.initial_freshness.outputs.fresh == 'true'
         id: application_changes
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_PR_NUMBER: ${{ steps.release_pr.outputs.number }}
         run: |
           set -euo pipefail
-          parent="$(git rev-parse HEAD^1)"
-          changed="$(git diff --name-only "$parent" HEAD)"
-          printf '%s\n' "$changed"
+          test -n "$RELEASE_PR_NUMBER"
+
+          changed_file="$(mktemp)"
+          : > "$changed_file"
+          for page in {1..10}; do
+            page_json="$(curl -fsSL \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$RELEASE_PR_NUMBER/files?per_page=100&page=$page")"
+            count="$(jq 'length' <<< "$page_json")"
+            [ "$count" -eq 0 ] && break
+            jq -r '.[].filename' <<< "$page_json" >> "$changed_file"
+            [ "$count" -lt 100 ] && break
+          done
+
+          echo "Files from merged PR #$RELEASE_PR_NUMBER:"
+          cat "$changed_file"
+
           deploy=false
           while IFS= read -r path; do
             [ -z "$path" ] && continue
@@ -97,7 +124,8 @@ jobs:
               .github/*|README.md|tests/*|package-lock.json) ;;
               *) deploy=true; break ;;
             esac
-          done <<< "$changed"
+          done < "$changed_file"
+
           echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
           if [ "$deploy" = "false" ]; then
             echo "Only docs/tests/automation changed; Vercel build/deploy is unnecessary."
