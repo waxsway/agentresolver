@@ -62,15 +62,17 @@ Register only payment schemes backed by the caller's own signer and enforce call
 
 ## Coinbase AgentKit
 
-For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead of writing a custom payment loop:
+For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead of writing a custom payment loop. AgentKit only allows HTTP x402 actions against registered services, and dynamic registration is disabled by default unless the host enables it.
 
-1. Call `make_http_request` on the exact target first. This exposes the target's 402 terms without paying.
-2. Build the AgentResolver Guard URL with that target plus caller-owned constraints and call `make_http_request` on Guard. This exposes Guard's separate $0.001 challenge without paying.
-3. Only if the caller's own policy authorizes the Guard fee, call `retry_http_request_with_x402` for Guard.
-4. Require `decision === "eligible"` and compare the observed amount, asset, network, payTo, scheme and resource binding against caller policy.
-5. Only after separate authorization for the target amount, call `retry_http_request_with_x402` for the original target challenge.
+1. Call `list_registered_services` before the first request.
+2. Ensure the exact target and `https://agentresolver.vercel.app` are approved. If `allowDynamicServiceRegistration` is enabled, intentionally call `register_x402_service` for each. Otherwise the host administrator must include them in `registeredServices`.
+3. Call `make_http_request` on the approved exact target. This exposes the target's 402 terms without paying.
+4. Build the AgentResolver Guard URL with that target plus caller-owned constraints and call `make_http_request` on the approved AgentResolver origin. This exposes Guard's separate $0.001 challenge without paying.
+5. Only if the caller's own policy authorizes the Guard fee, call `retry_http_request_with_x402` for Guard.
+6. Require `decision === "eligible"` and compare the observed amount, asset, network, payTo, scheme and resource binding against caller policy.
+7. Only after separate authorization for the target amount, call `retry_http_request_with_x402` for the original target challenge.
 
-AgentKit also exposes `discover_x402_services` for x402 discovery. Do not use `make_http_request_with_x402` on an unfamiliar target before Guard and caller authorization because that action combines challenge handling and payment.
+AgentKit also exposes `discover_x402_services` for discovery. Do not enable dynamic registration merely to bypass the service allowlist, and do not use `make_http_request_with_x402` on an unfamiliar target before Guard and caller authorization because that action combines challenge handling and payment.
 
 ## MCP
 
