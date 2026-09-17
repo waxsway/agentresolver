@@ -105,7 +105,7 @@ All paid actions disclose their x402 terms before payment. An unpaid request ret
 
 ## Provider sponsorship
 
-AgentResolver also operates an explicitly labeled provider sponsorship pilot. Sponsorship never changes organic ranking and never authorizes an agent to spend.
+AgentResolver also operates an explicitly labeled provider sponsorship pilot. Organic ranking remains free and independent. Sponsorship never changes organic ranking and never authorizes an agent to spend. Applying is an inquiry only and does not create a purchase or financial commitment.
 
 - Information: https://agentresolver.vercel.app/api/sponsorship
 - Inventory: https://agentresolver.vercel.app/.well-known/sponsorship.json
