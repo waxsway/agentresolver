@@ -38,11 +38,12 @@ test("production smoke uses valid Guard GET inputs", () => {
   assert.match(workflow, /expectedNetwork=eip155%3A8453/);
 });
 
-test("production deploy classifies application changes from merged PR files", () => {
+test("production deploy authorizes the tip PR but classifies drift from live production", () => {
   const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
-  assert.match(workflow, /steps\.release_pr\.outputs\.number/);
-  assert.match(workflow, /pulls\/\$RELEASE_PR_NUMBER\/files\?per_page=100&page=\$page/);
-  assert.match(workflow, /jq -r '\.\[\]\.filename'/);
+  assert.match(workflow, /commits\/\$VALIDATED_SHA\/pulls/);
+  assert.match(workflow, /x-agentresolver-deployment/);
+  assert.match(workflow, /git diff --name-only "\$production_sha" "\$VALIDATED_SHA"/);
+  assert.doesNotMatch(workflow, /pulls\/\$RELEASE_PR_NUMBER\/files\?per_page=100&page=\$page/);
   assert.doesNotMatch(workflow, /git rev-parse HEAD\^1/);
 });
 
