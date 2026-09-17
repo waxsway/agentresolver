@@ -44,19 +44,18 @@ jobs:
 
           catalog_url = os.environ["CATALOG_URL"]
           origin = os.environ["AGENTRESOLVER_ORIGIN"].lower()
-          pay_tos = {
-              os.environ["BASE_PAY_TO"].lower(),
-              os.environ["SOLANA_PAY_TO"].lower(),
-          }
+          pay_tos = [
+              os.environ["BASE_PAY_TO"],
+              os.environ["SOLANA_PAY_TO"],
+          ]
           limit = 100
-          offset = 0
-          total = None
-          matches = []
+          matches_by_resource = {}
+          query_totals = {}
           max_last_updated = None
-          pages = 0
+          catalog_requests = 0
 
-          def fetch_page(page_offset: int):
-              url = f"{catalog_url}?{urllib.parse.urlencode({'limit': limit, 'offset': page_offset})}"
+          def fetch_page(pay_to: str, page_offset: int):
+              url = f"{catalog_url}?{urllib.parse.urlencode({'payTo': pay_to, 'limit': limit, 'offset': page_offset})}"
               last_error = None
               for attempt in range(3):
                   try:
@@ -70,50 +69,100 @@ jobs:
                       last_error = exc
                       if attempt < 2:
                           time.sleep(1 + attempt)
-              raise RuntimeError(f"PayAI discovery fetch failed at offset {page_offset}: {last_error}")
+              raise RuntimeError(
+                  f"PayAI discovery fetch failed for payTo={pay_to} offset={page_offset}: {last_error}"
+              )
 
-          while total is None or offset < total:
-              page = fetch_page(offset)
-              pages += 1
-              items = page.get("items") or page.get("resources") or []
-              pagination = page.get("pagination") or {}
-              if total is None:
-                  raw_total = pagination.get("total")
-                  total = int(raw_total) if isinstance(raw_total, (int, float, str)) and str(raw_total).isdigit() else len(items)
+          for pay_to in pay_tos:
+              offset = 0
+              total = None
+              while total is None or offset < total:
+                  page = fetch_page(pay_to, offset)
+                  catalog_requests += 1
+                  items = page.get("items") or page.get("resources") or []
+                  pagination = page.get("pagination") or {}
+                  if total is None:
+                      raw_total = pagination.get("total")
+                      total = (
+                          int(raw_total)
+                          if isinstance(raw_total, (int, float, str)) and str(raw_total).isdigit()
+                          else len(items)
+                      )
+                      query_totals[pay_to] = total
 
-              for item in items:
-                  raw = json.dumps(item, separators=(",", ":"), sort_keys=True)
-                  lowered = raw.lower()
-                  if origin in lowered or any(pay_to in lowered for pay_to in pay_tos):
-                      matches.append(item)
-                  if isinstance(item, dict):
+                  for item in items:
+                      if not isinstance(item, dict):
+                          continue
+                      raw = json.dumps(item, separators=(",", ":"), sort_keys=True).lower()
+                      if origin not in raw and pay_to.lower() not in raw:
+                          continue
+                      resource = item.get("resource")
+                      dedupe_key = resource if isinstance(resource, str) else raw
+                      matches_by_resource[dedupe_key] = item
                       candidate = item.get("lastUpdated") or item.get("last_updated")
-                      if isinstance(candidate, str) and (max_last_updated is None or candidate > max_last_updated):
+                      if isinstance(candidate, str) and (
+                          max_last_updated is None or candidate > max_last_updated
+                      ):
                           max_last_updated = candidate
 
-              if not items:
-                  break
-              offset += len(items)
-              if len(items) < limit:
-                  break
+                  if not items:
+                      break
+                  offset += len(items)
+                  if len(items) < limit:
+                      break
+
+          matches = list(matches_by_resource.values())
+
+          settlement_stats = []
+          for item in matches:
+              resource = item.get("resource") if isinstance(item, dict) else None
+              if not isinstance(resource, str) or not resource.startswith("https://"):
+                  continue
+              encoded_resource = urllib.parse.quote(resource, safe="")
+              stats_url = f"{catalog_url}/{encoded_resource}/stats"
+              try:
+                  request = urllib.request.Request(
+                      stats_url,
+                      headers={"user-agent": "AgentResolver-Bazaar-Audit/1.0"},
+                  )
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      stats = json.loads(response.read().decode("utf-8"))
+                  settlement_stats.append({
+                      "resource": resource,
+                      "statsUrl": stats_url,
+                      "stats": stats,
+                  })
+              except Exception as exc:
+                  settlement_stats.append({
+                      "resource": resource,
+                      "statsUrl": stats_url,
+                      "error": str(exc),
+                  })
 
           summary = {
               "catalogued": bool(matches),
-              "catalogTotal": total,
-              "pagesScanned": pages,
+              "queryTotalsByPayTo": query_totals,
+              "catalogRequests": catalog_requests,
               "maxLastUpdated": max_last_updated,
               "matchCount": len(matches),
               "matches": matches[:20],
+              "settlementStats": settlement_stats,
           }
           print(json.dumps(summary, indent=2, sort_keys=True))
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
               fh.write("# PayAI Bazaar audit\n\n")
               fh.write(f"- Catalogued: **{str(bool(matches)).lower()}**\n")
-              fh.write(f"- Catalog total: **{total}**\n")
-              fh.write(f"- Pages scanned: **{pages}**\n")
+              fh.write(f"- PayTo query totals: **{json.dumps(query_totals, sort_keys=True)}**\n")
+              fh.write(f"- Catalog requests: **{catalog_requests}**\n")
               fh.write(f"- Newest `lastUpdated` observed: **{max_last_updated or 'unknown'}**\n")
               fh.write(f"- Matching records: **{len(matches)}**\n")
+              fh.write(f"- Settlement-stat records checked: **{len(settlement_stats)}**\n")
+              if settlement_stats:
+                  fh.write("\n## Resource settlement stats\n\n")
+                  fh.write("~~~json\n")
+                  fh.write(json.dumps(settlement_stats, indent=2, sort_keys=True)[:12000])
+                  fh.write("\n~~~\n")
               if matches:
                   fh.write("\n```json\n")
                   fh.write(json.dumps(matches[:5], indent=2, sort_keys=True)[:12000])
