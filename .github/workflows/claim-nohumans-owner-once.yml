@@ -16,7 +16,7 @@ concurrency:
 jobs:
   claim:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     env:
       VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
       VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
@@ -72,11 +72,13 @@ jobs:
           vercel env add NOHUMANS_CLAIM_TOKEN production --sensitive --token="$VERCEL_TOKEN" < /tmp/challenge-token >/dev/null
           rm -f /tmp/challenge-token
 
-      - name: Redeploy current production with temporary proof token
+      - name: Build and deploy current main with temporary proof token
         shell: bash
         run: |
           set -euo pipefail
-          vercel redeploy "$CANONICAL_URL" --target=production --token="$VERCEL_TOKEN" >/tmp/redeploy-url.txt
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null
+          vercel build --prod --token="$VERCEL_TOKEN" >/dev/null
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" >/tmp/proof-deploy-url.txt
 
       - name: Wait for public proof route to serve exact challenge
         shell: bash
@@ -125,7 +127,9 @@ jobs:
         run: |
           set -euo pipefail
           vercel env rm NOHUMANS_CLAIM_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
-          vercel redeploy "$CANONICAL_URL" --target=production --token="$VERCEL_TOKEN" >/tmp/cleanup-redeploy-url.txt || true
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null
+          vercel build --prod --token="$VERCEL_TOKEN" >/dev/null
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" >/tmp/cleanup-deploy-url.txt
 
       - name: Verify proof route closed again
         if: success()
