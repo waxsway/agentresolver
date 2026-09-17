@@ -6,6 +6,7 @@ import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { createPaymentWrapper } from "@x402/mcp";
 import { CANONICAL_ORIGIN, getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { shortHash } from "@/lib/telemetry";
+import { x402BuyerSetupHint } from "@/lib/x402BuyerSetup";
 import {
   X402_FACILITATOR_URL,
   X402_NETWORK,
@@ -106,6 +107,34 @@ export function buildStaticMcpPaymentRequirements(
   ];
 }
 
+export function withX402BuyerSetupHint(
+  result: McpToolResult,
+  capabilityId: PaidCapabilityId
+): McpToolResult {
+  const structured = object(result.structuredContent);
+  const accepts = structured?.accepts;
+  const isPaymentChallenge =
+    result.isError === true &&
+    structured?.x402Version === 2 &&
+    Array.isArray(accepts) &&
+    accepts.length > 0;
+
+  if (!isPaymentChallenge) return result;
+
+  return {
+    ...result,
+    content: [
+      ...result.content,
+      {
+        type: "text",
+        text: JSON.stringify({
+          agentresolverBuyerSetup: x402BuyerSetupHint(capabilityId)
+        })
+      }
+    ]
+  };
+}
+
 function logMcpPaymentOutcome(result: McpToolResult, capabilityId: PaidCapabilityId) {
   const structured = object(result.structuredContent);
   const accepts = structured?.accepts;
@@ -186,7 +215,7 @@ export function createLazyPaidMcpTool<TArgs>(
 
   return async (args: TArgs, extra?: unknown): Promise<McpToolResult> => {
     const paidHandler = getWrappedHandler();
-    const result = await paidHandler(args, extra);
+    const result = withX402BuyerSetupHint(await paidHandler(args, extra), capabilityId);
     logMcpPaymentOutcome(result, capabilityId);
     return result;
   };
