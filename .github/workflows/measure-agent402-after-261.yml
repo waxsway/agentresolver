@@ -1,0 +1,106 @@
+name: Measure Agent402 routing after #261
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/measure-agent402-after-261.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for exact #261 production SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='5b9a411de5570334475e386512bed86cf8cad1d2'
+          for attempt in {1..60}; do
+            code="$(curl -sS -D /tmp/ping.headers -o /tmp/ping.body -w '%{http_code}' 'https://agentresolver.vercel.app/api/x402-ping' || true)"
+            live="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/ping.headers)"
+            echo "attempt=$attempt http=$code live_sha=$live"
+            if [ "$code" = "402" ] && [ "$live" = "$expected" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Production did not converge to $expected." >&2
+          exit 1
+
+      - name: Refresh Agent402 once for current metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/register.json -w '%{http_code}' \
+            -X POST 'https://agent402.tools/api/index/register' \
+            -H 'content-type: application/json' \
+            --data '{"origin":"https://agentresolver.vercel.app"}' || true)"
+          echo "HTTP=$code"
+          cat /tmp/register.json 2>/dev/null || true
+          echo
+          case "$code" in
+            200|201|202|204|409)
+              echo "AGENT402_REFRESH_ACCEPTED=true"
+              ;;
+            429)
+              echo "AGENT402_REFRESH_ACCEPTED=false"
+              echo "Agent402 registration is rate-limited on this runner IP; measuring the current index without retrying."
+              ;;
+            *)
+              echo "Unexpected Agent402 registration status: $code" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Measure six buyer intents
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            "x402 settlement test"
+            "USDC payment check"
+            "endpoint safety"
+            "verify endpoint before paying"
+            "payTo verification"
+            "wallet facilitator payment test"
+          )
+          visible=0
+          eligible=0
+          for q in "${queries[@]}"; do
+            echo "=== QUERY: $q ==="
+            curl -fsS -G 'https://agent402.tools/api/route' \
+              --data-urlencode "q=$q" \
+              --data-urlencode 'include=external' \
+              --data-urlencode 'network=base' \
+              -o /tmp/route.json
+            jq --arg q "$q" '{
+              query:$q,
+              top5:[(.results // .routes // .data // [])[0:5][]? | {
+                seller,name,route,slug,priceUsd,score,health,routerDispatchEligible,routerDispatchReason,executeVia
+              }],
+              agentresolver:[(.results // .routes // .data // [])[]? | select(
+                ((.seller // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.origin // "") | tostring | contains("agentresolver.vercel.app")) or
+                ((.host // "") | tostring | contains("agentresolver.vercel.app"))
+              ) | {
+                seller,name,route,slug,priceUsd,score,health,routerDispatchEligible,routerDispatchReason,executeVia
+              }]
+            }' /tmp/route.json
+            if grep -Fq 'agentresolver.vercel.app' /tmp/route.json; then
+              visible=$((visible+1))
+              if jq -e '[(.results // .routes // .data // [])[]? | select(
+                  (((.seller // "") | tostring | contains("agentresolver.vercel.app")) or
+                   ((.origin // "") | tostring | contains("agentresolver.vercel.app")) or
+                   ((.host // "") | tostring | contains("agentresolver.vercel.app"))) and
+                  .routerDispatchEligible == true
+                )] | length > 0' /tmp/route.json >/dev/null; then
+                eligible=$((eligible+1))
+              fi
+            fi
+          done
+          echo "AGENTRESOLVER_VISIBLE_QUERIES=$visible"
+          echo "AGENTRESOLVER_DISPATCH_ELIGIBLE_QUERIES=$eligible"
