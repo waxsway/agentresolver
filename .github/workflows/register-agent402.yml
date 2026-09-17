@@ -26,9 +26,9 @@ jobs:
           set -euo pipefail
           code=$(curl -sS -D /tmp/challenge-headers.txt -o /tmp/challenge.json -w '%{http_code}' \
             -X GET 'https://agentresolver.vercel.app/api/x402-ping' \
-            -H 'x-agentresolver-internal: agent402-registration')
+            -H 'x-agentresolver-internal: 1')
           test "$code" = "402"
-          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/challenge-headers.txt)"
+          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/challenge-headers.txt)"
           PAYMENT_REQUIRED="$payment_required" python3 - <<'PY'
           import base64
           import json
