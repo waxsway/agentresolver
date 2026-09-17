@@ -130,7 +130,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: { name: "evm_units", title: "EVM units convert — $0.005", description: "Paid $0.005 USDC on Base or Solana exact decimal/base-unit conversion with arbitrary token decimals." }
   },
   "x402-ping": {
-    id: "x402-ping", name: "x402 Settlement Test — Wallet & Facilitator Canary", operationId: "x402SettlementPing", endpoint: "/api/x402-ping",
+    id: "x402-ping", name: "x402 Settlement Test — Wallet Facilitator Payment Test Canary", operationId: "x402SettlementPing", endpoint: "/api/x402-ping",
     price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
     description: "No-body $0.001 x402 settlement test for funded agents. Verifies the buyer wallet, facilitator, USDC payment path, and paid delivery end-to-end by returning a timestamped pong only after successful settlement.",
     useWhen: "A funded x402 agent wants the cheapest possible wallet/facilitator/payment/delivery test before a larger paid workflow.",
@@ -138,7 +138,7 @@ export const PAID_CAPABILITIES = {
     tags: ["x402", "x402 settlement test", "payment canary", "wallet payment test", "facilitator payment test", "paid delivery verification", "usdc", "base", "solana"],
     inputSchema: { type: "object", additionalProperties: false, properties: { echo: { type: "string", maxLength: 256 } } },
     example: { echo: "hello" },
-    quoteTool: { name: "x402_ping", title: "x402 settlement test — $0.001", description: "Paid $0.001 USDC on Base or Solana no-body settlement canary for funded agents. Returns a timestamped pong only after successful x402 payment to verify wallet, facilitator, payment, and delivery end-to-end." }
+    quoteTool: { name: "x402_ping", title: "x402 settlement test — wallet facilitator payment test — $0.001", description: "Paid $0.001 USDC on Base or Solana no-body settlement canary for funded agents. Returns a timestamped pong only after successful x402 payment to verify wallet, facilitator, payment, and delivery end-to-end." }
   },
   "sha256": {
     id: "sha256", name: "SHA-256 Hash", operationId: "sha256Hash", endpoint: "/api/sha256",
@@ -314,7 +314,7 @@ export const PAID_CAPABILITIES = {
   },
   "x402-payment-preflight": {
     id: "x402-payment-preflight",
-    name: "X402 Preflight — Verify Endpoint Before Paying",
+    name: "X402 Preflight — Verify Endpoint Before Paying | Endpoint Safety | USDC Payment Check",
     operationId: "x402PaymentPreflightPayToVerification",
     endpoint: "/api/x402-payment-preflight",
     price: "$0.001",
@@ -341,7 +341,7 @@ export const PAID_CAPABILITIES = {
     example: { url: "https://example.com/api", method: "GET", maxPriceUsd: 0.01 },
     quoteTool: {
       name: "x402_payment_preflight",
-      title: "X402 preflight — verify endpoint before paying — $0.001",
+      title: "X402 preflight — verify endpoint before paying — endpoint safety — USDC payment check — $0.001",
       description: "Paid $0.001 USDC on Base or Solana transaction-path gate for autonomous buyers. Returns eligible/blocked, exact target payment terms, fail-closed reason codes and verifiable evidence before caller authorization. AgentResolver never requests a private key, signs the target payment, or custodies/forwards target funds."
     }
   },
