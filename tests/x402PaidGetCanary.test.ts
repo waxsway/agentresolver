@@ -76,6 +76,8 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.equal(manifest.facilitator.default, "https://facilitator.payai.network");
   assert.equal(manifest.payment_protocols[0], "x402");
   assert.match(manifest.generated_at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(manifest.instructions || "", /verified-resolve/);
+  assert.match(manifest.instructions || "", /batch-verified-resolve/);
   const canaryService = manifest.services.find((item: any) => item.id === "x402-ping");
   assert.equal(canaryService.endpoint, "https://agentresolver.vercel.app/api/x402-ping");
   assert.equal(canaryService.method, "GET");
@@ -91,6 +93,18 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.ok(manifest.resources.some((item: any) => item.resource === "GET /api/x402-ping"));
   assert.ok(manifest.resources.some((item: any) => item.resource === "POST /api/x402-ping"));
   assert.ok(manifest.resources.some((item: any) => item.resource === "POST /api/x402-payment-preflight"));
+  const getManifest = manifest.resources.find((item: any) => item.resource === "GET /api/x402-ping");
+  const postManifest = manifest.resources.find((item: any) => item.resource === "POST /api/x402-ping");
+  assert.match(getManifest?.description || "", /settlement test/i);
+  assert.ok(getManifest?.outputSchema?.required?.includes("next"));
+  assert.equal(
+    getManifest?.outputSchema?.properties?.next?.properties?.single?.properties?.capabilityId?.const,
+    "verified-resolve"
+  );
+  assert.equal(
+    postManifest?.outputSchema?.properties?.next?.properties?.batch?.properties?.capabilityId?.const,
+    "batch-verified-resolve"
+  );
 
   const capability = capabilities.capabilities.find((item: any) => item.id === "x402-ping");
   assert.equal(capability.method, "GET");
@@ -109,8 +123,31 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.match(pathItem.get.summary || "", /settlement test/i);
   assert.match(pathItem.get.description || "", /wallet/i);
   assert.match(pathItem.get.description || "", /facilitator/i);
-  const getManifest = manifest.resources.find((item: any) => item.resource === "GET /api/x402-ping");
-  assert.match(getManifest?.description || "", /settlement test/i);
+  assert.equal(openapi.info.version, "0.1.7");
+  assert.match(openapi.info["x-guidance"] || "", /verified-resolve/);
+  assert.match(openapi.info["x-guidance"] || "", /batch-verified-resolve/);
+
+  const getOutputSchema = pathItem.get.responses?.["200"]?.content?.["application/json"]?.schema;
+  const postOutputSchema = pathItem.post.responses?.["200"]?.content?.["application/json"]?.schema;
+  assert.ok(getOutputSchema?.required?.includes("next"));
+  assert.ok(postOutputSchema?.required?.includes("next"));
+  assert.deepEqual(getOutputSchema?.properties?.next?.required, ["catalogUrl", "single", "batch"]);
+  assert.equal(
+    getOutputSchema?.properties?.next?.properties?.single?.properties?.capabilityId?.const,
+    "verified-resolve"
+  );
+  assert.equal(
+    getOutputSchema?.properties?.next?.properties?.single?.properties?.priceUsd?.const,
+    0.02
+  );
+  assert.equal(
+    getOutputSchema?.properties?.next?.properties?.batch?.properties?.capabilityId?.const,
+    "batch-verified-resolve"
+  );
+  assert.equal(
+    getOutputSchema?.properties?.next?.properties?.batch?.properties?.priceUsd?.const,
+    0.05
+  );
 });
 
 
