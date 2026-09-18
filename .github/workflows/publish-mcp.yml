@@ -1,4 +1,5 @@
 name: Publish MCP Registry
+# Registry republish trigger: runtime untouched; publish current server.json metadata.
 
 on:
   workflow_dispatch:
