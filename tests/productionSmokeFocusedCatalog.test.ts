@@ -20,5 +20,5 @@ test("production smoke requires and challenges the settlement verifier", () => {
   assert.match(smoke, /index\("x402-settlement-verify"\) != null/);
   assert.match(smoke, /x402SettlementVerifyGet/);
   assert.match(smoke, /check_402 'x402 Settlement Verify'/);
-  assert.match(smoke, /\/api\/x402-settlement-verify\?txHash=/);
+  assert.match(smoke, /get_path="\$path\?txHash=/);
 });
