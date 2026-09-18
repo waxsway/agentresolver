@@ -29,12 +29,11 @@ export function normalizeX402PaymentRequest(req: NextRequest) {
   if (!sanitizedUrl || sanitizedUrl === req.url) return req;
 
   const method = req.method.toUpperCase();
-  const init: RequestInit & { duplex?: "half" } = {
+  const init: Omit<RequestInit, "signal"> & { duplex?: "half" } = {
     method: req.method,
     headers: new Headers(req.headers),
     redirect: req.redirect
   };
-  if (req.signal) init.signal = req.signal;
   if (method !== "GET" && method !== "HEAD" && req.body) {
     init.body = req.body;
     init.duplex = "half";
