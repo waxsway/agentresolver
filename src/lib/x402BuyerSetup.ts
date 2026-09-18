@@ -726,18 +726,21 @@ export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
         package: "agents",
         x402ClientImport: "agents/x402",
         wrapper: "withX402Client",
-        confirmationCallback: "requestPaymentConfirmation",
-        confirmationResolver: "resolvePayment",
+        approvalCallback: "onPaymentRequired",
+        paidToolCall: "x402Client.callTool",
+        retryHeader: "PAYMENT-SIGNATURE",
+        preferredBaseNetwork: "eip155:8453",
         mcpUrl: "https://agentresolver.vercel.app/mcp",
         guardTool: "payment_guard",
         authorizationModel:
-          "Use the payment confirmation callback as a caller-owned authorization boundary. Resolve true only after the host has approved the Guard fee and verified the pending payment requirement; never auto-confirm an unfamiliar payment.",
+          "Pass a non-null onPaymentRequired callback to x402Client.callTool as the caller-owned authorization boundary. Return true only after host policy approves the exact Guard requirement; passing null enables automatic payment and must not be used for an unfamiliar Guard or target spend.",
         behavior: [
-          "Connect the Cloudflare Agents x402 MCP client to https://agentresolver.vercel.app/mcp.",
-          "Call payment_guard for the target endpoint and route the resulting paid request through the runtime's payment confirmation callback.",
-          "Fail closed unless the host policy permits the separate $0.001 Guard fee and the pending requirement matches the expected Guard tool/payment context.",
-          "After Guard returns eligible, require separate caller authorization before paying the original target.",
-          "If the runtime cannot expose enough pending-payment detail for exact requirement checks, use the official @x402/mcp onPaymentRequested gate rather than auto-confirming."
+          "Connect the Cloudflare Agents MCP client to https://agentresolver.vercel.app/mcp and wrap that connection with withX402Client from agents/x402 using a caller-controlled EVM signer.",
+          "Prefer the CAIP-2 Base network eip155:8453 for AgentResolver, or let the v2 client select only from payment requirements already permitted by caller policy.",
+          "Invoke payment_guard through x402Client.callTool(onPaymentRequired, ...); do not pass null for an unfamiliar payment because null enables automatic payment.",
+          "Inside onPaymentRequired, fail closed unless the selected exact requirement is the separately authorized $0.001 AgentResolver Guard fee on the expected network, asset and payTo.",
+          "Require Guard decision === eligible and verify the returned target amount, asset, network, payTo, scheme and resource binding.",
+          "Require a separate caller authorization before paying the original target; Guard eligibility never authorizes that target spend."
         ]
       }
     },
@@ -776,7 +779,7 @@ export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
       openAiAgentsPythonHitl: "https://openai.github.io/openai-agents-python/human_in_the_loop/",
       x402Trinity: "https://github.com/devmster/x402-trinity",
       vercelAiSdkX402Mcp: "https://vercel.com/blog/introducing-x402-mcp-open-protocol-payments-for-mcp-tools",
-      cloudflareAgentsX402Mcp: "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md",
+      cloudflareAgentsX402Mcp: "https://developers.cloudflare.com/agents/tools/payments/x402/pay-from-agents-sdk/",
       cloudflareCodingToolsX402: "https://developers.cloudflare.com/agents/tools/payments/x402/pay-with-tool-plugins/",
       awsAgentCorePaymentsFrameworks: "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-framework-integrations.html",
       awsAgentCorePaymentsProcess: "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html"
