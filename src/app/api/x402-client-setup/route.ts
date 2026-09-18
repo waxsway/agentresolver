@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { x402BuyerSetup } from "@/lib/x402BuyerSetup";
+import { x402BuyerSetup, x402ChallengeResumeSetup } from "@/lib/x402BuyerSetup";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import { PAID_CAPABILITIES } from "@/lib/paidCapabilities";
 
@@ -36,14 +36,21 @@ export async function GET(req: Request) {
     ? PAID_CAPABILITIES[capabilityId as keyof typeof PAID_CAPABILITIES]
     : null;
 
+  const setupContext = {
+    source,
+    capabilityId,
+    endpoint: capability?.endpoint ?? null,
+    priceUsd: capability?.priceUsd ?? null,
+    atomicAmount: capability?.atomicAmount ?? null
+  };
+
+  const payload =
+    source === "x402-challenge" && capabilityId
+      ? x402ChallengeResumeSetup(setupContext)
+      : x402BuyerSetup(setupContext);
+
   return NextResponse.json(
-    x402BuyerSetup({
-      source,
-      capabilityId,
-      endpoint: capability?.endpoint ?? null,
-      priceUsd: capability?.priceUsd ?? null,
-      atomicAmount: capability?.atomicAmount ?? null
-    }),
+    payload,
     {
       headers: {
         "cache-control": "public, max-age=300",
