@@ -86,15 +86,33 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "verified-resolve",
     "batch-verified-resolve"
   ]);
+  const intentAliasIds = new Set([
+    "usdc-payment-check",
+    "x402-preflight",
+    "prepayment-authorization-gate",
+    "api-trust-security-preflight",
+    "x402-transaction-path-payment-gate"
+  ]);
+  const publicServiceIds = new Set([...paidIds, ...intentAliasIds]);
+  const publicResourcePaths = new Set([
+    "/api/x402-ping",
+    "/api/x402-payment-preflight",
+    "/api/verified-resolve",
+    "/api/batch-verified-resolve",
+    "/api/usdc-payment-check",
+    "/api/x402-preflight",
+    "/api/prepayment-authorization-gate",
+    "/api/api-trust-security-preflight",
+    "/api/x402-transaction-path-payment-gate"
+  ]);
 
   assert.deepEqual(
     (manifest.services || []).map((item: any) => item.id).sort(),
-    [...paidIds].sort()
+    [...publicServiceIds].sort()
   );
   assert.ok(
     (manifest.resources || []).every((item: any) =>
-      ["/api/x402-ping", "/api/x402-payment-preflight", "/api/verified-resolve", "/api/batch-verified-resolve"]
-        .some((path) => String(item.resource || "").endsWith(path))
+      [...publicResourcePaths].some((path) => String(item.resource || "").endsWith(path))
     )
   );
 
