@@ -1,9 +1,9 @@
 name: Ops Tollbooth Paid Replay Registration
 
 on:
-  push:
+  pull_request:
     branches:
-      - ops/tollbooth-paid-replay-v2-20260918
+      - main
     paths:
       - .github/workflows/ops-tollbooth-paid-replay.yml
 
