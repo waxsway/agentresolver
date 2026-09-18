@@ -209,7 +209,7 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   );
   assert.equal(setup.clients.http.python.package, "x402");
   assert.equal(setup.clients.http.python.client, "x402HttpxClient");
-  assert.match(setup.clients.http.python.installCommand, /pip install x402/);
+  assert.equal(setup.clients.http.python.installCommand, 'pip install "x402[httpx,evm]"');
   assert.ok(
     setup.clients.http.python.baseEvmQuickstart.some((line) =>
       line.includes("register_exact_evm_client")
@@ -354,7 +354,7 @@ test("challenge handoff embeds executable client install choices", () => {
   assert.equal(handoff.spendAuthorizationRequired, true);
   assert.match(handoff.clientInstalls.httpTypescript, /@x402\/fetch/);
   assert.match(handoff.clientInstalls.mcpTypescript, /@x402\/mcp/);
-  assert.equal(handoff.clientInstalls.httpPython, 'pip install "x402[httpx]"');
+  assert.equal(handoff.clientInstalls.httpPython, 'pip install "x402[httpx,evm]"');
   assert.match(handoff.clientInstalls.agentSkill, /skills add waxsway\/agentresolver/);
   assert.equal(handoff.clientEntrypoints.httpTypescript.package, "@x402/fetch");
   assert.equal(handoff.clientEntrypoints.httpTypescript.factory, "wrapFetchWithPaymentFromConfig");
@@ -362,10 +362,18 @@ test("challenge handoff embeds executable client install choices", () => {
   assert.equal(handoff.clientEntrypoints.httpTypescript.schemes[0].network, "eip155:8453");
   assert.equal(handoff.clientEntrypoints.httpTypescript.schemes[0].clientClass, "ExactEvmScheme");
   assert.equal(
+    handoff.clientEntrypoints.httpTypescript.schemes[0].package,
+    "@x402/evm/exact/client"
+  );
+  assert.equal(
     handoff.clientEntrypoints.httpTypescript.schemes[1].network,
     "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
   );
   assert.equal(handoff.clientEntrypoints.httpTypescript.schemes[1].clientClass, "ExactSvmScheme");
+  assert.equal(
+    handoff.clientEntrypoints.httpTypescript.schemes[1].package,
+    "@x402/svm/exact/client"
+  );
   assert.equal(handoff.clientEntrypoints.mcpTypescript.package, "@x402/mcp");
   assert.equal(handoff.clientEntrypoints.mcpTypescript.factory, "createx402MCPClient");
   assert.equal(handoff.clientEntrypoints.mcpTypescript.autoPayment, true);
@@ -375,13 +383,22 @@ test("challenge handoff embeds executable client install choices", () => {
     handoff.clientEntrypoints.mcpTypescript.schemes[1].network,
     "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
   );
-  assert.equal(handoff.clientEntrypoints.httpPython.package, "x402[httpx]");
+  assert.equal(handoff.clientEntrypoints.httpPython.package, "x402");
   assert.equal(handoff.clientEntrypoints.httpPython.clientFactory, "x402Client");
   assert.equal(
-    handoff.clientEntrypoints.httpPython.evmSchemeImport,
-    "x402.mechanisms.evm.exact.ExactEvmScheme"
+    handoff.clientEntrypoints.httpPython.signerAdapterImport,
+    "from x402.mechanisms.evm import EthAccountSigner"
+  );
+  assert.equal(
+    handoff.clientEntrypoints.httpPython.exactEvmRegistrationImport,
+    "from x402.mechanisms.evm.exact.register import register_exact_evm_client"
+  );
+  assert.equal(
+    handoff.clientEntrypoints.httpPython.registration,
+    "register_exact_evm_client(client, EthAccountSigner(callerOwnedAccount))"
   );
   assert.equal(handoff.clientEntrypoints.httpPython.evmNetwork, "eip155:8453");
+  assert.equal(handoff.clientEntrypoints.httpPython.signer, "callerOwnedAccount");
   assert.equal(handoff.clientEntrypoints.httpPython.client, "x402HttpxClient");
   assert.equal(handoff.clientInstalls.walletMcp, "npx -y x402-trinity-mcp");
   assert.equal(handoff.clientEntrypoints.walletMcp.package, "x402-trinity");
