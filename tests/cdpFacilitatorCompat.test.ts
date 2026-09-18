@@ -61,13 +61,16 @@ test("example configuration keeps CDP facilitator disabled", () => {
   assert.match(env, /^AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES=x402-ping$/m);
 });
 
-test("CDP support is opt-in and leaves PayAI as the default primary facilitator", () => {
+test("CDP support is opt-in, Base-only, and preserves PayAI for Solana", () => {
   const source = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
   const config = readFileSync("src/lib/x402Config.ts", "utf8");
 
   assert.match(source, /import\("@coinbase\/cdp-sdk\/x402"\)/);
   assert.match(source, /createCdpFacilitatorClient\(\)/);
-  assert.match(source, /const primaryFacilitator = cdpFacilitator \?\? standardFacilitator/);
+  assert.match(source, /const cdpBaseFacilitator = cdpFacilitator/);
+  assert.match(source, /supported\.kinds\.filter\(\(kind\) => kind\.network === X402_NETWORK\)/);
+  assert.match(source, /new x402ResourceServer\(\[cdpBaseFacilitator, standardFacilitator\]\)/);
+  assert.match(source, /solanaFacilitator: "payai"/);
   assert.match(source, /AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires CDP_API_KEY_ID and CDP_API_KEY_SECRET/);
   assert.match(config, /https:\/\/facilitator\.payai\.network/);
 });
