@@ -21,3 +21,16 @@ test("deterministic utility distributor opts reusable tools into Market402 paid 
   assert.ok(!marketStep.includes("submit_post uuid-v4"));
   assert.doesNotMatch(marketStep, /PRIVATE_KEY|SEED|MNEMONIC|PAYMENT-SIGNATURE|X-PAYMENT/i);
 });
+
+
+test("utility distributor verifies live paid endpoints directly instead of repeatedly downloading the public manifest", () => {
+  const workflow = readFileSync(".github/workflows/distribute-deterministic-utility-pack-once.yml", "utf8");
+  const gate = workflow.split("Verify utility pack on canonical production without manifest sweeps")[1]?.split("- name: Refresh Agent402 origin")[0] || "";
+
+  assert.ok(gate.includes("assert_402 GET /api/x402-ping"));
+  assert.ok(gate.includes("assert_402 POST /api/sha256"));
+  assert.ok(gate.includes("assert_402 POST /api/json-normalize"));
+  assert.ok(!gate.includes("/.well-known/x402"));
+  assert.ok(!gate.includes("seq 1 36"));
+  assert.ok(!gate.includes("sleep 10"));
+});

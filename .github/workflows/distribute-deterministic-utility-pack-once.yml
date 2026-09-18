@@ -15,32 +15,42 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Wait for utility pack on canonical production
+      - name: Verify utility pack on canonical production without manifest sweeps
         shell: bash
         run: |
           set -euo pipefail
           base='https://agentresolver.vercel.app'
-          for attempt in $(seq 1 36); do
-            manifest_ok=0
-            ping_ok=0
-            if curl -fsS "$base/.well-known/x402" > /tmp/x402.json; then
-              if jq -e '
-                [.resources[]?.resource] |
-                any(. == "POST /api/x402-ping") and
-                any(. == "POST /api/sha256") and
-                any(. == "POST /api/json-normalize")
-              ' /tmp/x402.json >/dev/null; then manifest_ok=1; fi
+
+          assert_402() {
+            local method="$1"
+            local path="$2"
+            local body="${3:-}"
+            local response
+            local code
+            response="$(mktemp)"
+            if [ "$method" = "GET" ]; then
+              code="$(curl -sS -o "$response" -w '%{http_code}' "$base$path")"
+            else
+              code="$(curl -sS -o "$response" -w '%{http_code}' \
+                -X "$method" "$base$path" \
+                -H 'content-type: application/json' \
+                --data "$body")"
             fi
-            code=$(curl -sS -o /tmp/ping.json -w '%{http_code}' "$base/api/x402-ping" || true)
-            if [ "$code" = "402" ] && jq -e '.accepts[0].amount == "1000"' /tmp/ping.json >/dev/null; then ping_ok=1; fi
-            if [ "$manifest_ok" = "1" ] && [ "$ping_ok" = "1" ]; then
-              echo 'Deterministic utility pack is live.'
-              exit 0
-            fi
-            sleep 10
-          done
-          echo 'Utility pack did not reach canonical production.' >&2
-          exit 1
+            test "$code" = "402"
+            jq -e '
+              .x402Version == 2 and
+              any(.accepts[]?;
+                .scheme == "exact" and
+                .network == "eip155:8453" and
+                (.amount | tostring) == "1000"
+              )
+            ' "$response" >/dev/null
+          }
+
+          assert_402 GET /api/x402-ping
+          assert_402 POST /api/sha256 '{"input":"agentresolver"}'
+          assert_402 POST /api/json-normalize '{"value":{"b":2,"a":1}}'
+          echo 'Deterministic utility pack is live and payable.'
 
       - name: Refresh Agent402 origin
         shell: bash
