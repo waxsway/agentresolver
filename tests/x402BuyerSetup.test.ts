@@ -628,4 +628,10 @@ test("x402 extension handoff preserves the payable method", () => {
     "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=sha256&method=POST"
   );
   assert.deepEqual(postHandoff.schema.properties.method.enum, ["GET", "POST", "HEAD"]);
+
+  const exactResume = "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check&mode=exact";
+  const resumed = x402ChallengeHeaderHandoff("x402-ping", "GET", exactResume);
+  const resumedSetup = new URL(resumed.info.setup);
+  assert.equal(resumedSetup.searchParams.get("method"), "GET");
+  assert.equal(resumedSetup.searchParams.get("resumeUrl"), exactResume);
 });
