@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { x402BuyerSetup } from "@/lib/x402BuyerSetup";
+import { normalizeX402ChallengeMethod, x402BuyerSetup } from "@/lib/x402BuyerSetup";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import { PAID_CAPABILITIES } from "@/lib/paidCapabilities";
 
@@ -16,6 +16,7 @@ export async function GET(req: Request) {
     ? "x402-challenge"
     : null;
   const requestedCapabilityId = url.searchParams.get("capabilityId");
+  const challengeMethod = normalizeX402ChallengeMethod(url.searchParams.get("method"));
   const capabilityId =
     source === "x402-challenge" &&
     requestedCapabilityId &&
@@ -45,10 +46,14 @@ export async function GET(req: Request) {
     const resumeUrl = new URL(capability.endpoint, "https://agentresolver.vercel.app").toString();
     responseHeaders["x-agentresolver-resume-url"] = resumeUrl;
     responseHeaders["x-agentresolver-resume-capability"] = capabilityId;
+    if (challengeMethod) {
+      responseHeaders["x-agentresolver-resume-method"] = challengeMethod;
+    }
     responseHeaders["x-agentresolver-retry-header"] = "PAYMENT-SIGNATURE";
     responseHeaders["access-control-expose-headers"] = [
       "x-agentresolver-resume-url",
       "x-agentresolver-resume-capability",
+      "x-agentresolver-resume-method",
       "x-agentresolver-retry-header"
     ].join(", ");
   }
@@ -58,6 +63,7 @@ export async function GET(req: Request) {
       source,
       capabilityId,
       endpoint: capability?.endpoint ?? null,
+      method: challengeMethod,
       priceUsd: capability?.priceUsd ?? null,
       atomicAmount: capability?.atomicAmount ?? null
     }),

@@ -69,6 +69,15 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   const getBody = await getResponse.clone().json() as any;
   assert.equal(getBody.x402Version, 2);
   assert.ok(Array.isArray(getBody.accepts));
+  assert.equal(getBody.buyerSetup?.method, "GET");
+  assert.equal(
+    getBody.buyerSetup?.setup,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
+  );
+  assert.equal(
+    getResponse.headers.get("x-agentresolver-buyer-setup"),
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
+  );
   assert.ok(getBody.accepts.some((item: any) =>
     item.network === "eip155:8453" &&
     item.amount === "1000" &&
@@ -122,6 +131,11 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   const postBody = await postResponse.json() as any;
   assert.equal(postBody.x402Version, 2);
   assert.ok(Array.isArray(postBody.accepts));
+  assert.equal(postBody.buyerSetup?.method, "POST");
+  assert.equal(
+    postResponse.headers.get("x-agentresolver-buyer-setup"),
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=POST"
+  );
 });
 
 test("x402 discovery challenge uses standard extensions and body-visible buyer setup", async () => {
