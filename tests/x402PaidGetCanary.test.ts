@@ -64,6 +64,9 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   );
   assert.equal(getResponse.status, 402);
   assert.equal(getResponse.headers.get("access-control-allow-origin"), "*");
+  assert.equal(getResponse.headers.get("cache-control"), "public, max-age=0, must-revalidate");
+  assert.equal(getResponse.headers.get("cdn-cache-control"), "public, max-age=30");
+  assert.equal(getResponse.headers.get("vercel-cdn-cache-control"), "public, max-age=30");
   const getPaymentRequired = getResponse.headers.get("payment-required");
   assert.ok(getPaymentRequired);
   const getBody = await getResponse.clone().json() as any;
@@ -132,6 +135,9 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   }));
   assert.equal(postResponse.status, 402);
   assert.equal(postResponse.headers.get("access-control-allow-origin"), "*");
+  assert.equal(postResponse.headers.get("cache-control"), "no-store");
+  assert.equal(postResponse.headers.get("cdn-cache-control"), null);
+  assert.equal(postResponse.headers.get("vercel-cdn-cache-control"), null);
   assert.ok(postResponse.headers.get("payment-required"));
   const postBody = await postResponse.json() as any;
   assert.equal(postBody.x402Version, 2);
@@ -402,4 +408,19 @@ test("runtime PAYMENT-REQUIRED handoff follows the exact challenged request", as
   const postSetup = new URL(postChallenge.extensions?.agentresolver?.info?.setup);
   assert.equal(postSetup.searchParams.get("method"), "POST");
   assert.equal(postSetup.searchParams.get("resumeUrl"), null);
+});
+
+
+test("query-bearing canary challenges remain dynamic to avoid caching buyer-owned input", async () => {
+  const response = await GET(new NextRequest(
+    "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-specific",
+    {
+      method: "GET",
+      headers: { "user-agent": "agentresolver-test" }
+    }
+  ));
+  assert.equal(response.status, 402);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("cdn-cache-control"), null);
+  assert.equal(response.headers.get("vercel-cdn-cache-control"), null);
 });
