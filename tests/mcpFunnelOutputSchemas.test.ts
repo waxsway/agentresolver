@@ -12,12 +12,15 @@ function registrationBlock(tool: string) {
   return source.slice(start, end);
 }
 
-test("first-purchase MCP ping declares a structured output contract", () => {
+test("first-purchase MCP ping declares a structured output contract and repeat-purchase handoff", () => {
   const block = registrationBlock("x402_ping");
   assert.match(block, /outputSchema:\s*x402PingMcpOutputSchema/);
   assert.match(source, /const x402PingMcpOutputSchema = z\.object\(\{/);
   assert.match(source, /settledDelivery:\s*z\.literal\(true\)/);
   assert.match(source, /requestId:\s*z\.string\(\)/);
+  assert.match(source, /next:\s*z\.object\(\{/);
+  assert.match(source, /paymentAuthorization:\s*z\.literal\("separate_caller_authorization_required"\)/);
+  assert.match(block, /next:\s*X402_PING_NEXT_ACTIONS/);
 });
 
 test("post-ping hash utility declares its deterministic result contract", () => {
