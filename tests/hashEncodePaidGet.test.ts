@@ -98,3 +98,13 @@ test("targeted hash distribution does not reopen broad crawler catalogs", () => 
   assert.equal((integrations.paidActions || []).some((item: any) => item.id === "hash-encode"), false);
   assert.equal(openapi.paths?.["/api/hash-encode"], undefined);
 });
+
+
+test("production smoke matches the focused public discovery contract", () => {
+  const workflow = readFileSync(".github/workflows/production-smoke.yml", "utf8");
+  assert.doesNotMatch(workflow, /grep -F 'probeMcpEndpoint'/);
+  assert.doesNotMatch(workflow, /capabilities\.json" \| grep -F 'hash-encode'/);
+  assert.doesNotMatch(workflow, /\.well-known\/x402" \| grep -F 'mcp-probe'/);
+  assert.match(workflow, /unexpectedly re-advertises hash-encode/);
+  assert.match(workflow, /unexpectedly re-advertises mcp-probe/);
+});
