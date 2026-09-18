@@ -128,6 +128,8 @@ test("x402 settlement verifier is published as a GET-first $0.001 machine resour
     (item: any) => item.resource === "GET /api/x402-settlement-verify"
   );
   assert.ok(resource);
+  assert.equal(resource.name, "x402 settlement verify");
+  assert.match(resource.description ?? "", /payment receipt verification/i);
   assert.equal(resource.price, "$0.001");
   assert.equal(resource.inputTransport, "query");
   assert.equal(resource.accepts?.[0]?.network, "eip155:8453");
