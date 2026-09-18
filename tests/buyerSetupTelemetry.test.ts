@@ -33,6 +33,6 @@ test("paid challenge handoff carries source and capability attribution without l
   assert.match(paidRoute, /x402BuyerSetupChallengeError\(capabilityId, requestMethod\)/);
   assert.match(
     paidRoute,
-    /mirrorPaymentChallengeBody\(\s*response,\s*capabilityId,\s*req\.method\s*\)/s
+    /mirrorPaymentChallengeBody\(\s*response,\s*capabilityId,\s*req\.method,\s*(?:resumeUrl|null)/s
   );
 });
