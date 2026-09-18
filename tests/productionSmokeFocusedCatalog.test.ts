@@ -11,6 +11,7 @@ test("production smoke enforces the focused public revenue catalog", () => {
   assert.match(smoke, /index\("x402-payment-preflight"\) != null/);
   assert.match(smoke, /index\("verified-resolve"\) != null/);
   assert.match(smoke, /index\("batch-verified-resolve"\) != null/);
+  assert.match(smoke, /index\("provider-launch-check"\) != null/);
   assert.match(smoke, /index\("hash-encode"\) == null/);
   assert.match(smoke, /index\("mcp-probe"\) == null/);
 });
@@ -27,4 +28,11 @@ test("production smoke requires and challenges the settlement verifier", () => {
 test("production smoke validates the provider sponsorship contract instead of brittle CTA copy", () => {
   assert.match(smoke, /issues\/new\?template=sponsorship\.yml/);
   assert.doesNotMatch(smoke, /Apply for the sponsorship pilot/);
+});
+
+
+test("production smoke requires the seller-side Provider Launch Check discovery and challenge", () => {
+  assert.match(smoke, /providerLaunchCheckGet/);
+  assert.match(smoke, /check_402 'Provider Launch Check'/);
+  assert.match(smoke, /'provider-launch-check' '50000'/);
 });
