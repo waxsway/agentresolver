@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   cdpFacilitatorCapabilities,
+  cdpFacilitatorCredentials,
   cdpFacilitatorCredentialsPresent,
   cdpFacilitatorEnabled,
   cdpFacilitatorEnabledFor
@@ -43,6 +44,35 @@ test("CDP facilitator requires both API credential fields", () => {
     CDP_API_KEY_ID: "id",
     CDP_API_KEY_SECRET: "secret"
   }), true);
+});
+
+test("CDP facilitator accepts the existing production credential aliases", () => {
+  assert.deepEqual(
+    cdpFacilitatorCredentials({
+      CDI_API_KEY_ID: "alias-id",
+      CDP_API_SECRET: "alias-secret"
+    }),
+    { apiKeyId: "alias-id", apiKeySecret: "alias-secret" }
+  );
+  assert.equal(
+    cdpFacilitatorCredentialsPresent({
+      CDI_API_KEY_ID: "alias-id",
+      CDP_API_SECRET: "alias-secret"
+    }),
+    true
+  );
+});
+
+test("canonical CDP credential names take precedence over aliases", () => {
+  assert.deepEqual(
+    cdpFacilitatorCredentials({
+      CDP_API_KEY_ID: "canonical-id",
+      CDI_API_KEY_ID: "alias-id",
+      CDP_API_KEY_SECRET: "canonical-secret",
+      CDP_API_SECRET: "alias-secret"
+    }),
+    { apiKeyId: "canonical-id", apiKeySecret: "canonical-secret" }
+  );
 });
 
 test("CDP compatibility preserves the non-custodial trust boundary", () => {
