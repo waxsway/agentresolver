@@ -237,7 +237,7 @@ export function getProviderRouteByCapability(
 }
 
 export function providerNetworkSnapshot(
-  baseUrl = CANONICAL_ORIGIN,
+  baseUrl: string = CANONICAL_ORIGIN,
   env: Readonly<Record<string, string | undefined>> = process.env
 ) {
   const routes = registeredProviderRoutes(env);
