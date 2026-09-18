@@ -37,7 +37,7 @@ test("settled canary next actions expose canonical preflight without removing re
   assert.deepEqual(next.preflight, {
     capabilityId: preflight.id,
     endpoint: `${CANONICAL_ORIGIN}${preflight.endpoint}`,
-    method: "POST",
+    method: "GET",
     priceUsd: preflight.priceUsd,
     useWhen: preflight.useWhen,
     inputExample: preflight.example
