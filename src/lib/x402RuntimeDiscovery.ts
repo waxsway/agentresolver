@@ -24,6 +24,31 @@ export function x402RuntimeDiscoveryOutput(capabilityId: PaidCapabilityId) {
     } as const;
   }
 
+  if (capabilityId === "base-usdc-settlement-verify") {
+    return {
+      example: {
+        settlementVerified: true,
+        network: "eip155:8453",
+        asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        confirmations: 1,
+        observedAmountAtomic: "1000"
+      },
+      schema: {
+        type: "object",
+        required: ["settlementVerified", "network", "asset", "confirmations", "reasonCodes"],
+        additionalProperties: true,
+        properties: {
+          settlementVerified: { type: "boolean" },
+          network: { type: "string", const: "eip155:8453" },
+          asset: { type: "string" },
+          confirmations: { type: "integer", minimum: 0 },
+          observedAmountAtomic: { type: "string" },
+          reasonCodes: { type: "array", items: { type: "string" } }
+        }
+      }
+    } as const;
+  }
+
   if (capabilityId === "x402-payment-preflight") {
     return {
       example: {
@@ -73,6 +98,44 @@ export function x402RuntimeDiscoveryInput(capabilityId: PaidCapabilityId) {
             type: "string",
             maxLength: 256,
             description: "Optional text echoed by the paid settlement response."
+          }
+        }
+      }
+    } as const;
+  }
+
+  if (capabilityId === "base-usdc-settlement-verify") {
+    return {
+      example: {
+        transactionHash: `0x${"00".repeat(32)}`,
+        expectedAmountAtomic: "1000",
+        minimumConfirmations: 1
+      },
+      schema: {
+        type: "object",
+        required: ["transactionHash"],
+        additionalProperties: false,
+        properties: {
+          transactionHash: {
+            type: "string",
+            pattern: "^0x[0-9a-fA-F]{64}$",
+            description: "Base transaction hash to inspect."
+          },
+          expectedPayTo: {
+            type: "string",
+            pattern: "^0x[0-9a-fA-F]{40}$",
+            description: "Optional expected USDC recipient; mismatch fails closed."
+          },
+          expectedAmountAtomic: {
+            type: "string",
+            pattern: "^[0-9]+$",
+            description: "Optional expected USDC amount in 6-decimal atomic units."
+          },
+          minimumConfirmations: {
+            type: "integer",
+            minimum: 1,
+            maximum: 10000,
+            default: 1
           }
         }
       }
