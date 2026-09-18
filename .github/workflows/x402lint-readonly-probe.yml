@@ -1,0 +1,54 @@
+name: x402lint Read-Only Contract Probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/x402lint-readonly-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Inspect free x402lint status and ownership contract
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          origin='https://agentresolver.vercel.app'
+          api='https://api.x402lint.dev'
+
+          curl -fsS --connect-timeout 5 --max-time 20 "$api/openapi.json" -o /tmp/x402lint-openapi.json
+
+          echo '=== x402lint relevant OpenAPI operations ==='
+          jq '{
+            status: .paths["/v1/status"],
+            project: .paths["/v1/project"],
+            verifyStart: .paths["/v1/verify/start"],
+            verifyConfirm: .paths["/v1/verify/confirm"],
+            listing: .paths["/v1/listing"]
+          }' /tmp/x402lint-openapi.json
+
+          encoded="$(python3 -c 'import urllib.parse; print(urllib.parse.quote("https://agentresolver.vercel.app", safe=""))')"
+
+          for path in status project report; do
+            body="/tmp/x402lint-$path.json"
+            code="$(curl -sS --connect-timeout 5 --max-time 20               -o "$body" -w '%{http_code}'               "$api/v1/$path?url=$encoded" || printf '000')"
+            echo "=== GET /v1/$path -> HTTP $code ==="
+            case "$code" in
+              200|404)
+                jq 'if type == "object" then
+                  del(.token,.challenge,.secret,.paymentSignature,.payment)
+                else . end' "$body" 2>/dev/null || head -c 2000 "$body"
+                ;;
+              *)
+                echo "Unexpected read-only x402lint status: $code" >&2
+                head -c 1000 "$body" >&2 || true
+                exit 1
+                ;;
+            esac
+          done
