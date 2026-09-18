@@ -43,7 +43,7 @@ jobs:
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/integrations.json" | grep -F "$BASE_URL/mcp" >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | tee /tmp/openapi.json >/dev/null
           grep -F 'resolveCapability' /tmp/openapi.json >/dev/null
-          grep -F 'probeMcpEndpoint' /tmp/openapi.json >/dev/null
+          ! grep -F 'probeMcpEndpoint' /tmp/openapi.json >/dev/null
           grep -F 'agentResolverPaymentGuardGet' /tmp/openapi.json >/dev/null
           jq -e '
             (.info["x-guidance"] | type == "string" and length > 0) and
