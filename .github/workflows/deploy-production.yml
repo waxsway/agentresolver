@@ -373,7 +373,7 @@ jobs:
           echo "CDP_PRODUCTION_SMOKE=true"
 
       - name: Restore known-good CDP runtime if release smoke fails
-        if: failure() && steps.production_deploy.outputs.url != ''
+        if: failure() && steps.production_deploy.outcome != 'skipped'
         shell: bash
         env:
           HEALTHY_DEPLOYMENT_ID: dpl_ErXGyYownF8254n14tDvwwFMiPEv
