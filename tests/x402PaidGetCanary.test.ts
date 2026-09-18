@@ -9,11 +9,59 @@ function readJson(path: string) {
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, any>;
 }
 
+async function withMockPayAiSupported<T>(run: () => Promise<T>): Promise<T> {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+
+    if (url === "https://facilitator.payai.network/supported") {
+      return new Response(JSON.stringify({
+        kinds: [
+          {
+            x402Version: 2,
+            scheme: "exact",
+            network: "eip155:8453",
+            extra: {}
+          },
+          {
+            x402Version: 2,
+            scheme: "exact",
+            network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+            extra: {
+              feePayer: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+            }
+          }
+        ],
+        extensions: ["bazaar"],
+        signers: {}
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    return originalFetch(input, init);
+  };
+
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 test("x402-ping exposes a payable GET while preserving POST", async () => {
-  const getResponse = await GET(new NextRequest("https://agentresolver.vercel.app/api/x402-ping", {
-    method: "GET",
-    headers: { "user-agent": "agentresolver-test" }
-  }));
+  const getResponse = await withMockPayAiSupported(() =>
+    GET(new NextRequest("https://agentresolver.vercel.app/api/x402-ping", {
+      method: "GET",
+      headers: { "user-agent": "agentresolver-test" }
+    }))
+  );
   assert.equal(getResponse.status, 402);
   assert.equal(getResponse.headers.get("access-control-allow-origin"), "*");
   const getPaymentRequired = getResponse.headers.get("payment-required");
