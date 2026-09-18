@@ -100,6 +100,17 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
     setup.clients.mcp.typescript.preSignGuardAuthorization.rule,
     /caller-owned spend policy/i
   );
+  const approvalExample =
+    setup.clients.mcp.typescript.preSignGuardAuthorization.approvalHookExample.join("\n");
+  assert.match(approvalExample, /hostAllowsGuardSpend/);
+  assert.match(approvalExample, /context\.toolName/);
+  assert.match(approvalExample, /paymentRequired\.x402Version !== 2/);
+  assert.match(approvalExample, /paymentRequired\.resource\.url/);
+  assert.match(approvalExample, /requirement\.scheme === "exact"/);
+  assert.match(approvalExample, /requirement\.amount === "1000"/);
+  assert.match(approvalExample, /requirement\.network === expected\.network/);
+  assert.match(approvalExample, /requirement\.asset\.toLowerCase\(\)/);
+  assert.match(approvalExample, /requirement\.payTo\.toLowerCase\(\)/);
   assert.ok(
     setup.clients.mcp.behavior.some((step) => /onPaymentRequested/i.test(step))
   );
