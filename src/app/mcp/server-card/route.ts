@@ -27,7 +27,7 @@ export function GET(req: Request) {
     name: "io.github.waxsway/agentresolver",
     version: "0.1.4",
     title: "AgentResolver Guard — x402 Verify Before Pay",
-    description: "GET-first $0.001 USDC x402 verify-before-pay Guard, free capability discovery, registered provider routing, and non-custodial transaction attribution for autonomous agents.",
+    description: "Paid x402 payment verification for autonomous agents: $0.001 USDC verify-before-pay Guard plus $0.001 Base USDC settlement-receipt verification, with free capability discovery and non-custodial provider routing.",
     websiteUrl: "https://agentresolver.vercel.app",
     repository: { url: "https://github.com/waxsway/agentresolver", source: "github", id: "1370616809" },
     remotes: [{ type: "streamable-http", url: "https://agentresolver.vercel.app/mcp", supportedProtocolVersions: ["2026-07-28"] }],
