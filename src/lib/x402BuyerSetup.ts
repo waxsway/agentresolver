@@ -138,8 +138,8 @@ export function x402BuyerSetup() {
               '    requirement.amount === "1000" &&',
               '    allowedGuardRequirements.some(expected =>',
               '      requirement.network === expected.network &&',
-              '      requirement.asset.toLowerCase() === expected.asset.toLowerCase() &&',
-              '      requirement.payTo.toLowerCase() === expected.payTo.toLowerCase()',
+              '      requirement.asset === expected.asset &&',
+              '      requirement.payTo === expected.payTo',
               '    )',
               '  );',
               '}'
