@@ -342,7 +342,7 @@ const x402Manifest = {
     mcp: `${CANONICAL_ORIGIN}/mcp`,
     resolve: `${CANONICAL_ORIGIN}/api/resolve`
   },
-  instructions: "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, use POST /api/x402-payment-preflight. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization."
+  instructions: "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint>; POST remains supported for body-bearing compatibility. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization."
 };
 
 for (const path of X402_MANIFEST_PATHS) {
@@ -394,14 +394,14 @@ const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
   title: "AgentResolver — X402 Settlement Canary & Payment Preflight",
-  description: "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary. Before authorizing a target x402 purchase, POST /api/x402-payment-preflight checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision and reusable evidence fingerprints. Free capability resolution remains available as a secondary surface.",
+  description: "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary. Before authorizing a target x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint> to check endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then receive a fail-closed eligible/blocked decision and reusable evidence fingerprints. POST remains available for body-bearing compatibility. Free capability resolution remains available as a secondary surface.",
   version: "0.1.6",
   contact: {
     name: "AgentResolver",
     url: "https://github.com/waxsway/agentresolver"
   },
   termsOfService: "https://agentresolver.vercel.app/legal",
-  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. Immediately before authorizing a separate x402 purchase, use POST /api/x402-payment-preflight as the canonical transaction-path gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
+  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. Immediately before authorizing a separate x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint> as the canonical transaction-path verification gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. POST remains available for body-bearing compatibility. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
