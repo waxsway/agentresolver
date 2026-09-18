@@ -69,3 +69,14 @@ test("production drift detection fails closed when the live deployment SHA is un
   assert.match(workflow, /refusing to guess deployment drift/i);
   assert.match(workflow, /\^\[0-9a-f\]\{40\}\$/);
 });
+
+
+test("production deploy coalesces rapid main changes before spending Vercel build CPU", () => {
+  const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
+
+  assert.match(workflow, /Waiting 90 seconds to coalesce rapid application merges/);
+  assert.match(workflow, /sleep 90/);
+  assert.match(workflow, /current_main_after_coalesce/);
+  assert.match(workflow, /Skipping stale CI result immediately/);
+  assert.match(workflow, /Skipping superseded release/);
+});
