@@ -322,9 +322,14 @@ test("buyer setup exposes Vercel AI SDK and Cloudflare Agents payment handoffs",
   assert.equal(cloudflare.package, "agents");
   assert.equal(cloudflare.x402ClientImport, "agents/x402");
   assert.equal(cloudflare.wrapper, "withX402Client");
-  assert.equal(cloudflare.confirmationCallback, "requestPaymentConfirmation");
-  assert.equal(cloudflare.confirmationResolver, "resolvePayment");
-  assert.match(cloudflare.authorizationModel, /caller-owned authorization boundary/i);
+  assert.equal(cloudflare.approvalCallback, "onPaymentRequired");
+  assert.equal(cloudflare.paidToolCall, "x402Client.callTool");
+  assert.equal(cloudflare.retryHeader, "PAYMENT-SIGNATURE");
+  assert.equal(cloudflare.preferredBaseNetwork, "eip155:8453");
+  assert.match(cloudflare.authorizationModel, /non-null onPaymentRequired callback/i);
+  assert.match(cloudflare.authorizationModel, /passing null enables automatic payment/i);
+  assert.ok(cloudflare.behavior.some((step) => /withX402Client/i.test(step)));
+  assert.ok(cloudflare.behavior.some((step) => /callTool\(onPaymentRequired/i.test(step)));
   assert.ok(cloudflare.behavior.some((step) => /separate caller authorization/i.test(step)));
 
   const runtimeText = JSON.stringify({ vercel, cloudflare });
@@ -335,7 +340,7 @@ test("buyer setup exposes Vercel AI SDK and Cloudflare Agents payment handoffs",
   );
   assert.equal(
     setup.officialReferences.cloudflareAgentsX402Mcp,
-    "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md"
+    "https://developers.cloudflare.com/agents/tools/payments/x402/pay-from-agents-sdk/"
   );
 });
 
