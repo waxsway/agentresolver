@@ -16,11 +16,9 @@ concurrency:
 
 jobs:
   deploy:
-    # Emergency guard: canonical production is pinned to the last healthy CDP runtime
-    # while the prebuilt runtime-env handoff is repaired. Remove only after a
-    # credential-preserving deploy is proven in CI.
+    # Re-armed only after the CDP readiness audit proved project Secret metadata
+    # exists and the live canary proves Vercel attaches those Secrets at runtime.
     if: >-
-      false &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
@@ -328,6 +326,97 @@ jobs:
             cat /tmp/security.txt 2>/dev/null || true
             exit 1
           fi
+
+          cdp_ready=0
+          for attempt in {1..20}; do
+            suffix="deployment=$VALIDATED_SHA&cdpSmokeAttempt=$attempt"
+            canary_code="$(curl -sS -D /tmp/cdp-canary-headers.txt -o /tmp/cdp-canary.json -w '%{http_code}' \
+              -H 'cache-control: no-cache' \
+              -H 'x-agentresolver-internal: 1' \
+              "$BASE_URL/api/x402-cdp-canary?$suffix" || true)"
+            canary_sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/cdp-canary-headers.txt)"
+            curl -fsS -H 'cache-control: no-cache' "$BASE_URL/api/health?$suffix" -o /tmp/cdp-health.json || true
+
+            if [ "$canary_code" = "402" ] && [ "$canary_sha" = "$VALIDATED_SHA" ] &&
+              grep -Fi 'payment-required:' /tmp/cdp-canary-headers.txt >/dev/null &&
+              jq -e '
+                .x402Version == 2 and
+                (.accepts | length) == 1 and
+                .accepts[0].scheme == "exact" and
+                .accepts[0].network == "eip155:8453" and
+                .accepts[0].amount == "2000" and
+                .accepts[0].asset == "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" and
+                .accepts[0].payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              ' /tmp/cdp-canary.json >/dev/null &&
+              jq -e '
+                .paymentRails.x402Ping == "payai" and
+                .paymentRails.x402PingBase == "payai" and
+                .paymentRails.x402PingSolana == "payai" and
+                .paymentRails.x402CdpCanary == "coinbase-cdp" and
+                .paymentRails.cdpFacilitatorEnabledForCdpCanary == true and
+                .paymentRails.circleGatewayEnabled == false
+              ' /tmp/cdp-health.json >/dev/null; then
+              cdp_ready=1
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$cdp_ready" != "1" ]; then
+            echo "::error::New production deployment did not preserve the isolated $0.002 Coinbase CDP canary contract."
+            cat /tmp/cdp-canary.json 2>/dev/null || true
+            cat /tmp/cdp-health.json 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "CDP_PRODUCTION_SMOKE=true"
+
+      - name: Restore known-good CDP runtime if release smoke fails
+        if: failure() && steps.production_deploy.outputs.url != ''
+        shell: bash
+        env:
+          HEALTHY_DEPLOYMENT_ID: dpl_ErXGyYownF8254n14tDvwwFMiPEv
+          HEALTHY_SHA: c2a05df127548c4ecc87ba73467cef72b6e721c3
+          CANONICAL_ALIAS: agentresolver.vercel.app
+          BASE_URL: https://agentresolver.vercel.app
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/rollback-alias.json -w '%{http_code}' \
+            -X POST "https://api.vercel.com/v2/deployments/$HEALTHY_DEPLOYMENT_ID/aliases?teamId=$VERCEL_ORG_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary "$(jq -nc --arg alias "$CANONICAL_ALIAS" '{alias:$alias,redirect:null}')")"
+          case "$code" in
+            200|201) ;;
+            *) cat /tmp/rollback-alias.json; exit 1 ;;
+          esac
+
+          restored=0
+          for attempt in {1..30}; do
+            suffix="releaseRollback=$GITHUB_RUN_ID-$attempt"
+            canary_code="$(curl -sS --max-time 15 -D /tmp/rollback-canary-h -o /tmp/rollback-canary-b -w '%{http_code}' "$BASE_URL/api/x402-cdp-canary?$suffix" || true)"
+            canary_sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/rollback-canary-h)"
+            ping_code="$(curl -sS --max-time 15 -o /tmp/rollback-ping-b -w '%{http_code}' "$BASE_URL/api/x402-ping?$suffix" || true)"
+            if [ "$canary_code" = "402" ] && [ "$canary_sha" = "$HEALTHY_SHA" ] && [ "$ping_code" = "402" ] &&
+              jq -e '
+                .x402Version == 2 and
+                (.accepts | length) == 1 and
+                .accepts[0].network == "eip155:8453" and
+                .accepts[0].amount == "1000"
+              ' /tmp/rollback-canary-b >/dev/null; then
+              restored=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$restored" != "1" ]; then
+            echo "::error::Release smoke failed and automatic rollback did not restore the known-good CDP runtime."
+            exit 1
+          fi
+
+          echo "ROLLBACK_RESTORED_KNOWN_GOOD_CDP=true"
 
       - name: Report stale deploy suppression
         if: >-
