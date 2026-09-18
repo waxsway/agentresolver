@@ -122,6 +122,7 @@ jobs:
           test "$paid_code" -ge 200 && test "$paid_code" -lt 300
           grep -F 'x402Version' /tmp/mcp-x402-preflight.out >/dev/null
           grep -F '1000' /tmp/mcp-x402-preflight.out >/dev/null
+          grep -F 'mcp://tool/x402_payment_preflight' /tmp/mcp-x402-preflight.out >/dev/null
           grep -F 'agentresolver_x402_buyer_setup' /tmp/mcp-x402-preflight.out >/dev/null
           grep -F "$BUYER_SETUP_URL" /tmp/mcp-x402-preflight.out >/dev/null
 
@@ -145,6 +146,7 @@ jobs:
           test "$guard_code" -ge 200 && test "$guard_code" -lt 300
           grep -F 'x402Version' /tmp/mcp-payment-guard.out >/dev/null
           grep -F '1000' /tmp/mcp-payment-guard.out >/dev/null
+          grep -F 'mcp://tool/payment_guard' /tmp/mcp-payment-guard.out >/dev/null
           grep -F 'payment_guard' /tmp/mcp-payment-guard.out >/dev/null
           grep -F 'agentresolver_x402_buyer_setup' /tmp/mcp-payment-guard.out >/dev/null
           if grep -F 'latencyMs' /tmp/mcp-payment-guard.out >/dev/null; then
