@@ -27,7 +27,15 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
     item.payTo === "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
   ));
   const decodedHeader = JSON.parse(Buffer.from(getPaymentRequired!, "base64").toString("utf8"));
-  assert.deepEqual(getBody, decodedHeader);
+  const bodyWithoutBuyerHandoff = structuredClone(getBody);
+  delete bodyWithoutBuyerHandoff.extensions?.agentresolver;
+  assert.deepEqual(bodyWithoutBuyerHandoff, decodedHeader);
+  assert.equal(
+    getBody.extensions?.agentresolver?.url,
+    "https://agentresolver.vercel.app/api/x402-client-setup"
+  );
+  assert.equal(getBody.extensions?.agentresolver?.paymentAuthorizationRequired, true);
+  assert.equal(decodedHeader.extensions?.agentresolver, undefined);
   assert.equal(decodedHeader.resource?.serviceName, "AgentResolver");
   assert.deepEqual(decodedHeader.resource?.tags, [
     "x402",
