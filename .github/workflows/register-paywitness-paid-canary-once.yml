@@ -85,54 +85,84 @@ jobs:
           props = schema.get("properties") or {}
           required = list(schema.get("required") or [])
 
-          target = "https://agentresolver.vercel.app/api/x402-ping"
-          values = {
-              "resource": target,
-              "url": target,
-              "endpoint": target,
-              "endpoint_url": target,
-              "resource_url": target,
-              "name": "AgentResolver Settlement Ping",
-              "description": "Minimal $0.001 x402 settlement canary. Returns a timestamped pong only after successful settlement so independent buyers can verify wallet, facilitator, payment and delivery end to end.",
-              "method": "GET",
-              "price": 0.001,
-              "price_usd": 0.001,
-              "priceUsd": 0.001,
-              "declared_price_usd": 0.001,
-              "network": "eip155:8453",
-              "chain": "base",
-              "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
-              "pay_to": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
-              "tags": ["x402", "settlement", "verification", "agent-payments"]
-          }
+          targets = [
+              {
+                  "slug": "ping",
+                  "target": "https://agentresolver.vercel.app/api/x402-ping",
+                  "name": "AgentResolver Settlement Ping",
+                  "description": "Minimal $0.001 x402 settlement canary. Returns a timestamped pong only after successful settlement so independent buyers can verify wallet, facilitator, payment and delivery end to end.",
+                  "method": "GET",
+                  "price": 0.001,
+                  "tags": ["x402", "settlement", "verification", "agent-payments"],
+              },
+              {
+                  "slug": "provider-launch",
+                  "target": "https://agentresolver.vercel.app/api/provider-launch-check",
+                  "name": "AgentResolver Provider Launch Check",
+                  "description": "Paid $0.05 seller-side x402 readiness and route-contract verification for providers that want AgentResolver distribution.",
+                  "method": "GET",
+                  "price": 0.05,
+                  "tags": ["x402", "provider-onboarding", "seller-tools", "agent-distribution"],
+              },
+          ]
 
-          payload = {}
-          for key in props:
-              if key in values:
-                  value = values[key]
-                  prop = resolve(props[key])
-                  enum = prop.get("enum")
-                  if enum and value not in enum:
-                      if key in ("network", "chain"):
-                          baseish = next((v for v in enum if "8453" in str(v) or str(v).lower() == "base"), None)
-                          if baseish is not None:
-                              value = baseish
+          def build_payload(item):
+              target = item["target"]
+              price = item["price"]
+              values = {
+                  "resource": target,
+                  "url": target,
+                  "endpoint": target,
+                  "endpoint_url": target,
+                  "resource_url": target,
+                  "name": item["name"],
+                  "description": item["description"],
+                  "method": item["method"],
+                  "price": price,
+                  "price_usd": price,
+                  "priceUsd": price,
+                  "declared_price_usd": price,
+                  "network": "eip155:8453",
+                  "chain": "base",
+                  "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+                  "pay_to": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+                  "tags": item["tags"],
+              }
+
+              payload = {}
+              for key in props:
+                  if key in values:
+                      value = values[key]
+                      prop = resolve(props[key])
+                      enum = prop.get("enum")
+                      if enum and value not in enum:
+                          if key in ("network", "chain"):
+                              baseish = next((v for v in enum if "8453" in str(v) or str(v).lower() == "base"), None)
+                              if baseish is not None:
+                                  value = baseish
+                              else:
+                                  continue
                           else:
                               continue
-                      else:
-                          continue
-                  payload[key] = value
+                      payload[key] = value
 
-          missing = [key for key in required if key not in payload]
-          if missing:
-              print(json.dumps({"required": required, "properties": sorted(props.keys()), "missing": missing}))
-              raise SystemExit("Unsupported required fields in Paywitness /list schema; refusing to guess.")
+              missing = [key for key in required if key not in payload]
+              if missing:
+                  print(json.dumps({"target": target, "required": required, "properties": sorted(props.keys()), "missing": missing}))
+                  raise SystemExit("Unsupported required fields in Paywitness /list schema; refusing to guess.")
 
-          if not any(k in payload for k in ("resource", "url", "endpoint", "endpoint_url", "resource_url")):
-              raise SystemExit("Paywitness /list schema exposes no recognized target URL field.")
+              if not any(k in payload for k in ("resource", "url", "endpoint", "endpoint_url", "resource_url")):
+                  raise SystemExit("Paywitness /list schema exposes no recognized target URL field.")
+              return payload
 
-          Path("/tmp/paywitness-list.json").write_text(json.dumps(payload, separators=(",", ":")))
-          print(json.dumps({"paywitness_list_fields": sorted(payload.keys())}))
+          for item in targets:
+              payload = build_payload(item)
+              output = Path(f"/tmp/paywitness-list-{item['slug']}.json")
+              output.write_text(json.dumps(payload, separators=(",", ":")))
+              print(json.dumps({
+                  "paywitness_target": item["slug"],
+                  "paywitness_list_fields": sorted(payload.keys())
+              }))
           PY
 
       - name: Self-list AgentResolver canary with Paywitness for free
@@ -143,25 +173,27 @@ jobs:
             echo "::notice::Skipping Paywitness self-list because its OpenAPI was unavailable."
             exit 0
           fi
-          body="$(mktemp)"
-          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://paywitness.ai/list'             -H 'content-type: application/json'             --data-binary @/tmp/paywitness-list.json)"
-          cat "$body"
-          echo
-          case "$code" in
-            200|201|202|204|409) ;;
-            402)
-              echo "::warning::Paywitness self-list now requires payment; no payment was attempted."
-              exit 0
-              ;;
-            429|500|502|503|504)
-              echo "::warning::Paywitness is temporarily unavailable/rate-limited (HTTP $code); registration deferred."
-              exit 0
-              ;;
-            *)
-              echo "Paywitness self-list failed with unexpected HTTP $code" >&2
-              exit 1
-              ;;
-          esac
+          for payload_file in /tmp/paywitness-list-ping.json /tmp/paywitness-list-provider-launch.json; do
+            body="$(mktemp)"
+            code="$(curl -sS -o "$body" -w '%{http_code}'               -X POST 'https://paywitness.ai/list'               -H 'content-type: application/json'               --data-binary @"$payload_file" || printf '000')"
+            cat "$body" 2>/dev/null || true
+            echo
+            case "$code" in
+              200|201|202|204|409) ;;
+              402)
+                echo "::warning::Paywitness self-list requires payment for $payload_file; no payment was attempted."
+                ;;
+              429|500|502|503|504|000)
+                echo "::warning::Paywitness is temporarily unavailable/rate-limited (HTTP $code); remaining registration is deferred."
+                touch /tmp/paywitness-unavailable
+                break
+                ;;
+              *)
+                echo "Paywitness self-list failed with unexpected HTTP $code for $payload_file" >&2
+                exit 1
+                ;;
+            esac
+          done
 
       - name: Query Paywitness free preflight after self-list
         shell: bash
