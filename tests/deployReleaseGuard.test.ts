@@ -81,9 +81,9 @@ test("production deploy coalesces rapid main changes before spending Vercel buil
   assert.match(workflow, /Skipping superseded release/);
 });
 
-test("production drift ignores repository-only docs but not dependency lock changes", () => {
+test("production drift ignores repository-only docs and existing metadata-only files", () => {
   const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
 
   assert.match(workflow, /tests\/\*\|docs\/\*\|README\.md\|AGENTS\.md/);
-  assert.doesNotMatch(workflow, /package-lock\.json\|server\.json/);
+  assert.match(workflow, /package-lock\.json\|server\.json\) ;;/);
 });

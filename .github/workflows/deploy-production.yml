@@ -154,7 +154,7 @@ jobs:
           while IFS= read -r path; do
             [ -z "$path" ] && continue
             case "$path" in
-              .github/*|tests/*|docs/*|README.md|AGENTS.md|LICENSE|LICENSE.*|server.json) ;;
+              .github/*|tests/*|docs/*|README.md|AGENTS.md|LICENSE|LICENSE.*|package-lock.json|server.json) ;;
               *) deploy=true; break ;;
             esac
           done < "$changed_file"
