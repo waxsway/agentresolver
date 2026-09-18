@@ -246,7 +246,17 @@ export function createDeterministicPaidRoute(
     const cdpFacilitator = cdpEnabled
       ? (await import("@coinbase/cdp-sdk/x402")).createCdpFacilitatorClient()
       : null;
-    const primaryFacilitator = cdpFacilitator ?? standardFacilitator;
+    const cdpBaseFacilitator = cdpFacilitator ? {
+      verify: cdpFacilitator.verify.bind(cdpFacilitator),
+      settle: cdpFacilitator.settle.bind(cdpFacilitator),
+      getSupported: async () => {
+        const supported = await cdpFacilitator.getSupported();
+        return {
+          ...supported,
+          kinds: supported.kinds.filter((kind) => kind.network === X402_NETWORK)
+        };
+      }
+    } : null;
 
     type CurrentPaymentPayload = Parameters<HTTPFacilitatorClient["verify"]>[0];
     type CurrentPaymentRequirements = Parameters<HTTPFacilitatorClient["verify"]>[1];
@@ -301,9 +311,13 @@ export function createDeterministicPaidRoute(
       }
     } : null;
 
-    const server = circleFacilitator
-      ? new x402ResourceServer([primaryFacilitator, circleFacilitator])
-      : new x402ResourceServer(primaryFacilitator);
+    const server = cdpBaseFacilitator
+      ? circleFacilitator
+        ? new x402ResourceServer([cdpBaseFacilitator, standardFacilitator, circleFacilitator])
+        : new x402ResourceServer([cdpBaseFacilitator, standardFacilitator])
+      : circleFacilitator
+        ? new x402ResourceServer([standardFacilitator, circleFacilitator])
+        : new x402ResourceServer(standardFacilitator);
 
     if (gatewayEnabled) {
       server.register("eip155:*", new GatewayEvmScheme());
@@ -325,6 +339,8 @@ export function createDeterministicPaidRoute(
         at: new Date().toISOString(),
         capabilityId,
         facilitator: "coinbase-cdp",
+        network: X402_NETWORK,
+        solanaFacilitator: "payai",
         bazaarDiscoveryEligible: true
       }));
     }
