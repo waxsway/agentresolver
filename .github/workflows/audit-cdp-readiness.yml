@@ -39,6 +39,7 @@ jobs:
           payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
           envs=payload.get("envs", []) if isinstance(payload, dict) else []
           production_keys=set()
+          matching_targets={}
           for item in envs:
               if not isinstance(item, dict):
                   continue
@@ -46,6 +47,8 @@ jobs:
               if isinstance(target, str):
                   target=[target]
               key=item.get("key")
+              if isinstance(key, str) and ("CDP" in key.upper() or "COINBASE" in key.upper()):
+                  matching_targets.setdefault(key, set()).update(str(value) for value in target)
               if "production" in target and isinstance(key, str):
                   production_keys.add(key)
           required={"CDP_API_KEY_ID","CDP_API_KEY_SECRET"}
@@ -57,6 +60,11 @@ jobs:
           print(f"CDP_API_KEY_SECRET_PRESENT={'true' if 'CDP_API_KEY_SECRET' in production_keys else 'false'}")
           print(f"CDP_CREDENTIAL_KEYS_PRESENT={'true' if required.issubset(production_keys) else 'false'}")
           print("CDP_COINBASE_PRODUCTION_KEY_NAMES=" + ",".join(matching))
+          target_summary=";".join(
+              f"{key}:[{','.join(sorted(targets))}]"
+              for key, targets in sorted(matching_targets.items())
+          )
+          print("CDP_COINBASE_KEY_TARGETS=" + target_summary)
           PY
 
       - name: Audit canonical payment rail state without changing it
