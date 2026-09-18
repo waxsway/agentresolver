@@ -111,14 +111,15 @@ jobs:
             exit 1
           fi
 
-          if [ "$(jq -r '.paymentRails.cdpFacilitatorEnabledForX402Ping // false' /tmp/agentresolver-health.json)" = "true" ] &&
-             [ "$(jq -r '.paymentRails.x402PingBase // ""' /tmp/agentresolver-health.json)" = "coinbase-cdp" ] &&
+          if [ "$(jq -r '.paymentRails.cdpFacilitatorEnabledForCdpCanary // false' /tmp/agentresolver-health.json)" = "true" ] &&
+             [ "$(jq -r '.paymentRails.x402CdpCanary // ""' /tmp/agentresolver-health.json)" = "coinbase-cdp" ] &&
+             [ "$(jq -r '.paymentRails.x402PingBase // ""' /tmp/agentresolver-health.json)" = "payai" ] &&
              [ "$(jq -r '.paymentRails.x402PingSolana // ""' /tmp/agentresolver-health.json)" = "payai" ]; then
             echo "active=true" >> "$GITHUB_OUTPUT"
-            echo "Canonical production already reports Coinbase CDP for Base x402-ping with Solana preserved on PayAI."
+            echo "Canonical production already reports the isolated Coinbase CDP canary while x402-ping remains on PayAI."
           else
             echo "active=false" >> "$GITHUB_OUTPUT"
-            echo "Coinbase CDP credentials exist, but the Base-only rail is not active on canonical x402-ping yet."
+            echo "Coinbase CDP credentials exist, but the isolated CDP canary is not active yet."
           fi
 
       - name: Capture validated main SHA
@@ -205,14 +206,6 @@ jobs:
           mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
 
-      - name: Pull activated production configuration
-        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-
-      - name: Build credential-activated production artifact
-        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
-        run: vercel build --prod --token="$VERCEL_TOKEN"
-
       - name: Recheck main immediately before activation deploy
         if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
         id: freshness
@@ -224,23 +217,25 @@ jobs:
           current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
           if [ "$current_main" != "$VALIDATED_SHA" ]; then
             echo "fresh=false" >> "$GITHUB_OUTPUT"
-            echo "Main advanced during the CDP build. Refusing to deploy stale code; the next credential-gated run will rebuild current main."
+            echo "Main advanced before the CDP release. Refusing to deploy stale code."
           else
             echo "fresh=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Deploy CDP-activated artifact
+      - name: Stage CDP production build, verify, and promote
         if: >-
           steps.credentials.outputs.ready == 'true' &&
           steps.live_state.outputs.active != 'true' &&
           steps.freshness.outputs.fresh == 'true'
         id: deploy
         shell: bash
+        env:
+          VALIDATED_SHA: ${{ steps.release.outputs.sha }}
         run: |
           set -euo pipefail
-          deployment_url="$(vercel env run -e production --token="$VERCEL_TOKEN" -- node .github/scripts/vercel-deploy-prebuilt-runtime-env.mjs .vercel/.env.production.local)"
+          deployment_url="$(node .github/scripts/vercel-deploy-source-production.mjs)"
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
-          echo "Deployed credential-activated x402-ping rail."
+          echo "Deployed credential-activated isolated CDP canary."
 
       - name: Verify canonical CDP canary without spending
         if: steps.deploy.outputs.url != ''
@@ -256,8 +251,9 @@ jobs:
             curl -fsS               -H 'cache-control: no-cache'               "$BASE_URL/api/health?cdpActivationVerify=$GITHUB_RUN_ID-$attempt"               -o /tmp/agentresolver-cdp-health.json || true
 
             if jq -e '
-              .paymentRails.cdpFacilitatorEnabledForX402Ping == true and
-              .paymentRails.x402PingBase == "coinbase-cdp" and
+              .paymentRails.cdpFacilitatorEnabledForCdpCanary == true and
+              .paymentRails.x402CdpCanary == "coinbase-cdp" and
+              .paymentRails.x402PingBase == "payai" and
               .paymentRails.x402PingSolana == "payai" and
               .paymentRails.circleGatewayEnabled == false
             ' /tmp/agentresolver-cdp-health.json >/dev/null 2>&1; then
@@ -272,14 +268,15 @@ jobs:
             exit 1
           fi
 
-          status="$(curl -sS             -D /tmp/agentresolver-cdp-ping-headers.txt             -o /tmp/agentresolver-cdp-ping.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             "$BASE_URL/api/x402-ping")"
+          status="$(curl -sS             -D /tmp/agentresolver-cdp-ping-headers.txt             -o /tmp/agentresolver-cdp-ping.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             "$BASE_URL/api/x402-cdp-canary")"
 
           test "$status" = "402"
           grep -Fi 'payment-required:' /tmp/agentresolver-cdp-ping-headers.txt >/dev/null
           grep -Fi "x-agentresolver-deployment: $VALIDATED_SHA" /tmp/agentresolver-cdp-ping-headers.txt >/dev/null
           jq -e '
             .x402Version == 2 and
-            any(.accepts[]; .network == "eip155:8453" and .amount == "1000")
+            (.accepts | length) == 1 and
+            any(.accepts[]; .network == "eip155:8453" and .amount == "2000")
           ' /tmp/agentresolver-cdp-ping.json >/dev/null
 
-          echo "Canonical Base x402-ping is CDP-configured, Solana remains on PayAI, and the route returns a valid unsigned 402 challenge. No payment was sent."
+          echo "Canonical isolated CDP canary is live at $0.002 on Base while x402-ping remains on PayAI. No payment was sent."
