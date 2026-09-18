@@ -42,7 +42,21 @@ jobs:
           echo "current_main=$current_main"
           if [ "$current_main" != "$VALIDATED_SHA" ]; then
             echo "fresh=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping stale CI result: main advanced before production build started."
+            echo "Skipping stale CI result immediately: main already advanced."
+            exit 0
+          fi
+
+          # Most AgentResolver revenue work lands in short bursts. Give main one
+          # quiet window before any paid Vercel build work starts so superseded
+          # commits are discarded while GitHub-hosted CI is still cheap.
+          echo "Validated main is current. Waiting 90 seconds to coalesce rapid application merges before spending Vercel build CPU."
+          sleep 90
+
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          echo "current_main_after_coalesce=$current_main"
+          if [ "$current_main" != "$VALIDATED_SHA" ]; then
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping superseded release: main advanced during the build-coalescing window."
           else
             echo "fresh=true" >> "$GITHUB_OUTPUT"
           fi
@@ -140,7 +154,7 @@ jobs:
           while IFS= read -r path; do
             [ -z "$path" ] && continue
             case "$path" in
-              .github/*|README.md|tests/*|package-lock.json|server.json) ;;
+              .github/*|tests/*|docs/*|README.md|AGENTS.md|LICENSE|LICENSE.*|server.json) ;;
               *) deploy=true; break ;;
             esac
           done < "$changed_file"
