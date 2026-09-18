@@ -2,9 +2,6 @@ name: Market402 Paid Probe Opt-In
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Deploy Production"]
-    types: [completed]
   push:
     branches: [main]
     paths:
@@ -14,10 +11,6 @@ permissions:
 
 jobs:
   optin:
-    if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 4
     env:

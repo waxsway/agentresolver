@@ -1,11 +1,6 @@
 name: Production Smoke
 
 on:
-  workflow_run:
-    workflows:
-      - Deploy Production
-    types:
-      - completed
   repository_dispatch:
     types:
       - vercel.deployment.success
@@ -17,7 +12,6 @@ permissions:
 
 jobs:
   verify-production:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
