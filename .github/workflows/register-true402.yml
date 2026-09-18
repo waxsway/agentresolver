@@ -2,6 +2,8 @@ name: Register AgentResolver with true402
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "41 */6 * * *"
 
 permissions:
   contents: read
