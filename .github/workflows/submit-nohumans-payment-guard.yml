@@ -5,10 +5,6 @@ on:
   workflow_run:
     workflows: ["Deploy Production"]
     types: [completed]
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/submit-nohumans-payment-guard.yml'
 
 permissions:
   contents: read
