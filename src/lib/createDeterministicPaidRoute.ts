@@ -32,9 +32,9 @@ export function normalizeX402PaymentRequest(req: NextRequest) {
   const init: RequestInit & { duplex?: "half" } = {
     method: req.method,
     headers: new Headers(req.headers),
-    redirect: req.redirect,
-    signal: req.signal
+    redirect: req.redirect
   };
+  if (req.signal) init.signal = req.signal;
   if (method !== "GET" && method !== "HEAD" && req.body) {
     init.body = req.body;
     init.duplex = "half";
