@@ -16,6 +16,7 @@ export const X402_CHALLENGE_CLIENT_INSTALLS = {
   httpTypescript: "npm install @x402/core @x402/evm @x402/svm @x402/fetch",
   mcpTypescript: "npm install @x402/mcp @x402/evm @x402/svm",
   httpPython: "pip install x402",
+  walletMcp: "npx -y x402-trinity-mcp",
   agentSkill: "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard"
 } as const;
 
@@ -31,6 +32,12 @@ export const X402_CHALLENGE_CLIENT_ENTRYPOINTS = {
   httpPython: {
     package: "x402",
     client: "x402HttpxClient"
+  },
+  walletMcp: {
+    package: "x402-trinity",
+    command: "x402-trinity-mcp",
+    tools: ["check_price", "pay_and_fetch", "wallet_status"],
+    defaultNetwork: "eip155:8453"
   },
   agentSkill: {
     repository: "waxsway/agentresolver",
@@ -363,6 +370,29 @@ export function x402BuyerSetup() {
           "Send the original paid request; the x402 wrapper handles PAYMENT-REQUIRED and the authorized PAYMENT-SIGNATURE retry."
         ]
       },
+      x402Trinity: {
+        runtime: "x402-trinity MCP wallet",
+        package: "x402-trinity",
+        mcpCommand: "npx -y x402-trinity-mcp",
+        paymentGuardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+        defaultNetwork: "eip155:8453",
+        defaultAsset: "USDC",
+        tools: {
+          checkPrice: "check_price",
+          payAndFetch: "pay_and_fetch",
+          walletStatus: "wallet_status"
+        },
+        authorizationModel:
+          "Keep wallet credentials and hard spend limits inside the caller-controlled x402-trinity process. AgentResolver never receives the wallet secret. Use check_price before a paid call, allow pay_and_fetch only when the caller's local budget and host policy authorize the exact spend, and treat Guard eligibility as evidence rather than target-payment authorization.",
+        behavior: [
+          "Use check_price on the exact AgentResolver Guard URL first so the $0.001 requirement is visible without paying.",
+          "Require the caller-controlled x402-trinity budget and host allowlist to permit AgentResolver before using pay_and_fetch.",
+          "Use pay_and_fetch on Guard only after that local policy authorizes the separate $0.001 fee.",
+          "Require Guard decision === eligible and compare the returned target amount, asset, network, payTo, scheme and resource binding against caller policy.",
+          "Use a separate caller-authorized pay_and_fetch call for the original target only after Guard succeeds.",
+          "Keep all wallet credentials inside x402-trinity; never send them to AgentResolver."
+        ]
+      },
       coinbaseAgentKit: {
         package: "@coinbase/agentkit",
         x402Actions: {
@@ -521,6 +551,7 @@ export function x402BuyerSetup() {
       protocol: "https://github.com/x402-foundation/x402",
       axios: "https://github.com/x402-foundation/x402/blob/main/typescript/packages/http/axios/README.md",
       coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md",
+      x402Trinity: "https://github.com/devmster/x402-trinity",
       vercelAiSdkX402Mcp: "https://vercel.com/blog/introducing-x402-mcp-open-protocol-payments-for-mcp-tools",
       cloudflareAgentsX402Mcp: "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md",
       cloudflareCodingToolsX402: "https://developers.cloudflare.com/agents/tools/payments/x402/pay-with-tool-plugins/",
