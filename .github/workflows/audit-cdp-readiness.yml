@@ -1,0 +1,81 @@
+name: Audit Coinbase CDP Readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-cdp-readiness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      BASE_URL: https://agentresolver.vercel.app
+    steps:
+      - name: Audit production CDP credential metadata without reading values
+        id: credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          chmod 600 "$response_file"
+
+          status="$(curl -sS --connect-timeout 10 --max-time 30             -o "$response_file" -w '%{http_code}'             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN")"
+          test "$status" = "200"
+
+          python3 - "$response_file" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          envs=payload.get("envs", []) if isinstance(payload, dict) else []
+          production_keys=set()
+          for item in envs:
+              if not isinstance(item, dict):
+                  continue
+              target=item.get("target") or []
+              if isinstance(target, str):
+                  target=[target]
+              key=item.get("key")
+              if "production" in target and isinstance(key, str):
+                  production_keys.add(key)
+          required={"CDP_API_KEY_ID","CDP_API_KEY_SECRET"}
+          print(f"CDP_API_KEY_ID_PRESENT={'true' if 'CDP_API_KEY_ID' in production_keys else 'false'}")
+          print(f"CDP_API_KEY_SECRET_PRESENT={'true' if 'CDP_API_KEY_SECRET' in production_keys else 'false'}")
+          print(f"CDP_CREDENTIAL_KEYS_PRESENT={'true' if required.issubset(production_keys) else 'false'}")
+          PY
+
+      - name: Audit canonical payment rail state without changing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -H 'cache-control: no-cache'             "$BASE_URL/api/health?cdpReadinessAudit=$GITHUB_RUN_ID"             -o /tmp/health.json
+          jq '{
+            default:.paymentRails.default,
+            x402Ping:.paymentRails.x402Ping,
+            x402PingBase:.paymentRails.x402PingBase,
+            x402PingSolana:.paymentRails.x402PingSolana,
+            cdpFacilitatorEnabledForX402Ping:.paymentRails.cdpFacilitatorEnabledForX402Ping,
+            circleGatewayEnabled:.paymentRails.circleGatewayEnabled
+          }' /tmp/health.json
+          jq -e '.paymentRails.circleGatewayEnabled == false' /tmp/health.json >/dev/null
+
+      - name: Verify current unsigned ping challenge remains healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -D /tmp/ping-headers.txt -o /tmp/ping.json -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             "$BASE_URL/api/x402-ping")"
+          test "$code" = "402"
+          grep -Fi 'payment-required:' /tmp/ping-headers.txt >/dev/null
+          jq -e '.x402Version == 2 and any(.accepts[]; .network == "eip155:8453" and .amount == "1000")' /tmp/ping.json >/dev/null
+          echo "CDP_READINESS_AUDIT_COMPLETE=true"
+          echo "No payment was sent and no production configuration was changed."
