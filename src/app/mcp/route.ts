@@ -522,7 +522,8 @@ const handler = createMcpHandler(() => {
       discoveryToolName: toolName,
       discoveryDescription: toolName === "payment_guard"
         ? "AgentResolver Guard: paid $0.001 fail-closed authorization preflight to run immediately before every autonomous x402 spend."
-        : x402PaymentPreflightProduct.description
+        : x402PaymentPreflightProduct.description,
+      paymentToolName: toolName
     }
   );
 

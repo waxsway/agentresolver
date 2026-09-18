@@ -70,6 +70,13 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
     setup.clients.mcp.typescript.preSignGuardAuthorization.toolNames,
     ["payment_guard", "x402_payment_preflight"]
   );
+  assert.deepEqual(
+    setup.clients.mcp.typescript.preSignGuardAuthorization.toolResources,
+    {
+      payment_guard: "mcp://tool/payment_guard",
+      x402_payment_preflight: "mcp://tool/x402_payment_preflight"
+    }
+  );
   assert.equal(setup.clients.mcp.typescript.preSignGuardAuthorization.priceUsd, 0.001);
   assert.equal(setup.clients.mcp.typescript.preSignGuardAuthorization.expectedAtomicUsdc, "1000");
   assert.ok(
@@ -83,16 +90,14 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
         network: "eip155:8453",
         amount: "1000",
         asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
-        resource: "https://agentresolver.vercel.app/mcp"
+        payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
       },
       {
         scheme: "exact",
         network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
         amount: "1000",
         asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-        payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
-        resource: "https://agentresolver.vercel.app/mcp"
+        payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
       }
     ]
   );
@@ -104,6 +109,8 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
     setup.clients.mcp.typescript.preSignGuardAuthorization.approvalHookExample.join("\n");
   assert.match(approvalExample, /hostAllowsGuardSpend/);
   assert.match(approvalExample, /context\.toolName/);
+  assert.match(approvalExample, /mcp:\/\/tool\/payment_guard/);
+  assert.match(approvalExample, /expectedResource/);
   assert.match(approvalExample, /paymentRequired\.x402Version !== 2/);
   assert.match(approvalExample, /paymentRequired\.resource\.url/);
   assert.match(approvalExample, /requirement\.scheme === "exact"/);

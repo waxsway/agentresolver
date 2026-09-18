@@ -179,10 +179,23 @@ function logMcpPaymentOutcome(result: McpToolResult, capabilityId: PaidCapabilit
   }));
 }
 
+export function mcpPaymentResourceUrl(paymentToolName?: string) {
+  const toolName = paymentToolName?.trim();
+  if (!toolName) return `${CANONICAL_ORIGIN}/mcp`;
+  if (!/^[A-Za-z0-9_.-]+$/.test(toolName)) {
+    throw new Error("MCP payment tool name is invalid.");
+  }
+  return `mcp://tool/${toolName}`;
+}
+
 export function createLazyPaidMcpTool<TArgs>(
   capabilityId: PaidCapabilityId,
   handler: McpToolHandler<TArgs>,
-  options: Readonly<{ discoveryToolName?: string; discoveryDescription?: string }> = {}
+  options: Readonly<{
+    discoveryToolName?: string;
+    discoveryDescription?: string;
+    paymentToolName?: string;
+  }> = {}
 ) {
   const product = getPaidCapability(capabilityId);
   let wrapped: McpToolHandler<TArgs> | null = null;
@@ -195,7 +208,7 @@ export function createLazyPaidMcpTool<TArgs>(
       const paid = createPaymentWrapper(server, {
         accepts,
         resource: {
-          url: `${CANONICAL_ORIGIN}/mcp`,
+          url: mcpPaymentResourceUrl(options.paymentToolName),
           description: product.description,
           mimeType: "application/json"
         },
