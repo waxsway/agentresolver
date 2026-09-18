@@ -1,0 +1,37 @@
+name: Diagnose Agent402 External Routes
+
+on:
+  push:
+    branches:
+      - diagnostic/payai-bazaar-status-20260918
+    paths:
+      - ".github/workflows/diagnose-agent402-external-routes.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Query Agent402 external-only router
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            'provider launch check'
+            'x402 payment preflight'
+            'verify endpoint before paying'
+            'x402 settlement test'
+            'USDC payment check'
+            'api trust security preflight'
+          )
+          for q in "${queries[@]}"; do
+            echo "=== QUERY $q ==="
+            curl -fsS -G --connect-timeout 5 --max-time 20               'https://agent402.tools/api/route'               --data-urlencode "q=$q"               --data-urlencode 'include=external' |
+              jq '{
+                query: $q,
+                results: ((.results // .routes // .data // []) | if type == "array" then . else (.results // .routes // []) end)
+              }' --arg q "$q"
+          done
