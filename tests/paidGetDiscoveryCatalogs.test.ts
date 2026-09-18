@@ -104,40 +104,29 @@ test("GET-first discovery copy preserves caller-only spend authorization", () =>
   assert.doesNotMatch(preflightGetResource?.description ?? "", /authorization gate/i);
 });
 
-test("hash-encode is a GET-first $0.001 utility without HMAC secrets in query input", () => {
+test("hash-encode remains intentionally absent from broad public catalogs", () => {
   const manifest = readJson("public/.well-known/x402");
-  const service = manifest.services?.find((item: any) => item.id === "hash-encode");
-  assert.equal(service?.method, "GET");
-  assert.deepEqual(service?.methods, ["GET", "POST"]);
-  assert.equal(service?.preferredMethod, "GET");
-  assert.deepEqual(service?.queryExample, { operation: "sha256", input: "agentresolver" });
-
-  const getResource = manifest.resources?.find(
-    (item: any) => item.resource === "GET /api/hash-encode"
+  assert.equal(
+    manifest.services?.some((item: any) => item.id === "hash-encode"),
+    false
   );
-  assert.ok(getResource);
-  assert.equal(getResource.inputTransport, "query");
-  const opParam = getResource.queryParameters?.find((item: any) => item.name === "operation");
-  assert.ok(opParam?.schema?.enum?.includes("sha256"));
-  assert.equal(opParam?.schema?.enum?.includes("hmac-sha256"), false);
+  assert.equal(
+    manifest.resources?.some((item: any) => item.resource === "GET /api/hash-encode"),
+    false
+  );
 
   const capabilities = readJson("public/capabilities.json");
-  const capability = capabilities.capabilities?.find((item: any) => item.id === "hash-encode");
-  assert.equal(capability?.method, "GET");
-  assert.equal(capability?.preferredMethod, "GET");
+  assert.equal(
+    capabilities.capabilities?.some((item: any) => item.id === "hash-encode"),
+    false
+  );
 
   const integrations = readJson("public/integrations.json");
-  const integration = integrations.paidActions?.find((item: any) => item.id === "hash-encode");
-  assert.equal(integration?.method, "GET");
-  assert.deepEqual(integration?.queryExample, { operation: "sha256", input: "agentresolver" });
+  assert.equal(
+    integrations.paidActions?.some((item: any) => item.id === "hash-encode"),
+    false
+  );
 
   const openapi = readJson("public/openapi.json");
-  const pathItem = openapi.paths?.["/api/hash-encode"];
-  assert.ok(pathItem?.get);
-  assert.ok(pathItem?.post);
-  assert.equal(pathItem["x-agentresolver-preferred-method"], "GET");
-  assert.equal(pathItem.get.requestBody, undefined);
-  const operation = pathItem.get.parameters?.find((item: any) => item.name === "operation");
-  assert.equal(operation?.schema?.enum?.includes("hmac-sha256"), false);
-  assert.equal(pathItem.get["x-payment-info"]?.priceUsd, 0.001);
+  assert.equal(openapi.paths?.["/api/hash-encode"], undefined);
 });
