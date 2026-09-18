@@ -17,11 +17,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     env:
+      PING_URL: https://agentresolver.vercel.app/api/x402-ping
       GUARD_URL: https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
       PREFLIGHT_URL: https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
       SETTLEMENT_VERIFY_URL: https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedAmountAtomic=1000
       HASH_URL: https://agentresolver.vercel.app/api/hash-encode?operation=sha256&input=agentresolver
     steps:
+      - name: Verify proven paid ping without spending
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' "$PING_URL")"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, os, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          assert payload.get("x402Version") == 2
+          assert (payload.get("resource") or {}).get("url") == os.environ["PING_URL"]
+          assert ((payload.get("extensions") or {}).get("agentresolver")) is None
+          accepts = payload.get("accepts") or []
+          assert any(
+              item.get("network") == "eip155:8453"
+              and str(item.get("amount")) == "1000"
+              and item.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          PY
+
       - name: Verify paid Guard example without spending
         shell: bash
         run: |
@@ -87,6 +110,38 @@ jobs:
               for item in accepts
           )
           PY
+
+      - name: Resubmit proven paid ping to NoHumans free verification queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg endpoint "$PING_URL" '{
+            name:"AgentResolver x402 Settlement Test",
+            description:"$0.001 GET-first x402 settlement canary for autonomous agents. This is AgentResolver's independently settlement-proven purchase path: discover the standard x402 v2 challenge, authorize with the caller wallet policy, retry with PAYMENT-SIGNATURE, and receive a timestamped pong after successful settlement.",
+            endpoint_url:$endpoint,
+            category:"tools.verification",
+            price_amount:0.001,
+            price_currency:"USDC",
+            chains:["base","solana"]
+          }')"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://nohumans.directory/v1/listings'             -H 'content-type: application/json'             --data "$payload")"
+
+          python3 - "$body" <<'PY'
+          import json, sys
+          raw = open(sys.argv[1], "r", encoding="utf-8").read()
+          payload = json.loads(raw)
+          if isinstance(payload, dict) and "claim_token" in payload:
+              payload["claim_token"] = "[REDACTED]"
+          if isinstance(payload, dict) and isinstance(payload.get("data"), dict) and "claim_token" in payload["data"]:
+              payload["data"]["claim_token"] = "[REDACTED]"
+          print(json.dumps(payload, separators=(",", ":")))
+          PY
+
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "NoHumans paid ping submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
 
       - name: Submit Guard to NoHumans free verification queue
         shell: bash
