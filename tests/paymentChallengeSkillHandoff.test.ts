@@ -16,3 +16,13 @@ test("buyer setup exports canonical Agent Skills discovery URLs", () => {
   assert.match(setup, /\.well-known\/agent-skills\/index\.json/);
   assert.match(setup, /agentresolver-payment-guard\/SKILL\.md/);
 });
+
+
+test("standard Link header exposes the free x402 buyer setup", () => {
+  const config = readFileSync("next.config.ts", "utf8");
+  assert.match(
+    config,
+    /<https:\/\/agentresolver\.vercel\.app\/api\/x402-client-setup>; rel=\\\"help\\\"; type=\\\"application\/json\\\"/
+  );
+  assert.match(config, /AgentResolver x402 buyer setup/);
+});
