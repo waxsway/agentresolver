@@ -2,6 +2,9 @@ name: Audit PayAI Bazaar
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -20,11 +23,16 @@ on:
       - "public/.well-known/x402-catalog.json"
       - "public/.well-known/x402-service.json"
 
+concurrency:
+  group: audit-payai-bazaar
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   audit:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

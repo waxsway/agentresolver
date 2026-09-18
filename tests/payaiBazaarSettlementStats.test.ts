@@ -21,3 +21,15 @@ test("PayAI Bazaar audit filters catalog reads by AgentResolver payTo", () => {
   assert.match(workflow, /catalogRequests/);
   assert.doesNotMatch(workflow, /urlencode\(\{'limit': limit, 'offset': page_offset\}\)/);
 });
+
+
+test("PayAI Bazaar audit follows successful production deploys without becoming a release gate", () => {
+  const workflow = readFileSync(".github/workflows/audit-payai-bazaar.yml", "utf8");
+  assert.match(workflow, /workflow_run:/);
+  assert.match(workflow, /workflows: \["Deploy Production"\]/);
+  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(workflow, /group: audit-payai-bazaar/);
+  assert.match(workflow, /cancel-in-progress: true/);
+  assert.match(workflow, /contents: read/);
+  assert.doesNotMatch(workflow, /workflow_call:/);
+});
