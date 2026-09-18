@@ -23,11 +23,11 @@ test("PayAI Bazaar audit filters catalog reads by AgentResolver payTo", () => {
 });
 
 
-test("PayAI Bazaar audit follows successful production deploys without becoming a release gate", () => {
+test("PayAI Bazaar audit uses schedule and relevant source changes without deploy fan-out", () => {
   const workflow = readFileSync(".github/workflows/audit-payai-bazaar.yml", "utf8");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["Deploy Production"\]/);
-  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /push:/);
+  assert.doesNotMatch(workflow, /workflow_run:/);
   assert.match(workflow, /group: audit-payai-bazaar/);
   assert.match(workflow, /cancel-in-progress: true/);
   assert.match(workflow, /contents: read/);

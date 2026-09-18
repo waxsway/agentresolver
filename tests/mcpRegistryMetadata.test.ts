@@ -48,9 +48,12 @@ test("production deploy authorizes the tip PR but classifies drift from live pro
 });
 
 
-test("successful production smoke cannot be cancelled by a skipped deploy completion", () => {
+test("standalone production smoke follows real Vercel events rather than no-op deploy completion", () => {
   const workflow = readFileSync(".github/workflows/production-smoke.yml", "utf8");
   assert.doesNotMatch(workflow, /group: production-smoke/);
   assert.doesNotMatch(workflow, /cancel-in-progress: true/);
-  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.doesNotMatch(workflow, /workflow_run:/);
+  assert.match(workflow, /repository_dispatch:/);
+  assert.match(workflow, /vercel\.deployment\.success/);
+  assert.match(workflow, /vercel\.deployment\.promoted/);
 });
