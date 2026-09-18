@@ -1,0 +1,65 @@
+name: Ops OpenDexter Paid Audition
+
+on:
+  push:
+    branches:
+      - ops/opendexter-audition-x402-ping-20260918
+    paths:
+      - .github/workflows/ops-opendexter-audition.yml
+
+permissions:
+  contents: write
+
+jobs:
+  audition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/opendexter-audition-x402-ping-20260918
+
+      - name: Request one server-side paid audition
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics/opendexter
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 120             -o "$body" -w '%{http_code}'             -X POST 'https://x402.dexter.cash/api/public/discoverable'             -H 'content-type: application/json'             -H 'user-agent: AgentResolver-OpenDexter-Audition/1.0'             --data '{"url":"https://agentresolver.vercel.app/api/x402-ping"}' || true)"
+
+          python3 - "$body" "$code" <<'PY'
+          import json, pathlib, sys
+          raw = pathlib.Path(sys.argv[1]).read_text()
+          code = sys.argv[2]
+          try:
+              payload = json.loads(raw)
+          except Exception:
+              payload = {"raw": raw[:20000]}
+          out = {
+              "requestedUrl": "https://agentresolver.vercel.app/api/x402-ping",
+              "http": code,
+              "response": payload,
+          }
+          pathlib.Path("diagnostics/opendexter/result.json").write_text(
+              json.dumps(out, indent=2, sort_keys=True)
+          )
+          print(json.dumps(out, indent=2, sort_keys=True)[:30000])
+          PY
+
+          case "$code" in
+            200|201|202|409|429) ;;
+            *) echo "::error::OpenDexter audition returned HTTP $code"; exit 1 ;;
+          esac
+
+      - name: Commit bounded audition result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f diagnostics/opendexter/result.json ]; then exit 0; fi
+          git config user.name "agentresolver-ops"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/opendexter/result.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Capture OpenDexter paid audition result"
+          git push origin HEAD:ops/opendexter-audition-x402-ping-20260918
