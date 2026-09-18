@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 
 const deployFanoutWorkflows = [
@@ -52,5 +52,20 @@ test("durable distribution retains bounded retries without release fan-out", () 
 
   for (const workflow of [agentcash, aegis, paywitness, payan, agent402, x402dash, vet402, mcp]) {
     assert.match(workflow, /schedule:/);
+  }
+});
+
+
+test("no workflow is allowed to subscribe to Deploy Production completion", () => {
+  for (const name of readdirSync(".github/workflows")) {
+    if (!name.endsWith(".yml") && !name.endsWith(".yaml")) continue;
+    const path = `.github/workflows/${name}`;
+    const workflow = readFileSync(path, "utf8");
+    const triggerSection = workflow.split("\npermissions:")[0];
+    assert.doesNotMatch(
+      triggerSection,
+      /workflows:[^\n]*Deploy Production|workflows:\s*\n(?:\s*-.*\n)*\s*-\s*Deploy Production/i,
+      `${path} must not fan out from Deploy Production`,
+    );
   }
 });
