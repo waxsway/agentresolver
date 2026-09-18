@@ -15,8 +15,9 @@ test("CDP readiness audit checks production key names without reading secret val
   assert.match(workflow, /CDP_COINBASE_KEY_TARGETS/);
   assert.match(workflow, /matching_targets/);
   assert.match(workflow, /"CDP" in key\.upper\(\) or "CDI" in key\.upper\(\) or "COINBASE" in key\.upper\(\)/);
-  assert.match(workflow, /RUNTIME_CDP_CREDENTIALS_PRESENT/);
-  assert.match(workflow, /vercel env run -e production/);
+  assert.match(workflow, /api\/x402-cdp-canary/);
+  assert.match(workflow, /LIVE_CDP_SECRET_ATTACHMENT=true/);
+  assert.doesNotMatch(workflow, /vercel env run/);
   assert.doesNotMatch(workflow, /decrypt=true/);
   assert.doesNotMatch(workflow, /\/env\/\$|\/env\/\{/);
 });

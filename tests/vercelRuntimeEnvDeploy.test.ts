@@ -4,29 +4,18 @@ import test from "node:test";
 
 const deployWorkflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
 const activateWorkflow = readFileSync(".github/workflows/activate-cdp-x402-ping.yml", "utf8");
-const helper = readFileSync(".github/scripts/vercel-deploy-prebuilt-runtime-env.mjs", "utf8");
 const healthRoute = readFileSync("src/app/api/health/route.ts", "utf8");
 
-test("prebuilt production deploys forward pulled project env into runtime", () => {
-  const helperInvocation = /node \.github\/scripts\/vercel-deploy-prebuilt-runtime-env\.mjs \.vercel\/\.env\.production\.local/;
-  assert.match(deployWorkflow, helperInvocation);
-  assert.match(activateWorkflow, helperInvocation);
-  assert.doesNotMatch(deployWorkflow, /vercel deploy --prebuilt --prod --token/);
-  assert.doesNotMatch(activateWorkflow, /vercel deploy --prebuilt --prod --token/);
-  assert.match(helper, /parseEnv/);
-  assert.match(deployWorkflow, /vercel env run -e production/);
-  assert.match(activateWorkflow, /vercel env run -e production/);
-  assert.match(helper, /productionKeys/);
-  assert.match(helper, /process\.env\[key\]/);
-  assert.match(helper, /CDI_API_KEY_ID/);
-  assert.match(helper, /CDI_API_SECRET/);
-  assert.match(helper, /args\.push\("--env"/);
-  assert.match(helper, /startsWith\("VERCEL_"\)/);
-  assert.match(helper, /"--no-wait"/);
-  assert.match(helper, /v13\/deployments/);
-  assert.match(helper, /v10\/projects/);
-  assert.match(helper, /promote/);
-  assert.match(helper, /deployment\.readyState \|\| deployment\.state/);
+test("prebuilt production deploys preserve Vercel project Secrets through the proven deploy path", () => {
+  const directPrebuiltDeploy = /vercel deploy --prebuilt --prod --token="\$VERCEL_TOKEN"/;
+  assert.match(deployWorkflow, directPrebuiltDeploy);
+  assert.match(activateWorkflow, directPrebuiltDeploy);
+  assert.doesNotMatch(deployWorkflow, /vercel-deploy-prebuilt-runtime-env/);
+  assert.doesNotMatch(activateWorkflow, /vercel-deploy-prebuilt-runtime-env/);
+  assert.doesNotMatch(deployWorkflow, /vercel env run/);
+  assert.doesNotMatch(activateWorkflow, /vercel env run/);
+  assert.match(deployWorkflow, /vercel pull --yes --environment=production/);
+  assert.match(activateWorkflow, /vercel pull --yes --environment=production/);
 });
 
 test("health rail state is evaluated at runtime rather than baked at build time", () => {
