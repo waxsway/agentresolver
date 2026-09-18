@@ -20,6 +20,9 @@ jobs:
        github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 4
+    env:
+      GUARD_URL: https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
+      PREFLIGHT_URL: https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
     steps:
       - name: Free Market402 self-test for canonical preflight
         shell: bash
@@ -29,13 +32,20 @@ jobs:
           code="$(curl -sS -o "$body" -w '%{http_code}' \
             -X POST 'https://market402.com/selftest' \
             -H 'content-type: application/json' \
-            --data '{"url":"https://agentresolver.vercel.app/api/x402-payment-preflight"}')"
+            --data "$(jq -cn --arg url "$PREFLIGHT_URL" '{url:$url}')")"
           cat "$body"
           echo
           case "$code" in
             200|201|202) ;;
             *) echo "Market402 self-test failed with HTTP $code" >&2; exit 1 ;;
           esac
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          verdict = payload.get("summary", {}).get("verdict")
+          if verdict != "spec_compliant":
+              raise SystemExit(f"Market402 canonical preflight verdict is {verdict!r}, expected 'spec_compliant'")
+          PY
 
       - name: Free Market402 self-test for paid GET canary
         shell: bash
@@ -85,23 +95,15 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
+          payload="$(jq -cn --arg resource "$PREFLIGHT_URL" '{
+            resource:$resource,
+            declared_price_usd:0.001,
+            paid_probe_optin:true
+          }')"
           code="$(curl -sS -o "$body" -w '%{http_code}' \
             -X POST 'https://market402.com/submit' \
             -H 'content-type: application/json' \
-            --data '{
-              "resource":"https://agentresolver.vercel.app/api/x402-payment-preflight",
-              "declared_price_usd":0.001,
-              "paid_probe_optin":true,
-              "sample_input":{
-                "method":"POST",
-                "body":{
-                  "url":"https://agentresolver.vercel.app/api/x402-ping",
-                  "method":"GET",
-                  "maxPriceUsd":0.01,
-                  "expectedNetwork":"eip155:8453"
-                }
-              }
-            }')"
+            --data "$payload")"
           cat "$body"
           echo
           case "$code" in
@@ -117,36 +119,35 @@ jobs:
           code="$(curl -sS -o "$body" -w '%{http_code}' \
             -X POST 'https://market402.com/selftest' \
             -H 'content-type: application/json' \
-            --data '{"url":"https://agentresolver.vercel.app/api/payment-guard"}')"
+            --data "$(jq -cn --arg url "$GUARD_URL" '{url:$url}')")"
           cat "$body"
           echo
           case "$code" in
             200|201|202) ;;
             *) echo "Market402 Guard self-test failed with HTTP $code" >&2; exit 1 ;;
           esac
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          verdict = payload.get("summary", {}).get("verdict")
+          if verdict != "spec_compliant":
+              raise SystemExit(f"Market402 Guard verdict is {verdict!r}, expected 'spec_compliant'")
+          PY
 
       - name: Submit AgentResolver Guard and opt into real paid delivery probes
         shell: bash
         run: |
           set -euo pipefail
           body="$(mktemp)"
+          payload="$(jq -cn --arg resource "$GUARD_URL" '{
+            resource:$resource,
+            declared_price_usd:0.001,
+            paid_probe_optin:true
+          }')"
           code="$(curl -sS -o "$body" -w '%{http_code}' \
             -X POST 'https://market402.com/submit' \
             -H 'content-type: application/json' \
-            --data '{
-              "resource":"https://agentresolver.vercel.app/api/payment-guard",
-              "declared_price_usd":0.001,
-              "paid_probe_optin":true,
-              "sample_input":{
-                "method":"GET",
-                "query":{
-                  "url":"https://agentresolver.vercel.app/api/x402-ping",
-                  "method":"GET",
-                  "maxPriceUsd":0.01,
-                  "expectedNetwork":"eip155:8453"
-                }
-              }
-            }')"
+            --data "$payload")"
           cat "$body"
           echo
           case "$code" in
