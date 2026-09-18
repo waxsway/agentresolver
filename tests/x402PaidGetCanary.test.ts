@@ -237,7 +237,19 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   const postOutputSchema = pathItem.post.responses?.["200"]?.content?.["application/json"]?.schema;
   assert.ok(getOutputSchema?.required?.includes("next"));
   assert.ok(postOutputSchema?.required?.includes("next"));
-  assert.deepEqual(getOutputSchema?.properties?.next?.required, ["catalogUrl", "preflight", "single", "batch"]);
+  assert.deepEqual(getOutputSchema?.properties?.next?.required, ["catalogUrl", "recommended", "preflight", "single", "batch"]);
+  assert.equal(
+    getOutputSchema?.properties?.next?.properties?.recommended?.properties?.capabilityId?.const,
+    "x402-payment-preflight"
+  );
+  assert.equal(
+    getOutputSchema?.properties?.next?.properties?.recommended?.properties?.repeatUse?.const,
+    "before_every_autonomous_x402_spend"
+  );
+  assert.equal(
+    getOutputSchema?.properties?.next?.properties?.recommended?.properties?.paymentAuthorization?.const,
+    "separate_caller_authorization_required"
+  );
   assert.equal(
     getOutputSchema?.properties?.next?.properties?.preflight?.properties?.capabilityId?.const,
     "x402-payment-preflight"
@@ -279,6 +291,14 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   assert.equal(output?.example?.pong, true);
   assert.equal(output?.example?.settledDelivery, true);
   assert.equal(output?.example?.echo, null);
+  assert.equal(output?.example?.next?.recommended?.capabilityId, "x402-payment-preflight");
+  assert.equal(output?.example?.next?.recommended?.priceUsd, 0.001);
+  assert.equal(output?.example?.next?.recommended?.repeatUse, "before_every_autonomous_x402_spend");
+  assert.equal(
+    output?.example?.next?.recommended?.paymentAuthorization,
+    "separate_caller_authorization_required"
+  );
+  assert.match(output?.example?.next?.recommended?.reason || "", /next autonomous x402 spend/i);
   assert.equal(output?.example?.next?.preflight?.capabilityId, "x402-payment-preflight");
   assert.equal(output?.example?.next?.preflight?.endpoint, "https://agentresolver.vercel.app/api/x402-payment-preflight");
   assert.equal(output?.example?.next?.preflight?.priceUsd, 0.001);
@@ -316,7 +336,19 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   assert.equal(exampleSchema?.properties?.at?.minLength, 20);
   assert.equal(exampleSchema?.properties?.at?.maxLength, 35);
   assert.equal(exampleSchema?.properties?.next?.additionalProperties, false);
-  assert.deepEqual(exampleSchema?.properties?.next?.required, ["catalogUrl", "preflight", "single", "batch"]);
+  assert.deepEqual(exampleSchema?.properties?.next?.required, ["catalogUrl", "recommended", "preflight", "single", "batch"]);
+  assert.equal(
+    exampleSchema?.properties?.next?.properties?.recommended?.properties?.capabilityId?.const,
+    "x402-payment-preflight"
+  );
+  assert.equal(
+    exampleSchema?.properties?.next?.properties?.recommended?.properties?.repeatUse?.const,
+    "before_every_autonomous_x402_spend"
+  );
+  assert.equal(
+    exampleSchema?.properties?.next?.properties?.recommended?.properties?.paymentAuthorization?.const,
+    "separate_caller_authorization_required"
+  );
   assert.equal(
     exampleSchema?.properties?.next?.properties?.preflight?.properties?.capabilityId?.const,
     "x402-payment-preflight"
