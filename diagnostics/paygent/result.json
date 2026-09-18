@@ -1,0 +1,2174 @@
+{
+  "queries": [
+    {
+      "agentResolverMatches": [],
+      "curlExit": 0,
+      "http": "200",
+      "query": "AgentResolver",
+      "topLevelKeys": [
+        "count",
+        "limit",
+        "offset",
+        "results",
+        "total"
+      ],
+      "topLevelType": "dict",
+      "topResults": [
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.6870842576026917,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Resolve any domain in one call: A/AAAA, MX, NS, CNAME, SOA and TXT records, plus parsed email-auth posture \u2014 SPF policy, DMARC policy, and detected DKIM selectors. A drop-in nslookup/dig replacement for agents, resolved over DNS-over-HTTPS (DoH) with redundant resolvers and automatic failover. Keyless, pay-per-call, structured JSON.",
+          "description_quality": "substantive",
+          "id": "6a1655d5-dccf-48a7-9f43-fb4af3827de6",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base",
+            "Polygon",
+            "Solana"
+          ],
+          "operator": "ottoai.services",
+          "reputation": {
+            "activity": 14.624418258666992,
+            "adoption": 31.71356201171875,
+            "agent_reputation": null,
+            "availability": 95.22058868408203,
+            "composite": 66.85836791992188,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 90.28823852539062,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 100.0,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://x402.ottoai.services/dns-lookup",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.5408275127410889,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Agent Roster: node-operated on-chain service Executed deterministically by the AmanChain node against live consensus state (real blocks, pools, balances) \u2014 paid per call via x402, settled in USDC on Base. Input: JSON body {\"serviceId\":\"aman-agent-roster\",\"request\":\" \"}. No account, no API key.",
+          "description_quality": "substantive",
+          "id": "af903d8f-ad6a-40f6-b837-c40d09dbbdb4",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "space-z.ai",
+          "reputation": {
+            "activity": 0.22408486902713776,
+            "adoption": 7.788136959075928,
+            "agent_reputation": null,
+            "availability": 97.0873794555664,
+            "composite": 57.49177932739258,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 98.37036895751953,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 90.6275405883789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 38.03370666503906,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://preview-chat-c6089071-758a-449d-b4a7-6fa19ebc955c.space-z.ai/api/x402/aman-agent-roster",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.5408275127410889,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Agent roster \u2014 all AI agents registered on the network with their service offerings; agent discovery API. Deterministic on-chain execution by the AmanChain node \u2014 live consensus state, real blocks, pools and balances. Pay per call via x402 (USDC on Base), no account, no API key. POST JSON {\"serviceId\":\"aman-agent-roster\",\"request\":\" \"}.",
+          "description_quality": "substantive",
+          "id": "60776b99-0f41-41bf-8bf0-83af11504316",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "amanchain-relay.gitajhd.workers.dev",
+          "reputation": {
+            "activity": 0.8645924925804138,
+            "adoption": 8.3212308883667,
+            "agent_reputation": null,
+            "availability": 95.43147277832031,
+            "composite": 57.2048225402832,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 97.68518829345703,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 89.79388427734375,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 38.03370666503906,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://amanchain-relay.gitajhd.workers.dev/api/x402/aman-agent-roster",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.5408275127410889,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Agent Roster: node-operated on-chain service Executed deterministically by the AmanChain node against live consensus state (real blocks, pools, balances) \u2014 paid per call via x402, settled in USDC on Base. Input: JSON body {\"serviceId\":\"aman-agent-roster\",\"request\":\" \"}. No account, no API key.",
+          "description_quality": "substantive",
+          "id": "dd48da2e-8dcd-414a-be76-146daf27d0e8",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "space-z.ai",
+          "reputation": {
+            "activity": 0.22408486902713776,
+            "adoption": 7.788136959075928,
+            "agent_reputation": null,
+            "availability": 90.5660400390625,
+            "composite": 53.087772369384766,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 99.44444274902344,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 83.28752899169922,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 38.03370666503906,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://preview-chat-701ec510-82d7-4ee3-ae9d-8fdb8c4f421b.space-z.ai/api/x402/aman-agent-roster",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Other",
+          "category_distance": 0.7554879784584045,
+          "category_slug": "other",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Resolve any ENS name to its address (and reverse); Ethereum Name Service lookup API. Deterministic on-chain execution by the AmanChain node \u2014 live consensus state, real blocks, pools and balances. Pay per call via x402 (USDC on Base), no account, no API key. POST JSON {\"serviceId\":\"aman-ens-resolve\",\"request\":\" \"}.",
+          "description_quality": "substantive",
+          "id": "2bfe766f-39d8-4e47-9cb8-00c13dbd3ea3",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "amanchain-relay.gitajhd.workers.dev",
+          "reputation": {
+            "activity": 0.8645924925804138,
+            "adoption": 8.3212308883667,
+            "agent_reputation": null,
+            "availability": 95.9390869140625,
+            "composite": 57.31276321411133,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 97.59259033203125,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 89.97378540039062,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 38.03370666503906,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://amanchain-relay.gitajhd.workers.dev/api/x402/aman-ens-resolve",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Other",
+          "category_distance": 0.7554879784584045,
+          "category_slug": "other",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "ENS Resolve: resolve any ENS name to its address (and reverse) Executed deterministically by the AmanChain node against live consensus state (real blocks, pools, balances) \u2014 paid per call via x402, settled in USDC on Base. Input: JSON body {\"serviceId\":\"aman-ens-resolve\",\"request\":\" \"}. No account, no API key.",
+          "description_quality": "substantive",
+          "id": "c5ac6809-c789-4581-9664-b4a40d8cd968",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "space-z.ai",
+          "reputation": {
+            "activity": 0.22408486902713776,
+            "adoption": 7.788136959075928,
+            "agent_reputation": null,
+            "availability": 96.11650848388672,
+            "composite": 57.26433181762695,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 98.40740966796875,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 90.24845886230469,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 38.03370666503906,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://preview-chat-c6089071-758a-449d-b4a7-6fa19ebc955c.space-z.ai/api/x402/aman-ens-resolve",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.551125705242157,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Look up an ERC-8004 AI agent identity on Base mainnet. Returns name, description, services, x402 support, and owner.",
+          "description_quality": "substantive",
+          "id": "89872db1-26fa-4fa2-ae7e-bdd5f8f1c4f6",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "memoryapi.org",
+          "reputation": {
+            "activity": 2.870513677597046,
+            "adoption": 20.443410873413086,
+            "agent_reputation": null,
+            "availability": 99.80915832519531,
+            "composite": 63.45156478881836,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.12366485595703,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 90.61347961425781,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://agent.memoryapi.org/x402/erc8004/agent",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Cryptocurrency Risk Analysis",
+          "category_distance": 0.6862751245498657,
+          "category_slug": "cryptocurrency-risk-analysis",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Runs the identity resolver, the verification check, the authority scanner and the upgrade risk check against one token and merges them into a single answer. Nothing new is measured here: every statement carries the endpoint number it came from, so any finding can be re-bought individually and checked. A section that fails does not sink the report \u2014 it is set to null, listed in checks_failed with its reason, and the score is computed only over the checks that ran, with coverage stated. Sections t",
+          "description_quality": "substantive",
+          "id": "3282be63-8a08-4848-bb3b-1457094959d9",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "halowerk.com",
+          "reputation": {
+            "activity": 0.10891246795654297,
+            "adoption": 18.144901275634766,
+            "agent_reputation": null,
+            "availability": 95.3781509399414,
+            "composite": 62.188716888427734,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 91.55126190185547,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 90.28424835205078,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://kette.halowerk.com/token/report",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.5150383710861206,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Is this counterparty safe to pay? Screens the address against the OFAC sanctions list, reads its ERC-8004 reputation with coordinated feedback filtered out, and returns an explainable 0-100 trust score with a proceed / hold / block recommendation. Reports insufficient_data rather than guessing when the evidence is not there.",
+          "description_quality": "substantive",
+          "id": "04fe347d-9b04-4701-b765-9e06d0c75131",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "trust-agent.io",
+          "reputation": {
+            "activity": 6.640613555908203,
+            "adoption": 16.725656509399414,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 62.01026153564453,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 56.70671463012695,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://trust-agent.io/v1/verify/quick",
+          "status": "active",
+          "tags": [],
+          "title": "TrustAgent"
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.4096221923828125,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Browse ERC-8004 registered AI agents on Base. Filter by x402 payment support.",
+          "description_quality": "substantive",
+          "id": "0545f15c-8cff-46e3-9a20-905aca8150b5",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "memoryapi.org",
+          "reputation": {
+            "activity": 2.870513677597046,
+            "adoption": 20.443410873413086,
+            "agent_reputation": null,
+            "availability": 99.80915832519531,
+            "composite": 63.45156478881836,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.12366485595703,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 90.61347961425781,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://agent.memoryapi.org/x402/erc8004/browse",
+          "status": "active",
+          "tags": [],
+          "title": null
+        }
+      ]
+    },
+    {
+      "agentResolverMatches": [],
+      "curlExit": 0,
+      "http": "200",
+      "query": "agentresolver.vercel.app",
+      "topLevelKeys": [
+        "count",
+        "limit",
+        "offset",
+        "results",
+        "total"
+      ],
+      "topLevelType": "dict",
+      "topResults": [
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.6870842576026917,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Resolve any domain in one call: A/AAAA, MX, NS, CNAME, SOA and TXT records, plus parsed email-auth posture \u2014 SPF policy, DMARC policy, and detected DKIM selectors. A drop-in nslookup/dig replacement for agents, resolved over DNS-over-HTTPS (DoH) with redundant resolvers and automatic failover. Keyless, pay-per-call, structured JSON.",
+          "description_quality": "substantive",
+          "id": "6a1655d5-dccf-48a7-9f43-fb4af3827de6",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base",
+            "Polygon",
+            "Solana"
+          ],
+          "operator": "ottoai.services",
+          "reputation": {
+            "activity": 14.624418258666992,
+            "adoption": 31.71356201171875,
+            "agent_reputation": null,
+            "availability": 95.22058868408203,
+            "composite": 66.85836791992188,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 90.28823852539062,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 100.0,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://x402.ottoai.services/dns-lookup",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.48476696014404297,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "PhoneAgent \u2014 full directory of services with rentable SMS phone numbers for AI agents. Returns 1,000+ service aliases: Telegram, WhatsApp, Google, Facebook, Instagram, Twitter/X, Discord, Apple, PayPal, OpenAI/ChatGPT, Claude, plus crypto/Web3 onboarding (Alchemy, Coinbase, Binance, Bybit, OKX, Kraken, Robinhood, ...). Use `other` for any platform not separately listed. Each entry shows the alias to pass to POST /rent and the cheapest price tier ($1, $2, or $5 USDC). Add ?country=<iso> (e.g.",
+          "description_quality": "substantive",
+          "id": "6f28ab59-7389-4767-af6a-3a3cb4f83dd7",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "phoneagent.xyz",
+          "reputation": {
+            "activity": 13.279178619384766,
+            "adoption": 24.993532180786133,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 65.31741333007812,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 71.01014709472656,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://api.phoneagent.xyz/services",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.5785236358642578,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Split host and optional port from a host:port or URL authority string \u2014 first-party local utility for agent preflight and proven micro-utils expansion. Returns deterministic machine-readable JSON for $0.001 USDC via x402 on Base. Execution is first-party, local-only, stateless, and memory-only with no paid upstream, no input retention, no web search, no live RPC, and no mediagen. Results are advisory; the caller owns authorization, budgets, and production controls.",
+          "description_quality": "substantive",
+          "id": "f3040e22-688b-4873-a78d-a495333bdb54",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/host-port-split",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.3476717472076416,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Composite transformation: extracts structured data, entities, tables, and stats from text. One call replaces 4 endpoints. \ud83c\udd93 5 free trial calls per signed wallet",
+          "description_quality": "substantive",
+          "id": "cd4fe27e-edba-41f0-a323-a01b7b3689ad",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "minia2a.uk",
+          "reputation": {
+            "activity": 0.7922520637512207,
+            "adoption": 13.413944244384766,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 60.685577392578125,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 63.81827926635742,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://minia2a.uk/x402/agent-toolkit",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Social Media Engagement Boost",
+          "category_distance": 0.5954608917236328,
+          "category_slug": "social-media-engagement-boost",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Delx Commerce DNS lookup API for agents at $0.01 USDC. Call when you need a dns lookup of A/AAAA/CNAME/MX/TXT/NS for domain routing, email delivery, or infra checks without running a recursive resolver. Returns structured records via x402\u2014no API key, no subscription.",
+          "description_quality": "substantive",
+          "id": "31bf1cfa-2360-405a-afb3-76ef12152c72",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.4255867302417755,
+            "adoption": 19.539770126342773,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.85590744018555,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/dns-lookup",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.45625168085098267,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Guardian Intent Exchange \u2014 seal a budgeted agent need into a signed intent token. Gossip the token; matchers call /api/exchange/match. Patterns, not verdicts. Agent guide: https://cyre.dev/SKILL.md",
+          "description_quality": "substantive",
+          "id": "afba5b09-d9bc-457b-9e37-a78dc073faa1",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "cyre.dev",
+          "reputation": {
+            "activity": 0.3575859069824219,
+            "adoption": 8.759259223937988,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 55.823699951171875,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 87.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 42.34285354614258,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://cyre.dev/api/exchange/post",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Paid Content Access",
+          "category_distance": 0.6715885996818542,
+          "category_slug": "paid-content-access",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Vercel Pro cannot protect production domains for free: 'All Deployments' is the $150/mo add-on, whatever the docs bullet says. On a Vercel Pro team, setting Vercel Authentication to All Deployments \u2014 the only scope that protects production domains (your custom domain and <project>.vercel.app) \u2014 is not included in the plan. It is the $150/month Advanced Deployment Protection add-on. The docs page says otherwise in one place and contradicts itself two sections later: The live system agrees with the second statement: and the dashboard shows \"Enable and Pay\" on the All Deployments row. One payment returns the full text, and the creator is paid as it is used.",
+          "description_quality": "substantive",
+          "id": "62fdf00b-ac02-4793-8f44-e5c01bea4185",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "tenjin.blog",
+          "reputation": {
+            "activity": 0.0,
+            "adoption": 8.940107345581055,
+            "agent_reputation": null,
+            "availability": 99.50495147705078,
+            "composite": 55.7772331237793,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 87.00198364257812,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 44.700538635253906,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://tenjin.blog/api/read/0xe4c16d163d80fd972e6e1e9b94bc71c5fbe5a9c5/vercel-pro-cannot-protect-production-domains-for-free-all-deployments-is-the-150",
+          "status": "stale",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Paid API Access",
+          "category_distance": 0.5692399740219116,
+          "category_slug": "paid-api-access",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Premium agentic endpoint for deadlock-resolver-mcp.",
+          "description_quality": "thin",
+          "id": "eda7a94f-1ebd-45e0-ad50-e822c140ad92",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "m2mcent.com",
+          "reputation": {
+            "activity": 0.13092954456806183,
+            "adoption": 8.38117504119873,
+            "agent_reputation": null,
+            "availability": 94.9425277709961,
+            "composite": 56.0186767578125,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 87.77700805664062,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 41.36024856567383,
+            "transparency": 49.0,
+            "value": null
+          },
+          "resource": "https://api.m2mcent.com/deadlock-resolver-mcp/api/process",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Social Media Engagement Boost",
+          "category_distance": 0.5731985569000244,
+          "category_slug": "social-media-engagement-boost",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Vercel AI Gateway pricing table: per-token cost of every AI model Vercel AI Gateway serves, in one call \u2014 input, output, cache and batch USD per 1M tokens, ranked cheapest first, with context window and capability flags joined in. Compare LLM token cost inside Vercel AI Gateway and against other providers hosting the same model. Normalized from public sources, cross-checked, refreshed hourly.",
+          "description_quality": "substantive",
+          "id": "4f22de79-0433-46bc-bbc0-da6507769978",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "modelprices.xyz",
+          "reputation": {
+            "activity": 1.1152442693710327,
+            "adoption": 13.812956809997559,
+            "agent_reputation": null,
+            "availability": 99.71098327636719,
+            "composite": 61.495819091796875,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.28439331054688,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 64.52970886230469,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://modelprices.xyz/llm/prices/vercel",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.43107813596725464,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Paid, machine-readable registry of ForgeMesh's production x402 agent services: what each one is, its category, route count, and USD price range. Spans 11 services across onchain intel, voice, travel, econ intel, commerce, infra, and this Utility Grid itself. Optional category filter. Call fleet-product-detail next for full endpoint schemas and worked examples of any listed service.",
+          "description_quality": "substantive",
+          "id": "caffaf12-6773-4129-a1e3-b4e23b4e8fd6",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "forgemesh.io",
+          "reputation": {
+            "activity": 1.2192442417144775,
+            "adoption": 11.945377349853516,
+            "agent_reputation": null,
+            "availability": 99.20948791503906,
+            "composite": 59.90842819213867,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 91.88379669189453,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 54.66765213012695,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://x402.forgemesh.io/fleet-products",
+          "status": "stale",
+          "tags": [],
+          "title": null
+        }
+      ]
+    },
+    {
+      "agentResolverMatches": [],
+      "curlExit": 0,
+      "http": "200",
+      "query": "verify x402 payment before signing",
+      "topLevelKeys": [
+        "count",
+        "limit",
+        "offset",
+        "results",
+        "total"
+      ],
+      "topLevelType": "dict",
+      "topResults": [
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.2568594217300415,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Evaluate caller-supplied x402 payment requirements before a wallet signs them. Use after receiving HTTP 402 to enforce a maximum USDC amount, allowed networks, exact scheme, recipient presence, and an optional expiry buffer. Returns eligible accepts and explicit blockers for 0.002 USDC via x402 on Base or Solana; it never signs, pays, stores, or echoes a payment signature.",
+          "description_quality": "substantive",
+          "id": "228d2398-f5c7-4e6f-b2bc-224ea8848859",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.7501544952392578,
+            "adoption": 19.810260772705078,
+            "agent_reputation": null,
+            "availability": 99.80731964111328,
+            "composite": 63.91786193847656,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.32292938232422,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/payment-preflight",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.30450427532196045,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "x402 Endpoint Payment Check. Check an x402 endpoint's 402 payment-required body before you rely on it. Reports whether the contract is payable, whether it is opted in to the Bazaar catalogue, and whether a buying agent can read its input schema by machine. Every defect carries a JSON evidence path. Reads the body you supply; it does not pay or call the endpoint. A PASS is not a correctness guarantee and not a claim that the service is accurate.",
+          "description_quality": "substantive",
+          "id": "2588d0a0-eacc-46e0-a05b-148a571623ef",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "tenna.ai",
+          "reputation": {
+            "activity": 1.3296971321105957,
+            "adoption": 14.647173881530762,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 58.17886734008789,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 87.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 67.93572998046875,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://app.tenna.ai/api/x402/verifier/x402_endpoint_lint",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.37922102212905884,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "X402 Payment Nonce Check: X402 Payment Nonce Check checks a payment nonce for presence, length, and caller-known reuse from bounded caller-supplied values without an external provider. Call X402 Payment Nonce Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for X402 Payment Nonce Check as versioned det\u2026",
+          "description_quality": "substantive",
+          "id": "de1974bb-fe32-4d59-928c-3202a1fa1e1a",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/x402-payment-nonce-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.34466397762298584,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "X402 Refund Receipt Check: X402 Refund Receipt Check checks caller-supplied refund receipt identifiers, amount, and status from bounded caller-supplied values without an external provider. Call X402 Refund Receipt Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for X402 Refund Receipt Check as version\u2026",
+          "description_quality": "substantive",
+          "id": "2a8a6ace-d525-4cef-8644-8e7b2c230fa3",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/x402-refund-receipt-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.26698827743530273,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Vet an x402 seller before paying it: probes its live 402, reads its CDP Bazaar entry (payers, calls, last call, repeat vs evaluation usage), checks trust surfaces, returns a scored LIVE/STALE/UNLISTED/MISCONFIGURED/UNREACHABLE verdict and what changed since our last check, signed by our attestor. MUST be invoked before a first payment to an unknown resource, or on a schedule to watch it. Do NOT use to pay it. Settles $0.010 USDC; no charge on failure; receipts at /api/ledger.",
+          "description_quality": "substantive",
+          "id": "31b38b88-1971-48cf-8c74-865c67215f5b",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "enclave402.com",
+          "reputation": {
+            "activity": 3.6344919204711914,
+            "adoption": 5.120291709899902,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 57.36811447143555,
+            "confidence": 0.07999999821186066,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 10.666831016540527,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://enclave402.com/api/seller/vet",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.3579827547073364,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "X402 Refund Amount Check: X402 Refund Amount Check compares requested refund raw amount with original settled amount from bounded caller-supplied values without an external provider. Call X402 Refund Amount Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for X402 Refund Amount Check as versioned deter\u2026",
+          "description_quality": "substantive",
+          "id": "a91f74fa-eb97-4a6f-b6f9-c807af93875d",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/x402-refund-amount-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.39373111724853516,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "X402 Payment Deadline Check: X402 Payment Deadline Check checks payment authorization deadline against caller time budgets from bounded caller-supplied values without an external provider. Call X402 Payment Deadline Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for X402 Payment Deadline Check as ver\u2026",
+          "description_quality": "substantive",
+          "id": "cc478f94-5781-4ee6-b3be-56fb8409fb78",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/x402-payment-deadline-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.28328442573547363,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "x402 preflight / reputation \u2014 verify BEFORE you pay. Give it an x402 endpoint_url (or a payTo address) and it returns, in one cheap deterministic call: is the resource reachable, is it present in the CDP Bazaar discovery catalog (serviceName, declared payTo, price, network, tags, last_seen), and \u2014 the key integrity check \u2014 does the payTo the endpoint actually demands in its live HTTP 402 challenge MATCH the payTo the catalog advertises (payTo_match). It runs a keyless HEAD/OPTIONS/402 probe that never moves funds, extracts the real payTo/amount/asset/network from the challenge, scores listing freshness, and \u2014 if you pass a prev snapshot {payTo,amount,lastUpdated} \u2014 flags whether the endpoint changed since you last saw it (anti-rug). Output is a 0-100 scorecard + letter grade + reason codes + an actionable verdict (pay_ok / caution / do_not_pay). For any router, wallet agent or M2M client that pays third-party x402 endpoints and needs to avoid paying a hijacked, dead, or repriced resource. Deterministic, no LLM, Ed25519-signed. 0.01 USDC via x402 on Base. SYNTHORA.",
+          "description_quality": "substantive",
+          "id": "a1fb64b1-b8af-4ef9-b2fd-da21fcb746b0",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "hergertsynthora.com",
+          "reputation": {
+            "activity": 2.5231857299804688,
+            "adoption": 15.622796058654785,
+            "agent_reputation": null,
+            "availability": 95.18518829345703,
+            "composite": 60.566898345947266,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 96.22222137451172,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 90.52963256835938,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 67.676513671875,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://x402meta.hergertsynthora.com/service",
+          "status": "active",
+          "tags": [
+            "x402meta",
+            "x402",
+            "synthora",
+            "m2m",
+            "a2a"
+          ],
+          "title": "x402 preflight / reputation \u2014 verify BEFORE you pay. Give it an x402 endpoint_url (or a pa"
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.45592957735061646,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Your 402 envelope can pass every static check and still not get you paid. We build a real signed payment at your listed price and submit it to the CDP facilitator verify endpoint, which checks signature, requirements and the on-chain transfer simulation. Nothing settles, so no money moves. You get back whether a real payment would be accepted, and if not, the facilitator own reason verbatim. Pass ?url= or ?domain=.",
+          "description_quality": "substantive",
+          "id": "3cf554f0-0b00-4508-af1a-5519070e4bfa",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "dailyelo.com",
+          "reputation": {
+            "activity": 1.6352205276489258,
+            "adoption": 17.5386962890625,
+            "agent_reputation": null,
+            "availability": 99.34782409667969,
+            "composite": 62.178958892822266,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 91.93913269042969,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 81.03594207763672,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://x402.dailyelo.com/v1/payment/debug",
+          "status": "stale",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.4131479859352112,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "X402 Delivery Receipt Check: X402 Delivery Receipt Check checks receipt fields for payment id, resource, amount, and delivery status from bounded caller-supplied values without an external provider. Call X402 Delivery Receipt Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for X402 Delivery Receipt Ch\u2026",
+          "description_quality": "substantive",
+          "id": "cbd495ff-7f8c-4bcc-90b7-f8672afd6d23",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/x402-delivery-receipt-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        }
+      ]
+    },
+    {
+      "agentResolverMatches": [],
+      "curlExit": 0,
+      "http": "200",
+      "query": "x402 payment preflight",
+      "topLevelKeys": [
+        "count",
+        "limit",
+        "offset",
+        "results",
+        "total"
+      ],
+      "topLevelType": "dict",
+      "topResults": [
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.4265475273132324,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "x402 PayTo Pre-Flight: verify a payTo address against the live registry before paying. Detects payTo hijacking, stale endpoints and unknown resources. Deterministic, <200ms, no external network. 0.001 USDC via x402 on Base. SYNTHORA.",
+          "description_quality": "substantive",
+          "id": "418c4b94-f939-469c-9e2b-99e913e5165f",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "hergertsynthora.com",
+          "reputation": {
+            "activity": 5.990606784820557,
+            "adoption": 18.429588317871094,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 59.85628128051758,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 96.29629516601562,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 87.47407531738281,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 67.676513671875,
+            "transparency": 42.0,
+            "value": null
+          },
+          "resource": "https://payto-preflight.hergertsynthora.com/service",
+          "status": "active",
+          "tags": [
+            "payto",
+            "preflight",
+            "x402",
+            "synthora",
+            "m2m",
+            "a2a"
+          ],
+          "title": "x402 PayTo Pre-Flight"
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.28328442573547363,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "x402 preflight / reputation \u2014 verify BEFORE you pay. Give it an x402 endpoint_url (or a payTo address) and it returns, in one cheap deterministic call: is the resource reachable, is it present in the CDP Bazaar discovery catalog (serviceName, declared payTo, price, network, tags, last_seen), and \u2014 the key integrity check \u2014 does the payTo the endpoint actually demands in its live HTTP 402 challenge MATCH the payTo the catalog advertises (payTo_match). It runs a keyless HEAD/OPTIONS/402 probe that never moves funds, extracts the real payTo/amount/asset/network from the challenge, scores listing freshness, and \u2014 if you pass a prev snapshot {payTo,amount,lastUpdated} \u2014 flags whether the endpoint changed since you last saw it (anti-rug). Output is a 0-100 scorecard + letter grade + reason codes + an actionable verdict (pay_ok / caution / do_not_pay). For any router, wallet agent or M2M client that pays third-party x402 endpoints and needs to avoid paying a hijacked, dead, or repriced resource. Deterministic, no LLM, Ed25519-signed. 0.01 USDC via x402 on Base. SYNTHORA.",
+          "description_quality": "substantive",
+          "id": "a1fb64b1-b8af-4ef9-b2fd-da21fcb746b0",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "hergertsynthora.com",
+          "reputation": {
+            "activity": 2.5231857299804688,
+            "adoption": 15.622796058654785,
+            "agent_reputation": null,
+            "availability": 95.18518829345703,
+            "composite": 60.566898345947266,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 96.22222137451172,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 90.52963256835938,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 67.676513671875,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://x402meta.hergertsynthora.com/service",
+          "status": "active",
+          "tags": [
+            "x402meta",
+            "x402",
+            "synthora",
+            "m2m",
+            "a2a"
+          ],
+          "title": "x402 preflight / reputation \u2014 verify BEFORE you pay. Give it an x402 endpoint_url (or a pa"
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.37258267402648926,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Audit any x402 endpoint before you pay it: reads the live HTTP 402 challenge, decodes the payment terms, and compares the price advertised in its openapi.json against the price actually charged. Returns a compliance verdict, a safe-to-pay signal and a per-check fix list. Catches silent price drift, unpayable challenges, and the misconfigurations that make discovery indexes drop a resource.",
+          "description_quality": "substantive",
+          "id": "2f5d9144-f8c7-4d1c-8007-faf655d91c4e",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "jurat.dev",
+          "reputation": {
+            "activity": 1.3837841749191284,
+            "adoption": 14.696537017822266,
+            "agent_reputation": null,
+            "availability": 99.80879211425781,
+            "composite": 61.15272521972656,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.12351989746094,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 67.86565399169922,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://jurat.dev/v1/preflight",
+          "status": "stale",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.4944457411766052,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Pre-payment guard for x402 agents: free POST /v1/intel/preflight before spending, paid signed V7 trust receipt after. Evaluate any counterparty BEFORE paying \u2014 0.05 USDC buys the proof (Solana mainnet). POST /v1/intel/preflight is free, no auth.",
+          "description_quality": "substantive",
+          "id": "cb640f08-3945-46bb-950c-b1307ee932be",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "twzrd.xyz",
+          "reputation": {
+            "activity": 8.786160469055176,
+            "adoption": 17.309385299682617,
+            "agent_reputation": null,
+            "availability": 95.05494689941406,
+            "composite": 57.69582748413086,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 97.59259033203125,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 84.62012481689453,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 50.43128204345703,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://intel.twzrd.xyz/v1/intel/trust/:solana_address",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.39373111724853516,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "X402 Payment Deadline Check: X402 Payment Deadline Check checks payment authorization deadline against caller time budgets from bounded caller-supplied values without an external provider. Call X402 Payment Deadline Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for X402 Payment Deadline Check as ver\u2026",
+          "description_quality": "substantive",
+          "id": "cc478f94-5781-4ee6-b3be-56fb8409fb78",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/x402-payment-deadline-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.30450427532196045,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "x402 Endpoint Payment Check. Check an x402 endpoint's 402 payment-required body before you rely on it. Reports whether the contract is payable, whether it is opted in to the Bazaar catalogue, and whether a buying agent can read its input schema by machine. Every defect carries a JSON evidence path. Reads the body you supply; it does not pay or call the endpoint. A PASS is not a correctness guarantee and not a claim that the service is accurate.",
+          "description_quality": "substantive",
+          "id": "2588d0a0-eacc-46e0-a05b-148a571623ef",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "tenna.ai",
+          "reputation": {
+            "activity": 1.3296971321105957,
+            "adoption": 14.647173881530762,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 58.17886734008789,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 87.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 67.93572998046875,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://app.tenna.ai/api/x402/verifier/x402_endpoint_lint",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.35535377264022827,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Live x402 conformance pre-flight check: pass ?url=<x402 endpoint>, get a structured PASS/WARN/FAIL verdict on its 402 challenge before you trust it with a real payment.",
+          "description_quality": "substantive",
+          "id": "e6a8f428-497e-418b-b02c-4e5b2f1796b6",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "x402check.arden-instance.workers.dev",
+          "reputation": {
+            "activity": 6.008114337921143,
+            "adoption": 12.521238327026367,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 60.328495025634766,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 37.92243194580078,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://x402check.arden-instance.workers.dev/check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.2568594217300415,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Evaluate caller-supplied x402 payment requirements before a wallet signs them. Use after receiving HTTP 402 to enforce a maximum USDC amount, allowed networks, exact scheme, recipient presence, and an optional expiry buffer. Returns eligible accepts and explicit blockers for 0.002 USDC via x402 on Base or Solana; it never signs, pays, stores, or echoes a payment signature.",
+          "description_quality": "substantive",
+          "id": "228d2398-f5c7-4e6f-b2bc-224ea8848859",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.7501544952392578,
+            "adoption": 19.810260772705078,
+            "agent_reputation": null,
+            "availability": 99.80731964111328,
+            "composite": 63.91786193847656,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.32292938232422,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/payment-preflight",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.318691611289978,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Should I pay this x402 endpoint? Pre-payment honesty check for AI agents: live-probe any resource URL for a valid 402 Payment Required challenge, match payTo and budget, return allow/caution/block with signals. Bazaar seller readiness before spend. Not post-payment delivery proof. $0.005 USDC on Base.",
+          "description_quality": "substantive",
+          "id": "5369db75-1f91-4512-aad6-d1250f314c8b",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "spendguard.panmediatech.workers.dev",
+          "reputation": {
+            "activity": 0.06697768718004227,
+            "adoption": 10.110809326171875,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 59.364322662353516,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 50.28425216674805,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://spendguard.panmediatech.workers.dev/x402/check",
+          "status": "stale",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.3579827547073364,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "X402 Refund Amount Check: X402 Refund Amount Check compares requested refund raw amount with original settled amount from bounded caller-supplied values without an external provider. Call X402 Refund Amount Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for X402 Refund Amount Check as versioned deter\u2026",
+          "description_quality": "substantive",
+          "id": "a91f74fa-eb97-4a6f-b6f9-c807af93875d",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/x402-refund-amount-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        }
+      ]
+    },
+    {
+      "agentResolverMatches": [],
+      "curlExit": 0,
+      "http": "200",
+      "query": "provider launch check",
+      "topLevelKeys": [
+        "count",
+        "limit",
+        "offset",
+        "results",
+        "total"
+      ],
+      "topLevelType": "dict",
+      "topResults": [
+        {
+          "category": "Social Media Engagement Boost",
+          "category_distance": 0.6278537511825562,
+          "category_slug": "social-media-engagement-boost",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Token Launch Check: node-operated on-chain service Executed deterministically by the AmanChain node against live consensus state (real blocks, pools, balances) \u2014 paid per call via x402, settled in USDC on Base. Input: JSON body {\"serviceId\":\"aman-token-launch-check\",\"request\":\" \"}. No account, no API key.",
+          "description_quality": "substantive",
+          "id": "be5d6a60-1838-4df1-89c5-c643efb8e93a",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "space-z.ai",
+          "reputation": {
+            "activity": 0.2973092794418335,
+            "adoption": 7.8473992347717285,
+            "agent_reputation": null,
+            "availability": 97.0873794555664,
+            "composite": 57.50992965698242,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 98.33333587646484,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 90.6182861328125,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 38.03370666503906,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://preview-chat-c6089071-758a-449d-b4a7-6fa19ebc955c.space-z.ai/api/x402/aman-token-launch-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Social Media Engagement Boost",
+          "category_distance": 0.6278537511825562,
+          "category_slug": "social-media-engagement-boost",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Token launch pre-flight validator \u2014 validates symbol, name, decimals and supply, and returns the exact launch fee before you deploy an AMT-20 token. Deterministic on-chain execution by the AmanChain node \u2014 live consensus state, real blocks, pools and balances. Pay per call via x402 (USDC on Base), no account, no API key. POST JSON {\"serviceId\":\"aman-token-launch-check\",\"request\":\" \"}.",
+          "description_quality": "substantive",
+          "id": "6f96ce77-8988-4508-945a-ada488e7fca3",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "amanchain-relay.gitajhd.workers.dev",
+          "reputation": {
+            "activity": 0.787513792514801,
+            "adoption": 8.257553100585938,
+            "agent_reputation": null,
+            "availability": 95.43147277832031,
+            "composite": 57.0828857421875,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 97.64814758300781,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 89.63311004638672,
+            "sanctioned": false,
+            "security": 98.98989868164062,
+            "settlement_reliability": null,
+            "stability": 38.03370666503906,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://amanchain-relay.gitajhd.workers.dev/api/x402/aman-token-launch-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Social Media Engagement Boost",
+          "category_distance": 0.6278537511825562,
+          "category_slug": "social-media-engagement-boost",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Token Launch Check: node-operated on-chain service Executed deterministically by the AmanChain node against live consensus state (real blocks, pools, balances) \u2014 paid per call via x402, settled in USDC on Base. Input: JSON body {\"serviceId\":\"aman-token-launch-check\",\"request\":\" \"}. No account, no API key.",
+          "description_quality": "substantive",
+          "id": "4525631e-90f4-41a9-9a66-51ef3291380c",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "space-z.ai",
+          "reputation": {
+            "activity": 0.2973092794418335,
+            "adoption": 7.8473992347717285,
+            "agent_reputation": null,
+            "availability": 90.5660400390625,
+            "composite": 53.06147384643555,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 99.11111450195312,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 83.20419311523438,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 38.03370666503906,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://preview-chat-701ec510-82d7-4ee3-ae9d-8fdb8c4f421b.space-z.ai/api/x402/aman-token-launch-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Cryptocurrency Risk Analysis",
+          "category_distance": 0.6185634136199951,
+          "category_slug": "cryptocurrency-risk-analysis",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "One-call launch screening for launchpads and trading apps: pass a token, get a GREEN / CAUTION / BLOCK decision (action: allow / review / reject) with plain-English reasons. Combines a live honeypot/tax simulation and owner-power analysis with the checks no other scanner has \u2014 whether the DEPLOYER or the exact CODE has rugged before (from a 35k-verdict ledger). Drop it into your listing flow to auto-reject rugs before they ever go live. Cache-first, so a repeat token is near-instant and free.",
+          "description_quality": "substantive",
+          "id": "033f5c78-851b-4069-b4c7-e8821e94bfbb",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "cyberwarex.com",
+          "reputation": {
+            "activity": 2.5805749893188477,
+            "adoption": 18.804285049438477,
+            "agent_reputation": null,
+            "availability": 97.31343078613281,
+            "composite": 61.47471618652344,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 95.18518829345703,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 89.92166900634766,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 83.67635345458984,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://oracle.cyberwarex.com/verdict",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Other",
+          "category_distance": 0.7201806306838989,
+          "category_slug": "other",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Batch Deployer & Launcher Check. Batch deployer-history and launcher-classification check for up to 20 tokens. It does not run the survival screen or issue a token risk/safety verdict; it is never a safety verdict. Tokens absent from the ledger return an explicit row state and null component fields.",
+          "description_quality": "substantive",
+          "id": "285578a2-1b67-4b57-901e-392bf9e15575",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "tenna.ai",
+          "reputation": {
+            "activity": 1.3296971321105957,
+            "adoption": 14.647173881530762,
+            "agent_reputation": null,
+            "availability": 99.59349822998047,
+            "composite": 58.0813102722168,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 87.03739929199219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 67.93572998046875,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://app.tenna.ai/api/x402/tenna/batch_screen",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Agent Discovery And Routing",
+          "category_distance": 0.6357945799827576,
+          "category_slug": "agent-discovery-and-routing",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Agent Delivery Sla Check: Agent Delivery Sla Check checks latency, success, and result completeness against an SLA from bounded caller-supplied values without an external provider. Call Agent Delivery Sla Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for Agent Delivery Sla Check as versioned determi\u2026",
+          "description_quality": "substantive",
+          "id": "eab91185-7b16-41c9-ba20-ac0d32665fc6",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/agent-delivery-sla-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "X402 Protocol Integration",
+          "category_distance": 0.5194764137268066,
+          "category_slug": "x402-protocol-integration",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "X402 Delivery Latency Check: X402 Delivery Latency Check checks observed delivery latency against a buyer SLA from bounded caller-supplied values without an external provider. Call X402 Delivery Latency Check before paying for or accepting an x402 or agent delivery assembled from caller-supplied challenge and result metadata. Returns contract-specific checks, normalized evidence, mismatch reasons, and an explicit acceptance or rejection status for X402 Delivery Latency Check as versioned determ\u2026",
+          "description_quality": "substantive",
+          "id": "f59f3884-2295-4087-ac4a-8a69089750c5",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/x402-delivery-latency-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Cryptocurrency Market Data",
+          "category_distance": 0.483393132686615,
+          "category_slug": "cryptocurrency-market-data",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "New token launch scanner \u2014 Base and EVM chains, real-time pool data",
+          "description_quality": "substantive",
+          "id": "020db069-eb3d-4f1d-99c0-52181608edd6",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "lonestaroracle.xyz",
+          "reputation": {
+            "activity": 4.026962757110596,
+            "adoption": 22.690107345581055,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 64.39604187011719,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 92.19999694824219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 97.19915008544922,
+            "transparency": 61.0,
+            "value": null
+          },
+          "resource": "https://launches.lonestaroracle.xyz/scan",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Other",
+          "category_distance": 0.7929847836494446,
+          "category_slug": "other",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "Deployer Launch History. Full observed launch history for one deployer wallet: how many launches, how they ended by loss band, profitable rate, and median terminal multiple. Historical record, not a prediction. No trading signals or safety guarantees.",
+          "description_quality": "substantive",
+          "id": "ad49f11f-5764-4aef-9945-403124a26144",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "x402",
+          "networks": [
+            "Base"
+          ],
+          "operator": "tenna.ai",
+          "reputation": {
+            "activity": 1.3296971321105957,
+            "adoption": 14.647173881530762,
+            "agent_reputation": null,
+            "availability": 99.59349822998047,
+            "composite": 58.0813102722168,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 87.03739929199219,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 67.93572998046875,
+            "transparency": 36.0,
+            "value": null
+          },
+          "resource": "https://app.tenna.ai/api/x402/tenna/deployer_record",
+          "status": "active",
+          "tags": [],
+          "title": null
+        },
+        {
+          "category": "Other",
+          "category_distance": 0.7716936469078064,
+          "category_slug": "other",
+          "currencies": [
+            "USDC"
+          ],
+          "description": "EVM Access List Shape Check: EVM Access List Shape Check checks bounded EIP-2930 access-list address and storage-key shapes from bounded caller-supplied values without an external provider. Call EVM Access List Shape Check before signing, submitting, replacing, or accepting an EVM/Base transaction assembled from caller-owned data. Returns normalized transaction evidence, calculated budget or shape findings, and a fail-closed preflight status for EVM Access List Shape Check as versioned determin\u2026",
+          "description_quality": "substantive",
+          "id": "ea274477-be81-4dff-b43c-863f44a1c8ee",
+          "instance_count": 1,
+          "is_demo": false,
+          "kind": "mpp",
+          "networks": [
+            "Base",
+            "Solana"
+          ],
+          "operator": "delx.ai",
+          "reputation": {
+            "activity": 0.19414038956165314,
+            "adoption": 19.356386184692383,
+            "agent_reputation": null,
+            "availability": 100.0,
+            "composite": 63.782554626464844,
+            "confidence": 1.0,
+            "functionality": null,
+            "latency": 100.0,
+            "quality": null,
+            "quote_accuracy": null,
+            "reliability": 93.4000015258789,
+            "sanctioned": false,
+            "security": 100.0,
+            "settlement_reliability": null,
+            "stability": 96.0,
+            "transparency": 67.0,
+            "value": null
+          },
+          "resource": "https://api.delx.ai/api/v1/x402/evm-access-list-shape-check",
+          "status": "active",
+          "tags": [],
+          "title": null
+        }
+      ]
+    }
+  ]
+}
