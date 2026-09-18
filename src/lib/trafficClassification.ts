@@ -2,6 +2,7 @@ import { callerHash, safeUserAgent } from "@/lib/telemetry";
 
 export type TrafficClass =
   | "internal_test"
+  | "automated_fetch"
   | "directory_probe"
   | "liveness_crawler"
   | "agent_discovery"
@@ -19,6 +20,10 @@ export type TrafficClassification = {
 const INTERNAL_UA = [
   "agentresolver-direct-paid-mcp-smoke",
   "agentresolver-production-smoke"
+];
+
+const AUTOMATED_FETCH_UA = [
+  "vercel mcp fetch"
 ];
 
 const DIRECTORY_UA = [
@@ -71,6 +76,10 @@ export function classifyTraffic(
 
   if (req.headers.get("x-agentresolver-internal") === "1" || INTERNAL_UA.some((token) => ua.includes(token))) {
     return { trafficClass: "internal_test", external: false, sponsorEligible: false, reason: "marked_internal" };
+  }
+
+  if (AUTOMATED_FETCH_UA.some((token) => ua.includes(token))) {
+    return { trafficClass: "automated_fetch", external: true, sponsorEligible: false, reason: "known_automated_fetch_user_agent" };
   }
 
   if (DIRECTORY_UA.some((token) => ua.includes(token))) {
