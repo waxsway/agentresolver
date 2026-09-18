@@ -44,7 +44,7 @@ test("CDP activation rechecks main and verifies an unsigned production challenge
   assert.match(workflow, /Refusing to deploy stale code/);
   assert.match(workflow, /vercel pull --yes --environment=production/);
   assert.match(workflow, /vercel build --prod/);
-  assert.match(workflow, /node \\.github\\/scripts\\/vercel-deploy-prebuilt-runtime-env\\.mjs \\.vercel\\/\\.env\\.production\\.local/);
+  assert.match(workflow, /node \.github\/scripts\/vercel-deploy-prebuilt-runtime-env\.mjs \.vercel\/\.env\.production\.local/);
   assert.match(workflow, /api\/x402-ping/);
   assert.match(workflow, /test "\$status" = "402"/);
   assert.match(workflow, /payment-required:/);
