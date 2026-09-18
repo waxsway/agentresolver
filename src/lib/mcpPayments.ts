@@ -34,6 +34,15 @@ type McpToolHandler<TArgs> = (
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 let resourceServer: x402ResourceServer | null = null;
 
+export function mcpPaymentResourceUrl(toolName?: string) {
+  const normalized = toolName?.trim();
+  if (!normalized) return `${CANONICAL_ORIGIN}/mcp`;
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(normalized)) {
+    throw new Error("MCP discovery tool name is invalid.");
+  }
+  return `mcp://tool/${normalized}`;
+}
+
 function object(value: unknown): JsonObject | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as JsonObject
@@ -195,7 +204,7 @@ export function createLazyPaidMcpTool<TArgs>(
       const paid = createPaymentWrapper(server, {
         accepts,
         resource: {
-          url: `${CANONICAL_ORIGIN}/mcp`,
+          url: mcpPaymentResourceUrl(options.discoveryToolName),
           description: product.description,
           mimeType: "application/json"
         },
