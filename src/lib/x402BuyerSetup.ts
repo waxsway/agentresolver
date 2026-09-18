@@ -750,6 +750,40 @@ export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
   } as const;
 }
 
+export function x402ChallengeResumeSetup(context: X402BuyerSetupContext) {
+  const setup = x402BuyerSetup(context);
+
+  return {
+    schemaVersion: 1,
+    type: "agentresolver_x402_challenge_resume",
+    free: true,
+    fullSetup: X402_BUYER_SETUP_URL,
+    challengeContext: setup.challengeContext,
+    signedRetryCanary: setup.signedRetryCanary,
+    payment: setup.payment,
+    quickStart: {
+      httpTypescript: {
+        installCommand: setup.clients.http.typescript.installCommand,
+        wrapper: setup.clients.http.typescript.wrapper,
+        baseEvmQuickstart: setup.clients.http.typescript.baseEvmQuickstart
+      },
+      httpPython: {
+        installCommand: setup.clients.http.python.installCommand,
+        client: setup.clients.http.python.client,
+        baseEvmQuickstart: setup.clients.http.python.baseEvmQuickstart
+      },
+      mcpTypescript: {
+        installCommand: setup.clients.mcp.typescript.installCommand,
+        factory: setup.clients.mcp.typescript.factory,
+        baseEvmQuickstart: setup.clients.mcp.typescript.baseEvmQuickstart
+      },
+      agentSkill: setup.agentSkill
+    },
+    recommendedSpendLoop: setup.recommendedSpendLoop,
+    authorizationBoundary: setup.authorizationBoundary
+  } as const;
+}
+
 export function x402BuyerSetupHint(capabilityId: string) {
   const handoff = x402ChallengeBuyerHandoff(capabilityId);
   return {
