@@ -17,45 +17,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           queries=(
             "https://agentresolver.vercel.app/api/x402-ping"
             "https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453"
             "https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453"
             "agentresolver.vercel.app"
           )
-
           for q in "${queries[@]}"; do
             echo "=== RESOLVE: $q ==="
             out="$(mktemp)"
-            code="$(curl -sS --connect-timeout 5 --max-time 20 -G               -o "$out" -w '%{http_code}'               'https://vet402.com/api/v1/resolve'               --data-urlencode "q=$q" || printf '000')"
+            code="$(curl -sS --connect-timeout 5 --max-time 20 -G -o "$out" -w '%{http_code}' 'https://vet402.com/api/v1/resolve' --data-urlencode "q=$q" || printf '000')"
             echo "HTTP $code"
             cat "$out" 2>/dev/null || true
             echo
-
             if [ "$code" = "200" ]; then
-              python3 - "$out" <<'PY'
-import json, subprocess, sys
-data=json.load(open(sys.argv[1], encoding="utf-8"))
-rows=[]
-resource=data.get("resource")
-if isinstance(resource,dict):
-    rows.append(resource)
-for row in data.get("endpoints") or []:
-    if isinstance(row,dict):
-        rows.append(row)
-seen=set()
-for row in rows:
-    oid=row.get("observatory_id")
-    if not oid or oid in seen:
-        continue
-    seen.add(oid)
-    print("OBSERVATORY_ID="+oid)
-    for suffix in ("facts","purchases"):
-        url=f"https://vet402.com/api/v1/observatory/endpoints/{oid}/{suffix}"
-        p=subprocess.run(["curl","-sS","--connect-timeout","5","--max-time","20","-w","\\nHTTP_STATUS:%{http_code}\\n",url],capture_output=True,text=True)
-        print(f"=== {suffix.upper()} {oid} ===")
-        print(p.stdout)
-PY
+              jq -r '[.resource.observatory_id, (.endpoints[]?.observatory_id)] | map(select(. != null)) | unique[]' "$out" | while IFS= read -r oid; do
+                echo "=== OBSERVATORY_ID: $oid ==="
+                echo "=== FACTS ==="
+                curl -sS --connect-timeout 5 --max-time 20 "https://vet402.com/api/v1/observatory/endpoints/$oid/facts" || true
+                echo
+                echo "=== PURCHASES ==="
+                curl -sS --connect-timeout 5 --max-time 20 "https://vet402.com/api/v1/observatory/endpoints/$oid/purchases" || true
+                echo
+              done
             fi
           done
