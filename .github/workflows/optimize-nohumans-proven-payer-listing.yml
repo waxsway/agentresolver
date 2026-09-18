@@ -1,0 +1,157 @@
+name: Optimize NoHumans Proven Payer Listing
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/optimize-nohumans-proven-payer-listing.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: optimize-nohumans-proven-payer-listing
+  cancel-in-progress: true
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      LISTING_ID: 28e33786-f07
+      SAMPLE_QUERY: https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Load existing NoHumans owner token from Vercel
+        id: token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          vercel env pull /tmp/agentresolver-production.env             --yes             --environment=production             --token="$VERCEL_TOKEN" >/dev/null
+
+          token="$(python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path("/tmp/agentresolver-production.env").read_text()
+          match=re.search(r'^NOHUMANS_OWNER_TOKEN=(.*)$', text, re.M)
+          if not match:
+              raise SystemExit(0)
+          value=match.group(1).strip()
+          if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+              value=value[1:-1]
+          print(value)
+          PY
+          )"
+          rm -f /tmp/agentresolver-production.env
+
+          if [ -z "$token" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::NOHUMANS_OWNER_TOKEN is not available; no external mutation was attempted."
+            exit 0
+          fi
+
+          echo "::add-mask::$token"
+          printf '%s' "$token" > /tmp/nohumans-owner-token
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Patch the paid-verified ping listing for buyer conversion
+        if: steps.token.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(cat /tmp/nohumans-owner-token)"
+          payload="$(jq -cn --arg sample "$SAMPLE_QUERY" '{
+            sample_query:$sample,
+            request_schema:{
+              type:"object",
+              additionalProperties:false,
+              properties:{
+                echo:{type:"string",maxLength:256,description:"Optional value echoed in the paid pong response."}
+              }
+            },
+            response_schema:{
+              type:"object",
+              required:["pong","settledDelivery","at","unixMs","requestId","echo","next"],
+              additionalProperties:true,
+              properties:{
+                pong:{type:"boolean",const:true},
+                settledDelivery:{type:"boolean",const:true},
+                at:{type:"string"},
+                unixMs:{type:"number"},
+                requestId:{type:"string"},
+                echo:{type:["string","null"]},
+                next:{type:"object"}
+              }
+            }
+          }')"
+
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -X PATCH "https://nohumans.directory/v1/listings/$LISTING_ID"             -H "x-claim-token: $token"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          jq 'del(.claim_token,.edit_token,.owner_token,.token,.email)' "$body" 2>/dev/null || cat "$body"
+          echo
+          case "$code" in
+            200|204)
+              echo "NoHumans proven payer listing metadata updated."
+              ;;
+            400|422)
+              echo "::error::NoHumans rejected the documented sample/schema metadata (HTTP $code)."
+              exit 1
+              ;;
+            401|403)
+              echo "::error::Stored NoHumans owner token was rejected (HTTP $code); refusing any claim/identity recovery flow."
+              exit 1
+              ;;
+            429|500|502|503|504|000)
+              echo "::notice::NoHumans metadata endpoint is temporarily unavailable (HTTP $code); no payment or identity action was attempted."
+              exit 0
+              ;;
+            *)
+              echo "::warning::Unexpected NoHumans metadata update status $code; no payment or identity action was attempted."
+              exit 0
+              ;;
+          esac
+
+      - name: Verify listing now exposes sample and schemas
+        if: steps.token.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 5 --max-time 20             "https://nohumans.directory/v1/listings/$LISTING_ID"             -o /tmp/nohumans-listing.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("/tmp/nohumans-listing.json").read_text())
+          summary={
+              "id":data.get("id"),
+              "status":data.get("status"),
+              "paid_verified":data.get("paid_verified"),
+              "has_sample":data.get("has_sample"),
+              "sample_query":data.get("sample_query"),
+              "request_schema_present":bool(data.get("request_schema")),
+              "response_schema_present":bool(data.get("response_schema")),
+              "probe_count":data.get("probe_count"),
+              "onchain_unique_payers_30d":data.get("onchain_unique_payers_30d"),
+          }
+          print(json.dumps(summary,separators=(",",":")))
+          assert data.get("has_sample") is True
+          assert data.get("sample_query") == "https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json"
+          assert bool(data.get("request_schema"))
+          assert bool(data.get("response_schema"))
+          PY
+
+      - name: Remove local owner token
+        if: always()
+        shell: bash
+        run: rm -f /tmp/nohumans-owner-token
