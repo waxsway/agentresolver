@@ -133,6 +133,7 @@ function stampInfrastructureHeaders(
     [
       "payment-required",
       "payment-response",
+      "link",
       "x-agentresolver-capability",
       "x-agentresolver-request-id",
       "x-agentresolver-contract-version",
