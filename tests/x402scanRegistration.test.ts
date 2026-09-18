@@ -36,7 +36,16 @@ test("x402scan registration retries provider outages but fails malformed integra
   assert.match(workflow, /tRPC registration returned an operation error/);
 });
 
-test("x402scan lane does not run on every application push", () => {
+test("x402scan lane is manual-only after the successful one-time registration", () => {
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /paths:\n\s+- "\.github\/workflows\/x402scan-register-once\.yml"/);
+  assert.doesNotMatch(workflow, /\bpush:\s*$/m);
+});
+
+
+test("x402scan lane suppresses credential-shaped registration response data", () => {
+  assert.doesNotMatch(workflow, /cat \/tmp\/x402scan-register\.json/);
+  assert.doesNotMatch(workflow, /^\s*apiKey,\s*$/m);
+  assert.match(workflow, /apiKeyCount/);
+  assert.match(workflow, /unexpected registration payload; body suppressed/);
+  assert.match(workflow, /\.error \| \{message, data: \(\.data \| \{code, httpStatus\}\)\}/);
 });
