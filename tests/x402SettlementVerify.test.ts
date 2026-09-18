@@ -21,6 +21,42 @@ function addressTopic(address: string) {
   return `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
 }
 
+async function withMockPayAiSupported<T>(run: () => Promise<T>): Promise<T> {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+
+    if (url === "https://facilitator.payai.network/supported") {
+      return new Response(JSON.stringify({
+        kinds: [
+          { x402Version: 2, scheme: "exact", network: "eip155:8453", extra: {} },
+          {
+            x402Version: 2,
+            scheme: "exact",
+            network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+            extra: { feePayer: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4" }
+          }
+        ],
+        extensions: ["bazaar"],
+        signers: {}
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+
+    return originalFetch(input, init);
+  };
+
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 test("settlement verifier confirms exact Base USDC EIP-3009 transfer expectations", async () => {
   const rpc: BaseRpc = async (method) => {
     if (method === "eth_getTransactionReceipt") {
@@ -105,10 +141,12 @@ test("settlement verify GET is a $0.001 paid route with no request body", async 
   const url =
     "https://agentresolver.vercel.app/api/x402-settlement-verify" +
     `?txHash=${TX}&expectedPayTo=${PAY_TO}&expectedAmountAtomic=1000`;
-  const response = await GET(new NextRequest(url, {
-    method: "GET",
-    headers: { "user-agent": "agentresolver-test" }
-  }));
+  const response = await withMockPayAiSupported(() =>
+    GET(new NextRequest(url, {
+      method: "GET",
+      headers: { "user-agent": "agentresolver-test" }
+    }))
+  );
 
   assert.equal(response.status, 402);
   const body = await response.json() as any;
