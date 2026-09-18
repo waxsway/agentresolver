@@ -37,6 +37,7 @@ const DIRECTORY_UA = [
 ];
 
 const LIVENESS_UA = [
+  "nohumans.directory-probe",
   "sentineloracle",
   "mcpbeat",
   "catalog-health",
