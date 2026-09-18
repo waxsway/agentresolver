@@ -1,0 +1,178 @@
+name: Audit vet402 Autonomous Buyer
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
+  schedule:
+    - cron: "23 */6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      RESOURCE_URL: https://agentresolver.vercel.app/api/x402-ping
+    steps:
+      - name: Resolve paid canary in vet402 observatory
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://vet402.com/api/v1/resolve'             --data-urlencode "q=$RESOURCE_URL")"
+
+          echo "http_code=$code" >> "$GITHUB_OUTPUT"
+
+          if [ "$code" = "404" ]; then
+            echo "VET402_CATALOGUED=false"
+            echo "::notice::vet402 has not imported the AgentResolver paid canary yet. Its observatory re-fetches the public discovery catalog on its own schedule."
+            exit 0
+          fi
+
+          if [ "$code" != "200" ]; then
+            echo "::warning::vet402 resolve returned HTTP $code; leaving the buyer lane unchanged."
+            head -c 2000 "$body" || true
+            echo
+            exit 0
+          fi
+
+          jq '{
+            query,
+            resource: (.resource | {
+              endpoint_id,
+              resource_id,
+              observatory_id,
+              canonical_url,
+              method,
+              payee_id,
+              catalog_status,
+              first_seen,
+              last_seen
+            }),
+            endpointCount: ((.endpoints // []) | length)
+          }' "$body"
+
+          observatory_id="$(jq -r '.resource.observatory_id // empty' "$body")"
+          resource_id="$(jq -r '.resource.resource_id // empty' "$body")"
+          canonical_url="$(jq -r '.resource.canonical_url // empty' "$body")"
+
+          if [ -z "$observatory_id" ] || [ "$canonical_url" != "$RESOURCE_URL" ]; then
+            echo "::warning::vet402 returned a 200 response without the expected AgentResolver resource identity."
+            exit 0
+          fi
+
+          echo "catalogued=true" >> "$GITHUB_OUTPUT"
+          echo "observatory_id=$observatory_id" >> "$GITHUB_OUTPUT"
+          echo "resource_id=$resource_id" >> "$GITHUB_OUTPUT"
+          echo "VET402_CATALOGUED=true"
+
+      - name: Read independent seller facts
+        if: steps.resolve.outputs.catalogued == 'true'
+        shell: bash
+        env:
+          OBSERVATORY_ID: ${{ steps.resolve.outputs.observatory_id }}
+        run: |
+          set -euo pipefail
+          curl -fsS             "https://vet402.com/api/v1/observatory/endpoints/$OBSERVATORY_ID/facts"             -o /tmp/vet402-facts.json
+
+          jq '{
+            subject,
+            l0: .facts.l0,
+            l1: .facts.l1,
+            l2: .facts.l2,
+            settlement_30d_real: .facts.settlement_30d_real,
+            settlement_30d_test: .facts.settlement_30d_test,
+            unique_payers_30d_real: .facts.unique_payers_30d_real,
+            freshness
+          }' /tmp/vet402-facts.json
+
+      - name: Read vet402 purchase receipts
+        if: steps.resolve.outputs.catalogued == 'true'
+        id: purchases
+        shell: bash
+        env:
+          OBSERVATORY_ID: ${{ steps.resolve.outputs.observatory_id }}
+        run: |
+          set -euo pipefail
+          curl -fsS             "https://vet402.com/api/v1/observatory/endpoints/$OBSERVATORY_ID/purchases"             -o /tmp/vet402-purchases.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path("/tmp/vet402-purchases.json").read_text())
+          rows = []
+          if isinstance(payload, list):
+              rows = payload
+          elif isinstance(payload, dict):
+              for key in ("purchases", "attempts", "rows", "items", "data"):
+                  value = payload.get(key)
+                  if isinstance(value, list):
+                      rows = value
+                      break
+
+          settled = 0
+          delivered = 0
+          tx_refs = []
+          for row in rows:
+              if not isinstance(row, dict):
+                  continue
+              tx = row.get("txHash") or row.get("tx_hash") or row.get("transaction")
+              if isinstance(tx, str) and tx:
+                  settled += 1
+                  tx_refs.append(tx[:18] + "…" if len(tx) > 18 else tx)
+              status = row.get("httpStatus") or row.get("http_status") or row.get("status")
+              result = str(row.get("result") or row.get("outcome") or "").lower()
+              if status == 200 or result in {"delivered", "success", "settled_delivered"}:
+                  delivered += 1
+
+          print(json.dumps({
+              "purchaseAttempts": len(rows),
+              "settledWithReceipt": settled,
+              "delivered": delivered,
+              "transactionReferences": tx_refs[:10],
+          }, separators=(",", ":")))
+
+          with open(Path("/tmp/vet402-summary.txt"), "w") as fh:
+              fh.write(f"attempts={len(rows)}\nsettled={settled}\ndelivered={delivered}\n")
+          PY
+
+          cat /tmp/vet402-summary.txt
+          settled="$(awk -F= '$1=="settled"{print $2}' /tmp/vet402-summary.txt)"
+          attempts="$(awk -F= '$1=="attempts"{print $2}' /tmp/vet402-summary.txt)"
+          echo "settled=$settled" >> "$GITHUB_OUTPUT"
+          echo "attempts=$attempts" >> "$GITHUB_OUTPUT"
+
+          if [ "${settled:-0}" -gt 0 ]; then
+            echo "VET402_INDEPENDENT_SETTLEMENT_OBSERVED=true"
+          else
+            echo "::notice::AgentResolver is observable by vet402, but no vet402 settlement receipt is published yet."
+          fi
+
+      - name: Report autonomous-buyer state
+        if: always()
+        shell: bash
+        env:
+          CATALOGUED: ${{ steps.resolve.outputs.catalogued }}
+          ATTEMPTS: ${{ steps.purchases.outputs.attempts }}
+          SETTLED: ${{ steps.purchases.outputs.settled }}
+        run: |
+          {
+            echo "## vet402 autonomous-buyer audit"
+            echo
+            echo "- Resource: `$RESOURCE_URL`"
+            echo "- Catalogued: `${CATALOGUED:-false}`"
+            echo "- Published purchase attempts: `${ATTEMPTS:-0}`"
+            echo "- Published settled receipts: `${SETTLED:-0}`"
+            echo
+            echo "This workflow is observation-only: it sends no payment, no seller submission, no identity data, and no PAYMENT-SIGNATURE."
+          } >> "$GITHUB_STEP_SUMMARY"
