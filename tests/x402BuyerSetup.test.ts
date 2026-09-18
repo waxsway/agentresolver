@@ -386,10 +386,11 @@ test("buyer challenge handoff URLs carry bounded funnel attribution and exact me
 });
 
 
-test("challenge handoff embeds executable client install choices", () => {
+test("initial 402 handoff stays compact and sends buyers to the executable setup contract", () => {
   const handoff = x402ChallengeBuyerHandoff("x402-payment-preflight");
   const getHandoff = x402ChallengeBuyerHandoff("x402-ping", "GET");
   assert.equal(handoff.type, "agentresolver_x402_buyer_handoff");
+  assert.equal(handoff.version, 2);
   assert.equal(handoff.capabilityId, "x402-payment-preflight");
   assert.equal(
     handoff.setup,
@@ -402,68 +403,14 @@ test("challenge handoff embeds executable client install choices", () => {
     "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
   );
   assert.equal(handoff.retryHeader, "PAYMENT-SIGNATURE");
+  assert.match(handoff.nextAction, /Fetch setup/i);
   assert.equal(handoff.signerControlledByCaller, true);
   assert.equal(handoff.spendAuthorizationRequired, true);
-  assert.match(handoff.clientInstalls.httpTypescript, /@x402\/fetch/);
-  assert.match(handoff.clientInstalls.mcpTypescript, /@x402\/mcp/);
-  assert.equal(handoff.clientInstalls.httpPython, 'pip install "x402[httpx,evm]"');
-  assert.match(handoff.clientInstalls.agentSkill, /skills add waxsway\/agentresolver/);
-  assert.equal(handoff.clientEntrypoints.httpTypescript.package, "@x402/fetch");
-  assert.equal(handoff.clientEntrypoints.httpTypescript.factory, "wrapFetchWithPaymentFromConfig");
-  assert.equal(handoff.clientEntrypoints.httpTypescript.wrapper, "wrapFetchWithPayment");
-  assert.equal(handoff.clientEntrypoints.httpTypescript.schemes[0].network, "eip155:8453");
-  assert.equal(handoff.clientEntrypoints.httpTypescript.schemes[0].clientClass, "ExactEvmScheme");
-  assert.equal(
-    handoff.clientEntrypoints.httpTypescript.schemes[0].package,
-    "@x402/evm/exact/client"
-  );
-  assert.equal(
-    handoff.clientEntrypoints.httpTypescript.schemes[1].network,
-    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
-  );
-  assert.equal(handoff.clientEntrypoints.httpTypescript.schemes[1].clientClass, "ExactSvmScheme");
-  assert.equal(
-    handoff.clientEntrypoints.httpTypescript.schemes[1].package,
-    "@x402/svm/exact/client"
-  );
-  assert.equal(handoff.clientEntrypoints.mcpTypescript.package, "@x402/mcp");
-  assert.equal(handoff.clientEntrypoints.mcpTypescript.factory, "createx402MCPClient");
-  assert.equal(handoff.clientEntrypoints.mcpTypescript.autoPayment, true);
-  assert.equal(handoff.clientEntrypoints.mcpTypescript.approvalHook, "onPaymentRequested");
-  assert.equal(handoff.clientEntrypoints.mcpTypescript.schemes[0].network, "eip155:8453");
-  assert.equal(
-    handoff.clientEntrypoints.mcpTypescript.schemes[1].network,
-    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
-  );
-  assert.equal(handoff.clientEntrypoints.httpPython.package, "x402");
-  assert.equal(handoff.clientEntrypoints.httpPython.clientFactory, "x402Client");
-  assert.equal(
-    handoff.clientEntrypoints.httpPython.signerAdapterImport,
-    "from x402.mechanisms.evm import EthAccountSigner"
-  );
-  assert.equal(
-    handoff.clientEntrypoints.httpPython.exactEvmRegistrationImport,
-    "from x402.mechanisms.evm.exact.register import register_exact_evm_client"
-  );
-  assert.equal(
-    handoff.clientEntrypoints.httpPython.registration,
-    "register_exact_evm_client(client, EthAccountSigner(callerOwnedAccount))"
-  );
-  assert.equal(handoff.clientEntrypoints.httpPython.evmNetwork, "eip155:8453");
-  assert.equal(handoff.clientEntrypoints.httpPython.signer, "callerOwnedAccount");
-  assert.equal(handoff.clientEntrypoints.httpPython.client, "x402HttpxClient");
-  assert.equal(handoff.clientInstalls.walletMcp, "npx -y x402-trinity-mcp");
-  assert.equal(handoff.clientEntrypoints.walletMcp.package, "x402-trinity");
-  assert.equal(handoff.clientEntrypoints.walletMcp.command, "x402-trinity-mcp");
-  assert.deepEqual(handoff.clientEntrypoints.walletMcp.tools, ["check_price", "pay_and_fetch", "wallet_status"]);
-  assert.equal(handoff.clientEntrypoints.walletMcp.defaultNetwork, "eip155:8453");
-  assert.equal(handoff.clientEntrypoints.agentSkill.repository, "waxsway/agentresolver");
-  assert.equal(handoff.clientEntrypoints.agentSkill.skill, "agentresolver-payment-guard");
-  assert.equal(handoff.signerControlledByCaller, true);
-  assert.equal(handoff.spendAuthorizationRequired, true);
+  assert.ok(JSON.stringify(handoff).length < 1200);
+  assert.equal((handoff as any).clientInstalls, undefined);
+  assert.equal((handoff as any).clientEntrypoints, undefined);
   assert.doesNotMatch(JSON.stringify(handoff), /PRIVATE_KEY|seed phrase|0xYourPrivateKey/i);
 });
-
 
 test("buyer setup exposes OpenCode and Claude Code x402 handoffs", () => {
   const setup = x402BuyerSetup();
@@ -517,16 +464,15 @@ test("buyer setup exposes x402-trinity as a hard-budget wallet-capable MCP hando
 });
 
 
-test("buyer handoff excludes legacy wallet MCP until x402 v2 exact retry support exists", () => {
+test("initial buyer handoff carries no embedded wallet/runtime implementation", () => {
   const handoff = x402ChallengeBuyerHandoff("x402-payment-preflight") as any;
   const setup = x402BuyerSetup() as any;
 
-  assert.equal(handoff.clientInstalls.managedWalletMcp, undefined);
-  assert.equal(handoff.clientEntrypoints.managedWalletMcp, undefined);
+  assert.equal(handoff.clientInstalls, undefined);
+  assert.equal(handoff.clientEntrypoints, undefined);
   assert.equal(setup.clients.x402WalletMcp, undefined);
   assert.equal(setup.officialReferences.x402WalletMcp, undefined);
 });
-
 
 test("buyer setup exposes an OpenAI Agents SDK approval-gated x402 handoff", () => {
   const setup = x402BuyerSetup();
@@ -667,7 +613,10 @@ test("x402 extension handoff preserves the payable method", () => {
     postHandoff.info.setup,
     "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=sha256&method=POST"
   );
+  assert.equal(postHandoff.info.version, 2);
+  assert.equal(postHandoff.info.action, "fetch_setup_then_retry");
   assert.deepEqual(postHandoff.schema.properties.method.enum, ["GET", "POST", "HEAD"]);
+  assert.equal((postHandoff.info as any).clients, undefined);
 
   const exactResume = "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check&mode=exact";
   const resumed = x402ChallengeHeaderHandoff("x402-ping", "GET", exactResume);
