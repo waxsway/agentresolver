@@ -22,3 +22,9 @@ test("production smoke requires and challenges the settlement verifier", () => {
   assert.match(smoke, /check_402 'x402 Settlement Verify'/);
   assert.match(smoke, /get_path="\$path\?txHash=/);
 });
+
+
+test("production smoke validates the provider sponsorship contract instead of brittle CTA copy", () => {
+  assert.match(smoke, /issues\/new\?template=sponsorship\.yml/);
+  assert.doesNotMatch(smoke, /Apply for the sponsorship pilot/);
+});
