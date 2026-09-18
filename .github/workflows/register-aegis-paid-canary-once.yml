@@ -70,12 +70,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -G 'https://aegis.borisinc.com/lint'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             | tee /tmp/aegis-lint.json
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}' \
+            --connect-timeout 5 --max-time 20 \
+            'https://aegis.borisinc.com/lint' \
+            --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping' || printf '000')"
+          cat "$body" 2>/dev/null || true
+          echo
+          case "$code" in
+            200)
+              cp "$body" /tmp/aegis-lint.json
+              ;;
+            402)
+              echo "::error::Aegis free lint unexpectedly requested payment. No payment was attempted."
+              exit 1
+              ;;
+            429|500|502|503|504|520|521|522|523|524|525|526|527|530|000)
+              echo "::notice::Aegis lint is temporarily unavailable (HTTP $code); keeping the paid-probe lane queued without failing AgentResolver."
+              touch /tmp/aegis-unavailable
+              ;;
+            *)
+              echo "::error::Aegis lint contract changed unexpectedly (HTTP $code)."
+              exit 1
+              ;;
+          esac
 
       - name: Check Aegis discovery visibility
         shell: bash
         run: |
           set -euo pipefail
+          if [ -f /tmp/aegis-unavailable ]; then
+            echo "::notice::Skipping Aegis discovery because its lint surface is unavailable."
+            exit 0
+          fi
           curl -fsS -G 'https://aegis.borisinc.com/discover'             --data-urlencode 'query=AgentResolver'             -o /tmp/aegis-discover.json || true
           cat /tmp/aegis-discover.json 2>/dev/null || true
           echo
