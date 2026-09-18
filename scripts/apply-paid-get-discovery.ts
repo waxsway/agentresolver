@@ -119,12 +119,12 @@ for (const path of X402_MANIFEST_PATHS) {
 
   const preflightGet = clone(preflightPost);
   preflightGet.id = "x402-payment-preflight-get";
-  preflightGet.name = "AgentResolver Guard — GET-first payment authorization";
+  preflightGet.name = "AgentResolver Guard — GET-first payment verification";
   preflightGet.method = "GET";
   preflightGet.methods = ["GET", "POST"];
   preflightGet.preferredMethod = "GET";
   preflightGet.resource = `GET ${PREFLIGHT_ENDPOINT}`;
-  preflightGet.description = "AgentResolver Guard: GET-first $0.001 x402 transaction-path authorization gate for autonomous buyers. Run immediately before each target x402 spend. Supply the target endpoint and optional safety assertions as query parameters; AgentResolver returns a fail-closed eligible/blocked decision and observed payment evidence after successful settlement.";
+  preflightGet.description = "AgentResolver Guard: GET-first $0.001 x402 transaction-path verification gate for autonomous buyers. Run immediately before each target x402 spend. Supply the target endpoint and optional safety assertions as query parameters; AgentResolver returns a fail-closed eligible/blocked decision and observed payment evidence after successful settlement. The caller alone authorizes any spend.";
   preflightGet.inputTransport = "query";
   preflightGet.queryParameters = preflightQueryParameters;
   preflightGet.examples = [preflightQueryExample];
@@ -176,7 +176,7 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  description: "Machine-readable x402 settlement testing and payment authorization for autonomous buyers. Validate x402 payment requirements before wallet signing with AgentResolver Guard: check payTo recipient, quoted USDC price, allowed network, asset, exact scheme and resource binding, then receive a fail-closed eligible/blocked decision and evidence. Start with GET /api/x402-ping for the lowest-friction $0.001 USDC end-to-end settlement canary. A successful canary exposes POST /api/verified-resolve ($0.02) for one missing capability decision and POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Guard is available through GET /api/payment-guard or canonical GET /api/x402-payment-preflight; POST remains available for body-bearing workflows. POST /api/resolve remains available for free capability discovery.",
+  description: "Machine-readable x402 settlement testing and payment verification for autonomous buyers. Validate x402 payment requirements before wallet signing with AgentResolver Guard: check payTo recipient, quoted USDC price, allowed network, asset, exact scheme and resource binding, then receive a fail-closed eligible/blocked decision and evidence. Start with GET /api/x402-ping for the lowest-friction $0.001 USDC end-to-end settlement canary. A successful canary exposes POST /api/verified-resolve ($0.02) for one missing capability decision and POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Guard is available through GET /api/payment-guard or canonical GET /api/x402-payment-preflight; POST remains available for body-bearing workflows. POST /api/resolve remains available for free capability discovery.",
   "x-guidance": "Validate x402 payment requirements before wallet signing with AgentResolver Guard. Funded agents should prefer GET: call GET /api/payment-guard?url=<https-endpoint> or canonical GET /api/x402-payment-preflight?url=<https-endpoint> for a $0.001 fail-closed check of payTo, quoted USDC price, network, asset, scheme and resource binding. Use GET /api/x402-ping for a $0.001 end-to-end wallet/facilitator/settlement test. After a successful canary, use POST /api/verified-resolve ($0.02) or POST /api/batch-verified-resolve ($0.05). POST /api/x402-payment-preflight remains compatible for body-bearing workflows. POST /api/resolve remains available for free capability discovery. A 402 is a quote, not spending authorization."
 };
 
