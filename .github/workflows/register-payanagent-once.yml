@@ -44,8 +44,8 @@ jobs:
           code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             --get 'https://payanagent.com/api/v1/offers'             --data-urlencode 'q=AgentResolver'             --data-urlencode 'offerType=api'             --data-urlencode 'limit=100' || printf '000')"
 
           if [ "$code" != "200" ]; then
-            echo "::warning::PayanAgent catalog lookup returned HTTP $code; continuing with bounded free registration."
-            echo "already_listed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::PayanAgent catalog lookup returned HTTP $code; refusing to create a provider without an idempotency check."
+            echo "already_listed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -126,7 +126,7 @@ jobs:
             local payload_file="$1"
             local response_file="$2"
             local code
-            code="$(curl -sS --connect-timeout 5 --max-time 25               -o "$response_file" -w '%{http_code}'               -X POST 'https://payanagent.com/api/v1/offers'               -H 'content-type: application/json'               -H "authorization: Bearer $PAYAN_API_KEY"               --data-binary @"$payload_file" || printf '000')"
+            code="$(curl -sS --retry 4 --retry-delay 2 --retry-all-errors --connect-timeout 5 --max-time 25               -o "$response_file" -w '%{http_code}'               -X POST 'https://payanagent.com/api/v1/offers'               -H 'content-type: application/json'               -H "authorization: Bearer $PAYAN_API_KEY"               --data-binary @"$payload_file" || printf '000')"
             if [ "$code" != "200" ] && [ "$code" != "201" ]; then
               echo "PayanAgent offer creation failed with HTTP $code" >&2
               cat "$response_file" >&2
