@@ -6,6 +6,7 @@ import {
   X402_BUYER_SETUP_URL,
   x402BuyerSetupChallengeError,
   x402BuyerSetupChallengeUrl,
+  x402ChallengeBuyerHandoff,
   x402BuyerSetup,
   x402BuyerSetupHint
 } from "../src/lib/x402BuyerSetup";
@@ -236,6 +237,7 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
 test("buyer setup hint points to the canonical free handoff", () => {
   const hint = x402BuyerSetupHint("x402-payment-preflight");
   assert.equal(hint.url, X402_BUYER_SETUP_URL);
+  assert.equal(hint.attributedUrl, x402BuyerSetupChallengeUrl("x402-payment-preflight"));
   assert.equal(hint.agentSkillsIndex, AGENT_SKILLS_INDEX_URL);
   assert.equal(hint.paymentGuardSkill, PAYMENT_GUARD_SKILL_URL);
   assert.equal(hint.paymentAuthorizationRequired, true);
@@ -335,4 +337,23 @@ test("buyer challenge handoff URLs carry bounded funnel attribution", () => {
     x402BuyerSetupChallengeError("x402-ping"),
     "Payment required. x402 buyer setup: https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping"
   );
+});
+
+
+test("challenge handoff embeds executable client install choices", () => {
+  const handoff = x402ChallengeBuyerHandoff("x402-payment-preflight");
+  assert.equal(handoff.type, "agentresolver_x402_buyer_handoff");
+  assert.equal(handoff.capabilityId, "x402-payment-preflight");
+  assert.equal(
+    handoff.setup,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-payment-preflight"
+  );
+  assert.equal(handoff.protocol, "x402");
+  assert.equal(handoff.retryHeader, "PAYMENT-SIGNATURE");
+  assert.equal(handoff.signerControlledByCaller, true);
+  assert.equal(handoff.spendAuthorizationRequired, true);
+  assert.match(handoff.clientInstalls.httpTypescript, /@x402\/fetch/);
+  assert.match(handoff.clientInstalls.mcpTypescript, /@x402\/mcp/);
+  assert.equal(handoff.clientInstalls.httpPython, "pip install x402");
+  assert.match(handoff.clientInstalls.agentSkill, /skills add waxsway\/agentresolver/);
 });
