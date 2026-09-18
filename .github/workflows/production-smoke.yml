@@ -214,6 +214,41 @@ jobs:
           check_402 'Solidity Selector' '/api/solidity-selector' '{"signature":"transfer(address,uint256)"}' 'solidity-selector' '10000'
           check_402 'EVM Units' '/api/evm-units' '{"mode":"parse","value":"1.5","decimals":18}' 'evm-units' '5000'
           check_402 'x402 Settlement Ping' '/api/x402-ping' '{"echo":"smoke"}' 'x402-ping' '1000'
+
+          settlement_ping_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/x402-ping-headers.txt)"
+          PAYMENT_REQUIRED="$settlement_ping_required" python3 - <<'PY'
+          import base64
+          import json
+          import os
+
+          raw = os.environ["PAYMENT_REQUIRED"].strip()
+          assert raw, "x402-ping PAYMENT-REQUIRED header missing"
+          raw += "=" * (-len(raw) % 4)
+          payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
+          assert payload.get("x402Version") == 2, "x402-ping must advertise x402 v2"
+          resource = payload.get("resource") or {}
+          assert resource.get("url") == "https://agentresolver.vercel.app/api/x402-ping", "x402-ping resource binding drifted"
+          accepts = payload.get("accepts") or []
+
+          base = next((item for item in accepts if item.get("network") == "eip155:8453"), None)
+          assert base is not None, "Base exact payment option missing"
+          assert base.get("scheme") == "exact"
+          assert str(base.get("amount")) == "1000"
+          assert base.get("asset") == "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+          assert base.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+          base_extra = base.get("extra") or {}
+          assert base_extra.get("name") == "USD Coin"
+          assert base_extra.get("version") == "2"
+
+          solana = next((item for item in accepts if item.get("network") == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"), None)
+          assert solana is not None, "Solana exact payment option missing"
+          assert solana.get("scheme") == "exact"
+          assert str(solana.get("amount")) == "1000"
+          assert solana.get("asset") == "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+          assert solana.get("payTo") == "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+          fee_payer = (solana.get("extra") or {}).get("feePayer")
+          assert isinstance(fee_payer, str) and fee_payer.strip(), "Solana feePayer missing"
+          PY
           check_402 'SHA-256' '/api/sha256' '{"input":"agentresolver"}' 'sha256' '1000'
           check_402 'SHA-512' '/api/sha512' '{"input":"agentresolver"}' 'sha512' '1000'
           check_402 'HMAC SHA-256' '/api/hmac-sha256' '{"input":"payload","secret":"secret"}' 'hmac-sha256' '1000'
