@@ -23,6 +23,37 @@ test("x402-ping PAYMENT-REQUIRED stays within an interoperability-friendly heade
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.pong, true);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.settledDelivery, true);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.next, undefined);
+  assert.equal(decoded.extensions?.agentresolver?.info?.version, 1);
+  assert.equal(
+    decoded.extensions?.agentresolver?.info?.setup,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping"
+  );
+  assert.equal(
+    decoded.extensions?.agentresolver?.info?.paymentGuard,
+    "https://agentresolver.vercel.app/api/payment-guard"
+  );
+  assert.equal(decoded.extensions?.agentresolver?.info?.retryHeader, "PAYMENT-SIGNATURE");
+  assert.equal(decoded.extensions?.agentresolver?.info?.signerControlledByCaller, true);
+  assert.equal(decoded.extensions?.agentresolver?.info?.spendAuthorizationRequired, true);
+  assert.equal(decoded.extensions?.agentresolver?.schema?.type, "object");
+  assert.ok(decoded.extensions?.agentresolver?.schema?.required?.includes("clients"));
+  assert.equal(
+    decoded.extensions?.agentresolver?.info?.clients?.httpTs?.schemes?.[0]?.[1],
+    "@x402/evm/exact/client"
+  );
+  assert.equal(
+    decoded.extensions?.agentresolver?.info?.clients?.python?.install,
+    'pip install "x402[httpx,evm]"'
+  );
+  assert.equal(
+    decoded.extensions?.agentresolver?.info?.clients?.python?.exactEvmRegistrationImport,
+    "from x402.mechanisms.evm.exact.register import register_exact_evm_client"
+  );
+  assert.equal(decoded.extensions?.agentresolver?.info?.clients?.walletMcp?.command, "x402-trinity-mcp");
+  assert.doesNotMatch(
+    JSON.stringify(decoded.extensions?.agentresolver),
+    /PRIVATE_KEY|seed phrase|0xYourPrivateKey/i
+  );
 });
 
 test("runtime discovery keeps preflight decision metadata compact", () => {
