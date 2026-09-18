@@ -41,7 +41,7 @@ test("x402Scout publishes the input-free canary rather than a malformed Guard in
 test("x402Scout lane retries hourly while absent and remains manually retryable", () => {
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /schedule:/);
-  assert.match(workflow, /cron: "29 \\* \\* \\* \\*"/);
+  assert.ok(workflow.includes('    - cron: "29 * * * *"'));
   assert.match(workflow, /paths:\n\s+- "\.github\/workflows\/x402scout-register-once\.yml"/);
 });
 
