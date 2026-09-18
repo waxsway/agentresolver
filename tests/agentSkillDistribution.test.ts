@@ -33,6 +33,20 @@ test("published skill mirrors the current GET-first Guard contract", () => {
 });
 
 
+test("installable Guard skill exposes the OpenAI Agents SDK signed-retry handoff", () => {
+  for (const text of [installable, published]) {
+    assert.match(text, /## OpenAI Agents SDK — approval-gated signed retry/);
+    assert.match(text, /@openai\/agents/);
+    assert.match(text, /openai-agents/);
+    assert.match(text, /needsApproval/);
+    assert.match(text, /needs_approval/);
+    assert.match(text, /Hosted MCP approval is \*\*not\*\* an x402 signer/i);
+    assert.match(text, /PAYMENT-SIGNATURE/);
+    assert.match(text, /second, independent approval/i);
+    assert.match(text, /Fail closed if the runtime cannot enforce approval/i);
+  }
+});
+
 test("installable Guard skill documents the Coinbase AgentKit confirmation-first payment loop", () => {
   assert.match(installable, /## Coinbase AgentKit/);
   assert.match(installable, /make_http_request/);
