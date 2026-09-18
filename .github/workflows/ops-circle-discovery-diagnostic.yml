@@ -12,46 +12,31 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 2
     steps:
-      - name: Exhaust Circle keyless x402 discovery
+      - name: Query Circle for AgentResolver directly
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json, urllib.parse, urllib.request
-          base="https://api.circle.com/v2/x402/discovery/resources"
-          needle_host="agentresolver.vercel.app"
-          needle_payto="0x66e19457ffc829e8ed74706f5c1399c6f6466de8"
-          limit=100
-          offset=0
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}' \
+            'https://api.circle.com/v2/x402/discovery/resources' \
+            --data-urlencode 'query=agentresolver.vercel.app' \
+            --data-urlencode 'limit=100')"
+          echo "CIRCLE_DISCOVERY_HTTP=$code"
+          test "$code" = "200"
+          python3 - "$body" <<'PY'
+          import json, pathlib, sys
+          p=json.loads(pathlib.Path(sys.argv[1]).read_text())
+          items=p.get("items") or []
           matches=[]
-          pages=0
-          total=None
-          while True:
-              url=base+"?"+urllib.parse.urlencode({"limit":limit,"offset":offset})
-              req=urllib.request.Request(url,headers={"user-agent":"AgentResolver-Circle-Diagnostic/1.0"})
-              with urllib.request.urlopen(req,timeout=20) as res:
-                  p=json.loads(res.read().decode())
-              pages+=1
-              items=p.get("items") or []
-              pag=p.get("pagination") or {}
-              if total is None:
-                  try: total=int(pag.get("total"))
-                  except Exception: total=None
-                  print("CIRCLE_PAGINATION="+json.dumps(pag,separators=(",",":")))
-              for item in items:
-                  raw=json.dumps(item,separators=(",",":"),sort_keys=True).lower()
-                  if needle_host in raw or needle_payto in raw:
-                      matches.append(item)
-              if not items or len(items)<limit: break
-              offset += len(items)
-              if total is not None and offset>=total: break
-              if pages>=100: raise SystemExit("pagination safety cap reached")
+          for item in items:
+              raw=json.dumps(item,separators=(",",":"),sort_keys=True).lower()
+              if "agentresolver.vercel.app" in raw or "0x66e19457ffc829e8ed74706f5c1399c6f6466de8" in raw:
+                  matches.append(item)
           print(json.dumps({
-              "pages":pages,
-              "itemsScanned":offset + (len(items) if 'items' in locals() else 0),
-              "reportedTotal":total,
+              "pagination":p.get("pagination"),
+              "returned":len(items),
               "agentresolverMatchCount":len(matches),
               "matches":matches[:25],
           },indent=2)[:30000])
