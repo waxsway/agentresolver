@@ -70,7 +70,9 @@ jobs:
           canonical_url="$(jq -r '.resource.canonical_url // empty' "$body")"
 
           if [ -z "$observatory_id" ] || [ "$canonical_url" != "$RESOURCE_URL" ]; then
-            echo "::warning::vet402 returned a 200 response without the expected AgentResolver resource identity."
+            echo "catalogued=false" >> "$GITHUB_OUTPUT"
+            echo "VET402_CATALOGUED=false"
+            echo "::notice::vet402 resolve knows the query shape but has not imported the AgentResolver paid canary yet."
             exit 0
           fi
 
@@ -171,12 +173,12 @@ jobs:
           SETTLED: ${{ steps.purchases.outputs.settled }}
         run: |
           {
-            echo "## vet402 autonomous-buyer audit"
-            echo
-            echo "- Resource: `$RESOURCE_URL`"
-            echo "- Catalogued: `${CATALOGUED:-false}`"
-            echo "- Published purchase attempts: `${ATTEMPTS:-0}`"
-            echo "- Published settled receipts: `${SETTLED:-0}`"
-            echo
-            echo "This workflow is observation-only: it sends no payment, no seller submission, no identity data, and no PAYMENT-SIGNATURE."
+            printf '%s\n' '## vet402 autonomous-buyer audit'
+            printf '\n'
+            printf '%s\n' "- Resource: $RESOURCE_URL"
+            printf '%s\n' "- Catalogued: ${CATALOGUED:-false}"
+            printf '%s\n' "- Published purchase attempts: ${ATTEMPTS:-0}"
+            printf '%s\n' "- Published settled receipts: ${SETTLED:-0}"
+            printf '\n'
+            printf '%s\n' 'This workflow is observation-only: it sends no payment, no seller submission, no identity data, and no PAYMENT-SIGNATURE.'
           } >> "$GITHUB_STEP_SUMMARY"

@@ -17,6 +17,10 @@ test("vet402 audit is observation-only and watches the paid canary", () => {
 test("vet402 audit tolerates catalog propagation without failing deploys", () => {
   assert.match(source, /VET402_CATALOGUED=false/);
   assert.match(source, /vet402 has not imported the AgentResolver paid canary yet/);
+  assert.match(source, /resolve knows the query shape but has not imported the AgentResolver paid canary yet/);
+  assert.match(source, /echo "catalogued=false" >> "\$GITHUB_OUTPUT"/);
   assert.match(source, /workflow_run:/);
   assert.match(source, /schedule:/);
+  assert.doesNotMatch(source, /echo "- Resource: \`/);
+  assert.match(source, /printf '%s\\n' "- Resource: \$RESOURCE_URL"/);
 });
