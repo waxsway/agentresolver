@@ -152,10 +152,12 @@ export function x402ChallengeBuyerHandoff(
   } as const;
 }
 
-export function x402ChallengeHeaderHandoff(capabilityId: string) {
+export function x402ChallengeHeaderHandoff(capabilityId: string, method?: string | null) {
+  const challengeMethod = normalizeX402ChallengeMethod(method);
   const info = {
     version: 1,
-    setup: x402BuyerSetupChallengeUrl(capabilityId),
+    ...(challengeMethod ? { method: challengeMethod } : {}),
+    setup: x402BuyerSetupChallengeUrl(capabilityId, challengeMethod),
     paymentGuard: "https://agentresolver.vercel.app/api/payment-guard",
     retryHeader: "PAYMENT-SIGNATURE",
     signerControlledByCaller: true,
@@ -214,6 +216,7 @@ export function x402ChallengeHeaderHandoff(capabilityId: string) {
       ],
       properties: {
         version: { type: "integer", const: 1 },
+        method: { type: "string", enum: ["GET", "POST", "HEAD"] },
         setup: { type: "string" },
         paymentGuard: { type: "string" },
         retryHeader: { type: "string", const: "PAYMENT-SIGNATURE" },
