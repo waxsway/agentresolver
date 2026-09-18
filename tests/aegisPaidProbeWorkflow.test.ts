@@ -22,3 +22,13 @@ test("Aegis lane submits the canonical $0.001 Base canary", () => {
   assert.match(workflow, /item\.get\("network"\) == "eip155:8453"/);
   assert.match(workflow, /str\(item\.get\("amount"\)\) == "1000"/);
 });
+
+
+test("Aegis provider outages do not fail the zero-spend lane", () => {
+  const workflow = readFileSync(".github/workflows/register-aegis-paid-canary-once.yml", "utf8");
+  assert.match(workflow, /530\|000/);
+  assert.match(workflow, /temporarily unavailable/);
+  assert.match(workflow, /touch \/tmp\/aegis-unavailable/);
+  assert.match(workflow, /Skipping Aegis discovery because its lint surface is unavailable/);
+  assert.match(workflow, /free lint unexpectedly requested payment\. No payment was attempted/);
+});
