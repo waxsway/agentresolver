@@ -49,7 +49,7 @@ function paidNextAction(
   return {
     capabilityId: capability.id,
     endpoint: `${CANONICAL_ORIGIN}${capability.endpoint}`,
-    method: "POST" as const,
+    method: capabilityId === "x402-payment-preflight" ? "GET" as const : "POST" as const,
     priceUsd: capability.priceUsd,
     useWhen: capability.useWhen,
     inputExample: capability.example
