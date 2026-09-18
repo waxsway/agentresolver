@@ -16,9 +16,9 @@ concurrency:
 
 jobs:
   deploy:
-    # Emergency guard: canonical production is pinned to the last healthy CDP runtime
-    # while the prebuilt runtime-env handoff is repaired. Remove only after a
-    # credential-preserving deploy is proven in CI.
+    # Emergency guard: canonical production is pinned to the last healthy CDP runtime.
+    # Remove only after the staged Vercel-managed source-build path below is proven
+    # without exposing sensitive production environment values to GitHub Actions.
     if: >-
       false &&
       github.event.workflow_run.conclusion == 'success' &&
@@ -215,20 +215,6 @@ jobs:
           mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
 
-      - name: Pull production configuration
-        if: >-
-          steps.initial_freshness.outputs.fresh == 'true' &&
-          steps.application_changes.outputs.deploy == 'true' &&
-          steps.prebuild_freshness.outputs.fresh == 'true'
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-
-      - name: Build validated production artifact
-        if: >-
-          steps.initial_freshness.outputs.fresh == 'true' &&
-          steps.application_changes.outputs.deploy == 'true' &&
-          steps.prebuild_freshness.outputs.fresh == 'true'
-        run: vercel build --prod --token="$VERCEL_TOKEN"
-
       - name: Recheck main immediately before deploy
         if: >-
           steps.initial_freshness.outputs.fresh == 'true' &&
@@ -243,12 +229,12 @@ jobs:
           echo "current_main=$current_main"
           if [ "$current_main" != "$VALIDATED_SHA" ]; then
             echo "fresh=false" >> "$GITHUB_OUTPUT"
-            echo "Built artifact is now stale; refusing to deploy it."
+            echo "Validated source is now stale; refusing to deploy it."
           else
             echo "fresh=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Deploy prebuilt artifact to production
+      - name: Stage Vercel-managed production build, verify, and promote
         id: production_deploy
         if: >-
           steps.initial_freshness.outputs.fresh == 'true' &&
@@ -258,7 +244,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          deployment_url="$(vercel env run -e production --token="$VERCEL_TOKEN" -- node .github/scripts/vercel-deploy-prebuilt-runtime-env.mjs .vercel/.env.production.local)"
+          deployment_url="$(node .github/scripts/vercel-deploy-source-production.mjs)"
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
           echo "deployed=$deployment_url"
 
