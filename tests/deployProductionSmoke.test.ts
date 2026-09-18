@@ -54,3 +54,11 @@ test("production deploy preflight probes are marked internal", () => {
     /-w '%\{http_code\}' -H 'x-agentresolver-internal: 1' "\$BASE_URL\/api\/x402-payment-preflight\?url=/
   );
 });
+
+
+test("deploy drift probe command closes command substitution", () => {
+  assert.match(
+    workflow,
+    /-H 'x-agentresolver-internal: 1' \\\n\s+"\$BASE_URL\/api\/x402-payment-preflight\?url=https%3A%2F%2Fexample\.com%2Fpaid&method=GET&maxPriceUsd=0\.01" \|\| true\)"/
+  );
+});
