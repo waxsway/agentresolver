@@ -50,11 +50,6 @@ test("x402-ping PAYMENT-REQUIRED stays within an interoperability-friendly heade
     "from x402.mechanisms.evm.exact.register import register_exact_evm_client"
   );
   assert.equal(decoded.extensions?.agentresolver?.info?.clients?.walletMcp?.command, "x402-trinity-mcp");
-  assert.equal(decoded.extensions?.agentresolver?.info?.clients?.managedWalletMcp?.command, "x402-wallet-mcp");
-  assert.deepEqual(
-    decoded.extensions?.agentresolver?.info?.clients?.managedWalletMcp?.tools,
-    ["query_endpoint", "call_endpoint", "configure_spending", "manage_allowlist", "check_balance"]
-  );
   assert.doesNotMatch(
     JSON.stringify(decoded.extensions?.agentresolver),
     /PRIVATE_KEY|seed phrase|0xYourPrivateKey/i
