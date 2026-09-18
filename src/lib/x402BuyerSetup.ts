@@ -460,11 +460,37 @@ export function x402BuyerSetupHint(capabilityId: string) {
   return {
     type: "agentresolver_x402_buyer_setup",
     capabilityId,
-    url: X402_BUYER_SETUP_URL,
+    url: x402BuyerSetupChallengeUrl(capabilityId),
+    retry: {
+      challengeHeader: "PAYMENT-REQUIRED",
+      retryHeader: "PAYMENT-SIGNATURE",
+      paymentAuthorizationRequired: true,
+      signerControlledByCaller: true
+    },
+    clients: {
+      httpTypescript: {
+        package: "@x402/fetch",
+        installCommand: "npm install @x402/core @x402/evm @x402/svm @x402/fetch",
+        wrapper: "wrapFetchWithPayment"
+      },
+      mcpTypescript: {
+        package: "@x402/mcp",
+        installCommand: "npm install @x402/mcp @x402/evm @x402/svm",
+        factory: "createx402MCPClient"
+      },
+      pythonHttpx: {
+        package: "x402",
+        installCommand: "pip install x402",
+        client: "x402HttpxClient"
+      },
+      agentSkill: {
+        installCommand: "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard"
+      }
+    },
     agentSkillsIndex: AGENT_SKILLS_INDEX_URL,
     paymentGuardSkill: PAYMENT_GUARD_SKILL_URL,
     paymentAuthorizationRequired: true,
     signerControlledByCaller: true,
-    message: "This host reached a valid x402 challenge but must use an x402-aware client plus its own signer and spend policy to make an authorized retry. For target x402 purchases, run AgentResolver Guard before each autonomous spend. AgentResolver never requests wallet secrets or authorizes spend."
+    message: "Use an x402-aware client with a caller-controlled signer and caller-owned spend policy, then retry with PAYMENT-SIGNATURE. For target x402 purchases, run AgentResolver Guard before each autonomous spend. AgentResolver never requests wallet secrets or authorizes spend."
   } as const;
 }
