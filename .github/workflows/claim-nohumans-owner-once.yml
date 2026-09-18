@@ -21,7 +21,8 @@ jobs:
       VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
       VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      LISTING_ID: 28e33786-f07
+      LISTING_ID: e37797ba-55b
+      CLEAN_DEPLOYMENT_ID: dpl_DjJ8ZR6yYMm3FttUP1jVpXYuCUm2
       CANONICAL_URL: https://agentresolver.vercel.app
     steps:
       - uses: actions/checkout@v5
@@ -145,23 +146,21 @@ jobs:
           print(json.dumps(obj,indent=2))
           PY
 
-      - name: Store NoHumans owner token securely for seller operations
+      - name: Store fresh NoHumans owner token securely
         shell: bash
         run: |
           set -euo pipefail
-          vercel env rm NOHUMANS_OWNER_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
-          vercel env add NOHUMANS_OWNER_TOKEN production --sensitive --token="$VERCEL_TOKEN" < /tmp/owner-token >/dev/null
+          vercel env rm NOHUMANS_OWNER_TOKEN_CDP_CANARY production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          vercel env add NOHUMANS_OWNER_TOKEN_CDP_CANARY production --sensitive --token="$VERCEL_TOKEN" < /tmp/owner-token >/dev/null
           rm -f /tmp/owner-token
 
-      - name: Remove temporary public claim proof
+      - name: Remove temporary public claim proof and restore clean deployment
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           vercel env rm NOHUMANS_CLAIM_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
-          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null
-          vercel build --prod --token="$VERCEL_TOKEN" >/dev/null
-          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" >/tmp/cleanup-deploy-url.txt
+          vercel promote "$CLEAN_DEPLOYMENT_ID" --yes --token="$VERCEL_TOKEN" >/tmp/cleanup-promote.txt
 
       - name: Verify proof route closed again
         if: success()
