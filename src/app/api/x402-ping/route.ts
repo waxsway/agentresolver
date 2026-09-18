@@ -19,7 +19,7 @@ const route = createDeterministicPaidRoute("x402-ping", async (req) => {
     echo,
     next: X402_PING_NEXT_ACTIONS
   };
-}, { paidGet: true, minimalChallenge: true });
+}, { paidGet: true });
 export const POST = route.POST;
 export const GET = route.GET;
 export const OPTIONS = route.OPTIONS;
