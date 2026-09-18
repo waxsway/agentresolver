@@ -11,7 +11,7 @@ import { logPaidCapabilityAttempt, logPaidRetryRejection, logX402Settlement } fr
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
-import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, x402BuyerSetupChallengeError, x402BuyerSetupChallengeUrl, x402ChallengeBuyerHandoff, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
+import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeError, x402BuyerSetupChallengeUrl, x402ChallengeBuyerHandoff, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -23,6 +23,24 @@ import {
 type JsonObject = Record<string, unknown>;
 type Execute = (request: NextRequest) => Promise<JsonObject> | JsonObject;
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
+
+export function normalizeX402PaymentRequest(req: NextRequest) {
+  const sanitizedUrl = stripAgentResolverInfrastructureQueryParams(req.url);
+  if (!sanitizedUrl || sanitizedUrl === req.url) return req;
+
+  const method = req.method.toUpperCase();
+  const init: RequestInit & { duplex?: "half" } = {
+    method: req.method,
+    headers: new Headers(req.headers),
+    redirect: req.redirect,
+    signal: req.signal
+  };
+  if (method !== "GET" && method !== "HEAD" && req.body) {
+    init.body = req.body;
+    init.duplex = "half";
+  }
+  return new NextRequest(sanitizedUrl, init);
+}
 
 function decodePaymentRequiredHeader(value: string | null): JsonObject | null {
   if (!value) return null;
@@ -443,8 +461,9 @@ export function createDeterministicPaidRoute(
     logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
     try {
       const paidHandler = await getPaidHandler();
+      const paymentRequest = normalizeX402PaymentRequest(req);
       const response = stampInfrastructureHeaders(
-        await paidHandler(req),
+        await paidHandler(paymentRequest),
         capabilityId,
         requestId,
         req.method,
