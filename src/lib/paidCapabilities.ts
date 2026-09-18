@@ -498,6 +498,56 @@ export const PAID_CAPABILITIES = {
       description: "Paid $0.05 USDC on Base or Solana batch live verification for 2–4 capability decisions using unpaid MCP and x402/HTTP evidence. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
+  "provider-launch-check": {
+    id: "provider-launch-check",
+    name: "Provider Launch Check",
+    operationId: "providerLaunchCheck",
+    endpoint: "/api/provider-launch-check",
+    price: "$0.05",
+    priceUsd: 0.05,
+    atomicAmount: "50000",
+    description: "Paid seller-side readiness and x402 contract verification for providers that want AgentResolver distribution. Produces a bounded registryEntry only after settlement and technical checks.",
+    useWhen: "A machine-service provider wants to join the AgentResolver provider network and needs a paid readiness/payment-contract check before submitting its registry entry.",
+    costClass: "bounded-network",
+    tags: ["provider onboarding", "seller verification", "agent distribution", "x402", "provider network", "launch check"],
+    inputSchema: {
+      type: "object",
+      required: ["providerId", "providerName", "capabilityId", "name", "description", "origin", "endpoint", "priceUsd"],
+      additionalProperties: false,
+      properties: {
+        providerId: { type: "string", minLength: 1, maxLength: 80 },
+        providerName: { type: "string", minLength: 1, maxLength: 120 },
+        capabilityId: { type: "string", minLength: 1, maxLength: 120 },
+        name: { type: "string", minLength: 1, maxLength: 160 },
+        description: { type: "string", minLength: 1, maxLength: 500 },
+        origin: { type: "string", pattern: "^https://" },
+        endpoint: { type: "string", pattern: "^https://" },
+        method: { type: "string", enum: ["GET", "POST"], default: "GET" },
+        probeUrl: { type: "string", pattern: "^https://" },
+        priceUsd: { type: "number", exclusiveMinimum: 0, maximum: 1000 },
+        network: { type: "string", default: "eip155:8453" },
+        tags: { type: "array", maxItems: 20, items: { type: "string", maxLength: 80 } }
+      }
+    },
+    example: {
+      providerId: "example-provider",
+      providerName: "Example Provider",
+      capabilityId: "web-search",
+      name: "Web Search",
+      description: "Search public web data.",
+      origin: "https://provider.example",
+      endpoint: "https://provider.example/api/search",
+      method: "GET",
+      priceUsd: 0.01,
+      network: "eip155:8453",
+      tags: ["search", "web"]
+    },
+    quoteTool: {
+      name: "provider_launch_check",
+      title: "Provider launch check — $0.05",
+      description: "Paid $0.05 USDC seller-side readiness and x402 contract verification before AgentResolver provider-network review."
+    }
+  },
   "provider-attribution-settle": {
     id: "provider-attribution-settle",
     name: "Provider Attribution Settlement",

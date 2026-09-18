@@ -36,6 +36,8 @@ export function GET(req: Request) {
       execute: `${baseUrl}/api/execute`,
       attributionHeader: "x-agentresolver-attribution-id",
       providerSettlement: `${baseUrl}/api/provider-attribution-settle`,
+      paidProviderLaunchCheck: `${baseUrl}/api/provider-launch-check`,
+      providerLaunchCheckPriceUsd: 0.05,
       arbitraryProxying: false,
       callerSpendingAuthorized: false
     },

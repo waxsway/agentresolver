@@ -13,19 +13,26 @@ export default function ProvidersPage() {
       <div className="eyebrow">AGENTRESOLVER FOR PROVIDERS</div>
       <h1>Sell to agents without making every agent discover you first.</h1>
       <p className="lead">
-        AgentResolver routes machine intent to registered services. Organic
-        discovery stays independent, sponsored placement is explicitly labeled,
-        and a provider-funded pilot can settle an attribution fee after a provider
-        reports an attributed request as fulfilled.
+        AgentResolver routes machine intent to registered services. Providers can
+        buy a machine-native launch check, submit the generated registry packet
+        for review, and fund attributed distribution after fulfillment.
       </p>
 
       <div className="grid">
         <section>
+          <h2>Paid launch check</h2>
+          <p>
+            Buy a $0.05 USDC x402 readiness and payment-contract check at
+            <code> /api/provider-launch-check</code>. A passing paid result returns
+            the bounded registry packet used for provider-network review.
+          </p>
+        </section>
+        <section>
           <h2>Registered routing</h2>
           <p>
-            AgentResolver returns execution-ready handoffs only for registered
-            routes. It does not proxy arbitrary URLs, hold wallet keys, forward
-            payment signatures, or authorize buyer spend.
+            AgentResolver returns execution-ready handoffs only for reviewed
+            registered routes. It does not proxy arbitrary URLs, hold wallet
+            keys, forward payment signatures, or authorize buyer spend.
           </p>
         </section>
         <section>
@@ -33,15 +40,15 @@ export default function ProvidersPage() {
           <p>
             Pilot partners can fund distribution instead of requiring every
             buyer to pay AgentResolver separately. Current machine-readable
-            pilot terms are published through the provider network API.
+            success-fee terms are published through the provider network API.
           </p>
         </section>
         <section>
           <h2>Sponsored discovery</h2>
           <p>
-            Providers can also apply for disclosed relevance-limited sponsored
-            placement. Sponsorship never changes the organic ranking contract.
-            Applying creates no purchase or financial commitment.
+            Providers can separately apply for disclosed relevance-limited
+            sponsored placement. Sponsorship never changes the organic ranking
+            contract and applying creates no purchase or financial commitment.
           </p>
         </section>
       </div>
@@ -49,11 +56,10 @@ export default function ProvidersPage() {
       <section>
         <h2>Machine flow</h2>
         <p>
-          Agents resolve a capability, receive registered provider routes, ask
-          <code> /api/execute </code> for a handoff and attribution ID, then call
-          the selected provider directly under their own trust and spending
-          policy. Provider partners can settle the attribution fee through
-          <code> /api/provider-attribution-settle</code>.
+          Provider pays for launch verification → submits the returned registry
+          entry → approved route becomes discoverable → agents receive attributed
+          direct handoffs → provider can settle the attribution fee after a
+          fulfilled request.
         </p>
         <p>
           A successful provider-fee settlement proves that the provider paid
@@ -66,9 +72,8 @@ export default function ProvidersPage() {
         <h2>Privacy-conscious reporting</h2>
         <p>
           The routing layer emits hashed demand and attribution events rather
-          than raw goals or raw IP addresses. During the pilot, operator
-          reporting uses existing runtime telemetry; no new paid analytics
-          storage service has been introduced.
+          than raw goals or raw IP addresses. Pilot reporting uses existing
+          runtime telemetry; no new paid analytics storage service is required.
         </p>
         <p>
           <a className="button" href={sponsorshipApply}>
@@ -79,9 +84,10 @@ export default function ProvidersPage() {
 
       <p className="links">
         <a href="/api/providers">Provider network API</a> ·{" "}
+        <a href="/api/provider-launch-check">Paid launch check</a> ·{" "}
         <a href="/provider-integration.json">Integration contract</a> ·{" "}
-        <a href="/api/sponsorship">Sponsorship info</a> ·{" "}
-        <a href="/docs">Integration docs</a>
+        <a href="/provider-onboarding.md">Onboarding contract</a> ·{" "}
+        <a href="/api/sponsorship">Sponsorship info</a>
       </p>
     </main>
   );

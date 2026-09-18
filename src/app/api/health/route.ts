@@ -24,6 +24,7 @@ export function GET() {
       providerNetwork: "/api/providers",
       transactionRouter: "/api/execute",
       providerAttributionSettlement: "/api/provider-attribution-settle",
+      providerLaunchCheck: "/api/provider-launch-check",
       mcp: "/mcp",
       serverCard: "/mcp/server-card",
       openapi: "/openapi.json",

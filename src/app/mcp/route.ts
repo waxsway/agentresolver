@@ -19,6 +19,7 @@ import { X402_PING_NEXT_ACTIONS } from "@/lib/x402PingDiscovery";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 import { classifyTraffic } from "@/lib/trafficClassification";
 import { resolveProviderRoutes } from "@/lib/providerNetwork";
+import { parseProviderLaunchCheckInput, runProviderLaunchCheck } from "@/lib/providerLaunchCheck";
 import {
   getActiveSponsor,
   logSponsorImpression,
@@ -72,6 +73,7 @@ const readinessProduct = getPaidCapability("agent-readiness");
 const openApiSelectProduct = getPaidCapability("openapi-select");
 const verifiedResolveProduct = getPaidCapability("verified-resolve");
 const batchVerifiedResolveProduct = getPaidCapability("batch-verified-resolve");
+const providerLaunchCheckProduct = getPaidCapability("provider-launch-check");
 
 const x402PingNextActionSchema = z.looseObject({
   capabilityId: z.string(),
@@ -736,6 +738,52 @@ const handler = createMcpHandler(() => {
       at: new Date().toISOString(),
       score: report.score,
       grade: report.grade
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
+
+  server.registerTool("provider_launch_check", {
+    title: providerLaunchCheckProduct.quoteTool.title,
+    description: providerLaunchCheckProduct.quoteTool.description,
+    inputSchema: z.object({
+      providerId: z.string().min(1).max(80),
+      providerName: z.string().min(1).max(120),
+      capabilityId: z.string().min(1).max(120),
+      name: z.string().min(1).max(160),
+      description: z.string().min(1).max(500),
+      origin: z.string().url(),
+      endpoint: z.string().url(),
+      method: z.enum(["GET", "POST"]).optional(),
+      probeUrl: z.string().url().optional(),
+      priceUsd: z.number().positive().max(1000),
+      network: z.string().max(120).optional(),
+      tags: z.array(z.string().max(80)).max(20).optional()
+    }),
+    annotations: {
+      title: providerLaunchCheckProduct.quoteTool.title,
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true
+    }
+  }, createLazyPaidMcpTool<Record<string, unknown>>("provider-launch-check", async (input) => {
+    logToolCall("provider_launch_check", {
+      priceUsd: providerLaunchCheckProduct.priceUsd,
+      mode: "direct_paid_mcp"
+    });
+    const parsed = parseProviderLaunchCheckInput(input);
+    const report = await runProviderLaunchCheck(parsed);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "provider-launch-check",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      providerId: parsed.providerId,
+      providerCapabilityId: parsed.capabilityId,
+      eligibleForRegistryReview: report.eligibleForRegistryReview
     }));
     return {
       content: [{ type: "text", text: JSON.stringify(report) }],
