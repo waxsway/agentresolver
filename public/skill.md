@@ -113,6 +113,21 @@ For EVM identifiers, address equality is case-insensitive. For Solana, Base58 as
 For HTTP clients, the free buyer setup exposes equivalent pre-sign gates: `paymentRequirementsSelector` for `@x402/fetch` and `@x402/axios`, and client policies plus `on_before_payment_creation` / `AbortResult` for Python `x402HttpxClient`.
 
 
+## OpenAI Agents SDK — approval-gated signed retry
+
+For OpenAI Agents SDK hosts, use AgentResolver's remote MCP only for discovery/tool access and keep x402 signing in a **caller-controlled** payment tool or self-hosted x402 MCP client that owns the caller's signer.
+
+- JavaScript: `@openai/agents`; mark the x402 execution function tool with `needsApproval`. For hosted MCP, keep `requireApproval: "always"` and handle `onApproval`.
+- Python: `openai-agents`; mark the x402 execution function tool with `needs_approval`. For hosted MCP use `require_approval` / `on_approval_request`; for local MCP use `require_approval` and pre-approval input guardrails where appropriate.
+- Hosted MCP approval is **not** an x402 signer. The signer remains outside AgentResolver and outside the hosted MCP approval callback.
+- First obtain the Guard 402 without paying. Only after the caller's policy approves the separate **$0.001 Guard fee** may the caller-controlled payment tool create the signed retry with `PAYMENT-SIGNATURE`.
+- Require the paid Guard response to return `decision === "eligible"` and verify amount, asset, network, payTo, scheme, and resource binding against caller policy.
+- Require a **second, independent approval** before signing the original target payment. Guard eligibility never authorizes that target spend.
+- Fail closed if the runtime cannot enforce approval before the payment tool creates or sends `PAYMENT-SIGNATURE`.
+
+The full machine-readable OpenAI Agents SDK handoff is also available from:
+`https://agentresolver.vercel.app/api/x402-client-setup`
+
 ## Coinbase AgentKit
 
 For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead of writing a custom payment loop. AgentKit only allows HTTP x402 actions against registered services, and dynamic registration is disabled by default unless the host enables it.
