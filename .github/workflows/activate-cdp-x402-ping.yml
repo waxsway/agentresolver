@@ -71,7 +71,8 @@ jobs:
           payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
           envs = payload.get("envs", []) if isinstance(payload, dict) else []
 
-          required = {"CDP_API_KEY_ID", "CDP_API_KEY_SECRET"}
+          id_keys = {"CDP_API_KEY_ID", "CDI_API_KEY_ID"}
+          secret_keys = {"CDP_API_KEY_SECRET", "CDP_API_SECRET", "CDI_API_KEY_SECRET", "CDI_API_SECRET"}
           production_keys = set()
           for item in envs:
               if not isinstance(item, dict):
@@ -82,15 +83,17 @@ jobs:
               if "production" in target and isinstance(item.get("key"), str):
                   production_keys.add(item["key"])
 
-          print("true" if required.issubset(production_keys) else "false")
+          has_id = bool(id_keys & production_keys)
+          has_secret = bool(secret_keys & production_keys)
+          print("true" if has_id and has_secret else "false")
           PY
           )"
 
           echo "ready=$ready" >> "$GITHUB_OUTPUT"
           if [ "$ready" != "true" ]; then
-            echo "::notice::Coinbase CDP credentials are not present in the Vercel production environment. CDP remains disabled."
+            echo "::notice::Coinbase CDP API key ID/secret are not present under a supported production alias pair. CDP remains disabled."
           else
-            echo "Both Coinbase CDP credential keys are present in Vercel production; activation may proceed."
+            echo "Coinbase CDP API key ID and secret are present in Vercel production under supported names; activation may proceed."
           fi
 
       - name: Inspect canonical production rail state
