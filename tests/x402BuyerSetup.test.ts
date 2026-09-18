@@ -139,6 +139,45 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
     )
   );
   assert.match(setup.clients.http.axios.authorizationRule, /caller-owned policy/i);
+  assert.equal(
+    setup.clients.http.typescript.preSignGuardAuthorization.mechanism,
+    "paymentRequirementsSelector"
+  );
+  assert.equal(
+    setup.clients.http.typescript.preSignGuardAuthorization.stage,
+    "after_402_before_payment_payload_creation"
+  );
+  assert.equal(
+    setup.clients.http.typescript.preSignGuardAuthorization.guardUrl,
+    "https://agentresolver.vercel.app/api/payment-guard"
+  );
+  assert.equal(
+    setup.clients.http.typescript.preSignGuardAuthorization.expectedRequirements[0].amount,
+    "1000"
+  );
+  assert.equal(
+    setup.clients.http.axios.preSignGuardAuthorization.mechanism,
+    "paymentRequirementsSelector"
+  );
+  assert.match(
+    setup.clients.http.axios.preSignGuardAuthorization.rule,
+    /reject every unmatched requirement/i
+  );
+  assert.equal(
+    setup.clients.http.python.preSignGuardAuthorization.hook,
+    "on_before_payment_creation"
+  );
+  assert.equal(
+    setup.clients.http.python.preSignGuardAuthorization.abortType,
+    "AbortResult"
+  );
+  assert.ok(
+    setup.clients.http.python.preSignGuardAuthorization.mechanisms.includes("client_policies")
+  );
+  assert.match(
+    setup.clients.http.python.preSignGuardAuthorization.rule,
+    /before a payment payload is created/i
+  );
   assert.equal(setup.clients.http.python.package, "x402");
   assert.equal(setup.clients.http.python.client, "x402HttpxClient");
   assert.match(setup.clients.http.python.installCommand, /pip install x402/);
