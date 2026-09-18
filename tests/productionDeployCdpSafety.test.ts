@@ -4,10 +4,10 @@ import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
 
-test("production deploy is re-armed only after successful main CI", () => {
+test("automatic production deploy is hard-disabled after the one-shot release attempt", () => {
+  assert.match(workflow, /false &&/);
   assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(workflow, /github\.event\.workflow_run\.head_branch == 'main'/);
-  assert.doesNotMatch(workflow, /false &&/);
 });
 
 test("production deploy uses the proven prebuilt path and verifies the isolated CDP canary", () => {
