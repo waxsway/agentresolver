@@ -1,0 +1,45 @@
+name: Restore Clean Production After NoHumans Claim
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-clean-after-nohumans.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      CLEAN_DEPLOYMENT_ID: dpl_DjJ8ZR6yYMm3FttUP1jVpXYuCUm2
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Promote known-clean deployment without rebuilding
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 30 -o /tmp/promote.json -w '%{http_code}' \
+            -X POST "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/promote/$CLEAN_DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN")"
+          echo "PROMOTE_HTTP=$code"
+          case "$code" in 200|201|202) ;; *) cat /tmp/promote.json; exit 1 ;; esac
+
+      - name: Verify temporary NoHumans proof is closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..30}; do
+            code="$(curl -sS --max-time 15 -o /tmp/claim.txt -w '%{http_code}' https://agentresolver.vercel.app/.well-known/nohumans-claim || true)"
+            if [ "$code" = "404" ]; then
+              echo "NOHUMANS_PUBLIC_PROOF_CLOSED=true"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Proof route did not close after clean deployment promotion." >&2
+          exit 1
