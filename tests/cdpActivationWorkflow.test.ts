@@ -5,33 +5,29 @@ import test from "node:test";
 const workflow = readFileSync(".github/workflows/activate-cdp-x402-ping.yml", "utf8");
 const health = readFileSync("src/app/api/health/route.ts", "utf8");
 
-test("CDP activation stays dormant until both Coinbase API credentials exist", () => {
-  assert.match(workflow, /CDP_API_KEY_ID: \$\{\{ secrets\.CDP_API_KEY_ID \}\}/);
-  assert.match(workflow, /CDP_API_KEY_SECRET: \$\{\{ secrets\.CDP_API_KEY_SECRET \}\}/);
-  assert.match(workflow, /Coinbase CDP credentials are not configured\. CDP remains disabled/);
-  assert.match(workflow, /ready=false/);
+test("CDP activation stays dormant until both Coinbase credentials exist in Vercel production", () => {
+  assert.match(workflow, /\/v10\/projects\/\$VERCEL_PROJECT_ID\/env\?teamId=\$VERCEL_ORG_ID/);
+  assert.match(workflow, /required = \{"CDP_API_KEY_ID", "CDP_API_KEY_SECRET"\}/);
+  assert.match(workflow, /"production" in target/);
+  assert.match(workflow, /CDP remains disabled/);
+  assert.doesNotMatch(workflow, /secrets\.CDP_API_KEY_ID|secrets\.CDP_API_KEY_SECRET/);
+  assert.doesNotMatch(workflow, /decrypt=true/);
 });
 
-test("CDP activation is bounded to x402-ping and does not enable Circle", () => {
-  assert.match(workflow, /AGENTRESOLVER_CDP_FACILITATOR_ENABLED/);
+test("CDP activation only mutates scoped non-secret flags and does not enable Circle", () => {
+  assert.match(workflow, /"key": "AGENTRESOLVER_CDP_FACILITATOR_ENABLED"/);
   assert.match(workflow, /"value": "1"/);
-  assert.match(workflow, /AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES/);
+  assert.match(workflow, /"key": "AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES"/);
   assert.match(workflow, /"value": "x402-ping"/);
   assert.match(workflow, /Circle Gateway is enabled in canonical production\. Refusing CDP activation/);
   assert.doesNotMatch(workflow, /"key": "AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED"/);
-});
-
-test("CDP credential values are sent only as sensitive Vercel environment entries", () => {
-  assert.match(workflow, /"key": "CDP_API_KEY_ID",[\s\S]*?"type": "sensitive"/);
-  assert.match(workflow, /"key": "CDP_API_KEY_SECRET",[\s\S]*?"type": "sensitive"/);
-  assert.match(workflow, /\/v10\/projects\/\$VERCEL_PROJECT_ID\/env\?upsert=true&teamId=\$VERCEL_ORG_ID/);
-  assert.doesNotMatch(workflow, /echo "\$CDP_API_KEY_SECRET"/);
-  assert.doesNotMatch(workflow, /private.?key|seed phrase/i);
+  assert.doesNotMatch(workflow, /"key": "CDP_API_KEY_ID"|"key": "CDP_API_KEY_SECRET"/);
 });
 
 test("CDP activation rechecks main and verifies a real unsigned production challenge", () => {
   assert.match(workflow, /git ls-remote origin refs\/heads\/main/);
   assert.match(workflow, /Refusing to deploy stale code/);
+  assert.match(workflow, /vercel pull --yes --environment=production/);
   assert.match(workflow, /vercel build --prod/);
   assert.match(workflow, /vercel deploy --prebuilt --prod/);
   assert.match(workflow, /api\/x402-ping/);
@@ -39,6 +35,13 @@ test("CDP activation rechecks main and verifies a real unsigned production chall
   assert.match(workflow, /payment-required:/);
   assert.match(workflow, /No payment was sent/);
   assert.doesNotMatch(workflow, /PAYMENT-SIGNATURE|X-PAYMENT/);
+});
+
+test("CDP activation remains automatically dormant after live activation", () => {
+  assert.match(workflow, /cdpFacilitatorEnabledForX402Ping/);
+  assert.match(workflow, /\.paymentRails\.x402Ping \/\/ ""/);
+  assert.match(workflow, /active=true/);
+  assert.match(workflow, /steps\.live_state\.outputs\.active != 'true'/);
 });
 
 test("public health reports configured rail state without exposing credentials", () => {
