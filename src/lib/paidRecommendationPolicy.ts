@@ -63,9 +63,16 @@ function paidNextAction(
  * None of these entries authorizes or initiates a follow-on payment.
  */
 export function postSettlementCanaryNextActions() {
+  const preflight = paidNextAction("x402-payment-preflight");
   return {
     catalogUrl: `${CANONICAL_ORIGIN}/.well-known/x402`,
-    preflight: paidNextAction("x402-payment-preflight"),
+    recommended: {
+      ...preflight,
+      reason: "Your x402 client just proved it can settle and receive paid delivery. Use AgentResolver Guard before the next autonomous x402 spend to validate the live payment terms.",
+      repeatUse: "before_every_autonomous_x402_spend" as const,
+      paymentAuthorization: "separate_caller_authorization_required" as const
+    },
+    preflight,
     single: paidNextAction("verified-resolve"),
     batch: paidNextAction("batch-verified-resolve")
   };

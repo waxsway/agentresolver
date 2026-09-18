@@ -33,6 +33,36 @@ function nextActionSchema(
   } as const;
 }
 
+function recommendedNextActionSchema() {
+  const action = X402_PING_NEXT_ACTIONS.recommended;
+  return {
+    type: "object",
+    required: [
+      "capabilityId",
+      "endpoint",
+      "method",
+      "priceUsd",
+      "useWhen",
+      "inputExample",
+      "reason",
+      "repeatUse",
+      "paymentAuthorization"
+    ],
+    additionalProperties: false,
+    properties: {
+      capabilityId: { type: "string", const: action.capabilityId },
+      endpoint: { type: "string", const: action.endpoint },
+      method: { type: "string", const: action.method },
+      priceUsd: { type: "number", const: action.priceUsd },
+      useWhen: { type: "string", const: action.useWhen },
+      inputExample: { type: "object", const: action.inputExample },
+      reason: { type: "string", const: action.reason },
+      repeatUse: { type: "string", const: action.repeatUse },
+      paymentAuthorization: { type: "string", const: action.paymentAuthorization }
+    }
+  } as const;
+}
+
 export const X402_PING_OUTPUT_SCHEMA = {
   type: "object",
   required: ["pong", "settledDelivery", "at", "unixMs", "requestId", "echo", "next"],
@@ -51,10 +81,11 @@ export const X402_PING_OUTPUT_SCHEMA = {
     },
     next: {
       type: "object",
-      required: ["catalogUrl", "preflight", "single", "batch"],
+      required: ["catalogUrl", "recommended", "preflight", "single", "batch"],
       additionalProperties: false,
       properties: {
         catalogUrl: { type: "string", const: X402_PING_NEXT_ACTIONS.catalogUrl },
+        recommended: recommendedNextActionSchema(),
         preflight: nextActionSchema(X402_PING_NEXT_ACTIONS.preflight),
         single: nextActionSchema(X402_PING_NEXT_ACTIONS.single),
         batch: nextActionSchema(X402_PING_NEXT_ACTIONS.batch)
