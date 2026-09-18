@@ -70,9 +70,17 @@ jobs:
           )
           bazaar = (payload.get("extensions") or {}).get("bazaar") or {}
           input_example = ((bazaar.get("info") or {}).get("input") or {})
-          assert input_example.get("operation") == "sha256"
-          assert input_example.get("input") == "agentresolver"
-          operation = (((bazaar.get("schema") or {}).get("properties") or {}).get("input") or {}).get("properties", {}).get("operation", {})
+          assert input_example.get("type") == "http"
+          query_params = input_example.get("queryParams") or {}
+          assert query_params.get("operation") == "sha256"
+          assert query_params.get("input") == "agentresolver"
+          input_schema = (((bazaar.get("schema") or {}).get("properties") or {}).get("input") or {})
+          operation = (
+              (input_schema.get("properties") or {})
+              .get("queryParams", {})
+              .get("properties", {})
+              .get("operation", {})
+          )
           assert "hmac-sha256" not in (operation.get("enum") or [])
           PY
 
@@ -197,4 +205,13 @@ jobs:
           echo
           if ! grep -qi 'agentresolver' /tmp/nohumans-guard-discover.json 2>/dev/null; then
             echo "::notice::NoHumans accepted or already knew the Guard listing; public search may refresh on its next indexing cycle."
+          fi
+
+          curl -fsS -G 'https://nohumans.directory/v1/discover' \
+            --data-urlencode 'q=AgentResolver Hash Encode' \
+            -o /tmp/nohumans-hash-discover.json || true
+          cat /tmp/nohumans-hash-discover.json 2>/dev/null || true
+          echo
+          if ! grep -qi 'hash' /tmp/nohumans-hash-discover.json 2>/dev/null; then
+            echo "::notice::NoHumans accepted or already knew the hash utility listing; public search may refresh on its next indexing cycle."
           fi
