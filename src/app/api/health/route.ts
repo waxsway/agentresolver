@@ -3,6 +3,17 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-static";
 
 export function GET() {
+  const cdpCapabilities = new Set(
+    (process.env.AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES || "x402-ping")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
+  const cdpFacilitatorEnabledForX402Ping =
+    process.env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1" &&
+    cdpCapabilities.has("x402-ping");
+  const circleGatewayEnabled = process.env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
+
   return NextResponse.json(
     {
       ok: true,
@@ -21,7 +32,13 @@ export function GET() {
       security: "/.well-known/security.txt",
       legal: "/legal",
       agentGuide: "/agentresolver.md",
-      registry: "io.github.waxsway/agentresolver"
+      registry: "io.github.waxsway/agentresolver",
+      paymentRails: {
+        default: "payai",
+        x402Ping: cdpFacilitatorEnabledForX402Ping ? "coinbase-cdp" : "payai",
+        cdpFacilitatorEnabledForX402Ping,
+        circleGatewayEnabled
+      }
     },
     {
       headers: {
