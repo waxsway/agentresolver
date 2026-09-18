@@ -17,19 +17,19 @@ test("true402 manifest publishes the input-free $0.001 Base settlement canary", 
   assert.ok(manifest.capabilities?.includes("verification"));
 });
 
-test("true402 registration is zero-spend, anonymous, and lands immediately", () => {
+test("true402 registration is zero-spend, anonymous, and manual-only after acceptance", () => {
   assert.match(workflow, /https:\/\/true402\.dev\/api/);
   assert.match(workflow, /POST "\$TRUE402_API\/v1\/services"/);
   assert.match(workflow, /\{url:\$url\}/);
-  assert.match(workflow, /push:/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /\.github\/workflows\/register-true402\.yml/);
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["Deploy Production"\]/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /^\s*push:/m);
+  assert.doesNotMatch(workflow, /^\s*workflow_run:/m);
   assert.match(workflow, /x-agentresolver-internal: 1/);
   assert.match(workflow, /refusing duplicate registration/i);
   assert.doesNotMatch(workflow, /PAYMENT-SIGNATURE|X-PAYMENT|PRIVATE_KEY|SEED_PHRASE|email/i);
   assert.doesNotMatch(workflow, /schedule:/);
+  assert.match(workflow, /id:\(\.id \/\/ \.data\.id \/\/ null\)/);
+  assert.match(workflow, /status:\(\.status \/\/ \.data\.status \/\/ null\)/);
 });
 
 test("true402 lane validates the live manifest and x402 v2 canary before registration", () => {
