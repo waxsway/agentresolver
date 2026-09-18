@@ -149,7 +149,8 @@ function stampInfrastructureHeaders(
       "x-agentresolver-execution-id",
       "x-agentresolver-response-sha256",
       "x-agentresolver-evidence-version",
-      "x-agentresolver-deployment"
+      "x-agentresolver-deployment",
+      "link"
     ].join(", ")
   );
   const commitSha = process.env.VERCEL_GIT_COMMIT_SHA;
