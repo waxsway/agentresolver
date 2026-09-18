@@ -26,3 +26,22 @@ test("standard Link header exposes the free x402 buyer setup", () => {
   );
   assert.match(config, /AgentResolver x402 buyer setup/);
 });
+
+
+test("browser clients can read the standard buyer setup Link handoff", () => {
+  const paidRoute = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
+  const discovery = readFileSync("src/lib/x402DiscoveryChallenge.ts", "utf8");
+  const guard = readFileSync("src/app/api/payment-guard/route.ts", "utf8");
+  const preflight = readFileSync("src/app/api/x402-payment-preflight/route.ts", "utf8");
+
+  assert.match(paidRoute, /"payment-response",\s*"link",\s*"x-agentresolver-capability"/);
+  assert.match(discovery, /"access-control-expose-headers": "payment-required, link"/);
+  assert.match(
+    guard,
+    /"access-control-expose-headers": "link, x-agentresolver-buyer-setup, x-agentresolver-payment-guard"/
+  );
+  assert.match(
+    preflight,
+    /"access-control-expose-headers": "link, x-agentresolver-buyer-setup, x-agentresolver-payment-guard"/
+  );
+});
