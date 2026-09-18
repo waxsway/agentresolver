@@ -1,0 +1,47 @@
+name: Diagnose Agent402 Demand Lanes
+
+on:
+  push:
+    branches:
+      - diagnostic/payai-bazaar-status-20260918
+    paths:
+      - ".github/workflows/diagnose-agent402-demand-lanes.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Query top public Agent402 demand lanes
+        shell: bash
+        run: |
+          set -euo pipefail
+          queries=(
+            'sha256 hash of a string'
+            'sha512 hash'
+            'HMAC SHA256'
+            'base64 encode'
+            'base64 decode'
+            'JWT decode'
+          )
+          for q in "${queries[@]}"; do
+            echo "=== QUERY $q ==="
+            curl -fsS -G --connect-timeout 5 --max-time 20               'https://agent402.tools/api/route'               --data-urlencode "q=$q"               --data-urlencode 'include=external' |
+              jq --arg q "$q" '{
+                query:$q,
+                agentresolver:[
+                  ((.results // .routes // .data // []) |
+                    if type == "array" then . else (.results // .routes // []) end)[]? |
+                  select((.seller // .source // "") | contains("agentresolver.vercel.app")) |
+                  {seller,name,slug,route,url,priceUsd,score,routerDispatchEligible,routerDispatchReason,executeViaCallableNow,execution}
+                ],
+                top3:(
+                  ((.results // .routes // .data // []) |
+                    if type == "array" then . else (.results // .routes // []) end)[:3] |
+                  map({seller,name,slug,route,priceUsd,score,routerDispatchEligible,executeViaCallableNow})
+                )
+              }'
+          done
