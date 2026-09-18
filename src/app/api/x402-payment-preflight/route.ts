@@ -31,7 +31,7 @@ function invalidInput() {
     { status: 400, headers: {
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
-      "access-control-expose-headers": "x-agentresolver-buyer-setup, x-agentresolver-payment-guard",
+      "access-control-expose-headers": "link, x-agentresolver-buyer-setup, x-agentresolver-payment-guard",
       "x-agentresolver-buyer-setup": "https://agentresolver.vercel.app/api/x402-client-setup",
       "x-agentresolver-payment-guard": "https://agentresolver.vercel.app/api/payment-guard"
     } }
