@@ -41,6 +41,7 @@ export default function ProvidersPage() {
           <p>
             Providers can also apply for disclosed relevance-limited sponsored
             placement. Sponsorship never changes the organic ranking contract.
+            Applying creates no purchase or financial commitment.
           </p>
         </section>
       </div>
