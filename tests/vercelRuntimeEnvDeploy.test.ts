@@ -14,8 +14,8 @@ test("prebuilt production deploys forward pulled project env into runtime", () =
   assert.doesNotMatch(deployWorkflow, /vercel deploy --prebuilt --prod --token/);
   assert.doesNotMatch(activateWorkflow, /vercel deploy --prebuilt --prod --token/);
   assert.match(helper, /parseEnv/);
-  assert.match(deployWorkflow, /vercel env run --environment=production/);
-  assert.match(activateWorkflow, /vercel env run --environment=production/);
+  assert.match(deployWorkflow, /vercel env run -e production/);
+  assert.match(activateWorkflow, /vercel env run -e production/);
   assert.match(helper, /productionKeys/);
   assert.match(helper, /process\.env\[key\]/);
   assert.match(helper, /CDI_API_KEY_ID/);
