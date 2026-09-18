@@ -8,7 +8,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.equal(openapi.openapi, "3.1.0");
   assert.match(openapi.info?.["x-guidance"] || "", /free capability discovery/i);
   assert.match(openapi.info?.["x-guidance"] || "", /GET \/api\/x402-ping/i);
-  assert.match(openapi.info?.["x-guidance"] || "", /POST \/api\/x402-payment-preflight/i);
+  assert.match(openapi.info?.["x-guidance"] || "", /GET \/api\/x402-payment-preflight/i);
   assert.match(openapi.info?.title || "", /settlement canary/i);
 
   const canary = openapi.paths?.["/api/x402-ping"]?.get;
