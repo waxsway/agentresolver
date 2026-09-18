@@ -16,7 +16,7 @@ jobs:
     env:
       VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
       VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
-      CLEAN_DEPLOYMENT_ID: dpl_DjJ8ZR6yYMm3FttUP1jVpXYuCUm2
+      CLEAN_DEPLOYMENT_ID: dpl_224AqUGm1FJ91kmfPJ56LsDmRQoJ
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - name: Promote known-clean deployment without rebuilding
