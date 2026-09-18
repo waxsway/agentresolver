@@ -1,0 +1,76 @@
+name: Register Provider Launch Check 402 Index Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-provider-launch-check-402index-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Confirm Provider Launch Check is live and priced
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          status="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -X POST 'https://agentresolver.vercel.app/api/provider-launch-check'             -H 'content-type: application/json'             --data '{"providerId":"example-provider","providerName":"Example Provider","capabilityId":"search","name":"Search","description":"Example machine service.","origin":"https://example.com","endpoint":"https://example.com/api/search","method":"GET","priceUsd":0.01,"network":"eip155:8453","tags":["search"]}')"
+          test "$status" = "402"
+          jq -e '
+            .x402Version == 2 and
+            any(.accepts[]?;
+              .network == "eip155:8453" and
+              (.amount|tostring) == "50000" and
+              .payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            )
+          ' "$body" >/dev/null
+
+      - name: Register Provider Launch Check with 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl -sS             -o /tmp/provider-launch-register.json             -w '%{http_code}'             -X POST 'https://402index.io/api/v1/register'             -H 'content-type: application/json'             --data-binary @- <<'JSON'
+          {
+            "url": "https://agentresolver.vercel.app/api/provider-launch-check",
+            "name": "AgentResolver Provider Launch Check",
+            "description": "Paid seller-side x402 readiness and route-contract verification for API and machine-service providers that want AgentResolver distribution. Returns a registry-ready provider packet after settlement and live technical checks.",
+            "protocol": "x402",
+            "http_method": "POST",
+            "probe_body": "{\"providerId\":\"example-provider\",\"providerName\":\"Example Provider\",\"capabilityId\":\"search\",\"name\":\"Search\",\"description\":\"Example machine service.\",\"origin\":\"https://example.com\",\"endpoint\":\"https://example.com/api/search\",\"method\":\"GET\",\"priceUsd\":0.01,\"network\":\"eip155:8453\",\"tags\":[\"search\"]}",
+            "price_usd": 0.05,
+            "payment_asset": "USDC",
+            "payment_network": "Base / Solana",
+            "category": "agent-tools/provider-onboarding",
+            "provider": "AgentResolver"
+          }
+          JSON
+          )"
+          cat /tmp/provider-launch-register.json
+          echo
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "::warning::402 Index Provider Launch Check registration returned HTTP $status; no paid placement or user funds were used."
+            exit 0
+          fi
+
+      - name: Confirm seller-search retrieval
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://402index.io/api/v1/services?q=provider%20launch%20x402&protocol=x402&limit=20' -o /tmp/search.json || exit 0
+          jq '{
+            total: (.total // .meta.total // null),
+            agentresolver: [
+              (.services // .data // [])[]? |
+              select((.url // "") | contains("agentresolver.vercel.app/api/provider-launch-check")) |
+              {id,name,url,price_usd,payment_asset,payment_network,category,health_status,source}
+            ]
+          }' /tmp/search.json
+          if ! grep -Fq 'agentresolver.vercel.app/api/provider-launch-check' /tmp/search.json; then
+            echo "::notice::402 Index accepted/checked the submission but seller-search retrieval may still be indexing."
+          fi

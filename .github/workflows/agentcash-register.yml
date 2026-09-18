@@ -34,6 +34,10 @@ jobs:
           if ! npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app/api/payment-guard; then
             echo "::warning::AgentResolver Guard failed AgentCash route validation."
           fi
+          echo "=== Provider Launch Check route check ==="
+          if ! npx -y @agentcash/discovery@1.7.5 check https://agentresolver.vercel.app/api/provider-launch-check; then
+            echo "::warning::Provider Launch Check failed AgentCash route validation."
+          fi
 
       - name: Register origin with AgentCash
         env:
@@ -59,6 +63,22 @@ jobs:
             echo "::notice::AgentCash CLI did not accept endpoint-only Guard registration. Origin registration remains authoritative; no runtime change or spend occurred."
           fi
 
+      - name: Attempt exact Provider Launch Check resource registration
+        env:
+          HOME: ${{ runner.temp }}/agentcash-home
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME"
+          body="$(mktemp)"
+          if npx -y agentcash@0.17.1 register https://agentresolver.vercel.app/api/provider-launch-check --yes --format json > "$body" 2>&1; then
+            cat "$body"
+            echo "AGENTCASH_PROVIDER_LAUNCH_DIRECT_REGISTRATION=true"
+          else
+            cat "$body"
+            echo "::notice::AgentCash CLI did not accept endpoint-only Provider Launch Check registration. Origin registration remains authoritative; no runtime change or spend occurred."
+          fi
+
       - name: Verify buyer-search visibility after registration
         shell: bash
         run: |
@@ -74,6 +94,10 @@ jobs:
             "payment authorization"
             "agent wallet firewall"
             "verify x402 payment before signing"
+            "provider launch check"
+            "sell API to agents"
+            "x402 provider onboarding"
+            "agent service distribution"
           )
           found_queries=0
           for attempt in 1 2 3; do
