@@ -405,6 +405,14 @@ test("challenge handoff embeds executable client install choices", () => {
   assert.equal(handoff.clientEntrypoints.walletMcp.command, "x402-trinity-mcp");
   assert.deepEqual(handoff.clientEntrypoints.walletMcp.tools, ["check_price", "pay_and_fetch", "wallet_status"]);
   assert.equal(handoff.clientEntrypoints.walletMcp.defaultNetwork, "eip155:8453");
+  assert.equal(handoff.clientInstalls.managedWalletMcp, "npx x402-wallet-mcp");
+  assert.equal(handoff.clientEntrypoints.managedWalletMcp.package, "x402-wallet-mcp");
+  assert.equal(handoff.clientEntrypoints.managedWalletMcp.command, "x402-wallet-mcp");
+  assert.deepEqual(
+    handoff.clientEntrypoints.managedWalletMcp.tools,
+    ["query_endpoint", "call_endpoint", "configure_spending", "manage_allowlist", "check_balance"]
+  );
+  assert.equal(handoff.clientEntrypoints.managedWalletMcp.defaultNetwork, "eip155:8453");
   assert.equal(handoff.clientEntrypoints.agentSkill.repository, "waxsway/agentresolver");
   assert.equal(handoff.clientEntrypoints.agentSkill.skill, "agentresolver-payment-guard");
   assert.equal(handoff.signerControlledByCaller, true);
@@ -462,4 +470,30 @@ test("buyer setup exposes x402-trinity as a hard-budget wallet-capable MCP hando
   assert.ok(trinity.behavior.some((step) => /never send them to AgentResolver/i.test(step)));
   assert.equal(setup.officialReferences.x402Trinity, "https://github.com/devmster/x402-trinity");
   assert.doesNotMatch(JSON.stringify(trinity), /0x[a-fA-F0-9]{64}|seed phrase/i);
+});
+
+
+test("buyer setup exposes x402-wallet-mcp as a Guard-first wallet-capable buyer", () => {
+  const setup = x402BuyerSetup();
+  const wallet = setup.clients.x402WalletMcp;
+
+  assert.equal(wallet.package, "x402-wallet-mcp");
+  assert.equal(wallet.mcpCommand, "npx x402-wallet-mcp");
+  assert.equal(wallet.defaultNetwork, "eip155:8453");
+  assert.equal(wallet.defaultAsset, "USDC");
+  assert.equal(wallet.tools.queryEndpoint, "query_endpoint");
+  assert.equal(wallet.tools.callEndpoint, "call_endpoint");
+  assert.equal(wallet.tools.configureSpending, "configure_spending");
+  assert.equal(wallet.tools.manageAllowlist, "manage_allowlist");
+  assert.match(wallet.authorizationModel, /Do not expand spending limits or merchant allowlists/i);
+  assert.match(wallet.authorizationModel, /separate caller authorization/i);
+  assert.ok(wallet.behavior.some((step) => /query_endpoint/i.test(step)));
+  assert.ok(wallet.behavior.some((step) => /separate \$0\.001 Guard fee/i.test(step)));
+  assert.ok(wallet.behavior.some((step) => /separate caller authorization/i.test(step)));
+  assert.ok(wallet.behavior.some((step) => /Never send wallet credentials/i.test(step)));
+  assert.equal(
+    setup.officialReferences.x402WalletMcp,
+    "https://github.com/onchainexpat/x402-wallet-mcp"
+  );
+  assert.doesNotMatch(JSON.stringify(wallet), /PRIVY_APP_SECRET|private.?key|seed phrase|0x[a-fA-F0-9]{64}/i);
 });
