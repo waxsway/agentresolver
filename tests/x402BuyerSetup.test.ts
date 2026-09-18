@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { NextRequest } from "next/server";
+import { GET as getBuyerSetupRoute } from "../src/app/api/x402-client-setup/route";
+import { GET as getSha256Discovery } from "../src/app/api/sha256/route";
 import {
   AGENT_SKILLS_INDEX_URL,
   PAYMENT_GUARD_SKILL_URL,
   X402_BUYER_SETUP_URL,
+  normalizeX402ChallengeMethod,
   x402BuyerSetupChallengeError,
   x402BuyerSetupChallengeUrl,
   x402ChallengeBuyerHandoff,
@@ -329,20 +333,27 @@ test("buyer setup exposes AWS AgentCore wallet-capable payment handoff", () => {
 });
 
 
-test("buyer challenge handoff URLs carry bounded funnel attribution", () => {
+test("buyer challenge handoff URLs carry bounded funnel attribution and exact method", () => {
   assert.equal(
     x402BuyerSetupChallengeUrl("x402-payment-preflight"),
     "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-payment-preflight"
   );
   assert.equal(
-    x402BuyerSetupChallengeError("x402-ping"),
-    "Payment required. x402 buyer setup: https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping"
+    x402BuyerSetupChallengeUrl("x402-payment-preflight", "get"),
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-payment-preflight&method=GET"
   );
+  assert.equal(
+    x402BuyerSetupChallengeError("x402-ping", "POST"),
+    "Payment required. x402 buyer setup: https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=POST"
+  );
+  assert.equal(normalizeX402ChallengeMethod("head"), "HEAD");
+  assert.equal(normalizeX402ChallengeMethod("PATCH"), null);
 });
 
 
 test("challenge handoff embeds executable client install choices", () => {
   const handoff = x402ChallengeBuyerHandoff("x402-payment-preflight");
+  const getHandoff = x402ChallengeBuyerHandoff("x402-ping", "GET");
   assert.equal(handoff.type, "agentresolver_x402_buyer_handoff");
   assert.equal(handoff.capabilityId, "x402-payment-preflight");
   assert.equal(
@@ -350,6 +361,11 @@ test("challenge handoff embeds executable client install choices", () => {
     "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-payment-preflight"
   );
   assert.equal(handoff.protocol, "x402");
+  assert.equal(getHandoff.method, "GET");
+  assert.equal(
+    getHandoff.setup,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
+  );
   assert.equal(handoff.retryHeader, "PAYMENT-SIGNATURE");
   assert.equal(handoff.signerControlledByCaller, true);
   assert.equal(handoff.spendAuthorizationRequired, true);
@@ -512,6 +528,7 @@ test("buyer setup preserves challenged purchase context and exposes one signed-r
     source: "x402-challenge",
     capabilityId: "x402-ping",
     endpoint: "/api/x402-ping",
+    method: "GET",
     priceUsd: 0.001,
     atomicAmount: "1000"
   });
@@ -520,6 +537,7 @@ test("buyer setup preserves challenged purchase context and exposes one signed-r
     source: "x402-challenge",
     capabilityId: "x402-ping",
     resumeUrl: "https://agentresolver.vercel.app/api/x402-ping",
+    method: "GET",
     priceUsd: 0.001,
     atomicAmount: "1000",
     retryHeader: "PAYMENT-SIGNATURE",
@@ -543,9 +561,52 @@ test("challenge-specific buyer setup exposes exact resume response headers", () 
   const route = readFileSync("src/app/api/x402-client-setup/route.ts", "utf8");
   assert.match(route, /x-agentresolver-resume-url/);
   assert.match(route, /x-agentresolver-resume-capability/);
+  assert.match(route, /x-agentresolver-resume-method/);
   assert.match(route, /x-agentresolver-retry-header/);
   assert.match(route, /PAYMENT-SIGNATURE/);
   assert.match(route, /access-control-expose-headers/);
   assert.match(route, /new URL\(capability\.endpoint, "https:\/\/agentresolver\.vercel\.app"\)/);
   assert.match(route, /if \(capabilityId && capability\)/);
+});
+
+
+test("paid route handoff distinguishes payable POST discovery from exact paid methods", () => {
+  const route = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
+  assert.match(route, /mirrorPaymentChallengeBody\(\s*response,\s*capabilityId,\s*req\.method\s*\)/s);
+  assert.match(route, /x402BuyerSetupChallengeUrl\(capabilityId, requestMethod\)/);
+  assert.match(
+    route,
+    /x402DiscoveryChallenge\(capabilityId, \{ endpoint \}\),\s*capabilityId,\s*requestId,\s*"POST"/s
+  );
+});
+
+test("challenge-attributed setup response preserves exact resume method", async () => {
+  const response = await getBuyerSetupRoute(new Request(
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=post",
+    { headers: { "user-agent": "agentresolver-test" } }
+  ));
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("x-agentresolver-resume-url"), "https://agentresolver.vercel.app/api/x402-ping");
+  assert.equal(response.headers.get("x-agentresolver-resume-capability"), "x402-ping");
+  assert.equal(response.headers.get("x-agentresolver-resume-method"), "POST");
+  assert.equal(response.headers.get("x-agentresolver-retry-header"), "PAYMENT-SIGNATURE");
+  assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-resume-method/);
+
+  const body = await response.json() as any;
+  assert.equal(body.challengeContext?.method, "POST");
+  assert.equal(body.challengeContext?.resumeUrl, "https://agentresolver.vercel.app/api/x402-ping");
+});
+
+test("POST-only paid route discovery resumes through POST", async () => {
+  const response = await getSha256Discovery(new NextRequest(
+    "https://agentresolver.vercel.app/api/sha256",
+    { method: "GET", headers: { "user-agent": "agentresolver-test" } }
+  ));
+
+  assert.equal(response.status, 402);
+  assert.equal(
+    response.headers.get("x-agentresolver-buyer-setup"),
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=sha256&method=POST"
+  );
 });
