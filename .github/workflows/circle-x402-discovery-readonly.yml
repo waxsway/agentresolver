@@ -1,0 +1,50 @@
+name: Circle x402 Discovery Read-Only Probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/circle-x402-discovery-readonly.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Query Circle public x402 discovery catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://api.circle.com/v2/x402/discovery/resources'
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 30 -o "$body" -w '%{http_code}' "$url" || printf '000')"
+          echo "Circle discovery -> HTTP $code"
+          test "$code" = "200"
+
+          python3 - "$body" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          blob=json.dumps(data,separators=(",",":")).lower()
+          def count_rows(node):
+              if isinstance(node,list):
+                  return len(node)
+              if isinstance(node,dict):
+                  for key in ("resources","items","data","results"):
+                      value=node.get(key)
+                      if isinstance(value,list):
+                          return len(value)
+                      if isinstance(value,dict):
+                          nested=count_rows(value)
+                          if nested is not None:
+                              return nested
+              return None
+          print(json.dumps({
+              "rowCount":count_rows(data),
+              "agentresolverPresent":"agentresolver.vercel.app" in blob,
+              "canonicalGuardPresent":"agentresolver.vercel.app/api/x402-payment-preflight" in blob,
+              "settlementCanaryPresent":"agentresolver.vercel.app/api/x402-ping" in blob
+          },separators=(",",":")))
+          PY
