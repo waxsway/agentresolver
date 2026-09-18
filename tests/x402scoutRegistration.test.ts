@@ -38,8 +38,10 @@ test("x402Scout publishes the input-free canary rather than a malformed Guard in
   assert.match(workflow, /canonical x402 payment preflight/);
 });
 
-test("x402Scout lane runs once on landing and can be retried manually", () => {
+test("x402Scout lane retries hourly while absent and remains manually retryable", () => {
   assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /schedule:/);
+  assert.ok(workflow.includes('    - cron: "29 * * * *"'));
   assert.match(workflow, /paths:\n\s+- "\.github\/workflows\/x402scout-register-once\.yml"/);
 });
 
