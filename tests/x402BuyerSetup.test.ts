@@ -157,3 +157,14 @@ test("Coinbase AgentKit exposes a confirmation-first Guard loop", () => {
   assert.ok(agentkit.behavior.some((step) => /separate caller authorization/i.test(step)));
   assert.ok(agentkit.behavior.some((step) => /Do not use make_http_request_with_x402/i.test(step)));
 });
+
+
+test("CORS exposes the standard buyer help Link", () => {
+  const route = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
+  const preflight = readFileSync("src/app/api/x402-payment-preflight/route.ts", "utf8");
+  const guard = readFileSync("src/app/api/payment-guard/route.ts", "utf8");
+
+  assert.match(route, /"x-agentresolver-deployment",\s*"link"/);
+  assert.match(preflight, /access-control-expose-headers[^\n]*link/);
+  assert.match(guard, /access-control-expose-headers[^\n]*link/);
+});
