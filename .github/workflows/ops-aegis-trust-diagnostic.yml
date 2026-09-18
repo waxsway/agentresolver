@@ -1,0 +1,67 @@
+name: Ops Aegis Trust Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/ops-aegis-trust-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      ENDPOINT: https://agentresolver.vercel.app/api/x402-ping
+    steps:
+      - name: Read Aegis discovery and lint
+        id: inspect
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -G 'https://aegis.borisinc.com/discover'             --data-urlencode 'query=AgentResolver'             -o /tmp/discover.json || true
+          curl -fsS -G 'https://aegis.borisinc.com/lint'             --data-urlencode "url=$ENDPOINT"             -o /tmp/lint.json || true
+
+          echo '=== discover ==='
+          cat /tmp/discover.json 2>/dev/null || true
+          echo
+          echo '=== lint ==='
+          cat /tmp/lint.json 2>/dev/null || true
+          echo
+
+          visible=false
+          if grep -Fq "$ENDPOINT" /tmp/discover.json 2>/dev/null; then
+            visible=true
+          fi
+          echo "visible=$visible" >> "$GITHUB_OUTPUT"
+
+      - name: Submit once if absent
+        id: submit
+        if: steps.inspect.outputs.visible != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://aegis.borisinc.com/submit'             --data-urlencode "url=$ENDPOINT"             --data-urlencode 'name=AgentResolver Settlement Ping'             --data-urlencode 'category=verification'             --data-urlencode 'price_usd=0.001')"
+          echo "http_code=$code" >> "$GITHUB_OUTPUT"
+          echo "AEGIS_SUBMIT_HTTP=$code"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|204|409) ;;
+            402) echo "::error::Aegis unexpectedly requested payment; no payment attempted."; exit 1 ;;
+            *) echo "::error::Aegis submission returned HTTP $code"; exit 1 ;;
+          esac
+
+      - name: Re-read discovery
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          echo '=== discover after ==='
+          curl -fsS -G 'https://aegis.borisinc.com/discover'             --data-urlencode 'query=AgentResolver' || true
+          echo
