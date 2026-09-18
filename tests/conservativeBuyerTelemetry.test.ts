@@ -14,6 +14,21 @@ test("unsigned paid-route POSTs are not claimed as qualified buyers", () => {
   assert.equal(traffic.external, true);
 });
 
+test("NoHumans no-payment probes are excluded from buyer intent", () => {
+  const req = new Request("https://agentresolver.vercel.app/api/hash-encode?operation=sha256&input=agentresolver", {
+    method: "GET",
+    headers: {
+      "user-agent": "nohumans.directory-probe/1.0 (+https://nohumans.directory; submission check, no payment sent)"
+    }
+  });
+  const traffic = classifyTraffic(req, { path: "/api/hash-encode" });
+
+  assert.equal(traffic.trafficClass, "liveness_crawler");
+  assert.equal(traffic.external, true);
+  assert.equal(traffic.sponsorEligible, false);
+  assert.equal(traffic.reason, "known_liveness_user_agent");
+});
+
 test("signed retries remain the strongest conversion signal", () => {
   const req = new Request("https://agentresolver.vercel.app/api/x402-payment-preflight", {
     method: "POST",
