@@ -12,6 +12,26 @@ export function x402BuyerSetupChallengeError(capabilityId: string) {
 export const AGENT_SKILLS_INDEX_URL = "https://agentresolver.vercel.app/.well-known/agent-skills/index.json" as const;
 export const PAYMENT_GUARD_SKILL_URL = "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md" as const;
 
+export const X402_CHALLENGE_CLIENT_INSTALLS = {
+  httpTypescript: "npm install @x402/core @x402/evm @x402/svm @x402/fetch",
+  mcpTypescript: "npm install @x402/mcp @x402/evm @x402/svm",
+  httpPython: "pip install x402",
+  agentSkill: "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard"
+} as const;
+
+export function x402ChallengeBuyerHandoff(capabilityId: string) {
+  return {
+    type: "agentresolver_x402_buyer_handoff",
+    capabilityId,
+    setup: x402BuyerSetupChallengeUrl(capabilityId),
+    protocol: "x402",
+    retryHeader: "PAYMENT-SIGNATURE",
+    signerControlledByCaller: true,
+    spendAuthorizationRequired: true,
+    clientInstalls: X402_CHALLENGE_CLIENT_INSTALLS
+  } as const;
+}
+
 export type X402BuyerSetup = ReturnType<typeof x402BuyerSetup>;
 
 /**
@@ -457,14 +477,15 @@ export function x402BuyerSetup() {
 }
 
 export function x402BuyerSetupHint(capabilityId: string) {
+  const handoff = x402ChallengeBuyerHandoff(capabilityId);
   return {
+    ...handoff,
     type: "agentresolver_x402_buyer_setup",
-    capabilityId,
     url: X402_BUYER_SETUP_URL,
+    attributedUrl: handoff.setup,
     agentSkillsIndex: AGENT_SKILLS_INDEX_URL,
     paymentGuardSkill: PAYMENT_GUARD_SKILL_URL,
     paymentAuthorizationRequired: true,
-    signerControlledByCaller: true,
     message: "This host reached a valid x402 challenge but must use an x402-aware client plus its own signer and spend policy to make an authorized retry. For target x402 purchases, run AgentResolver Guard before each autonomous spend. AgentResolver never requests wallet secrets or authorizes spend."
   } as const;
 }

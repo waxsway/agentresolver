@@ -11,7 +11,7 @@ import { logPaidCapabilityAttempt, logPaidRetryRejection, logX402Settlement } fr
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
-import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, x402BuyerSetupChallengeError, x402BuyerSetupChallengeUrl } from "@/lib/x402BuyerSetup";
+import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, x402BuyerSetupChallengeError, x402BuyerSetupChallengeUrl, x402ChallengeBuyerHandoff } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -64,7 +64,8 @@ async function mirrorPaymentChallengeBody(response: NextResponse<unknown>, capab
   headers.set("cache-control", "no-store");
   return new NextResponse(JSON.stringify({
     ...bodyChallenge,
-    error: x402BuyerSetupChallengeError(capabilityId)
+    error: x402BuyerSetupChallengeError(capabilityId),
+    buyerSetup: x402ChallengeBuyerHandoff(capabilityId)
   }), {
     status: 402,
     statusText: response.statusText,
