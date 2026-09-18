@@ -40,6 +40,14 @@ type PartnerConfig = {
   priceUsd?: unknown;
   network?: unknown;
   commissionUsd?: unknown;
+  launchProof?: unknown;
+};
+
+type LaunchProof = {
+  network?: unknown;
+  amountAtomic?: unknown;
+  payTo?: unknown;
+  txHash?: unknown;
 };
 
 const FIRST_PARTY_IDS: PaidCapabilityId[] = [
@@ -106,7 +114,20 @@ function safeHttps(value: unknown): string | null {
   }
 }
 
-function parsePartnerRoutes(parsed: unknown): ProviderRoute[] {
+function validLaunchProof(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const proof = value as LaunchProof;
+  return (
+    proof.network === "eip155:8453" &&
+    proof.amountAtomic === "50000" &&
+    typeof proof.payTo === "string" &&
+    proof.payTo.toLowerCase() === "0x66e19457ffc829e8ed74706f5c1399c6f6466de8" &&
+    typeof proof.txHash === "string" &&
+    /^0x[0-9a-fA-F]{64}$/.test(proof.txHash)
+  );
+}
+
+function parsePartnerRoutes(parsed: unknown, requireLaunchProof = false): ProviderRoute[] {
   if (!Array.isArray(parsed)) return [];
 
   const routes: ProviderRoute[] = [];
@@ -127,7 +148,9 @@ function parsePartnerRoutes(parsed: unknown): ProviderRoute[] {
 
     if (
       !routeId ||
+      routeId.startsWith("agentresolver:") ||
       !providerId ||
+      providerId === "agentresolver" ||
       !providerName ||
       !capabilityId ||
       !name ||
@@ -138,7 +161,8 @@ function parsePartnerRoutes(parsed: unknown): ProviderRoute[] {
       priceUsd < 0 ||
       priceUsd > 1000 ||
       !Number.isFinite(commissionUsd) ||
-      commissionUsd !== 0.001
+      commissionUsd !== 0.001 ||
+      (requireLaunchProof && !validLaunchProof(config.launchProof))
     ) continue;
 
     const tags = Array.isArray(config.tags)
@@ -189,7 +213,7 @@ function environmentPartnerRoutes(
 export function registeredProviderRoutes(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): ProviderRoute[] {
-  const staticRoutes = parsePartnerRoutes(providerPartnersJson as unknown);
+  const staticRoutes = parsePartnerRoutes(providerPartnersJson as unknown, true);
   const envRoutes = environmentPartnerRoutes(env);
   const seen = new Set<string>();
   return [...firstPartyRoutes(), ...staticRoutes, ...envRoutes].filter((route) => {

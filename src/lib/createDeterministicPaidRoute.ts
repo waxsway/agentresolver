@@ -119,18 +119,24 @@ async function mirrorPaymentChallengeBody(
       ? current as JsonObject
       : headerChallenge;
 
-  const rewrittenHeaderChallenge = withRequestAwareChallengeHandoff(
-    headerChallenge,
-    capabilityId,
-    requestMethod,
-    resumeUrl
-  );
-  const rewrittenBodyChallenge = withRequestAwareChallengeHandoff(
-    bodyChallenge,
-    capabilityId,
-    requestMethod,
-    resumeUrl
-  );
+  const rewrittenHeaderChallenge =
+    capabilityId === "x402-payment-preflight"
+      ? headerChallenge
+      : withRequestAwareChallengeHandoff(
+          headerChallenge,
+          capabilityId,
+          requestMethod,
+          resumeUrl
+        );
+  const rewrittenBodyChallenge =
+    capabilityId === "x402-payment-preflight"
+      ? bodyChallenge
+      : withRequestAwareChallengeHandoff(
+          bodyChallenge,
+          capabilityId,
+          requestMethod,
+          resumeUrl
+        );
 
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
@@ -477,12 +483,13 @@ export function createDeterministicPaidRoute(
         mimeType: "application/json",
         serviceName: bazaarProviderMetadata.serviceName,
         tags: [...bazaarProviderMetadata.tags],
-        extensions: capabilityId === "x402-ping"
-          ? discoveryExtension
-          : {
-              ...discoveryExtension,
-              agentresolver: x402ChallengeHeaderHandoff(capabilityId)
-            }
+        extensions:
+          capabilityId === "x402-ping" || capabilityId === "x402-payment-preflight"
+            ? discoveryExtension
+            : {
+                ...discoveryExtension,
+                agentresolver: x402ChallengeHeaderHandoff(capabilityId)
+              }
       }
     }, server) as PaidHandler;
   }

@@ -127,7 +127,13 @@ export async function runProviderLaunchCheck(input: ProviderLaunchCheckInput) {
     method: input.method,
     priceUsd: input.priceUsd,
     network: input.network,
-    commissionUsd: 0.001
+    commissionUsd: 0.001,
+    launchProof: {
+      network: "eip155:8453",
+      amountAtomic: "50000",
+      payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+      txHash: "<Base transaction hash from this launch-check PAYMENT-RESPONSE>"
+    }
   };
 
   console.log(JSON.stringify({
@@ -174,8 +180,8 @@ export async function runProviderLaunchCheck(input: ProviderLaunchCheckInput) {
     submission: {
       registryPath: "config/provider-partners.json",
       repository: "waxsway/agentresolver",
-      process: "Open a pull request adding exactly the returned registryEntry. AgentResolver reviews provider routes before activation.",
-      paymentEvidence: "Retain the x402 PAYMENT-RESPONSE from this paid launch check with the submission."
+      process: "Extract the Base transaction hash from this paid call's PAYMENT-RESPONSE, replace registryEntry.launchProof.txHash, then open a pull request adding exactly that registryEntry. Registry CI checks the launch payment before operator review.",
+      paymentEvidence: "Automated admission proof currently requires the $0.05 Provider Launch Check to settle on Base."
     },
     limitations: [
       "A passing launch check verifies current technical readiness and x402 payment metadata, not legal identity or future fulfillment.",

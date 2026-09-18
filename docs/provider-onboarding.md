@@ -20,11 +20,11 @@ For a POST-only paid capability, provide a safe public GET `probeUrl` that expos
 
 ## 2. Submit the generated registry packet
 
-A successful paid result returns `registryEntry`. Add that exact object to:
+A successful paid result returns `registryEntry`. For automated admission proof, settle the launch check on Base, extract its transaction hash from `PAYMENT-RESPONSE`, replace the `registryEntry.launchProof.txHash` placeholder, then add that exact object to:
 
 `config/provider-partners.json`
 
-through a pull request. Keep the x402 PAYMENT-RESPONSE from the paid launch check with your submission.
+through a pull request. Registry CI independently verifies the exact 50000-atomic-USDC transfer to AgentResolver before operator review.
 
 Provider activation remains reviewed. A paid check does not buy ranking, guarantee listing, or verify legal identity.
 

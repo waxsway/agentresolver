@@ -48,6 +48,13 @@
     "registryPath": "config/provider-partners.json",
     "reviewRequired": true,
     "docs": "https://agentresolver.vercel.app/provider-onboarding.md",
-    "paymentEvidence": "retain PAYMENT-RESPONSE from the launch-check settlement"
+    "paymentEvidence": "retain PAYMENT-RESPONSE from the launch-check settlement",
+    "automatedLaunchProof": {
+      "network": "eip155:8453",
+      "amountAtomic": "50000",
+      "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+      "txHashSource": "PAYMENT-RESPONSE from /api/provider-launch-check",
+      "verification": "GitHub provider-registry workflow independently checks the Base USDC transfer"
+    }
   }
 }

@@ -15,7 +15,13 @@ export function GET(req: Request) {
       attributionHeader: "x-agentresolver-attribution-id",
       paidLaunchCheck: baseUrl + "/api/provider-launch-check",
       onboardingDocs: baseUrl + "/provider-onboarding.md",
-      registryPath: "config/provider-partners.json"
+      registryPath: "config/provider-partners.json",
+      launchProof: {
+        network: "eip155:8453",
+        amountAtomic: "50000",
+        payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        verification: "provider-registry CI independently verifies the Base USDC transfer before operator review"
+      }
     },
     sellerMonetization: {
       launchCheckPriceUsd: 0.05,

@@ -43,3 +43,24 @@ test("runtime discovery keeps preflight decision metadata compact", () => {
   assert.equal(output.example.prepaymentDecision.eligibleForCallerAuthorization, true);
   assert.ok(JSON.stringify(output).length < 1200);
 });
+
+test("preflight unsigned GET challenge stays below 4 KB and keeps buyer handoff in headers", async () => {
+  const { GET } = await import("../src/app/api/x402-payment-preflight/route");
+  const response = await GET(new NextRequest(
+    "https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01",
+    { method: "GET", headers: { "user-agent": "agentresolver-test" } }
+  ));
+  assert.equal(response.status, 402);
+  const paymentRequired = response.headers.get("payment-required");
+  assert.ok(paymentRequired);
+  assert.ok(
+    Buffer.byteLength(paymentRequired, "utf8") < 4096,
+    `PAYMENT-REQUIRED is ${Buffer.byteLength(paymentRequired, "utf8")} bytes`
+  );
+  const decoded = JSON.parse(Buffer.from(paymentRequired, "base64").toString("utf8")) as any;
+  assert.equal(decoded.extensions?.agentresolver, undefined);
+  assert.ok(response.headers.get("x-agentresolver-buyer-setup"));
+  assert.equal(response.headers.get("cache-control"), "public, max-age=0, must-revalidate");
+  assert.equal(response.headers.get("cdn-cache-control"), "public, max-age=30");
+  assert.equal(response.headers.get("vercel-cdn-cache-control"), "public, max-age=30");
+});
