@@ -75,6 +75,36 @@ jobs:
             esac
           done
 
+      - name: Audit Agent402 indexed AgentResolver toolset
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://agent402.tools/api/index' -o /tmp/agent402-index.json
+          python3 - /tmp/agent402-index.json <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1]))
+          sellers=data.get("sellers") or []
+          seller=next((row for row in sellers if row.get("origin") == "https://agentresolver.vercel.app"), None)
+          if seller is None:
+              print(json.dumps({"agentresolverIndexed":False}, separators=(",",":")))
+              raise SystemExit(0)
+          tools=seller.get("tools") or []
+          print(json.dumps({
+              "agentresolverIndexed":True,
+              "toolCount":seller.get("toolCount"),
+              "health":seller.get("health"),
+              "routable":seller.get("routable"),
+              "tools":[{
+                  "method":tool.get("method"),
+                  "route":tool.get("route"),
+                  "slug":tool.get("slug"),
+                  "name":tool.get("name"),
+                  "description":tool.get("description"),
+                  "price":tool.get("price"),
+                  "tags":tool.get("tags")
+              } for tool in tools]
+          }, separators=(",",":")))
+          PY
+
       - name: Audit buyer-query rankings
         run: |
           set -euo pipefail
