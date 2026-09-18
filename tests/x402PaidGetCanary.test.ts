@@ -240,11 +240,11 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
   assert.deepEqual(getOutputSchema?.properties?.next?.required, ["catalogUrl", "recommended", "preflight", "single", "batch"]);
   assert.equal(
     getOutputSchema?.properties?.next?.properties?.recommended?.properties?.capabilityId?.const,
-    "x402-payment-preflight"
+    "hash-encode"
   );
   assert.equal(
     getOutputSchema?.properties?.next?.properties?.recommended?.properties?.repeatUse?.const,
-    "before_every_autonomous_x402_spend"
+    "when_a_deterministic_hash_or_encoding_transform_is_needed"
   );
   assert.equal(
     getOutputSchema?.properties?.next?.properties?.recommended?.properties?.paymentAuthorization?.const,
@@ -291,14 +291,14 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   assert.equal(output?.example?.pong, true);
   assert.equal(output?.example?.settledDelivery, true);
   assert.equal(output?.example?.echo, null);
-  assert.equal(output?.example?.next?.recommended?.capabilityId, "x402-payment-preflight");
+  assert.equal(output?.example?.next?.recommended?.capabilityId, "hash-encode");
   assert.equal(output?.example?.next?.recommended?.priceUsd, 0.001);
-  assert.equal(output?.example?.next?.recommended?.repeatUse, "before_every_autonomous_x402_spend");
+  assert.equal(output?.example?.next?.recommended?.repeatUse, "when_a_deterministic_hash_or_encoding_transform_is_needed");
   assert.equal(
     output?.example?.next?.recommended?.paymentAuthorization,
     "separate_caller_authorization_required"
   );
-  assert.match(output?.example?.next?.recommended?.reason || "", /next autonomous x402 spend/i);
+  assert.match(output?.example?.next?.recommended?.reason || "", /useful deterministic \$0\.001 GET/i);
   assert.equal(output?.example?.next?.preflight?.capabilityId, "x402-payment-preflight");
   assert.equal(output?.example?.next?.preflight?.endpoint, "https://agentresolver.vercel.app/api/x402-payment-preflight");
   assert.equal(output?.example?.next?.preflight?.priceUsd, 0.001);
@@ -339,11 +339,11 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   assert.deepEqual(exampleSchema?.properties?.next?.required, ["catalogUrl", "recommended", "preflight", "single", "batch"]);
   assert.equal(
     exampleSchema?.properties?.next?.properties?.recommended?.properties?.capabilityId?.const,
-    "x402-payment-preflight"
+    "hash-encode"
   );
   assert.equal(
     exampleSchema?.properties?.next?.properties?.recommended?.properties?.repeatUse?.const,
-    "before_every_autonomous_x402_spend"
+    "when_a_deterministic_hash_or_encoding_transform_is_needed"
   );
   assert.equal(
     exampleSchema?.properties?.next?.properties?.recommended?.properties?.paymentAuthorization?.const,
