@@ -362,6 +362,11 @@ test("challenge handoff embeds executable client install choices", () => {
   assert.equal(handoff.clientEntrypoints.mcpTypescript.factory, "createx402MCPClient");
   assert.equal(handoff.clientEntrypoints.httpPython.package, "x402");
   assert.equal(handoff.clientEntrypoints.httpPython.client, "x402HttpxClient");
+  assert.equal(handoff.clientInstalls.walletMcp, "npx -y x402-trinity-mcp");
+  assert.equal(handoff.clientEntrypoints.walletMcp.package, "x402-trinity");
+  assert.equal(handoff.clientEntrypoints.walletMcp.command, "x402-trinity-mcp");
+  assert.deepEqual(handoff.clientEntrypoints.walletMcp.tools, ["check_price", "pay_and_fetch", "wallet_status"]);
+  assert.equal(handoff.clientEntrypoints.walletMcp.defaultNetwork, "eip155:8453");
   assert.equal(handoff.clientEntrypoints.agentSkill.repository, "waxsway/agentresolver");
   assert.equal(handoff.clientEntrypoints.agentSkill.skill, "agentresolver-payment-guard");
 });
@@ -395,4 +400,25 @@ test("buyer setup exposes OpenCode and Claude Code x402 handoffs", () => {
     setup.officialReferences.cloudflareCodingToolsX402,
     "https://developers.cloudflare.com/agents/tools/payments/x402/pay-with-tool-plugins/"
   );
+});
+
+
+test("buyer setup exposes x402-trinity as a hard-budget wallet-capable MCP handoff", () => {
+  const setup = x402BuyerSetup();
+  const trinity = setup.clients.x402Trinity;
+
+  assert.equal(trinity.package, "x402-trinity");
+  assert.equal(trinity.mcpCommand, "npx -y x402-trinity-mcp");
+  assert.equal(trinity.defaultNetwork, "eip155:8453");
+  assert.equal(trinity.defaultAsset, "USDC");
+  assert.equal(trinity.tools.checkPrice, "check_price");
+  assert.equal(trinity.tools.payAndFetch, "pay_and_fetch");
+  assert.equal(trinity.tools.walletStatus, "wallet_status");
+  assert.match(trinity.authorizationModel, /hard spend limits inside the caller-controlled/i);
+  assert.match(trinity.authorizationModel, /Guard eligibility as evidence rather than target-payment authorization/i);
+  assert.ok(trinity.behavior.some((step) => /check_price/i.test(step)));
+  assert.ok(trinity.behavior.some((step) => /separate caller-authorized pay_and_fetch/i.test(step)));
+  assert.ok(trinity.behavior.some((step) => /never send them to AgentResolver/i.test(step)));
+  assert.equal(setup.officialReferences.x402Trinity, "https://github.com/devmster/x402-trinity");
+  assert.doesNotMatch(JSON.stringify(trinity), /0x[a-fA-F0-9]{64}|seed phrase/i);
 });
