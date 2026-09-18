@@ -1,0 +1,142 @@
+name: Register AgentResolver with Tollbooth Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-tollbooth-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Validate live Base settlement canary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o /tmp/agentresolver-tollbooth-canary.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             https://agentresolver.vercel.app/api/x402-ping || true)"
+
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            ([.accepts[] | select(
+              .scheme == "exact" and
+              .network == "eip155:8453" and
+              .amount == "1000" and
+              .asset == "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" and
+              .payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            )] | length) >= 1
+          ' /tmp/agentresolver-tollbooth-canary.json >/dev/null
+
+      - name: Register settlement canary with Tollbooth if absent
+        shell: bash
+        env:
+          TOLLBOOTH_API: https://www.trytollbooth.com
+          ENDPOINT_URL: https://agentresolver.vercel.app/api/x402-ping
+          PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+        run: |
+          set -euo pipefail
+
+          catalog_status="$(curl -sS             --connect-timeout 10             --max-time 30             -o /tmp/tollbooth-services.json             -w '%{http_code}'             "$TOLLBOOTH_API/api/services?q=AgentResolver" || printf '000')"
+
+          case "$catalog_status" in
+            200) ;;
+            429|500|502|503|504|000)
+              echo "::warning::Tollbooth catalog is temporarily unavailable (HTTP $catalog_status); registration deferred without spend."
+              exit 0
+              ;;
+            *)
+              echo "Unexpected Tollbooth catalog status: $catalog_status" >&2
+              exit 1
+              ;;
+          esac
+
+          if jq -e --arg endpoint "$ENDPOINT_URL" '
+            [
+              .. |
+              objects |
+              select((.endpoint? // .endpointUrl? // .url? // "") == $endpoint)
+            ] | length > 0
+          ' /tmp/tollbooth-services.json >/dev/null; then
+            echo "AgentResolver settlement canary is already present in Tollbooth."
+            exit 0
+          fi
+
+          payload="$(jq -nc             --arg name "AgentResolver x402 Settlement Test"             --arg endpoint "$ENDPOINT_URL"             --arg wallet "$PAYOUT_WALLET"             --arg description "A $0.001 USDC Base x402 settlement canary for wallet-capable agents; successful fulfillment returns machine-readable next-step payment preflight guidance."             '{
+              name: $name,
+              endpoint: $endpoint,
+              category: "developer-tools",
+              priceUsdc: 0.001,
+              wallet: $wallet,
+              chain: "base",
+              description: $description
+            }')"
+
+          status="$(curl -sS             --connect-timeout 10             --max-time 45             -o /tmp/tollbooth-register.json             -w '%{http_code}'             -X POST "$TOLLBOOTH_API/api/services"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          echo "Tollbooth registration -> HTTP $status"
+
+          case "$status" in
+            200|201|202)
+              jq '{
+                serviceId: (.service.id // .id // .serviceId // null),
+                serviceStatus: (.service.status // .status // null),
+                verificationStatus: (.verification.status // null),
+                verificationSteps: [
+                  (.verification.steps // [])[]? |
+                  {
+                    name: (.name // .step // null),
+                    status: (.status // .result // null)
+                  }
+                ]
+              }' /tmp/tollbooth-register.json
+              ;;
+            409)
+              echo "Tollbooth reports the settlement canary is already registered."
+              ;;
+            429|500|502|503|504|000)
+              echo "::warning::Tollbooth registration is temporarily unavailable (HTTP $status); no user spend or identity submission occurred."
+              ;;
+            *)
+              echo "Unexpected Tollbooth registration status: $status" >&2
+              jq '{
+                error: (.error // null),
+                message: (.message // null),
+                code: (.code // null)
+              }' /tmp/tollbooth-register.json >&2 || true
+              exit 1
+              ;;
+          esac
+
+      - name: Re-check catalog visibility
+        shell: bash
+        env:
+          TOLLBOOTH_API: https://www.trytollbooth.com
+          ENDPOINT_URL: https://agentresolver.vercel.app/api/x402-ping
+        run: |
+          set -euo pipefail
+
+          status="$(curl -sS             --connect-timeout 10             --max-time 30             -o /tmp/tollbooth-after.json             -w '%{http_code}'             "$TOLLBOOTH_API/api/services?q=AgentResolver" || printf '000')"
+
+          if [ "$status" != "200" ]; then
+            echo "::warning::Tollbooth visibility re-check unavailable (HTTP $status)."
+            exit 0
+          fi
+
+          if jq -e --arg endpoint "$ENDPOINT_URL" '
+            [
+              .. |
+              objects |
+              select((.endpoint? // .endpointUrl? // .url? // "") == $endpoint)
+            ] | length > 0
+          ' /tmp/tollbooth-after.json >/dev/null; then
+            echo "AgentResolver settlement canary is visible in Tollbooth."
+          else
+            echo "::notice::Tollbooth accepted or deferred registration but the canary is not visible in the public catalog yet."
+          fi
