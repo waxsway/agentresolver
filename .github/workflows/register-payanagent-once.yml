@@ -202,9 +202,27 @@ jobs:
           PY
           create_offer "$guard_payload" "$guard_response"
 
-          python3 - "$ping_response" "$guard_response" <<'PY'
+          launch_payload="$(mktemp)"
+          launch_response="$(mktemp)"
+          python3 - "$launch_payload" <<'PY'
           import json, sys
-          for label, path in [("ping", sys.argv[1]), ("guard", sys.argv[2])]:
+          payload = {
+              "title": "AgentResolver Provider Launch Check",
+              "description": "Paid $0.05 x402 seller-side readiness and route-contract verification for API and machine-service providers that want AgentResolver distribution.",
+              "category": "Developer Tools",
+              "tags": ["x402", "provider-onboarding", "seller-tools", "agent-distribution"],
+              "offerType": "api",
+              "externalUrl": "https://agentresolver.vercel.app/api/provider-launch-check",
+              "httpMethod": "GET",
+              "inputSchema": "GET supports a paid reference verification contract. Providers should use POST with their full onboarding packet for production review.",
+          }
+          json.dump(payload, open(sys.argv[1], "w", encoding="utf-8"), separators=(",", ":"))
+          PY
+          create_offer "$launch_payload" "$launch_response"
+
+          python3 - "$ping_response" "$guard_response" "$launch_response" <<'PY'
+          import json, sys
+          for label, path in [("ping", sys.argv[1]), ("guard", sys.argv[2]), ("provider-launch", sys.argv[3])]:
               payload = json.load(open(path, "r", encoding="utf-8"))
               offer_id = payload.get("offerId") or payload.get("_id") or payload.get("id")
               if not offer_id:
