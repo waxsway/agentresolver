@@ -1,0 +1,280 @@
+name: Activate Coinbase CDP x402 Ping
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type ENABLE_CDP_X402_PING to approve production activation"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cdp-x402-ping-activation
+  cancel-in-progress: false
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Require explicit CDP activation approval
+        shell: bash
+        env:
+          CDP_ACTIVATION_CONFIRMATION: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          if [ "$CDP_ACTIVATION_CONFIRMATION" != "ENABLE_CDP_X402_PING" ]; then
+            echo "::error::Explicit CDP activation approval is required. Type ENABLE_CDP_X402_PING when dispatching this workflow."
+            exit 1
+          fi
+          echo "Explicit CDP activation approval confirmed."
+
+      - name: Check Vercel production credential gate
+        id: credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "::error::VERCEL_TOKEN is required before CDP can be activated."
+            exit 1
+          fi
+
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          chmod 600 "$response_file"
+
+          status="$(curl -sS             --connect-timeout 10             --max-time 30             -o "$response_file"             -w '%{http_code}'             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN")"
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Unable to inspect Vercel production environment metadata (HTTP $status)."
+            exit 1
+          fi
+
+          ready="$(python3 - "$response_file" <<'PY'
+          import json
+          import sys
+
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          envs = payload.get("envs", []) if isinstance(payload, dict) else []
+
+          required = {"CDP_API_KEY_ID", "CDP_API_KEY_SECRET"}
+          production_keys = set()
+          for item in envs:
+              if not isinstance(item, dict):
+                  continue
+              target = item.get("target") or []
+              if isinstance(target, str):
+                  target = [target]
+              if "production" in target and isinstance(item.get("key"), str):
+                  production_keys.add(item["key"])
+
+          print("true" if required.issubset(production_keys) else "false")
+          PY
+          )"
+
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          if [ "$ready" != "true" ]; then
+            echo "::notice::Coinbase CDP credentials are not present in the Vercel production environment. CDP remains disabled."
+          else
+            echo "Both Coinbase CDP credential keys are present in Vercel production; activation may proceed."
+          fi
+
+      - name: Inspect canonical production rail state
+        if: steps.credentials.outputs.ready == 'true'
+        id: live_state
+        shell: bash
+        env:
+          BASE_URL: https://agentresolver.vercel.app
+        run: |
+          set -euo pipefail
+          curl -fsS             -H 'cache-control: no-cache'             "$BASE_URL/api/health?cdpActivationCheck=$GITHUB_RUN_ID"             -o /tmp/agentresolver-health.json
+
+          if [ "$(jq -r '.paymentRails.circleGatewayEnabled // false' /tmp/agentresolver-health.json)" = "true" ]; then
+            echo "::error::Circle Gateway is enabled in canonical production. Refusing CDP activation until the rail conflict is reviewed."
+            exit 1
+          fi
+
+          if [ "$(jq -r '.paymentRails.cdpFacilitatorEnabledForX402Ping // false' /tmp/agentresolver-health.json)" = "true" ] &&
+             [ "$(jq -r '.paymentRails.x402Ping // ""' /tmp/agentresolver-health.json)" = "coinbase-cdp" ]; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+            echo "Canonical production already reports Coinbase CDP for x402-ping."
+          else
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Coinbase CDP credentials exist, but the rail is not active on canonical x402-ping yet."
+          fi
+
+      - name: Capture validated main SHA
+        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          validated_sha="$(git rev-parse origin/main)"
+          echo "sha=$validated_sha" >> "$GITHUB_OUTPUT"
+          echo "validated_sha=$validated_sha"
+
+      - name: Enable scoped CDP production flags
+        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          request_file="$(mktemp)"
+          response_file="$(mktemp)"
+          trap 'rm -f "$request_file" "$response_file"' EXIT
+          chmod 600 "$request_file" "$response_file"
+
+          python3 - "$request_file" <<'PY'
+          import json
+          import sys
+
+          payload = [
+              {
+                  "key": "AGENTRESOLVER_CDP_FACILITATOR_ENABLED",
+                  "value": "1",
+                  "type": "plain",
+                  "target": ["production"],
+                  "comment": "Enable Coinbase CDP only through credential-gated activation",
+              },
+              {
+                  "key": "AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES",
+                  "value": "x402-ping",
+                  "type": "plain",
+                  "target": ["production"],
+                  "comment": "Bound initial Coinbase CDP rollout to settlement canary only",
+              },
+          ]
+          with open(sys.argv[1], "w", encoding="utf-8") as fh:
+              json.dump(payload, fh, separators=(",", ":"))
+          PY
+
+          status="$(curl -sS             --connect-timeout 10             --max-time 30             -o "$response_file"             -w '%{http_code}'             -X POST             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true&teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN"             -H 'Content-Type: application/json'             --data-binary @"$request_file")"
+
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "::error::Vercel rejected the scoped CDP flag update with HTTP $status."
+            exit 1
+          fi
+
+          python3 - "$response_file" <<'PY'
+          import json
+          import sys
+
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          failed = payload.get("failed", []) if isinstance(payload, dict) else []
+          if failed:
+              raise SystemExit("Vercel reported one or more failed CDP flag updates.")
+          PY
+
+          echo "Scoped Coinbase CDP production flags were enabled without reading or copying credential values."
+
+      - name: Setup Node
+        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install pinned Vercel CLI
+        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
+        run: npm install --global vercel@48.8.0 --no-audit --no-fund
+
+      - name: Link Vercel project
+        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Pull activated production configuration
+        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build credential-activated production artifact
+        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Recheck main immediately before activation deploy
+        if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
+        id: freshness
+        shell: bash
+        env:
+          VALIDATED_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          if [ "$current_main" != "$VALIDATED_SHA" ]; then
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "Main advanced during the CDP build. Refusing to deploy stale code; the next credential-gated run will rebuild current main."
+          else
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy CDP-activated artifact
+        if: >-
+          steps.credentials.outputs.ready == 'true' &&
+          steps.live_state.outputs.active != 'true' &&
+          steps.freshness.outputs.fresh == 'true'
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployment_url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "Deployed credential-activated x402-ping rail."
+
+      - name: Verify canonical CDP canary without spending
+        if: steps.deploy.outputs.url != ''
+        shell: bash
+        env:
+          BASE_URL: https://agentresolver.vercel.app
+          VALIDATED_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          ready=0
+          for attempt in {1..30}; do
+            curl -fsS               -H 'cache-control: no-cache'               "$BASE_URL/api/health?cdpActivationVerify=$GITHUB_RUN_ID-$attempt"               -o /tmp/agentresolver-cdp-health.json || true
+
+            if jq -e '
+              .paymentRails.cdpFacilitatorEnabledForX402Ping == true and
+              .paymentRails.x402Ping == "coinbase-cdp" and
+              .paymentRails.circleGatewayEnabled == false
+            ' /tmp/agentresolver-cdp-health.json >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" != "1" ]; then
+            echo "::error::Canonical production did not report the scoped Coinbase CDP rail."
+            exit 1
+          fi
+
+          status="$(curl -sS             -D /tmp/agentresolver-cdp-ping-headers.txt             -o /tmp/agentresolver-cdp-ping.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             "$BASE_URL/api/x402-ping")"
+
+          test "$status" = "402"
+          grep -Fi 'payment-required:' /tmp/agentresolver-cdp-ping-headers.txt >/dev/null
+          grep -Fi "x-agentresolver-deployment: $VALIDATED_SHA" /tmp/agentresolver-cdp-ping-headers.txt >/dev/null
+          jq -e '
+            .x402Version == 2 and
+            any(.accepts[]; .network == "eip155:8453" and .amount == "1000")
+          ' /tmp/agentresolver-cdp-ping.json >/dev/null
+
+          echo "Canonical x402-ping is CDP-configured and returns a valid unsigned 402 challenge. No payment was sent."
