@@ -18,6 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22.20.0"
+          package-manager-cache: false
+
       - name: Verify public repo skill discovery
         shell: bash
         env:
