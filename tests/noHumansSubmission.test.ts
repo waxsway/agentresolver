@@ -11,7 +11,7 @@ test("NoHumans workflow queues Guard, canonical preflight, and a paid GET utilit
   assert.match(workflow, /Submit canonical preflight to NoHumans free verification queue/);
   assert.match(workflow, /Verify paid hash utility without spending/);
   assert.match(workflow, /Submit hash utility to NoHumans free verification queue/);
-  assert.match(workflow, /hmac-sha256.*POST-only/i);
+  assert.match(workflow, /HMAC stays POST-only/i);
   assert.match(workflow, /price_amount:0\.001/);
   assert.match(workflow, /chains:\["base","solana"\]/);
   assert.doesNotMatch(workflow, /PAYMENT-SIGNATURE|private.?key|seed phrase/i);
