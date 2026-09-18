@@ -116,7 +116,31 @@ export function x402BuyerSetup() {
               }
             ],
             rule:
-              "Return true only when the caller-owned spend policy has authorized this exact AgentResolver Guard fee and the tool, amount, network, scheme, asset and resource match caller expectations; otherwise return false."
+              "Return true only when the caller-owned spend policy has authorized this exact AgentResolver Guard fee and the tool, amount, network, scheme, asset and resource match caller expectations; otherwise return false.",
+            approvalHookExample: [
+              'const guardTools = new Set(["payment_guard", "x402_payment_preflight"]);',
+              'const allowedGuardRequirements = [',
+              '  { network: "eip155:8453", asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8" },',
+              '  { network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa" }',
+              '];',
+              '',
+              '// hostAllowsGuardSpend is supplied by the caller/runtime and must fail closed.',
+              'onPaymentRequested: async context => {',
+              '  if (!(await hostAllowsGuardSpend(context))) return false;',
+              '  if (!guardTools.has(context.toolName)) return false;',
+              '  if (context.paymentRequired.x402Version !== 2) return false;',
+              '  if (context.paymentRequired.resource.url !== "https://agentresolver.vercel.app/mcp") return false;',
+              '  return context.paymentRequired.accepts.some(requirement =>',
+              '    requirement.scheme === "exact" &&',
+              '    requirement.amount === "1000" &&',
+              '    allowedGuardRequirements.some(expected =>',
+              '      requirement.network === expected.network &&',
+              '      requirement.asset.toLowerCase() === expected.asset.toLowerCase() &&',
+              '      requirement.payTo.toLowerCase() === expected.payTo.toLowerCase()',
+              '    )',
+              '  );',
+              '}'
+            ]
           }
         },
         behavior: [
