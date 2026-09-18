@@ -116,6 +116,59 @@ jobs:
             echo "Both Coinbase CDP credential keys are present in Vercel production; activation may proceed."
           fi
 
+      - name: Classify legacy CDP_API_SECRET without exposing it
+        if: steps.credentials.outputs.ready != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          chmod 600 "$response_file"
+
+          status="$(curl -sS             --connect-timeout 10             --max-time 30             -o "$response_file"             -w '%{http_code}'             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID&decrypt=true&source=vercel-cli:pull"             -H "Authorization: Bearer $VERCEL_TOKEN")"
+          if [ "$status" != "200" ]; then
+            echo "::notice::Could not decrypt production env metadata for safe legacy credential classification (HTTP $status)."
+            exit 0
+          fi
+
+          python3 - "$response_file" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          envs=payload.get("envs", []) if isinstance(payload, dict) else []
+          item=next((x for x in envs if isinstance(x, dict) and x.get("key")=="CDP_API_SECRET" and "production" in (x.get("target") or [])), None)
+          if not item:
+              print("LEGACY_CDP_SECRET_PRESENT=false")
+              raise SystemExit(0)
+          value=item.get("value")
+          if not isinstance(value, str) or not value:
+              print("LEGACY_CDP_SECRET_PRESENT=true")
+              print("LEGACY_CDP_SECRET_VALUE_AVAILABLE=false")
+              raise SystemExit(0)
+          print("LEGACY_CDP_SECRET_PRESENT=true")
+          print("LEGACY_CDP_SECRET_VALUE_AVAILABLE=true")
+          try:
+              parsed=json.loads(value)
+          except Exception:
+              print("LEGACY_CDP_SECRET_FORMAT=scalar")
+              raise SystemExit(0)
+          if not isinstance(parsed, dict):
+              print("LEGACY_CDP_SECRET_FORMAT=json_non_object")
+              raise SystemExit(0)
+          keys=sorted(str(k) for k in parsed.keys())
+          print("LEGACY_CDP_SECRET_FORMAT=json_object")
+          print("LEGACY_CDP_SECRET_JSON_KEYS=" + ",".join(keys))
+          has_pair=(
+              isinstance(parsed.get("name"), str) and bool(parsed["name"].strip()) and
+              isinstance(parsed.get("privateKey"), str) and bool(parsed["privateKey"].strip())
+          )
+          has_exact=(
+              isinstance(parsed.get("CDP_API_KEY_ID"), str) and bool(parsed["CDP_API_KEY_ID"].strip()) and
+              isinstance(parsed.get("CDP_API_KEY_SECRET"), str) and bool(parsed["CDP_API_KEY_SECRET"].strip())
+          )
+          print("LEGACY_CDP_SECRET_HAS_NAME_PRIVATEKEY=" + ("true" if has_pair else "false"))
+          print("LEGACY_CDP_SECRET_HAS_EXACT_PAIR=" + ("true" if has_exact else "false"))
+          PY
+
       - name: Inspect canonical production rail state
         if: steps.credentials.outputs.ready == 'true'
         id: live_state
