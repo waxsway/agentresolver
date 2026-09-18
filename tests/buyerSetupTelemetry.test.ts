@@ -30,7 +30,7 @@ test("buyer setup view telemetry is bounded and uses existing traffic classifica
 test("paid challenge handoff carries source and capability attribution without logging payment secrets", () => {
   const paidRoute = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
   assert.match(paidRoute, /x402BuyerSetupChallengeUrl\(capabilityId, requestMethod\)/);
-  assert.match(paidRoute, /x402BuyerSetupChallengeError\(capabilityId, requestMethod\)/);
+  assert.match(paidRoute, /withRequestAwareChallengeHandoff\(\s*headerChallenge,\s*capabilityId,\s*requestMethod/s);
   assert.match(
     paidRoute,
     /mirrorPaymentChallengeBody\(\s*response,\s*capabilityId,\s*req\.method\s*\)/s
