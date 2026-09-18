@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeX402ChallengeMethod, normalizeX402ChallengeResumeUrl, x402BuyerSetup, x402BuyerSetupCompact } from "@/lib/x402BuyerSetup";
+import { normalizeX402ChallengeMethod, normalizeX402ChallengeResumeUrl, x402BuyerSetup, x402BuyerSetupCompact, type X402BuyerSetupContext } from "@/lib/x402BuyerSetup";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import { PAID_CAPABILITIES } from "@/lib/paidCapabilities";
 
@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     ].join(", ");
   }
 
-  const setupContext = {
+  const setupContext: X402BuyerSetupContext = {
     source,
     capabilityId,
     endpoint: capability?.endpoint ?? null,
