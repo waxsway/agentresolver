@@ -61,16 +61,107 @@ function asJsonObject(value: unknown): JsonObject {
     : {};
 }
 
+function runtimeQueryValue(value: string, schema: unknown): unknown {
+  const shape = asJsonObject(schema);
+  if (shape.type === "number" || shape.type === "integer") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  if (shape.type === "boolean") {
+    if (value === "true") return true;
+    if (value === "false") return false;
+  }
+  return value;
+}
+
+function withRequestAwareBazaarInput(
+  challenge: JsonObject,
+  capabilityId: PaidCapabilityId,
+  requestMethod?: string,
+  resumeUrl?: string | null
+): JsonObject {
+  if (requestMethod?.toUpperCase() !== "GET" || !resumeUrl) return challenge;
+
+  const runtimeInput = x402RuntimeDiscoveryInput(capabilityId);
+  if (!runtimeInput) return challenge;
+
+  let url: URL;
+  try {
+    url = new URL(resumeUrl);
+  } catch {
+    return challenge;
+  }
+
+  const inputProperties = asJsonObject(runtimeInput.schema.properties);
+  const queryParams: JsonObject = {};
+  for (const [name, propertySchema] of Object.entries(inputProperties)) {
+    const raw = url.searchParams.get(name);
+    if (raw !== null) queryParams[name] = runtimeQueryValue(raw, propertySchema);
+  }
+
+  const extensions = asJsonObject(challenge.extensions);
+  const bazaar = asJsonObject(extensions.bazaar);
+  if (Object.keys(bazaar).length === 0) return challenge;
+
+  const info = asJsonObject(bazaar.info);
+  const schema = asJsonObject(bazaar.schema);
+  const schemaProperties = asJsonObject(schema.properties);
+  const required = Array.isArray(schema.required)
+    ? schema.required.filter((value): value is string => typeof value === "string")
+    : [];
+
+  return {
+    ...challenge,
+    extensions: {
+      ...extensions,
+      bazaar: {
+        ...bazaar,
+        info: {
+          ...info,
+          input: {
+            type: "http",
+            queryParams,
+            method: "GET"
+          }
+        },
+        schema: {
+          ...schema,
+          properties: {
+            ...schemaProperties,
+            input: {
+              type: "object",
+              properties: {
+                type: { type: "string", const: "http" },
+                method: { type: "string", enum: ["GET"] },
+                queryParams: runtimeInput.schema
+              },
+              required: ["type", "method"],
+              additionalProperties: false
+            }
+          },
+          required: [...new Set([...required, "input"])]
+        }
+      }
+    }
+  };
+}
+
 function withRequestAwareChallengeHandoff(
   challenge: JsonObject,
   capabilityId: PaidCapabilityId,
   requestMethod?: string,
   resumeUrl?: string | null
 ): JsonObject {
+  const requestAware = withRequestAwareBazaarInput(
+    challenge,
+    capabilityId,
+    requestMethod,
+    resumeUrl
+  );
   return {
-    ...challenge,
+    ...requestAware,
     extensions: {
-      ...asJsonObject(challenge.extensions),
+      ...asJsonObject(requestAware.extensions),
       agentresolver: x402ChallengeHeaderHandoff(capabilityId, requestMethod, resumeUrl)
     }
   };
