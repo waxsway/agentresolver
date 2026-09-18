@@ -1,0 +1,97 @@
+name: Register AgentResolver with x402Scout Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/x402scout-register-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate live settlement canary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o /tmp/agentresolver-x402scout-canary.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             https://agentresolver.vercel.app/api/x402-ping || true)"
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            ([.accepts[] | select(.network == "eip155:8453" and .amount == "1000")] | length) >= 1
+          ' /tmp/agentresolver-x402scout-canary.json >/dev/null
+
+      - name: Check x402Scout catalog and register if absent
+        shell: bash
+        env:
+          SCOUT_API: https://x402-discovery-api.onrender.com
+          ENDPOINT_URL: https://agentresolver.vercel.app/api/x402-ping
+          PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+        run: |
+          set -euo pipefail
+
+          catalog_status="$(curl -sS             --connect-timeout 10             --max-time 30             -o /tmp/x402scout-catalog.json             -w '%{http_code}'             "$SCOUT_API/catalog" || printf '000')"
+
+          case "$catalog_status" in
+            200) ;;
+            429|500|502|503|504|000)
+              echo "::warning::x402Scout catalog is temporarily unavailable (HTTP $catalog_status); registration deferred without spend."
+              exit 0
+              ;;
+            *)
+              echo "Unexpected x402Scout catalog status: $catalog_status" >&2
+              exit 1
+              ;;
+          esac
+
+          if jq -e --arg endpoint "$ENDPOINT_URL" '
+            (.services // []) | any((.endpoint_url // .url // "") == $endpoint)
+          ' /tmp/x402scout-catalog.json >/dev/null; then
+            echo "AgentResolver settlement canary is already present in x402Scout."
+            exit 0
+          fi
+
+          payload="$(jq -nc             --arg name "AgentResolver x402 Settlement Test"             --arg endpoint "$ENDPOINT_URL"             --arg description "Cheapest AgentResolver wallet/facilitator settlement canary; successful paid fulfillment hands the buyer to canonical x402 payment preflight."             --arg wallet "$PAYOUT_WALLET"             '{
+              name: $name,
+              endpoint_url: $endpoint,
+              description: $description,
+              price_per_call: 0.001,
+              capability_tags: ["verification","payment","testing","security"],
+              provider_wallet: $wallet,
+              network: "base",
+              payment_token: "USDC",
+              pricing_model: "flat",
+              agent_callable: true,
+              auth_required: false
+            }')"
+
+          status="$(curl -sS             --connect-timeout 10             --max-time 30             -o /tmp/x402scout-register.json             -w '%{http_code}'             -X POST "$SCOUT_API/register"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          echo "x402Scout registration -> HTTP $status"
+
+          case "$status" in
+            200|201)
+              jq '{
+                service_id: (.service_id // .id // null),
+                status: (.status // "registered"),
+                name: (.name // null)
+              }' /tmp/x402scout-register.json
+              ;;
+            409)
+              echo "x402Scout reports the settlement canary is already registered."
+              ;;
+            429|500|502|503|504|000)
+              echo "::warning::x402Scout registration is temporarily unavailable (HTTP $status); no spend or identity submission occurred."
+              ;;
+            *)
+              echo "Unexpected x402Scout registration status: $status" >&2
+              jq '{error: (.error // null), message: (.message // null)}' /tmp/x402scout-register.json >&2 || true
+              exit 1
+              ;;
+          esac
