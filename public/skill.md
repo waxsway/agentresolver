@@ -60,6 +60,20 @@ AgentResolver accepts its own service payment on:
 Use only a caller-controlled signer. Never send a private key or seed phrase to AgentResolver.
 
 
+## MCP wallet-capable clients — fail-closed pre-sign gate
+
+For `@x402/mcp`, set `onPaymentRequested` so the host's own policy approves the separate Guard fee before payment creation. Fail closed unless the tool is mapped to its exact MCP resource:
+
+- `payment_guard` → `mcp://tool/payment_guard`
+- `x402_payment_preflight` → `mcp://tool/x402_payment_preflight`
+
+Require x402 v2, `scheme === "exact"`, `amount === "1000"`, and an exact match for one advertised Base or Solana network / USDC asset / AgentResolver payTo tuple. Use exact string equality for Solana Base58 asset and payTo values; never lowercase or otherwise normalize them.
+
+The complete copy-pasteable callback and HTTP pre-sign equivalents are published at:
+`https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md`
+
+The host must still independently authorize the target payment after Guard succeeds.
+
 ## Coinbase AgentKit
 
 For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead of writing a custom payment loop. AgentKit only allows HTTP x402 actions against registered services, and dynamic registration is disabled by default unless the host enables it.
