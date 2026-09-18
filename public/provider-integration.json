@@ -34,5 +34,20 @@
     "callerSpendingAuthorized": false,
     "walletKeysAccepted": false,
     "paymentSignaturesForwarded": false
+  },
+  "providerOnboarding": {
+    "paidLaunchCheck": "https://agentresolver.vercel.app/api/provider-launch-check",
+    "priceUsd": 0.05,
+    "protocol": "x402",
+    "asset": "USDC",
+    "networks": [
+      "eip155:8453",
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    ],
+    "output": "technical verification report plus bounded registryEntry",
+    "registryPath": "config/provider-partners.json",
+    "reviewRequired": true,
+    "docs": "https://agentresolver.vercel.app/provider-onboarding.md",
+    "paymentEvidence": "retain PAYMENT-RESPONSE from the launch-check settlement"
   }
 }

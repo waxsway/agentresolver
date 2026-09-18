@@ -1,4 +1,5 @@
 import { CANONICAL_ORIGIN, getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
+import providerPartnersJson from "../../config/provider-partners.json";
 
 export type ProviderRoute = Readonly<{
   routeId: string;
@@ -46,7 +47,8 @@ const FIRST_PARTY_IDS: PaidCapabilityId[] = [
   "x402-payment-preflight",
   "x402-settlement-verify",
   "verified-resolve",
-  "batch-verified-resolve"
+  "batch-verified-resolve",
+  "provider-launch-check"
 ];
 
 const BASE = "eip155:8453";
@@ -104,22 +106,11 @@ function safeHttps(value: unknown): string | null {
   }
 }
 
-function partnerRoutes(
-  env: Readonly<Record<string, string | undefined>> = process.env
-): ProviderRoute[] {
-  const raw = env.AGENTRESOLVER_PROVIDER_REGISTRY_JSON?.trim();
-  if (!raw || raw.length > 20_000) return [];
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
+function parsePartnerRoutes(parsed: unknown): ProviderRoute[] {
   if (!Array.isArray(parsed)) return [];
 
   const routes: ProviderRoute[] = [];
-  for (const item of parsed.slice(0, 25)) {
+  for (const item of parsed.slice(0, 50)) {
     if (!item || typeof item !== "object") continue;
     const config = item as PartnerConfig;
     const routeId = text(config.routeId, 100);
@@ -183,10 +174,29 @@ function partnerRoutes(
   return routes;
 }
 
+function environmentPartnerRoutes(
+  env: Readonly<Record<string, string | undefined>> = process.env
+) {
+  const raw = env.AGENTRESOLVER_PROVIDER_REGISTRY_JSON?.trim();
+  if (!raw || raw.length > 20_000) return [];
+  try {
+    return parsePartnerRoutes(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
 export function registeredProviderRoutes(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): ProviderRoute[] {
-  return [...firstPartyRoutes(), ...partnerRoutes(env)];
+  const staticRoutes = parsePartnerRoutes(providerPartnersJson as unknown);
+  const envRoutes = environmentPartnerRoutes(env);
+  const seen = new Set<string>();
+  return [...firstPartyRoutes(), ...staticRoutes, ...envRoutes].filter((route) => {
+    if (seen.has(route.routeId)) return false;
+    seen.add(route.routeId);
+    return true;
+  });
 }
 
 function tokens(value: string) {

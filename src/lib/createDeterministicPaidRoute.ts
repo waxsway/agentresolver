@@ -522,6 +522,17 @@ export function createDeterministicPaidRoute(
             capabilityId,
             req.method
           );
+      if (
+        compatibleResponse.status === 402 &&
+        req.method.toUpperCase() === "GET" &&
+        !req.headers.get("payment-signature") &&
+        !req.headers.get("payment") &&
+        !attributionId
+      ) {
+        compatibleResponse.headers.set("cache-control", "public, max-age=0, must-revalidate");
+        compatibleResponse.headers.set("cdn-cache-control", "public, max-age=30");
+        compatibleResponse.headers.set("vercel-cdn-cache-control", "public, max-age=30");
+      }
       logX402Settlement(compatibleResponse, capabilityId, requestId);
       logAttributedSettlement(compatibleResponse, capabilityId, attributionId);
       return compatibleResponse;

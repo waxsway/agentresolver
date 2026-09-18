@@ -12,7 +12,17 @@ export function GET(req: Request) {
       providerPage: baseUrl + "/providers",
       registryConfiguration:
         "Partner routes are operator-reviewed and loaded from bounded machine-readable configuration. No caller can supply an arbitrary execution URL to /api/execute.",
-      attributionHeader: "x-agentresolver-attribution-id"
+      attributionHeader: "x-agentresolver-attribution-id",
+      paidLaunchCheck: baseUrl + "/api/provider-launch-check",
+      onboardingDocs: baseUrl + "/provider-onboarding.md",
+      registryPath: "config/provider-partners.json"
+    },
+    sellerMonetization: {
+      launchCheckPriceUsd: 0.05,
+      launchCheck: baseUrl + "/api/provider-launch-check",
+      successFeeUsd: 0.001,
+      successFeeSettlement: baseUrl + "/api/provider-attribution-settle",
+      activationRequiresReview: true
     },
     analytics: {
       storage: "privacy_safe_structured_runtime_events",

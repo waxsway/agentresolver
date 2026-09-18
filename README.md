@@ -77,6 +77,7 @@ Results are grouped into AgentResolver-owned capabilities, live MCP directory ma
 - `POST /api/resolve` — free natural-language capability resolution plus registered provider routes
 - `POST /api/execute` — registered-provider handoff + attribution; never an arbitrary proxy or spender
 - `GET /api/providers` — machine-readable provider network and provider-funded pilot terms
+- `POST /api/provider-launch-check` — $0.05 x402 seller-side readiness/payment-contract check that returns a bounded provider registry packet
 - `POST /api/provider-attribution-settle` — $0.001 provider-funded attribution-fee settlement
 - `/provider-integration.json` — SDKless provider routing/attribution contract
 - `POST /api/x402-payment-preflight` — $0.001 verify-before-pay x402 payment contract and PayTo safety check
@@ -115,7 +116,7 @@ The useful integration pattern is not to replace an agent's existing tools. Agen
 
 Organic inclusion remains free and relevance-based. AgentResolver also exposes a registered provider-routing network. The transaction router returns direct handoffs only for reviewed routes and creates an attribution ID; it never accepts an arbitrary execution URL, holds wallet keys, forwards payment signatures, or authorizes buyer spend.
 
-Provider partners can opt into a fixed $0.001 USDC provider-funded success-fee pilot. After a provider reports an attributed request as fulfilled or a qualified lead, it can settle the fee through `/api/provider-attribution-settle`. That receipt proves the provider paid AgentResolver's attribution fee; it does not independently prove the underlying buyer transaction.
+Providers can first buy a $0.05 USDC machine-native launch check; technically ready sellers receive a bounded registry packet for reviewed activation. Provider partners can then opt into a fixed $0.001 USDC provider-funded success-fee pilot. After a provider reports an attributed request as fulfilled or a qualified lead, it can settle the fee through `/api/provider-attribution-settle`. That receipt proves the provider paid AgentResolver's attribution fee; it does not independently prove the underlying buyer transaction.
 
 Providers can separately apply for disclosed relevance-limited sponsorship. Sponsored treatment remains labeled and organic ranking remains independent.
 
