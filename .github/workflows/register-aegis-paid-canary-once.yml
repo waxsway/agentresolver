@@ -96,6 +96,42 @@ jobs:
             *) echo "::warning::Unexpected Aegis lint status $code." ;;
           esac
 
+      - name: Attempt Aegis Provider Launch Check registration without spending
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/aegis-unavailable ]; then
+            echo "::notice::Skipping Provider Launch Check submission because Aegis is temporarily unavailable."
+            exit 0
+          fi
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://aegis.borisinc.com/submit'             --data-urlencode 'url=https://agentresolver.vercel.app/api/provider-launch-check'             --data-urlencode 'name=AgentResolver Provider Launch Check'             --data-urlencode 'category=developer-tools'             --data-urlencode 'price_usd=0.05' || printf '000')"
+          case "$code" in
+            200|201|202|204|409)
+              echo "::notice::Aegis accepted Provider Launch Check without operator spend."
+              cat "$body" 2>/dev/null || true
+              ;;
+            402)
+              echo "::notice::Aegis Provider Launch Check registration is paid; no payment was attempted."
+              ;;
+            429|500|502|503|504|530|000)
+              echo "::notice::Aegis Provider Launch Check registration is temporarily unavailable (HTTP $code); no payment was attempted."
+              ;;
+            *)
+              echo "::warning::Unexpected Aegis Provider Launch Check registration status $code; no payment was attempted."
+              cat "$body" 2>/dev/null || true
+              ;;
+          esac
+
+          lint_body="$(mktemp)"
+          lint_code="$(curl -sS -G -o "$lint_body" -w '%{http_code}'             --connect-timeout 5 --max-time 20             'https://aegis.borisinc.com/lint'             --data-urlencode 'url=https://agentresolver.vercel.app/api/provider-launch-check' || printf '000')"
+          case "$lint_code" in
+            200) cat "$lint_body" 2>/dev/null || true ;;
+            402) echo "::notice::Aegis Provider Launch Check lint requested payment; no payment was attempted." ;;
+            429|500|502|503|504|530|000) echo "::notice::Aegis seller lint unavailable (HTTP $lint_code)." ;;
+            *) echo "::warning::Unexpected Aegis seller lint status $lint_code." ;;
+          esac
+
       - name: Check Aegis discovery visibility
         shell: bash
         run: |
