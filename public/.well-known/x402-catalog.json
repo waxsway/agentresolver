@@ -4,7 +4,7 @@
   "canonical": "https://agentresolver.vercel.app",
   "protocol": "x402",
   "protocolVersion": 2,
-  "positioning": "Free capability discovery; tiny pay-per-call live evidence when an agent needs confidence before depending on an external service.",
+  "positioning": "Free capability discovery; tiny pay-per-call pre-payment checks and post-payment settlement receipt evidence for autonomous x402 agents.",
   "resources": [
     {
       "id": "http-inspect",
@@ -54,6 +54,73 @@
         "authorizationHeader": "PAYMENT-SIGNATURE",
         "settlementHeader": "PAYMENT-RESPONSE"
       },
+      "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
+    },
+    {
+      "id": "x402-settlement-verify",
+      "name": "x402 Settlement Receipt Verify",
+      "description": "Independently verify a completed Base USDC x402 payment from its transaction hash. Checks the public Base receipt and transaction, EIP-3009 payment shape, USDC Transfer evidence, confirmation depth, and optional expected payTo recipient and atomic amount. This is settlement evidence, not provider identity or fulfillment verification.",
+      "method": "GET",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "preferredMethod": "GET",
+      "url": "https://agentresolver.vercel.app/api/x402-settlement-verify",
+      "inputTransport": "query",
+      "input": {
+        "type": "object",
+        "required": [
+          "txHash"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "txHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "expectedPayTo": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "expectedAmountAtomic": {
+            "type": "string",
+            "pattern": "^[0-9]{1,78}$"
+          }
+        }
+      },
+      "example": {
+        "txHash": "0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72",
+        "expectedPayTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        "expectedAmountAtomic": "1000"
+      },
+      "price": {
+        "amountUsd": 0.001,
+        "asset": "USDC",
+        "network": "eip155:8453",
+        "scheme": "exact",
+        "networks": [
+          "eip155:8453",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ],
+        "paymentOptions": [
+          {
+            "network": "eip155:8453",
+            "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+          },
+          {
+            "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+            "payTo": "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+          }
+        ]
+      },
+      "payment": {
+        "challengeStatus": 402,
+        "challengeHeader": "PAYMENT-REQUIRED",
+        "authorizationHeader": "PAYMENT-SIGNATURE",
+        "settlementHeader": "PAYMENT-RESPONSE"
+      },
+      "repeatUse": "after_base_x402_settlement_when_receipt_evidence_is_needed",
       "spendingPolicy": "Calling agents must independently authorize payment. Discovery never authorizes spending."
     },
     {

@@ -1,6 +1,6 @@
 # AgentResolver
 
-> AgentResolver Guard is a $0.001 USDC verify-before-pay check for autonomous x402 buyers on Base or Solana. Free capability resolution is also available.
+> AgentResolver Guard is a $0.001 USDC verify-before-pay check for autonomous x402 buyers on Base or Solana. AgentResolver also provides $0.001 independent Base settlement-receipt verification after payment. Free capability resolution is also available.
 
 ## Default payment policy
 
@@ -66,6 +66,16 @@ Price: $0.001 USDC on Base or Solana.
 
 Use this only when a funded x402 client wants the cheapest possible end-to-end wallet/facilitator/settlement/delivery test. It is a canary, not the primary repeat-use product.
 
+## Settlement receipt verification
+
+GET https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=<base-transaction-hash>
+
+Price: $0.001 USDC on Base or Solana.
+
+Use this after a Base x402 payment returns a transaction hash and independent on-chain evidence is needed. It reads the public Base receipt and transaction, checks EIP-3009 payment shape and USDC Transfer evidence, reports confirmation depth, and can fail closed against optional `expectedPayTo` and `expectedAmountAtomic` values.
+
+This verifies settlement evidence only. It does not establish provider identity, legitimacy, or downstream fulfillment.
+
 ## Free capability discovery
 
 MCP: connect to https://agentresolver.vercel.app/mcp and call `resolve`.
@@ -80,7 +90,7 @@ Resolution is free, read-only, and never authorizes spending.
 
 ## Higher-value paid actions
 
-- MCP Live Preflight: POST https://agentresolver.vercel.app/api/mcp-probe — $0.001 USDC.
+- x402 Settlement Receipt Verify: GET https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=<hash> — $0.001 USDC.\n- MCP Live Preflight: POST https://agentresolver.vercel.app/api/mcp-probe — $0.001 USDC.
 - Agent Readiness Audit: POST https://agentresolver.vercel.app/api/agent-readiness — $0.005 USDC.
 - Verified Resolve: POST https://agentresolver.vercel.app/api/verified-resolve — $0.02 USDC.
 - Batch Verified Resolve: POST https://agentresolver.vercel.app/api/batch-verified-resolve — $0.05 USDC.
@@ -89,7 +99,7 @@ All paid actions disclose their x402 terms before payment. An unpaid request ret
 
 ## Machine discovery
 
-- Guard: https://agentresolver.vercel.app/api/payment-guard
+- Guard: https://agentresolver.vercel.app/api/payment-guard\n- Settlement receipt verify: https://agentresolver.vercel.app/api/x402-settlement-verify
 - Buyer setup: https://agentresolver.vercel.app/api/x402-client-setup
 - MCP: https://agentresolver.vercel.app/mcp
 - x402 manifest: https://agentresolver.vercel.app/.well-known/x402
