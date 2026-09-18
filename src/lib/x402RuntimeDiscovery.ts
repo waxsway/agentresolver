@@ -10,16 +10,16 @@ export function x402RuntimeDiscoveryOutput(capabilityId: PaidCapabilityId) {
     return {
       example: {
         pong: true,
-        settledDelivery: true
+        settledDelivery: true,
+        next: {
+          recommended: {
+            capabilityId: "x402-payment-preflight"
+          }
+        }
       },
       schema: {
         type: "object",
-        required: ["pong", "settledDelivery"],
-        additionalProperties: true,
-        properties: {
-          pong: { type: "boolean", const: true },
-          settledDelivery: { type: "boolean", const: true }
-        }
+        additionalProperties: true
       }
     } as const;
   }
