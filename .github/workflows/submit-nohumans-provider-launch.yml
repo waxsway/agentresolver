@@ -1,0 +1,97 @@
+name: Submit NoHumans Provider Launch Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/submit-nohumans-provider-launch.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      RESOURCE: https://agentresolver.vercel.app/api/provider-launch-check
+    steps:
+      - name: Verify GET-first seller purchase contract without spending
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -X GET "$RESOURCE")"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          assert payload.get("x402Version") == 2
+          bazaar=((payload.get("extensions") or {}).get("bazaar") or {}).get("info") or {}
+          assert (bazaar.get("input") or {}).get("method") == "GET"
+          accepts=payload.get("accepts") or []
+          assert any(
+              item.get("network") == "eip155:8453"
+              and str(item.get("amount")) == "50000"
+              and item.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          PY
+
+      - name: Submit seller product to NoHumans free verification queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg endpoint "$RESOURCE" '{
+            name:"AgentResolver Provider Launch Check",
+            description:"$0.05 USDC GET-first x402 seller verification for API and machine-service providers that want agent distribution. A successful paid call performs bounded provider readiness and x402 contract checks and returns a registry-ready AgentResolver provider packet. Autonomous verification scouts can execute the GET reference contract end to end; production sellers use POST with their own provider packet.",
+            endpoint_url:$endpoint,
+            category:"tools.verification",
+            price_amount:0.05,
+            price_currency:"USDC",
+            chains:["base","solana"]
+          }')"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -X POST 'https://nohumans.directory/v1/listings'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          python3 - "$body" <<'PY'
+          import json, sys
+          raw=open(sys.argv[1], "r", encoding="utf-8").read()
+          try:
+              payload=json.loads(raw)
+          except Exception:
+              print(raw)
+              raise
+          if isinstance(payload, dict) and "claim_token" in payload:
+              payload["claim_token"]="[REDACTED]"
+          if isinstance(payload, dict) and isinstance(payload.get("data"), dict) and "claim_token" in payload["data"]:
+              payload["data"]["claim_token"]="[REDACTED]"
+          print(json.dumps(payload, separators=(",", ":")))
+          PY
+
+          case "$code" in
+            200|201|202|409)
+              echo "Provider Launch Check submitted to NoHumans verification queue."
+              ;;
+            429|500|502|503|504|000)
+              echo "::notice::NoHumans is temporarily unavailable/rate-limited (HTTP $code); no user funds were used."
+              ;;
+            *)
+              echo "::warning::Unexpected NoHumans listing status $code; no user funds were used."
+              ;;
+          esac
+
+      - name: Check seller-product discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          curl -fsS -G 'https://nohumans.directory/v1/discover'             --data-urlencode 'q=AgentResolver Provider Launch Check'             -o /tmp/nohumans-provider-launch.json || exit 0
+          cat /tmp/nohumans-provider-launch.json 2>/dev/null || true
+          echo
+          if grep -Fqi "$RESOURCE" /tmp/nohumans-provider-launch.json; then
+            echo "Provider Launch Check is visible in NoHumans discovery."
+          else
+            echo "::notice::NoHumans accepted/knows the seller product but public discovery may refresh on its next probe cycle."
+          fi
