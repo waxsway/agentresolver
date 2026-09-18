@@ -16,7 +16,11 @@ concurrency:
 
 jobs:
   deploy:
+    # Emergency guard: canonical production is pinned to the last healthy CDP runtime
+    # while the prebuilt runtime-env handoff is repaired. Remove only after a
+    # credential-preserving deploy is proven in CI.
     if: >-
+      false &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
