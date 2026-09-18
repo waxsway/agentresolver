@@ -14,3 +14,11 @@ test("production smoke enforces the focused public revenue catalog", () => {
   assert.match(smoke, /index\("hash-encode"\) == null/);
   assert.match(smoke, /index\("mcp-probe"\) == null/);
 });
+
+
+test("production smoke requires and challenges the settlement verifier", () => {
+  assert.match(smoke, /index\("x402-settlement-verify"\) != null/);
+  assert.match(smoke, /x402SettlementVerifyGet/);
+  assert.match(smoke, /check_402 'x402 Settlement Verify'/);
+  assert.match(smoke, /\/api\/x402-settlement-verify\?txHash=/);
+});
