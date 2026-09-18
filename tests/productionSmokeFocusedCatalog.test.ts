@@ -12,3 +12,8 @@ test("production smoke enforces the focused public revenue catalog", () => {
   assert.match(smoke, /index\("hash-encode"\) == null/);
   assert.match(smoke, /index\("mcp-probe"\) == null/);
 });
+
+
+test("focused OpenAPI excludes the removed MCP probe operation", () => {
+  assert.match(smoke, /! grep -F 'probeMcpEndpoint' \/tmp\/openapi\.json/);
+});
