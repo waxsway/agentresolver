@@ -90,8 +90,28 @@ jobs:
           )"
 
           echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          python3 - "$response_file" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          envs=payload.get("envs", []) if isinstance(payload, dict) else []
+          rows=[]
+          for item in envs:
+              if not isinstance(item, dict):
+                  continue
+              key=item.get("key")
+              if not isinstance(key, str):
+                  continue
+              if "CDP" not in key.upper() and "COINBASE" not in key.upper():
+                  continue
+              target=item.get("target") or []
+              if isinstance(target, str): target=[target]
+              rows.append((key, ",".join(sorted(str(v) for v in target))))
+          print("CDP/COINBASE ENV METADATA (names/targets only):")
+          for key, targets in sorted(rows):
+              print(f"- {key}: [{targets}]")
+          PY
           if [ "$ready" != "true" ]; then
-            echo "::notice::Coinbase CDP credentials are not present in the Vercel production environment. CDP remains disabled."
+            echo "::notice::Coinbase CDP credentials are not present under the required production key names. CDP remains disabled."
           else
             echo "Both Coinbase CDP credential keys are present in Vercel production; activation may proceed."
           fi
