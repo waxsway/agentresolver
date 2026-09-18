@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeX402ChallengeMethod, normalizeX402ChallengeResumeUrl, x402BuyerSetup } from "@/lib/x402BuyerSetup";
+import { normalizeX402ChallengeMethod, normalizeX402ChallengeResumeUrl, x402BuyerSetup, x402BuyerSetupCompact, type X402BuyerSetupContext } from "@/lib/x402BuyerSetup";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import { PAID_CAPABILITIES } from "@/lib/paidCapabilities";
 
@@ -25,12 +25,17 @@ export async function GET(req: Request) {
       ? requestedCapabilityId
       : null;
 
+  const setupMode = source === "x402-challenge" && capabilityId
+    ? "challenge_compact"
+    : "full";
+
   console.log(JSON.stringify({
     event: "buyer_setup_viewed",
     at: new Date().toISOString(),
     surface: "http",
     source,
     capabilityId,
+    setupMode,
     ...trafficLogFields(req, traffic)
   }));
 
@@ -56,24 +61,30 @@ export async function GET(req: Request) {
       responseHeaders["x-agentresolver-resume-method"] = challengeMethod;
     }
     responseHeaders["x-agentresolver-retry-header"] = "PAYMENT-SIGNATURE";
+    responseHeaders["x-agentresolver-setup-mode"] = "challenge_compact";
     responseHeaders["access-control-expose-headers"] = [
       "x-agentresolver-resume-url",
       "x-agentresolver-resume-capability",
       "x-agentresolver-resume-method",
-      "x-agentresolver-retry-header"
+      "x-agentresolver-retry-header",
+      "x-agentresolver-setup-mode"
     ].join(", ");
   }
 
+  const setupContext: X402BuyerSetupContext = {
+    source,
+    capabilityId,
+    endpoint: capability?.endpoint ?? null,
+    resumeUrl,
+    method: challengeMethod,
+    priceUsd: capability?.priceUsd ?? null,
+    atomicAmount: capability?.atomicAmount ?? null
+  };
+
   return NextResponse.json(
-    x402BuyerSetup({
-      source,
-      capabilityId,
-      endpoint: capability?.endpoint ?? null,
-      resumeUrl,
-      method: challengeMethod,
-      priceUsd: capability?.priceUsd ?? null,
-      atomicAmount: capability?.atomicAmount ?? null
-    }),
+    setupMode === "challenge_compact"
+      ? x402BuyerSetupCompact(setupContext)
+      : x402BuyerSetup(setupContext),
     { headers: responseHeaders }
   );
 }
