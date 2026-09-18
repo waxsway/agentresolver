@@ -13,6 +13,21 @@ export function normalizeX402ChallengeMethod(method?: string | null): X402Challe
 
 const AGENTRESOLVER_ORIGIN = "https://agentresolver.vercel.app";
 
+export function stripAgentResolverInfrastructureQueryParams(requestUrl?: string | null) {
+  if (!requestUrl || requestUrl.length > 4096) return null;
+  try {
+    const parsed = new URL(requestUrl);
+    parsed.hash = "";
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (key.startsWith("_vercel_")) parsed.searchParams.delete(key);
+    }
+    const normalized = parsed.toString();
+    return normalized.length <= 4096 ? normalized : null;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeX402ChallengeResumeUrl(
   requestUrl?: string | null,
   endpoint?: string | null
@@ -21,12 +36,7 @@ export function normalizeX402ChallengeResumeUrl(
   try {
     const parsed = new URL(requestUrl, AGENTRESOLVER_ORIGIN);
     if (parsed.origin !== AGENTRESOLVER_ORIGIN || parsed.pathname !== endpoint) return null;
-    parsed.hash = "";
-    for (const key of [...parsed.searchParams.keys()]) {
-      if (key.startsWith("_vercel_")) parsed.searchParams.delete(key);
-    }
-    const normalized = parsed.toString();
-    return normalized.length <= 4096 ? normalized : null;
+    return stripAgentResolverInfrastructureQueryParams(parsed.toString());
   } catch {
     return null;
   }
