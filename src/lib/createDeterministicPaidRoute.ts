@@ -12,6 +12,7 @@ import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
 import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, X402_BUYER_SETUP_URL } from "@/lib/x402BuyerSetup";
+import { x402BuyerChallengeExtension } from "@/lib/x402BuyerChallengeExtension";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -379,7 +380,8 @@ export function createDeterministicPaidRoute(
         serviceName: bazaarProviderMetadata.serviceName,
         tags: [...bazaarProviderMetadata.tags],
         extensions: {
-          ...discoveryExtension
+          ...discoveryExtension,
+          agentresolver: x402BuyerChallengeExtension(capabilityId)
         }
       }
     }, server) as PaidHandler;
