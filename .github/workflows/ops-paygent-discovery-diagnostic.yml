@@ -1,0 +1,109 @@
+name: Ops Paygent Discovery Diagnostic
+
+on:
+  push:
+    branches:
+      - ops/paygent-discovery-diagnostic-20260918
+    paths:
+      - .github/workflows/ops-paygent-discovery-diagnostic.yml
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/paygent-discovery-diagnostic-20260918
+
+      - name: Query Paygent public buyer search
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics/paygent
+          python3 - <<'PY'
+          import json, subprocess, pathlib
+
+          endpoint = "https://discover-api.paygent.net/v1/search"
+          queries = [
+              "AgentResolver",
+              "agentresolver.vercel.app",
+              "verify x402 payment before signing",
+              "x402 payment preflight",
+              "provider launch check",
+          ]
+          results = []
+
+          def objects(value):
+              if isinstance(value, dict):
+                  yield value
+                  for v in value.values():
+                      yield from objects(v)
+              elif isinstance(value, list):
+                  for v in value:
+                      yield from objects(v)
+
+          for q in queries:
+              payload = json.dumps({"query": q, "filters": {"currency": "USDC"}})
+              cp = subprocess.run(
+                  ["curl","-sS","--connect-timeout","10","--max-time","30",
+                   "-w","\n%{http_code}",
+                   "-X","POST",endpoint,
+                   "-H","content-type: application/json",
+                   "--data",payload],
+                  text=True, capture_output=True
+              )
+              body, _, code = cp.stdout.rpartition("\n")
+              entry = {"query": q, "http": code, "curlExit": cp.returncode}
+              try:
+                  parsed = json.loads(body)
+                  entry["topLevelType"] = type(parsed).__name__
+                  if isinstance(parsed, dict):
+                      entry["topLevelKeys"] = list(parsed.keys())[:30]
+                  flat = list(objects(parsed))
+                  ar = []
+                  for obj in flat:
+                      text = json.dumps(obj, separators=(",",":")).lower()
+                      if "agentresolver" in text or "agentresolver.vercel.app" in text:
+                          ar.append(obj)
+                          if len(ar) >= 20: break
+                  entry["agentResolverMatches"] = ar
+
+                  # Keep a bounded view of ranked results even when AR is absent.
+                  ranked = None
+                  if isinstance(parsed, dict):
+                      for key in ("results","services","items","data"):
+                          if isinstance(parsed.get(key), list):
+                              ranked = parsed[key]
+                              break
+                      if ranked is None and isinstance(parsed.get("data"), dict):
+                          for key in ("results","services","items"):
+                              if isinstance(parsed["data"].get(key), list):
+                                  ranked = parsed["data"][key]
+                                  break
+                  entry["topResults"] = (ranked or [])[:10]
+              except Exception as e:
+                  entry["parseError"] = str(e)
+                  entry["bodyPrefix"] = body[:4000]
+              results.append(entry)
+
+          pathlib.Path("diagnostics/paygent/result.json").write_text(
+              json.dumps({"queries": results}, indent=2, sort_keys=True)
+          )
+          PY
+
+      - name: Commit bounded diagnostic result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "agentresolver-ops"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/paygent/result.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Capture Paygent buyer-discovery diagnostic"
+          git push origin HEAD:ops/paygent-discovery-diagnostic-20260918
