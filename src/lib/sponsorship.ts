@@ -62,7 +62,14 @@ export function sponsorshipInventory(baseUrl: string) {
       "mcp-server-card"
     ],
     targeting: ["intent-category"],
-    reporting: ["eligible-impressions", "qualified-intent-impressions"],
+    reporting: ["eligible-impressions", "qualified-intent-impressions", "attributed-handoffs"],
+    providerSuccessFeePilot: {
+      status: "open",
+      feeUsd: 0.001,
+      trigger: "provider-reported fulfilled attribution",
+      settlement: `${baseUrl.replace(/\/$/, "")}/api/provider-attribution-settle`,
+      organicRankingIndependent: true
+    },
     rateCard: "operator-approved pilot",
     details: `${baseUrl.replace(/\/$/, "")}/api/sponsorship`
   };

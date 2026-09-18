@@ -497,6 +497,40 @@ export const PAID_CAPABILITIES = {
       title: "Batch verified resolve — $0.05",
       description: "Paid $0.05 USDC on Base or Solana batch live verification for 2–4 capability decisions using unpaid MCP and x402/HTTP evidence. x402-aware MCP clients can authorize and settle inside this tool call."
     }
+  },
+  "provider-attribution-settle": {
+    id: "provider-attribution-settle",
+    name: "Provider Attribution Settlement",
+    operationId: "providerAttributionSettlement",
+    endpoint: "/api/provider-attribution-settle",
+    price: "$0.001",
+    priceUsd: 0.001,
+    atomicAmount: "1000",
+    description: "Provider-funded $0.001 USDC attribution-fee settlement for a fulfilled AgentResolver-routed request. Returns a machine-readable fee receipt after x402 settlement without claiming that AgentResolver independently verified the provider's underlying buyer transaction.",
+    useWhen: "A registered provider reports that an AgentResolver attribution was fulfilled or became a qualified lead and wants to settle the fixed provider-funded pilot fee with cryptographic payment evidence.",
+    costClass: "deterministic",
+    tags: ["provider attribution", "provider funded", "success fee", "agent routing", "x402", "settlement", "referral"],
+    inputSchema: {
+      type: "object",
+      required: ["attributionId", "providerId", "outcome"],
+      additionalProperties: false,
+      properties: {
+        attributionId: { type: "string", pattern: "^atr_[0-9a-fA-F-]{36}$" },
+        providerId: { type: "string", minLength: 1, maxLength: 80 },
+        outcome: { type: "string", enum: ["fulfilled", "qualified-lead"] },
+        externalTransactionRef: { type: "string", maxLength: 256 }
+      }
+    },
+    example: {
+      attributionId: "atr_123e4567-e89b-42d3-a456-426614174000",
+      providerId: "example-provider",
+      outcome: "fulfilled"
+    },
+    quoteTool: {
+      name: "provider_attribution_settle",
+      title: "Provider attribution settlement — $0.001",
+      description: "Paid $0.001 USDC on Base or Solana provider-funded attribution-fee receipt for an AgentResolver-routed fulfilled request."
+    }
   }
 } as const;
 

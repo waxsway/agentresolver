@@ -14,6 +14,7 @@ import {
   shortHash
 } from "@/lib/telemetry";
 import { classifyTraffic } from "@/lib/trafficClassification";
+import { resolveProviderRoutes } from "@/lib/providerNetwork";
 import {
   getActiveSponsor,
   logSponsorImpression,
@@ -68,21 +69,28 @@ function paidRecommendation(
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
-    | { goal?: unknown; url?: unknown; limit?: unknown }
+    | { goal?: unknown; url?: unknown; limit?: unknown; maxPriceUsd?: unknown; preferredNetwork?: unknown }
     | null;
   const goal = String(body?.goal || "").trim();
   const url = typeof body?.url === "string" ? body.url.trim() : undefined;
   const parsedLimit = Number(body?.limit || 3);
   const limit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(parsedLimit, 10)) : 3;
+  const rawMaxPrice = body?.maxPriceUsd;
+  const maxPriceUsd = rawMaxPrice === undefined ? null : Number(rawMaxPrice);
+  const preferredNetwork = typeof body?.preferredNetwork === "string" ? body.preferredNetwork.trim().slice(0, 120) : "";
 
   if (!goal) return NextResponse.json({ error: "MISSING_GOAL", message: "Provide a natural-language goal." }, { status: 400 });
   if (goal.length > MAX_GOAL_LENGTH) return NextResponse.json({ error: "GOAL_TOO_LONG", message: `Goal must be ${MAX_GOAL_LENGTH} characters or fewer.` }, { status: 400 });
   if (url && url.length > MAX_URL_LENGTH) return NextResponse.json({ error: "URL_TOO_LONG", message: `URL must be ${MAX_URL_LENGTH} characters or fewer.` }, { status: 400 });
+  if (maxPriceUsd !== null && (!Number.isFinite(maxPriceUsd) || maxPriceUsd < 0 || maxPriceUsd > 1000)) return NextResponse.json({ error: "INVALID_MAX_PRICE", message: "maxPriceUsd must be between 0 and 1000." }, { status: 400 });
 
   const requestId = randomUUID();
   const resolution = await resolveGoal(goal, url, limit);
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin).replace(/\/$/, "");
   const intentTags = classifyIntent(goal);
+  const providerRoutes = resolveProviderRoutes(goal, Math.min(limit, 5))
+    .filter((route) => maxPriceUsd === null || route.execute.priceUsd <= maxPriceUsd)
+    .filter((route) => !preferredNetwork || route.execute.networks.includes(preferredNetwork));
   const traffic = classifyTraffic(req, { path: "/api/resolve", hasUserIntent: true });
   const sponsor = traffic.sponsorEligible ? getActiveSponsor(intentTags) : null;
 
@@ -153,6 +161,21 @@ export async function POST(req: Request) {
     paidRecommendationPriceUsd: recommendedPaidAction?.priceUsd || null
   }));
 
+  console.log(JSON.stringify({
+    event: "provider_demand_signal",
+    requestId,
+    at: new Date().toISOString(),
+    callerHash: callerHash(req),
+    goalHash: shortHash(goal),
+    intentTags,
+    trafficClass: traffic.trafficClass,
+    external: traffic.external,
+    providerRouteCount: providerRoutes.length,
+    providerRouteIds: providerRoutes.slice(0, 5).map((route) => route.routeId),
+    maxPriceUsd,
+    preferredNetwork: preferredNetwork || null
+  }));
+
   if (recommendedPaidAction) {
     console.log(JSON.stringify({
       event: "paid_recommendation_shown",
@@ -205,6 +228,13 @@ export async function POST(req: Request) {
     owned,
     mcp: resolution.mcp,
     marketplace: resolution.marketplace,
+    providerRoutes,
+    transactionRouter: {
+      execute: `${baseUrl}/api/execute`,
+      providers: `${baseUrl}/api/providers`,
+      arbitraryProxying: false,
+      callerSpendingAuthorized: false
+    },
     recommendedPaidAction,
     next: recommendedPaidAction
       ? `Free discovery found a concrete next verification step. Optional verification is available for ${formatUsd(recommendedPaidAction.priceUsd)} USDC on Base or Solana. The 402 challenge is a quote only; call it only under the calling agent's independent spending policy.`

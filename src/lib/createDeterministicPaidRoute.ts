@@ -8,6 +8,7 @@ import { BatchFacilitatorClient, GatewayEvmScheme } from "@circle-fin/x402-batch
 import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
 import { logPaidCapabilityAttempt, logPaidRetryRejection, logX402Settlement } from "@/lib/telemetry";
+import { ATTRIBUTION_HEADER, attributionIdFromRequest, logAttributedSettlement } from "@/lib/transactionAttribution";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
@@ -84,7 +85,8 @@ async function mirrorPaymentChallengeBody(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
   requestMethod?: string,
-  resumeUrl?: string | null
+  resumeUrl?: string | null,
+  attributionId?: string | null
 ) {
   if (response.status !== 402) return response;
   const headerChallenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
@@ -220,6 +222,7 @@ function stampInfrastructureHeaders(
       "x-agentresolver-trust",
       "x-agentresolver-evidence",
       "x-agentresolver-history",
+      ATTRIBUTION_HEADER,
       "x-agentresolver-execution-id",
       "x-agentresolver-response-sha256",
       "x-agentresolver-evidence-version",
@@ -227,6 +230,7 @@ function stampInfrastructureHeaders(
       "link"
     ].join(", ")
   );
+  if (attributionId) response.headers.set(ATTRIBUTION_HEADER, attributionId);
   const commitSha = process.env.VERCEL_GIT_COMMIT_SHA;
   if (commitSha) response.headers.set("x-agentresolver-deployment", commitSha);
   return response;
@@ -489,6 +493,7 @@ export function createDeterministicPaidRoute(
 
   async function runPaidRequest(req: NextRequest) {
     const requestId = randomUUID();
+    const attributionId = attributionIdFromRequest(req);
     const traffic = classifyTraffic(req, { path: endpoint });
     const normalizedResumeUrl = normalizeX402ChallengeResumeUrl(req.url, endpoint);
     const canonicalResumeUrl = new URL(endpoint, "https://agentresolver.vercel.app").toString();
@@ -505,7 +510,8 @@ export function createDeterministicPaidRoute(
         capabilityId,
         requestId,
         req.method,
-        resumeUrl
+        resumeUrl,
+        attributionId
       );
       await logPaidRetryRejection(req, response, capabilityId, requestId);
       const compatibleResponse = resumeUrl
@@ -516,6 +522,7 @@ export function createDeterministicPaidRoute(
             req.method
           );
       logX402Settlement(compatibleResponse, capabilityId, requestId);
+      logAttributedSettlement(compatibleResponse, capabilityId, attributionId);
       return compatibleResponse;
     } catch (error) {
       console.error(JSON.stringify({
@@ -529,7 +536,8 @@ export function createDeterministicPaidRoute(
         capabilityId,
         requestId,
         req.method,
-        resumeUrl
+        resumeUrl,
+        attributionId
       );
     }
   }
@@ -560,7 +568,7 @@ export function createDeterministicPaidRoute(
       headers: {
         "access-control-allow-origin": "*",
         "access-control-allow-methods": "GET, POST, OPTIONS",
-        "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response"
+        "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response, x-agentresolver-attribution-id"
       }
     })
   };

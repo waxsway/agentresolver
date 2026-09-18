@@ -5,6 +5,7 @@ import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { batchVerifiedResolve } from "@/lib/batchVerifiedResolve";
 import { logX402Settlement } from "@/lib/telemetry";
+import { ATTRIBUTION_HEADER, attributionIdFromRequest, logAttributedSettlement } from "@/lib/transactionAttribution";
 import { logLegacyPaidAttempt, logLegacyPaidDiscovery } from "@/lib/legacyPaidTraffic";
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { bazaarResourceServerExtension, paidRouteBazaarExtension } from "@/lib/bazaarDiscovery";
@@ -50,8 +51,9 @@ function getPaidHandler(): PaidHandler {
 }
 
 async function paidRequest(req: NextRequest) {
+  const attributionId = attributionIdFromRequest(req);
   if (process.env.BATCH_VERIFIED_RESOLVE_ENABLED === "false") return NextResponse.json({ error: "CAPABILITY_NOT_LIVE", capabilityId: "batch-verified-resolve", message: "Batch Verified Resolve is temporarily disabled." }, { status: 503 });
-  try { logLegacyPaidAttempt(req, "batch-verified-resolve", "/api/batch-verified-resolve"); const response = await getPaidHandler()(req); logX402Settlement(response, "batch-verified-resolve"); return response; }
+  try { logLegacyPaidAttempt(req, "batch-verified-resolve", "/api/batch-verified-resolve"); const response = await getPaidHandler()(req); logX402Settlement(response, "batch-verified-resolve"); logAttributedSettlement(response, "batch-verified-resolve", attributionId); if (attributionId) { response.headers.set(ATTRIBUTION_HEADER, attributionId); response.headers.append("access-control-expose-headers", ATTRIBUTION_HEADER); } return response; }
   catch (error) {
     console.error(JSON.stringify({ event: "paid_capability_configuration_error", capabilityId: "batch-verified-resolve", at: new Date().toISOString(), message: error instanceof Error ? error.message : "Unknown error" }));
     return NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED", message: "Paid execution is temporarily unavailable." }, { status: 503 });
@@ -64,5 +66,5 @@ export async function GET(req: NextRequest) {
   return x402DiscoveryChallenge("batch-verified-resolve");
 }
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response" } });
+  return new NextResponse(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response, x-agentresolver-attribution-id" } });
 }

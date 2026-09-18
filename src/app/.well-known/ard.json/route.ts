@@ -23,7 +23,10 @@ export function GET() {
             "MCPDiscovery",
             "X402Discovery",
             "APISelection",
-            "MachineServiceRouting"
+            "MachineServiceRouting",
+            "RegisteredProviderRouting",
+            "TransactionAttribution",
+            "ProviderFundedSettlement"
           ],
           tags: [
             "agents",
@@ -31,7 +34,9 @@ export function GET() {
             "x402",
             "tool-discovery",
             "api-discovery",
-            "routing"
+            "routing",
+            "provider-routing",
+            "transaction-attribution"
           ],
           version: "0.1.0",
           representativeQueries: [
@@ -39,7 +44,9 @@ export function GET() {
             "find an MCP server for this capability",
             "find a machine-payable x402 service for this job",
             "compare external services that can satisfy my goal",
-            "what tool should my agent use next"
+            "what tool should my agent use next",
+            "route this capability to a registered machine service",
+            "return an execution-ready provider handoff with attribution"
           ]
         }
       ]

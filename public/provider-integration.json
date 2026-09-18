@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "name": "AgentResolver Provider Network",
+  "resolve": {
+    "method": "POST",
+    "url": "https://agentresolver.vercel.app/api/resolve"
+  },
+  "route": {
+    "method": "POST",
+    "url": "https://agentresolver.vercel.app/api/execute",
+    "bodyExample": {
+      "routeId": "agentresolver:x402-ping",
+      "input": {
+        "echo": "hello"
+      }
+    }
+  },
+  "attribution": {
+    "header": "x-agentresolver-attribution-id",
+    "format": "atr_<uuid-v4>",
+    "rawGoalsStored": false,
+    "rawIpStored": false
+  },
+  "providerFundedPilot": {
+    "feeUsd": 0.001,
+    "asset": "USDC",
+    "protocol": "x402",
+    "settlement": "https://agentresolver.vercel.app/api/provider-attribution-settle",
+    "trigger": "provider-reported fulfilled attribution",
+    "proofScope": "provider-paid AgentResolver attribution fee; underlying buyer transaction is not independently proven by this receipt alone"
+  },
+  "safety": {
+    "arbitraryProxying": false,
+    "callerSpendingAuthorized": false,
+    "walletKeysAccepted": false,
+    "paymentSignaturesForwarded": false
+  }
+}
