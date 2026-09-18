@@ -1,0 +1,43 @@
+name: Diagnose PayAI Bazaar Listing Status
+
+on:
+  push:
+    branches:
+      - diagnostic/payai-bazaar-status-20260918
+    paths:
+      - ".github/workflows/diagnose-payai-bazaar-status.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Query PayAI Bazaar public listing state
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://facilitator.payai.network'
+          resources=(
+            'https://agentresolver.vercel.app/api/x402-ping'
+            'https://agentresolver.vercel.app/api/x402-payment-preflight'
+            'https://agentresolver.vercel.app/api/provider-launch-check'
+          )
+          for resource in "${resources[@]}"; do
+            echo "=== STATUS $resource ==="
+            curl -sS -G --connect-timeout 5 --max-time 20               "$base/discovery/listing-status"               --data-urlencode "resource=$resource"               -w '\nHTTP_STATUS=%{http_code}\n'
+            echo
+          done
+
+          for query in 'AgentResolver' 'provider launch check' 'x402 payment preflight'; do
+            echo "=== SEARCH $query ==="
+            curl -sS -G --connect-timeout 5 --max-time 20               "$base/discovery/search"               --data-urlencode "query=$query"               --data-urlencode 'limit=20' |
+              jq '{
+                partialResults,
+                resources: [(.resources // [])[]? | select((.resource // "") | contains("agentresolver.vercel.app")) | {
+                  resource, method, serviceName, tags, lastUpdated
+                }]
+              }'
+          done
