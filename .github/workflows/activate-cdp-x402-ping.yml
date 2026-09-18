@@ -109,12 +109,13 @@ jobs:
           fi
 
           if [ "$(jq -r '.paymentRails.cdpFacilitatorEnabledForX402Ping // false' /tmp/agentresolver-health.json)" = "true" ] &&
-             [ "$(jq -r '.paymentRails.x402Ping // ""' /tmp/agentresolver-health.json)" = "coinbase-cdp" ]; then
+             [ "$(jq -r '.paymentRails.x402PingBase // ""' /tmp/agentresolver-health.json)" = "coinbase-cdp" ] &&
+             [ "$(jq -r '.paymentRails.x402PingSolana // ""' /tmp/agentresolver-health.json)" = "payai" ]; then
             echo "active=true" >> "$GITHUB_OUTPUT"
-            echo "Canonical production already reports Coinbase CDP for x402-ping."
+            echo "Canonical production already reports Coinbase CDP for Base x402-ping with Solana preserved on PayAI."
           else
             echo "active=false" >> "$GITHUB_OUTPUT"
-            echo "Coinbase CDP credentials exist, but the rail is not active on canonical x402-ping yet."
+            echo "Coinbase CDP credentials exist, but the Base-only rail is not active on canonical x402-ping yet."
           fi
 
       - name: Capture validated main SHA
@@ -179,7 +180,7 @@ jobs:
               raise SystemExit("Vercel reported one or more failed CDP flag updates.")
           PY
 
-          echo "Scoped Coinbase CDP production flags were enabled without reading or copying credential values."
+          echo "Scoped Coinbase CDP production flags were enabled for Base x402-ping; Solana remains on PayAI. Credential values were not read or copied."
 
       - name: Setup Node
         if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
@@ -253,7 +254,8 @@ jobs:
 
             if jq -e '
               .paymentRails.cdpFacilitatorEnabledForX402Ping == true and
-              .paymentRails.x402Ping == "coinbase-cdp" and
+              .paymentRails.x402PingBase == "coinbase-cdp" and
+              .paymentRails.x402PingSolana == "payai" and
               .paymentRails.circleGatewayEnabled == false
             ' /tmp/agentresolver-cdp-health.json >/dev/null 2>&1; then
               ready=1
@@ -277,4 +279,4 @@ jobs:
             any(.accepts[]; .network == "eip155:8453" and .amount == "1000")
           ' /tmp/agentresolver-cdp-ping.json >/dev/null
 
-          echo "Canonical x402-ping is CDP-configured and returns a valid unsigned 402 challenge. No payment was sent."
+          echo "Canonical Base x402-ping is CDP-configured, Solana remains on PayAI, and the route returns a valid unsigned 402 challenge. No payment was sent."
