@@ -50,10 +50,12 @@ test("hash-encode GET publishes an exact payable query-bound utility", async () 
   assert.equal(body.resource?.url, url);
   assert.equal(body.buyerSetup?.method, "GET");
   assert.match(body.buyerSetup?.setup ?? "", /resumeUrl=/);
-  assert.equal(body.extensions?.bazaar?.info?.input?.operation, "sha256");
-  assert.equal(body.extensions?.bazaar?.info?.input?.input, "agentresolver");
+  assert.equal(body.extensions?.bazaar?.info?.input?.type, "http");
+  assert.equal(body.extensions?.bazaar?.info?.input?.queryParams?.operation, "sha256");
+  assert.equal(body.extensions?.bazaar?.info?.input?.queryParams?.input, "agentresolver");
 
-  const operation = body.extensions?.bazaar?.schema?.properties?.input?.properties?.operation;
+  const operation =
+    body.extensions?.bazaar?.schema?.properties?.input?.properties?.queryParams?.properties?.operation;
   assert.ok(operation?.enum?.includes("sha256"));
   assert.equal(operation?.enum?.includes("hmac-sha256"), false);
   assert.ok(body.accepts?.some((item: any) =>
