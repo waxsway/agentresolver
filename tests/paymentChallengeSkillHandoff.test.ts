@@ -26,3 +26,14 @@ test("standard Link header exposes the free x402 buyer setup", () => {
   );
   assert.match(config, /AgentResolver x402 buyer setup/);
 });
+
+
+test("CORS exposes the standard buyer help Link", () => {
+  const route = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
+  const preflight = readFileSync("src/app/api/x402-payment-preflight/route.ts", "utf8");
+  const guard = readFileSync("src/app/api/payment-guard/route.ts", "utf8");
+
+  assert.match(route, /"x-agentresolver-deployment",\s*"link"/);
+  assert.match(preflight, /access-control-expose-headers[^\n]*link/);
+  assert.match(guard, /access-control-expose-headers[^\n]*link/);
+});
