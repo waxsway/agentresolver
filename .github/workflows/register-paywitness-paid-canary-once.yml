@@ -2,6 +2,9 @@ name: Register Paywitness Paid Canary Once
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -12,6 +15,10 @@ permissions:
 
 jobs:
   register:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -152,4 +159,25 @@ jobs:
               echo "Paywitness self-list failed with unexpected HTTP $code" >&2
               exit 1
               ;;
+          esac
+
+      - name: Query Paywitness free preflight after self-list
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/paywitness-unavailable ]; then
+            echo "::notice::Skipping Paywitness preflight because its OpenAPI was unavailable."
+            exit 0
+          fi
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -X POST 'https://paywitness.ai/preflight'             -H 'content-type: application/json'             --data '{"resource":"https://agentresolver.vercel.app/api/x402-ping"}' || printf '000')"
+          cat "$body" 2>/dev/null || true
+          echo
+          case "$code" in
+            200|201|202|400|404|422|429|500|502|503|504|000) ;;
+            402)
+              echo "::error::Paywitness free preflight unexpectedly requested payment. No payment was attempted."
+              exit 1
+              ;;
+            *) echo "::warning::Unexpected Paywitness preflight status $code" ;;
           esac
