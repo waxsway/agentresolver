@@ -82,6 +82,8 @@ jobs:
             "api trust security preflight"
             "x402 preflight"
             "x402 settlement test"
+            "x402 settlement verify"
+            "payment receipt verification"
             "payTo verification"
             "endpoint safety"
             "USDC payment check"
