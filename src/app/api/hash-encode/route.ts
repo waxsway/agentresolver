@@ -5,7 +5,7 @@ import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { runHashEncode, type HashEncodeOperation } from "@/lib/hashEncode";
 import { logPaidCapabilityAttempt, logX402Settlement } from "@/lib/telemetry";
-import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
+import { createDeterministicPaidRoute } from "@/lib/createDeterministicPaidRoute";
 import { bazaarResourceServerExtension, paidRouteBazaarExtension } from "@/lib/bazaarDiscovery";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_PRICING, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 
@@ -21,6 +21,33 @@ const OPERATIONS = new Set<HashEncodeOperation>([
   "base64-decode",
   "jwt-decode"
 ]);
+
+const GET_OPERATIONS = new Set<HashEncodeOperation>([
+  "sha256",
+  "sha512",
+  "base64-encode",
+  "base64-decode",
+  "jwt-decode"
+]);
+
+const paidGetRoute = createDeterministicPaidRoute("hash-encode", async (req) => {
+  const operation = req.nextUrl.searchParams.get("operation") ?? "";
+  const input = req.nextUrl.searchParams.get("input");
+
+  if (!GET_OPERATIONS.has(operation as HashEncodeOperation) || input === null) {
+    throw new Error(
+      "GET requires operation and input. Supported GET operations: sha256, sha512, base64-encode, base64-decode, jwt-decode."
+    );
+  }
+  if (input.length > 4096) {
+    throw new Error("GET input exceeds the 4096-character URL-safe limit.");
+  }
+
+  return runHashEncode({
+    operation: operation as HashEncodeOperation,
+    input
+  });
+}, { paidGet: true });
 
 async function hashEncodeHandler(req: NextRequest): Promise<NextResponse<unknown>> {
   const body = (await req.json().catch(() => null)) as {
@@ -126,7 +153,7 @@ async function paidRequest(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) { return paidRequest(req); }
-export async function GET() { return x402DiscoveryChallenge("hash-encode"); }
+export const GET = paidGetRoute.GET;
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,

@@ -79,6 +79,32 @@ export function x402RuntimeDiscoveryInput(capabilityId: PaidCapabilityId) {
     } as const;
   }
 
+  if (capabilityId === "hash-encode") {
+    return {
+      example: {
+        operation: "sha256",
+        input: "agentresolver"
+      },
+      schema: {
+        type: "object",
+        required: ["operation", "input"],
+        additionalProperties: false,
+        properties: {
+          operation: {
+            type: "string",
+            enum: ["sha256", "sha512", "base64-encode", "base64-decode", "jwt-decode"],
+            description: "GET-safe operation. hmac-sha256 stays POST-only so secrets never appear in URLs."
+          },
+          input: {
+            type: "string",
+            maxLength: 4096,
+            description: "Bounded query input for the selected deterministic transform."
+          }
+        }
+      }
+    } as const;
+  }
+
   if (capabilityId !== "x402-payment-preflight") return null;
 
   return {
