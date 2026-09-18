@@ -97,6 +97,11 @@ const x402PingMcpOutputSchema = z.object({
       paymentAuthorization: z.literal("separate_caller_authorization_required")
     }),
     preflight: x402PingNextActionSchema.extend({ method: z.literal("GET") }),
+    settlementVerify: x402PingNextActionSchema.extend({
+      method: z.literal("GET"),
+      transactionHashSource: z.string(),
+      paymentAuthorization: z.literal("separate_caller_authorization_required")
+    }),
     single: x402PingNextActionSchema.extend({ method: z.literal("POST") }),
     batch: x402PingNextActionSchema.extend({ method: z.literal("POST") })
   })
