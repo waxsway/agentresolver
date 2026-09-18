@@ -30,14 +30,16 @@ test("PayanAgent lane marks its AgentResolver self-probe internal", () => {
 });
 
 
-test("PayanAgent outages defer safely and retry after successful deploys", () => {
+test("PayanAgent outages defer safely and retry after successful deploys or the hourly zero-spend schedule", () => {
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /cron: "41 \* \* \* \*"/);
   assert.match(workflow, /workflow_run:/);
   assert.match(workflow, /workflows: \["Deploy Production"\]/);
   assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(workflow, /429\|500\|502\|503\|504\|000/);
   assert.match(workflow, /already_listed=unavailable/);
   assert.match(workflow, /registered=false/);
-  assert.match(workflow, /future deploy will retry/);
+  assert.match(workflow, /hourly zero-spend retry will try again/);
   assert.match(workflow, /no payment was attempted/);
   assert.match(workflow, /steps\.existing\.outputs\.already_listed == 'false'/);
   assert.match(workflow, /steps\.provider\.outputs\.registered == 'true'/);

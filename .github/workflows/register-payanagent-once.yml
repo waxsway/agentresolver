@@ -2,6 +2,8 @@ name: Register AgentResolver with PayanAgent Once
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "41 * * * *"
   workflow_run:
     workflows: ["Deploy Production"]
     types: [completed]
@@ -53,7 +55,7 @@ jobs:
           case "$code" in
             200) ;;
             429|500|502|503|504|000)
-              echo "::notice::PayanAgent catalog is temporarily unavailable (HTTP $code); registration is deferred and no payment was attempted."
+              echo "::notice::PayanAgent catalog is temporarily unavailable (HTTP $code); registration is deferred, no payment was attempted, and the hourly zero-spend retry will try again."
               echo "already_listed=unavailable" >> "$GITHUB_OUTPUT"
               exit 0
               ;;
@@ -105,7 +107,7 @@ jobs:
           case "$code" in
             200|201) ;;
             429|500|502|503|504|000)
-              echo "::notice::PayanAgent provider registration is temporarily unavailable (HTTP $code); no payment was attempted and a future deploy will retry."
+              echo "::notice::PayanAgent provider registration is temporarily unavailable (HTTP $code); no payment was attempted and the hourly zero-spend retry will try again."
               echo "registered=false" >> "$GITHUB_OUTPUT"
               exit 0
               ;;
