@@ -33,7 +33,8 @@ test("CDP activation only mutates scoped non-secret flags and never enables Circ
   assert.match(workflow, /"key": "AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES"/);
   assert.match(workflow, /"value": "x402-ping"/);
   assert.match(workflow, /Circle Gateway is enabled in canonical production\. Refusing CDP activation/);
-  assert.match(workflow, /\.paymentRails\.x402PingBase == "coinbase-cdp"/);
+  assert.match(workflow, /\.paymentRails\.x402CdpCanary == "coinbase-cdp"/);
+  assert.match(workflow, /\.paymentRails\.x402PingBase == "payai"/);
   assert.match(workflow, /\.paymentRails\.x402PingSolana == "payai"/);
   assert.doesNotMatch(workflow, /"key": "AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED"/);
   assert.doesNotMatch(workflow, /"key": "CDP_API_KEY_ID"|"key": "CDP_API_KEY_SECRET"/);
@@ -42,10 +43,12 @@ test("CDP activation only mutates scoped non-secret flags and never enables Circ
 test("CDP activation rechecks main and verifies an unsigned production challenge without spending", () => {
   assert.match(workflow, /git ls-remote origin refs\/heads\/main/);
   assert.match(workflow, /Refusing to deploy stale code/);
-  assert.match(workflow, /vercel pull --yes --environment=production/);
-  assert.match(workflow, /vercel build --prod/);
-  assert.match(workflow, /node \.github\/scripts\/vercel-deploy-prebuilt-runtime-env\.mjs \.vercel\/\.env\.production\.local/);
-  assert.match(workflow, /api\/x402-ping/);
+  assert.doesNotMatch(workflow, /vercel pull --yes --environment=production/);
+  assert.doesNotMatch(workflow, /vercel build --prod/);
+  assert.doesNotMatch(workflow, /vercel env run/);
+  assert.match(workflow, /node \.github\/scripts\/vercel-deploy-source-production\.mjs/);
+  assert.match(workflow, /api\/x402-cdp-canary/);
+  assert.match(workflow, /\.amount == "2000"/);
   assert.match(workflow, /test "\$status" = "402"/);
   assert.match(workflow, /payment-required:/);
   assert.match(workflow, /No payment was sent/);
