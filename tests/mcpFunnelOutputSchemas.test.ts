@@ -18,6 +18,8 @@ test("first-purchase MCP ping declares a structured output contract", () => {
   assert.match(source, /const x402PingMcpOutputSchema = z\.object\(\{/);
   assert.match(source, /settledDelivery:\s*z\.literal\(true\)/);
   assert.match(source, /requestId:\s*z\.string\(\)/);
+  assert.match(source, /next:\s*z\.object\(\{/);
+  assert.match(block, /next:\s*X402_PING_NEXT_ACTIONS/);
 });
 
 test("post-ping hash utility declares its deterministic result contract", () => {
