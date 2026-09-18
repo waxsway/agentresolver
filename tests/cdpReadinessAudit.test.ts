@@ -15,8 +15,10 @@ test("CDP readiness audit checks production key names without reading secret val
   assert.match(workflow, /CDP_COINBASE_KEY_TARGETS/);
   assert.match(workflow, /matching_targets/);
   assert.match(workflow, /"CDP" in key\.upper\(\) or "CDI" in key\.upper\(\) or "COINBASE" in key\.upper\(\)/);
-  assert.match(workflow, /RUNTIME_CDP_CREDENTIALS_PRESENT/);
-  assert.match(workflow, /vercel env run -e production/);
+  assert.match(workflow, /Supported Coinbase CDP production credential aliases are missing/);
+  assert.match(workflow, /Sensitive production values intentionally remain inside Vercel-managed build\/runtime execution/);
+  assert.doesNotMatch(workflow, /RUNTIME_CDP_CREDENTIALS_PRESENT/);
+  assert.doesNotMatch(workflow, /vercel env run/);
   assert.doesNotMatch(workflow, /decrypt=true/);
   assert.doesNotMatch(workflow, /\/env\/\$|\/env\/\{/);
 });
