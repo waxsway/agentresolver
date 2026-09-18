@@ -1,0 +1,100 @@
+name: Register AgentResolver with x402scan Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/x402scan-register-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Validate live AgentResolver discovery and canary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fsS --connect-timeout 5 --max-time 20 \
+            https://agentresolver.vercel.app/openapi.json \
+            | jq -e '.paths["/api/x402-ping"] and .paths["/api/x402-payment-preflight"]' >/dev/null
+
+          code="$(curl -sS --connect-timeout 5 --max-time 20 \
+            -o /tmp/x402scan-canary.json \
+            -w '%{http_code}' \
+            -H 'x-agentresolver-internal: 1' \
+            https://agentresolver.vercel.app/api/x402-ping || true)"
+          test "$code" = "402"
+          jq -e '.x402Version == 2 and (.accepts | length) >= 2' /tmp/x402scan-canary.json >/dev/null
+
+      - name: Register origin with x402scan
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          endpoint='https://www.x402scan.com/api/trpc/public.resources.registerFromOrigin?batch=1'
+          payload='{"0":{"json":{"origin":"https://agentresolver.vercel.app"}}}'
+          status=""
+
+          for attempt in 1 2 3; do
+            status="$(curl -sS \
+              --connect-timeout 10 \
+              --max-time 300 \
+              -o /tmp/x402scan-register.json \
+              -w '%{http_code}' \
+              -X POST "$endpoint" \
+              -H 'content-type: application/json' \
+              -H 'x-trpc-source: nextjs-react' \
+              --data "$payload" || printf '000')"
+
+            echo "x402scan registration attempt $attempt -> HTTP $status"
+            cat /tmp/x402scan-register.json 2>/dev/null || true
+            echo
+
+            case "$status" in
+              200) break ;;
+              429|500|502|503|504|000)
+                if [ "$attempt" -lt 3 ]; then
+                  sleep $((attempt * 5))
+                  continue
+                fi
+                echo "::warning::x402scan registration provider remained unavailable after retries; no spend or identity submission occurred."
+                exit 0
+                ;;
+              *)
+                echo "Unexpected x402scan registration status: $status" >&2
+                exit 1
+                ;;
+            esac
+          done
+
+          if jq -e '.[0].result.data.json.success == true' /tmp/x402scan-register.json >/dev/null 2>&1; then
+            jq '.[0].result.data.json | {
+              success,
+              registered,
+              siwx,
+              public,
+              apiKey,
+              failed,
+              skipped,
+              deprecated,
+              total,
+              source
+            }' /tmp/x402scan-register.json
+            exit 0
+          fi
+
+          if jq -e '.[0].error != null' /tmp/x402scan-register.json >/dev/null 2>&1; then
+            echo "x402scan tRPC registration returned an operation error." >&2
+            jq '.[0].error' /tmp/x402scan-register.json >&2
+            exit 1
+          fi
+
+          echo "x402scan returned an unexpected registration payload." >&2
+          cat /tmp/x402scan-register.json >&2
+          exit 1
