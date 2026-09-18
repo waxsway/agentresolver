@@ -97,6 +97,24 @@ export function x402BuyerSetup() {
               "eip155:8453",
               "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
             ],
+            expectedRequirements: [
+              {
+                scheme: "exact",
+                network: "eip155:8453",
+                amount: "1000",
+                asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+                resource: "https://agentresolver.vercel.app/mcp"
+              },
+              {
+                scheme: "exact",
+                network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+                amount: "1000",
+                asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+                resource: "https://agentresolver.vercel.app/mcp"
+              }
+            ],
             rule:
               "Return true only when the caller-owned spend policy has authorized this exact AgentResolver Guard fee and the tool, amount, network, scheme, asset and resource match caller expectations; otherwise return false."
           }
