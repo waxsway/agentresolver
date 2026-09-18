@@ -32,12 +32,24 @@ export async function GET(req: Request) {
     ...trafficLogFields(req, traffic)
   }));
 
-  return NextResponse.json(x402BuyerSetup(), {
+  const capability = capabilityId
+    ? PAID_CAPABILITIES[capabilityId as keyof typeof PAID_CAPABILITIES]
+    : null;
+
+  return NextResponse.json(
+    x402BuyerSetup({
+      source,
+      capabilityId,
+      endpoint: capability?.endpoint ?? null,
+      priceUsd: capability?.priceUsd ?? null,
+      atomicAmount: capability?.atomicAmount ?? null
+    }),
+    {
     headers: {
       "cache-control": "public, max-age=300",
       "access-control-allow-origin": "*"
     }
-  });
+  );
 }
 
 export async function OPTIONS() {
