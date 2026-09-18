@@ -1,4 +1,4 @@
-name: Restore Clean Production After NoHumans Claim
+name: Restore Healthy CDP Runtime
 
 on:
   push:
@@ -12,102 +12,52 @@ permissions:
 jobs:
   restore:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     env:
       VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
       VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
-      CLEAN_DEPLOYMENT_ID: dpl_224AqUGm1FJ91kmfPJ56LsDmRQoJ
+      HEALTHY_DEPLOYMENT_ID: dpl_ErXGyYownF8254n14tDvwwFMiPEv
+      HEALTHY_SHA: c2a05df127548c4ecc87ba73467cef72b6e721c3
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - name: Disable CDP for known-good PayAI failover
+      - name: Promote last healthy CDP deployment without rebuilding
         shell: bash
         run: |
           set -euo pipefail
-          request_file="$(mktemp)"
-          response_file="$(mktemp)"
-          trap 'rm -f "$request_file" "$response_file"' EXIT
-          chmod 600 "$request_file" "$response_file"
-
-          python3 - "$request_file" <<'PY'
-          import json
-          import sys
-
-          payload = [{
-              "key": "AGENTRESOLVER_CDP_FACILITATOR_ENABLED",
-              "value": "0",
-              "type": "plain",
-              "target": ["production"],
-              "comment": "Fail over Base x402-ping to proven PayAI after failed external CDP paid canary",
-          }]
-          with open(sys.argv[1], "w", encoding="utf-8") as fh:
-              json.dump(payload, fh, separators=(",", ":"))
-          PY
-
-          status="$(curl -sS --connect-timeout 10 --max-time 30 \
-            -o "$response_file" -w '%{http_code}' -X POST \
-            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true&teamId=$VERCEL_ORG_ID" \
-            -H "Authorization: Bearer $VERCEL_TOKEN" \
-            -H 'Content-Type: application/json' \
-            --data-binary @"$request_file")"
-
-          case "$status" in 200|201) ;; *)
-            echo "::error::Unable to disable the CDP production flag for PayAI failover (HTTP $status)."
-            exit 1
-          esac
-
-          python3 - "$response_file" <<'PY'
-          import json
-          import sys
-          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
-          if isinstance(payload, dict) and payload.get("failed"):
-              raise SystemExit("Vercel reported a failed PayAI failover flag update.")
-          PY
-
-          echo "CDP production flag disabled; the next production build will keep Base x402-ping on PayAI."
-
-      - name: Promote known-clean deployment without rebuilding
-        shell: bash
-        run: |
-          set -euo pipefail
-          code="$(curl -sS --max-time 30 -o /tmp/promote.json -w '%{http_code}' \
-            -X POST "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/promote/$CLEAN_DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID" \
+          code="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/promote.json -w '%{http_code}' \
+            -X POST "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/promote/$HEALTHY_DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID" \
             -H "Authorization: Bearer $VERCEL_TOKEN")"
           echo "PROMOTE_HTTP=$code"
-          case "$code" in 200|201|202) ;; *) cat /tmp/promote.json; exit 1 ;; esac
+          case "$code" in
+            200|201|202) ;;
+            *) cat /tmp/promote.json; exit 1 ;;
+          esac
 
-      - name: Verify PayAI is the canonical x402-ping rail
+      - name: Verify canonical CDP canary and paid ping
         shell: bash
         run: |
           set -euo pipefail
           for attempt in {1..30}; do
-            curl -fsS -H 'cache-control: no-cache' \
-              "https://agentresolver.vercel.app/api/health?payaiFailoverVerify=$GITHUB_RUN_ID-$attempt" \
-              -o /tmp/payai-health.json || true
-            if jq -e '
-              .paymentRails.cdpFacilitatorEnabledForX402Ping == false and
-              .paymentRails.x402PingBase == "payai" and
-              .paymentRails.x402PingSolana == "payai" and
-              .paymentRails.circleGatewayEnabled == false
-            ' /tmp/payai-health.json >/dev/null 2>&1; then
-              echo "PAYAI_FAILOVER_VERIFIED=true"
+            suffix="rollback=$GITHUB_RUN_ID-$attempt"
+            canary_code="$(curl -sS --max-time 15 -D /tmp/canary-h -o /tmp/canary-b -w '%{http_code}' "https://agentresolver.vercel.app/api/x402-cdp-canary?$suffix" || true)"
+            canary_sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/canary-h)"
+            ping_code="$(curl -sS --max-time 15 -D /tmp/ping-h -o /tmp/ping-b -w '%{http_code}' "https://agentresolver.vercel.app/api/x402-ping?$suffix" || true)"
+            if [ "$canary_code" = "402" ] && [ "$canary_sha" = "$HEALTHY_SHA" ] && [ "$ping_code" = "402" ]; then
+              jq -e '
+                .x402Version == 2 and
+                (.accepts | length) == 1 and
+                .accepts[0].scheme == "exact" and
+                .accepts[0].network == "eip155:8453" and
+                .accepts[0].amount == "1000" and
+                .accepts[0].asset == "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" and
+                .accepts[0].payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              ' /tmp/canary-b >/dev/null
+              echo "CDP_CANARY_RESTORED=true"
+              echo "CANONICAL_SHA=$canary_sha"
               exit 0
             fi
             sleep 2
           done
-          echo "::error::Canonical production did not report the expected PayAI x402-ping failover."
-          exit 1
-
-      - name: Verify temporary NoHumans proof is closed
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in {1..30}; do
-            code="$(curl -sS --max-time 15 -o /tmp/claim.txt -w '%{http_code}' https://agentresolver.vercel.app/.well-known/nohumans-claim || true)"
-            if [ "$code" = "404" ]; then
-              echo "NOHUMANS_PUBLIC_PROOF_CLOSED=true"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Proof route did not close after clean deployment promotion." >&2
+          echo "::error::Canonical production did not recover the known-good CDP canary."
+          cat /tmp/canary-b 2>/dev/null || true
           exit 1
