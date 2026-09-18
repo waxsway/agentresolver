@@ -238,7 +238,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          deployment_url="$(node .github/scripts/vercel-deploy-prebuilt-runtime-env.mjs .vercel/.env.production.local)"
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
           echo "Deployed credential-activated x402-ping rail."
 
