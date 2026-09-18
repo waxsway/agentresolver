@@ -64,6 +64,24 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
     setup.clients.mcp.typescript.configurationShape.schemes[0].client,
     "new ExactEvmScheme(callerOwnedSigner)"
   );
+  assert.equal(setup.clients.mcp.typescript.preSignGuardAuthorization.hook, "onPaymentRequested");
+  assert.equal(setup.clients.mcp.typescript.preSignGuardAuthorization.stage, "before_wallet_signature");
+  assert.deepEqual(
+    setup.clients.mcp.typescript.preSignGuardAuthorization.toolNames,
+    ["payment_guard", "x402_payment_preflight"]
+  );
+  assert.equal(setup.clients.mcp.typescript.preSignGuardAuthorization.priceUsd, 0.001);
+  assert.equal(setup.clients.mcp.typescript.preSignGuardAuthorization.expectedAtomicUsdc, "1000");
+  assert.ok(
+    setup.clients.mcp.typescript.preSignGuardAuthorization.allowedNetworks.includes("eip155:8453")
+  );
+  assert.match(
+    setup.clients.mcp.typescript.preSignGuardAuthorization.rule,
+    /caller-owned spend policy/i
+  );
+  assert.ok(
+    setup.clients.mcp.behavior.some((step) => /onPaymentRequested/i.test(step))
+  );
   assert.equal(setup.clients.http.typescript.package, "@x402/fetch");
   assert.ok(setup.clients.http.typescript.packages.includes("@x402/fetch"));
   assert.ok(setup.clients.http.typescript.packages.includes("@x402/core"));
