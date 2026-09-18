@@ -24,10 +24,10 @@ test("NoHumans workflow queues the proven ping, Guard, preflight, and targeted h
 });
 
 
-test("NoHumans submission waits for production deployment", () => {
+test("NoHumans durable listings are resubmitted only by explicit operator action", () => {
   const workflow = readFileSync(".github/workflows/submit-nohumans-payment-guard.yml", "utf8");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["Deploy Production"\]/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /workflow_run:/);
   assert.doesNotMatch(workflow, /^  push:/m);
 });
 

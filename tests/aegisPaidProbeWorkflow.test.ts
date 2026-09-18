@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("Aegis paid-delivery probe lane retries after successful production deploys without spending", () => {
+test("Aegis paid-delivery probe lane uses bounded zero-spend retries without deploy fan-out", () => {
   const workflow = readFileSync(".github/workflows/register-aegis-paid-canary-once.yml", "utf8");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["Deploy Production"\]/);
-  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /github\.event\.workflow_run\.head_branch == 'main'/);
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /cron: "11 \*\/12 \* \* \*"/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /workflow_run:/);
   assert.match(workflow, /https:\/\/aegis\.borisinc\.com\/submit/);
   assert.match(workflow, /https:\/\/aegis\.borisinc\.com\/lint/);
   assert.match(workflow, /https:\/\/aegis\.borisinc\.com\/discover/);
@@ -28,7 +28,7 @@ test("Aegis external outages defer safely instead of failing or paying", () => {
   const workflow = readFileSync(".github/workflows/register-aegis-paid-canary-once.yml", "utf8");
   assert.match(workflow, /429\|500\|502\|503\|504\|530\|000/);
   assert.match(workflow, /touch \/tmp\/aegis-unavailable/);
-  assert.match(workflow, /recurring deploy hooks will retry/);
+  assert.match(workflow, /scheduled zero-spend audit will retry/);
   assert.match(workflow, /advertised lint as free but returned 402\. No payment was attempted/);
   assert.match(workflow, /advertised discovery as free but returned 402\. No payment was attempted/);
 });
