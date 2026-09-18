@@ -30,6 +30,18 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.match(guardGet?.description || "", /payTo recipient/i);
   assert.match(guardGet?.description || "", /maxPriceUsd/i);
 
+  const providerLaunch = openapi.paths?.["/api/provider-launch-check"];
+  assert.equal(providerLaunch?.get?.operationId, "providerLaunchCheckGet");
+  assert.equal(providerLaunch?.get?.requestBody, undefined);
+  assert.equal(providerLaunch?.get?.["x-payment-info"]?.priceUsd, 0.05);
+  assert.equal(providerLaunch?.get?.["x-agentresolver-product"]?.inputTransport, "query");
+  assert.equal(providerLaunch?.post?.["x-agentresolver-product"]?.inputTransport, "json-body");
+  assert.equal(providerLaunch?.["x-agentresolver-preferred-method"], "GET");
+  assert.equal(
+    providerLaunch?.get?.parameters?.find((item: any) => item.name === "providerId")?.required,
+    false
+  );
+
   const preflight = openapi.paths?.["/api/x402-payment-preflight"]?.post;
   assert.match(preflight?.description || "", /endpoint safety/i);
   assert.match(preflight?.description || "", /USDC payment check/i);
@@ -43,7 +55,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     .map((item: any) => item?.post)
     .filter((op: any) => op?.tags?.includes("Paid Agent Capabilities"));
 
-  assert.equal(paid.length, 11);
+  assert.equal(paid.length, 12);
   assert.deepEqual(
     Object.keys(openapi.paths || {}).sort(),
     [
@@ -51,6 +63,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
       "/api/batch-verified-resolve",
       "/api/health",
       "/api/payment-guard",
+      "/api/provider-launch-check",
       "/api/prepayment-authorization-gate",
       "/api/resolve",
       "/api/usdc-payment-check",
@@ -86,7 +99,8 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "x402-payment-preflight",
     "x402-settlement-verify",
     "verified-resolve",
-    "batch-verified-resolve"
+    "batch-verified-resolve",
+    "provider-launch-check"
   ]);
   const intentAliasIds = new Set([
     "usdc-payment-check",
@@ -102,6 +116,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "/api/x402-settlement-verify",
     "/api/verified-resolve",
     "/api/batch-verified-resolve",
+    "/api/provider-launch-check",
     "/api/usdc-payment-check",
     "/api/x402-preflight",
     "/api/prepayment-authorization-gate",

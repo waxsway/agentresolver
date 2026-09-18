@@ -31,20 +31,19 @@ test("settled canary next actions expose canonical preflight without removing re
   const next = postSettlementCanaryNextActions();
   const preflight = getPaidCapability("x402-payment-preflight");
   const settlementVerify = getPaidCapability("x402-settlement-verify");
-  const hashEncode = getPaidCapability("hash-encode");
   const single = getPaidCapability("verified-resolve");
   const batch = getPaidCapability("batch-verified-resolve");
 
   assert.equal(next.catalogUrl, `${CANONICAL_ORIGIN}/.well-known/x402`);
   assert.deepEqual(next.recommended, {
-    capabilityId: hashEncode.id,
-    endpoint: `${CANONICAL_ORIGIN}${hashEncode.endpoint}?operation=sha256&input=agentresolver`,
+    capabilityId: preflight.id,
+    endpoint: `${CANONICAL_ORIGIN}${preflight.endpoint}`,
     method: "GET",
-    priceUsd: hashEncode.priceUsd,
-    useWhen: hashEncode.useWhen,
-    inputExample: hashEncode.example,
-    reason: "Your x402 client just proved it can settle and receive paid delivery. Reuse the same x402 payment flow on a useful deterministic $0.001 GET with no account or API key.",
-    repeatUse: "when_a_deterministic_hash_or_encoding_transform_is_needed",
+    priceUsd: preflight.priceUsd,
+    useWhen: preflight.useWhen,
+    inputExample: preflight.example,
+    reason: "Your x402 client just proved it can settle and receive paid delivery. Before the next autonomous x402 spend, run this $0.001 preflight against the intended paid endpoint to verify the live recipient, amount, network, asset and resource binding before wallet authorization.",
+    repeatUse: "before_each_autonomous_x402_payment",
     paymentAuthorization: "separate_caller_authorization_required"
   });
   assert.deepEqual(next.preflight, {
@@ -81,9 +80,10 @@ test("settled canary next actions expose canonical preflight without removing re
     useWhen: batch.useWhen,
     inputExample: batch.example
   });
-  assert.equal(next.recommended.capabilityId, "hash-encode");
+  assert.equal(next.recommended.capabilityId, "x402-payment-preflight");
   assert.equal(next.recommended.priceUsd, 0.001);
-  assert.equal(next.recommended.repeatUse, "when_a_deterministic_hash_or_encoding_transform_is_needed");
+  assert.equal(next.recommended.repeatUse, "before_each_autonomous_x402_payment");
+  assert.match(next.recommended.reason, /next autonomous x402 spend/i);
   assert.equal(next.recommended.paymentAuthorization, "separate_caller_authorization_required");
   assert.equal(next.preflight.priceUsd, 0.001);
   assert.equal(next.settlementVerify.priceUsd, 0.001);

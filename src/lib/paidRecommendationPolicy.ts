@@ -73,16 +73,10 @@ export function postSettlementCanaryNextActions() {
     transactionHashSource: "Use the Base transaction hash returned in the PAYMENT-RESPONSE header from a settled x402 request.",
     paymentAuthorization: "separate_caller_authorization_required" as const
   };
-  const hashEncode = getPaidCapability("hash-encode");
   const recommended = {
-    capabilityId: hashEncode.id,
-    endpoint: `${CANONICAL_ORIGIN}${hashEncode.endpoint}?operation=sha256&input=agentresolver`,
-    method: "GET" as const,
-    priceUsd: hashEncode.priceUsd,
-    useWhen: hashEncode.useWhen,
-    inputExample: hashEncode.example,
-    reason: "Your x402 client just proved it can settle and receive paid delivery. Reuse the same x402 payment flow on a useful deterministic $0.001 GET with no account or API key.",
-    repeatUse: "when_a_deterministic_hash_or_encoding_transform_is_needed" as const,
+    ...preflight,
+    reason: "Your x402 client just proved it can settle and receive paid delivery. Before the next autonomous x402 spend, run this $0.001 preflight against the intended paid endpoint to verify the live recipient, amount, network, asset and resource binding before wallet authorization.",
+    repeatUse: "before_each_autonomous_x402_payment" as const,
     paymentAuthorization: "separate_caller_authorization_required" as const
   };
   return {
