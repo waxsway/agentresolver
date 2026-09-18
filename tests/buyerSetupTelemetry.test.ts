@@ -10,9 +10,21 @@ test("buyer setup view telemetry is bounded and uses existing traffic classifica
   assert.match(route, /trafficLogFields\(req, traffic\)/);
   assert.match(route, /isDiscovery: true/);
   assert.match(route, /path: "\/api\/x402-client-setup"/);
+  assert.match(route, /\n\s*source,\n/);
+  assert.match(route, /capabilityId/);
+  assert.match(route, /source === "x402-challenge"/);
+  assert.match(route, /hasOwnProperty\.call\(PAID_CAPABILITIES, requestedCapabilityId\)/);
 
   assert.doesNotMatch(route, /payment-signature/i);
   assert.doesNotMatch(route, /private.?key/i);
   assert.doesNotMatch(route, /payerAddress/i);
   assert.doesNotMatch(route, /req\.text\(|req\.json\(/);
+});
+
+
+test("paid challenge handoff carries source and capability attribution without logging payment secrets", () => {
+  const paidRoute = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
+  assert.match(paidRoute, /x402BuyerSetupChallengeUrl\(capabilityId\)/);
+  assert.match(paidRoute, /x402BuyerSetupChallengeError\(capabilityId\)/);
+  assert.match(paidRoute, /mirrorPaymentChallengeBody\(response, capabilityId\)/);
 });

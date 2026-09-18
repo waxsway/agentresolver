@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { x402BuyerSetup } from "@/lib/x402BuyerSetup";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
+import { PAID_CAPABILITIES } from "@/lib/paidCapabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +11,24 @@ export async function GET(req: Request) {
     isDiscovery: true
   });
 
+  const url = new URL(req.url);
+  const source = url.searchParams.get("source") === "x402-challenge"
+    ? "x402-challenge"
+    : null;
+  const requestedCapabilityId = url.searchParams.get("capabilityId");
+  const capabilityId =
+    source === "x402-challenge" &&
+    requestedCapabilityId &&
+    Object.prototype.hasOwnProperty.call(PAID_CAPABILITIES, requestedCapabilityId)
+      ? requestedCapabilityId
+      : null;
+
   console.log(JSON.stringify({
     event: "buyer_setup_viewed",
     at: new Date().toISOString(),
     surface: "http",
+    source,
+    capabilityId,
     ...trafficLogFields(req, traffic)
   }));
 

@@ -4,6 +4,8 @@ import {
   AGENT_SKILLS_INDEX_URL,
   PAYMENT_GUARD_SKILL_URL,
   X402_BUYER_SETUP_URL,
+  x402BuyerSetupChallengeError,
+  x402BuyerSetupChallengeUrl,
   x402BuyerSetup,
   x402BuyerSetupHint
 } from "../src/lib/x402BuyerSetup";
@@ -320,5 +322,17 @@ test("buyer setup exposes AWS AgentCore wallet-capable payment handoff", () => {
   assert.equal(
     setup.officialReferences.awsAgentCorePaymentsProcess,
     "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html"
+  );
+});
+
+
+test("buyer challenge handoff URLs carry bounded funnel attribution", () => {
+  assert.equal(
+    x402BuyerSetupChallengeUrl("x402-payment-preflight"),
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-payment-preflight"
+  );
+  assert.equal(
+    x402BuyerSetupChallengeError("x402-ping"),
+    "Payment required. x402 buyer setup: https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping"
   );
 });
