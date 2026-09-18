@@ -31,7 +31,7 @@ jobs:
             exit 0
           fi
           body="$(mktemp)"
-          code="$(curl -sS -o "$body" -w '%{http_code}'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
           test "$code" = "402"
           python3 - "$body" <<'PY'
           import json, sys
