@@ -11,7 +11,8 @@ import {
   referrerHost,
   safeUserAgent,
   shortHash,
-  parseX402SettlementHeader
+  parseX402SettlementHeader,
+  paymentAttemptMetadata
 } from "../src/lib/telemetry";
 
 test("shortHash is stable and does not expose the original value", () => {
@@ -69,6 +70,33 @@ test("request telemetry uses hashed caller identity and bounded metadata", () =>
   assert.equal(callerHash(req), shortHash("203.0.113.10"));
   assert.equal(safeUserAgent(req), "ExampleAgent/1.0");
   assert.equal(referrerHost(req), "example.com");
+});
+
+test("payment attempt metadata distinguishes current and legacy x402 headers without exposing payloads", () => {
+  const v2 = Buffer.from(JSON.stringify({ x402Version: 2, payload: { signature: "secret-v2" } }), "utf8").toString("base64");
+  const v1 = Buffer.from(JSON.stringify({ x402Version: 1, payload: { signature: "secret-v1" } }), "utf8").toString("base64");
+
+  const current = paymentAttemptMetadata(new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "payment-signature": v2 }
+  }));
+  assert.deepEqual(current, {
+    hasPaymentAttempt: true,
+    hasPaymentSignature: true,
+    hasLegacyXPayment: false,
+    paymentHeader: "payment-signature",
+    paymentX402Version: 2
+  });
+
+  const legacy = paymentAttemptMetadata(new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "x-payment": v1 }
+  }));
+  assert.deepEqual(legacy, {
+    hasPaymentAttempt: true,
+    hasPaymentSignature: false,
+    hasLegacyXPayment: true,
+    paymentHeader: "x-payment",
+    paymentX402Version: 1
+  });
 });
 
 test("x402 settlement parsing requires explicit success receipt data", () => {
@@ -168,6 +196,38 @@ test("signed retry rejection telemetry never logs the signature, payer, or raw b
   assert.equal(output.includes(secretSignature), false);
   assert.equal(output.includes(payer), false);
   assert.equal(output.includes("private body material"), false);
+});
+
+test("legacy x-payment retry rejection is measured without logging the signed payload", async () => {
+  const legacyPayload = Buffer.from(JSON.stringify({
+    x402Version: 1,
+    payload: { signature: "legacy-secret-signature" }
+  }), "utf8").toString("base64");
+  const req = new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "x-payment": legacyPayload }
+  });
+  const response = new Response(JSON.stringify({
+    invalidReason: "unsupported_x402_version"
+  }), { status: 402 });
+
+  const original = console.log;
+  let output = "";
+  console.log = (...args: unknown[]) => {
+    output += args.map(String).join(" ");
+  };
+  try {
+    await logPaidRetryRejection(req, response, "x402-ping", "legacy-request");
+  } finally {
+    console.log = original;
+  }
+
+  const event = JSON.parse(output);
+  assert.equal(event.event, "paid_capability_paid_retry_rejected");
+  assert.equal(event.paymentHeader, "x-payment");
+  assert.equal(event.paymentX402Version, 1);
+  assert.equal(event.reason, "unsupported_x402_version");
+  assert.equal(output.includes(legacyPayload), false);
+  assert.equal(output.includes("legacy-secret-signature"), false);
 });
 
 test("successful settlement telemetry exposes public transaction reference but never raw payer", () => {
