@@ -75,6 +75,27 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.ok(
     setup.clients.mcp.typescript.preSignGuardAuthorization.allowedNetworks.includes("eip155:8453")
   );
+  assert.deepEqual(
+    setup.clients.mcp.typescript.preSignGuardAuthorization.expectedRequirements,
+    [
+      {
+        scheme: "exact",
+        network: "eip155:8453",
+        amount: "1000",
+        asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        resource: "https://agentresolver.vercel.app/mcp"
+      },
+      {
+        scheme: "exact",
+        network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        amount: "1000",
+        asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
+        resource: "https://agentresolver.vercel.app/mcp"
+      }
+    ]
+  );
   assert.match(
     setup.clients.mcp.typescript.preSignGuardAuthorization.rule,
     /caller-owned spend policy/i
