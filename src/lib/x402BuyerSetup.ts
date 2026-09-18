@@ -15,7 +15,7 @@ export const PAYMENT_GUARD_SKILL_URL = "https://agentresolver.vercel.app/.well-k
 export const X402_CHALLENGE_CLIENT_INSTALLS = {
   httpTypescript: "npm install @x402/core @x402/evm @x402/svm @x402/fetch",
   mcpTypescript: "npm install @x402/mcp @x402/evm @x402/svm",
-  httpPython: "pip install x402",
+  httpPython: "pip install \"x402[httpx]\"",
   walletMcp: "npx -y x402-trinity-mcp",
   agentSkill: "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard"
 } as const;
@@ -23,15 +23,50 @@ export const X402_CHALLENGE_CLIENT_INSTALLS = {
 export const X402_CHALLENGE_CLIENT_ENTRYPOINTS = {
   httpTypescript: {
     package: "@x402/fetch",
-    wrapper: "wrapFetchWithPayment"
+    factory: "wrapFetchWithPaymentFromConfig",
+    wrapper: "wrapFetchWithPayment",
+    schemes: [
+      {
+        network: "eip155:8453",
+        package: "@x402/evm",
+        clientClass: "ExactEvmScheme",
+        signer: "callerOwnedSigner"
+      },
+      {
+        network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        package: "@x402/svm",
+        clientClass: "ExactSvmScheme",
+        signer: "callerOwnedSigner"
+      }
+    ]
   },
   mcpTypescript: {
     package: "@x402/mcp",
-    factory: "createx402MCPClient"
+    factory: "createx402MCPClient",
+    autoPayment: true,
+    approvalHook: "onPaymentRequested",
+    schemes: [
+      {
+        network: "eip155:8453",
+        package: "@x402/evm/exact/client",
+        clientClass: "ExactEvmScheme",
+        signer: "callerOwnedSigner"
+      },
+      {
+        network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        package: "@x402/svm/exact/client",
+        clientClass: "ExactSvmScheme",
+        signer: "callerOwnedSigner"
+      }
+    ]
   },
   httpPython: {
-    package: "x402",
-    client: "x402HttpxClient"
+    package: "x402[httpx]",
+    client: "x402HttpxClient",
+    clientFactory: "x402Client",
+    evmSchemeImport: "x402.mechanisms.evm.exact.ExactEvmScheme",
+    evmNetwork: "eip155:8453",
+    signer: "callerOwnedSigner"
   },
   walletMcp: {
     package: "x402-trinity",
