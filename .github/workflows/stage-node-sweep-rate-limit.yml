@@ -1,0 +1,73 @@
+name: Stage Unsigned Node Sweep Rate Limit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/stage-node-sweep-rate-limit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      RULE_NAME: AgentResolver unsigned node sweep log
+    steps:
+      - name: Require Vercel credential
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN GitHub Actions secret is not configured." >&2
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Link project locally
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Stage log-only rate limit draft
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel firewall rules list --json --token="$VERCEL_TOKEN" > /tmp/firewall-rules.json
+          cat /tmp/firewall-rules.json
+
+          if grep -Fq "$RULE_NAME" /tmp/firewall-rules.json; then
+            echo "Draft or active rule already exists: $RULE_NAME"
+          elif grep -q '"rate_limit"' /tmp/firewall-rules.json; then
+            echo "::warning::Another rate-limit rule already exists. Hobby supports one rate-limit rule; no draft was staged."
+            exit 0
+          else
+            vercel firewall rules add "$RULE_NAME" \
+              --condition '{"type":"environment","op":"eq","value":"production"}' \
+              --condition '{"type":"path","op":"pre","value":"/api/"}' \
+              --condition '{"type":"method","op":"eq","value":"GET"}' \
+              --condition '{"type":"user_agent","op":"eq","value":"node"}' \
+              --condition '{"type":"header","key":"PAYMENT-SIGNATURE","op":"nex"}' \
+              --action rate_limit \
+              --rate-limit-window 60 \
+              --rate-limit-requests 120 \
+              --rate-limit-keys ip \
+              --rate-limit-action log \
+              --yes \
+              --token="$VERCEL_TOKEN"
+          fi
+
+          echo "=== STAGED FIREWALL DIFF ==="
+          vercel firewall diff --json --token="$VERCEL_TOKEN" | tee /tmp/firewall-diff.json
+          echo "Draft only. This workflow never publishes firewall changes."
+
+      - name: Verify no firewall publish occurred
+        run: |
+          echo "No live firewall change was published by this workflow."
