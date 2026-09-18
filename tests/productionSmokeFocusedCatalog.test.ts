@@ -9,6 +9,7 @@ test("production smoke enforces the focused public revenue catalog", () => {
   assert.doesNotMatch(smoke, /^\s*grep -F 'probeMcpEndpoint' \/tmp\/openapi\.json >\/dev\/null$/m);
   assert.match(smoke, /index\("x402-ping"\) != null/);
   assert.match(smoke, /index\("x402-payment-preflight"\) != null/);
+  assert.match(smoke, /index\("base-usdc-settlement-verify"\) != null/);
   assert.match(smoke, /index\("verified-resolve"\) != null/);
   assert.match(smoke, /index\("batch-verified-resolve"\) != null/);
   assert.match(smoke, /index\("hash-encode"\) == null/);
