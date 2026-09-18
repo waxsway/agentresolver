@@ -5,8 +5,14 @@ import { parseEnv } from "node:util";
 
 const envFile = process.argv[2] || ".vercel/.env.production.local";
 const token = process.env.VERCEL_TOKEN;
+const orgId = process.env.VERCEL_ORG_ID;
+const projectId = process.env.VERCEL_PROJECT_ID;
 if (!token) {
   console.error("VERCEL_TOKEN is required.");
+  process.exit(1);
+}
+if (!orgId || !projectId) {
+  console.error("VERCEL_ORG_ID and VERCEL_PROJECT_ID are required.");
   process.exit(1);
 }
 
@@ -18,7 +24,7 @@ try {
   process.exit(1);
 }
 
-const args = ["deploy", "--prebuilt", "--prod", `--token=${token}`];
+const args = ["deploy", "--prebuilt", "--prod", "--no-wait", `--token=${token}`];
 let forwarded = 0;
 
 for (const [key, value] of Object.entries(parsed)) {
@@ -60,6 +66,53 @@ const lines = output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 const deploymentUrl = [...lines].reverse().find((line) => /^https:\/\//.test(line));
 if (!deploymentUrl) {
   console.error("Vercel deploy completed but no deployment URL was returned.");
+  process.exit(1);
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const deploymentHost = new URL(deploymentUrl).host;
+let deploymentId = "";
+let ready = false;
+
+for (let attempt = 1; attempt <= 60; attempt += 1) {
+  const response = await fetch(
+    `https://api.vercel.com/v13/deployments/${encodeURIComponent(deploymentHost)}?teamId=${encodeURIComponent(orgId)}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  if (response.ok) {
+    const deployment = await response.json();
+    deploymentId = typeof deployment.id === "string" ? deployment.id : deploymentId;
+    const state = deployment.readyState || deployment.state;
+    if (state === "READY") {
+      ready = true;
+      break;
+    }
+    if (state === "ERROR" || state === "CANCELED") {
+      console.error(`Vercel deployment entered terminal state ${state}.`);
+      process.exit(1);
+    }
+  }
+
+  await sleep(2000);
+}
+
+if (!ready || !deploymentId) {
+  console.error("Timed out waiting for prebuilt deployment to become READY.");
+  process.exit(1);
+}
+
+const promote = await fetch(
+  `https://api.vercel.com/v10/projects/${encodeURIComponent(projectId)}/promote/${encodeURIComponent(deploymentId)}?teamId=${encodeURIComponent(orgId)}`,
+  {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  }
+);
+
+if (![200, 201, 202].includes(promote.status)) {
+  const body = await promote.text().catch(() => "");
+  console.error(`Vercel promote failed with HTTP ${promote.status}: ${body.slice(0, 500)}`);
   process.exit(1);
 }
 
