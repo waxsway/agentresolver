@@ -28,3 +28,10 @@ test("PayanAgent registration is idempotent and publishes both buyer funnel stag
 test("PayanAgent lane marks its AgentResolver self-probe internal", () => {
   assert.match(workflow, /x-agentresolver-internal: 1/);
 });
+
+
+test("PayanAgent lane fails closed when the catalog idempotency check is unavailable", () => {
+  assert.match(workflow, /refusing to create a provider without an idempotency check/);
+  assert.match(workflow, /echo "already_listed=true" >> "\$GITHUB_OUTPUT"/);
+  assert.match(workflow, /--retry 4 --retry-delay 2 --retry-all-errors/);
+});
