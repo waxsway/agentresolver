@@ -29,3 +29,14 @@ test("production smoke locks a signable Base and Solana x402 canary challenge", 
   assert.match(productionSmoke, /AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa/);
   assert.match(productionSmoke, /feePayer/);
 });
+
+
+test("production deploy smoke retries trust surfaces after payment alias convergence", () => {
+  assert.match(workflow, /contracts_ready=0/);
+  assert.match(workflow, /for attempt in \{1\.\.15\}; do/);
+  assert.match(workflow, /smokeAttempt=\$attempt/);
+  assert.match(workflow, /cache-control: no-cache/);
+  assert.match(workflow, /\.deployment\.commitSha == \$sha/);
+  assert.match(workflow, /if \[ "\$contracts_ready" != "1" \]; then/);
+  assert.match(workflow, /trust\/health\/security surfaces did not converge/i);
+});
