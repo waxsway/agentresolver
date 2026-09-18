@@ -66,6 +66,9 @@ jobs:
           queries=(
             "AgentResolver"
             "x402 payment preflight"
+            "x402 settlement verify"
+            "verify x402 transaction"
+            "payment receipt verification"
             "verify endpoint before paying"
             "payTo verification"
             "endpoint safety"
