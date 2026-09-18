@@ -69,10 +69,10 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   const getBody = await getResponse.clone().json() as any;
   assert.equal(getBody.x402Version, 2);
   assert.ok(Array.isArray(getBody.accepts));
-  assert.equal(getBody.buyerSetup?.method, "GET");
-  assert.equal(
-    getBody.buyerSetup?.setup,
-    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
+  assert.equal((getBody as any).buyerSetup, undefined);
+  assert.deepEqual(
+    Object.keys(getBody).sort(),
+    ["accepts", "error", "extensions", "resource", "x402Version"].sort()
   );
   assert.equal(
     getResponse.headers.get("x-agentresolver-buyer-setup"),
@@ -85,7 +85,8 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   ));
   const decodedHeader = JSON.parse(Buffer.from(getPaymentRequired!, "base64").toString("utf8"));
   assert.equal(decodedHeader.error, "Payment required");
-  assert.match(getBody.error || "", /https:\/\/agentresolver\.vercel\.app\/api\/x402-client-setup/);
+  assert.equal(getBody.error, "Payment required");
+  assert.deepEqual(getBody, decodedHeader);
   assert.deepEqual(getBody.resource, decodedHeader.resource);
   assert.deepEqual(getBody.accepts, decodedHeader.accepts);
   assert.deepEqual(getBody.extensions, decodedHeader.extensions);
@@ -136,7 +137,11 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   const postBody = await postResponse.json() as any;
   assert.equal(postBody.x402Version, 2);
   assert.ok(Array.isArray(postBody.accepts));
-  assert.equal(postBody.buyerSetup?.method, "POST");
+  assert.equal((postBody as any).buyerSetup, undefined);
+  assert.deepEqual(
+    Object.keys(postBody).sort(),
+    ["accepts", "error", "extensions", "resource", "x402Version"].sort()
+  );
   assert.equal(
     postResponse.headers.get("x-agentresolver-buyer-setup"),
     "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=POST"
