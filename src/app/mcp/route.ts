@@ -18,6 +18,7 @@ import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
 import { X402_PING_NEXT_ACTIONS } from "@/lib/x402PingDiscovery";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 import { classifyTraffic } from "@/lib/trafficClassification";
+import { resolveProviderRoutes } from "@/lib/providerNetwork";
 import {
   getActiveSponsor,
   logSponsorImpression,
@@ -221,6 +222,7 @@ const handler = createMcpHandler(() => {
     annotations: { title: "Resolve a missing capability", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   }, async ({ goal, url, limit }) => {
     const resolution = await resolveGoal(goal, url, limit || 3);
+    const providerRoutes = resolveProviderRoutes(goal, Math.min(limit || 3, 5));
     const intentTags = classifyIntent(goal);
     const sponsor = getActiveSponsor(intentTags);
     const owned = resolution.owned.map((match) => ({ ...match, execute: match.status === "live" && match.endpoint ? `${CANONICAL}${match.endpoint}` : null, spendingAuthorizationRequired: match.priceUsd > 0 }));
@@ -333,12 +335,12 @@ const handler = createMcpHandler(() => {
       }
       : resolution.mcp.length > 0 || candidateCount > 1 ? verifiedResolveMcpRec : null);
 
-    logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags, mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null, paidRecommendationSurface: rec?.surface || null });
+    logToolCall("resolve", { goalHash: shortHash(goal), goalLength: goal.length, intentTags, mcpMatches: resolution.mcp.length, marketplaceMatches: resolution.marketplace.length, providerRouteCount: providerRoutes.length, paidRecommendationShown: Boolean(rec), paidRecommendationCapability: rec?.capabilityId || null, paidRecommendationSurface: rec?.surface || null });
     if (sponsor) logSponsorImpression({ sponsor, placement: "mcp-resolve", intentTags, goal });
     if (rec) console.log(JSON.stringify({ event: "paid_recommendation_shown", surface: "mcp", executionSurface: rec.surface, at: new Date().toISOString(), capabilityId: rec.capabilityId, priceUsd: rec.priceUsd, goalHash: shortHash(goal) }));
-    const output = { goal, url: url || null, free: true, readOnly: true, spendingAuthorized: false, sponsored: sponsor ? sponsorPublicPayload(sponsor) : null, sponsorship: sponsorshipInventory(CANONICAL), owned, mcp: resolution.mcp, marketplace: resolution.marketplace, recommendedPaidAction: rec,
+    const output = { goal, url: url || null, free: true, readOnly: true, spendingAuthorized: false, sponsored: sponsor ? sponsorPublicPayload(sponsor) : null, sponsorship: sponsorshipInventory(CANONICAL), owned, mcp: resolution.mcp, marketplace: resolution.marketplace, providerRoutes, transactionRouter: { execute: `${CANONICAL}/api/execute`, providers: `${CANONICAL}/api/providers`, arbitraryProxying: false, callerSpendingAuthorized: false }, recommendedPaidAction: rec,
       nextAction: rec ? (rec.surface === "mcp" ? `Optional direct MCP execution costs ${formatUsd(rec.priceUsd)} USDC on Base. Call ${rec.tool} with the prefilled input only if your existing spending policy independently authorizes it.` : `Optional live evidence costs ${formatUsd(rec.priceUsd)} USDC on Base. The executable request is prefilled. Execute only if your existing spending policy independently authorizes it.`) : "Choose the best relevant result; refine the goal and resolve again if needed.",
-      rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, paidManifest: `${CANONICAL}/.well-known/x402` } };
+      rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, providerNetwork: `${CANONICAL}/api/providers`, execute: `${CANONICAL}/api/execute`, paidManifest: `${CANONICAL}/.well-known/x402` } };
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
   });
 

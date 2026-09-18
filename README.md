@@ -2,7 +2,7 @@
 
 AgentResolver is a **$0.001 x402 verify-before-pay service for autonomous agents**, with a free fallback capability resolver.
 
-When an agent needs an external tool, API, MCP server, x402 service, browser capability, data source, or machine service that is not already connected, it can ask AgentResolver what to use next. AgentResolver returns ranked compatible capabilities and machine-ready discovery metadata.
+When an agent needs an external tool, API, MCP server, x402 service, browser capability, data source, or machine service that is not already connected, it can ask AgentResolver what to use next. AgentResolver returns ranked compatible capabilities, registered provider routes, machine-ready discovery metadata, and a non-custodial handoff path with attribution.
 
 **Production:** https://agentresolver.vercel.app
 
@@ -74,7 +74,11 @@ Results are grouped into AgentResolver-owned capabilities, live MCP directory ma
 
 ## Machine discovery surfaces
 
-- `POST /api/resolve` — free natural-language capability resolution
+- `POST /api/resolve` — free natural-language capability resolution plus registered provider routes
+- `POST /api/execute` — registered-provider handoff + attribution; never an arbitrary proxy or spender
+- `GET /api/providers` — machine-readable provider network and provider-funded pilot terms
+- `POST /api/provider-attribution-settle` — $0.001 provider-funded attribution-fee settlement
+- `/provider-integration.json` — SDKless provider routing/attribution contract
 - `POST /api/x402-payment-preflight` — $0.001 verify-before-pay x402 payment contract and PayTo safety check
 - `POST /api/http-inspect` — $0.001 live HTTPS/x402 trust inspection
 - `POST /api/mcp-probe` — $0.001 live MCP endpoint preflight
@@ -109,11 +113,13 @@ The useful integration pattern is not to replace an agent's existing tools. Agen
 
 ## Provider program
 
-Organic inclusion remains free and relevance-based. Providers that want a claimed profile, disclosed sponsored eligibility when relevant, and qualified-demand reporting can submit a no-commitment sponsorship inquiry.
+Organic inclusion remains free and relevance-based. AgentResolver also exposes a registered provider-routing network. The transaction router returns direct handoffs only for reviewed routes and creates an attribution ID; it never accepts an arbitrary execution URL, holds wallet keys, forwards payment signatures, or authorizes buyer spend.
+
+Provider partners can opt into a fixed $0.001 USDC provider-funded success-fee pilot. After a provider reports an attributed request as fulfilled or a qualified lead, it can settle the fee through `/api/provider-attribution-settle`. That receipt proves the provider paid AgentResolver's attribution fee; it does not independently prove the underlying buyer transaction.
+
+Providers can separately apply for disclosed relevance-limited sponsorship. Sponsored treatment remains labeled and organic ranking remains independent.
 
 Provider details and pilot terms: https://agentresolver.vercel.app/providers
-
-Sponsored treatment must remain relevant and disclosed. Payment never guarantees ranking, traffic, conversions, or agent spending authorization.
 
 ## Example
 
@@ -135,7 +141,7 @@ The canonical x402 payment preflight returns a machine-readable evidence receipt
 
 AgentResolver publishes a machine-readable trust contract at `/.well-known/agentresolver-trust.json`, including the canonical paid route, supported networks/assets, non-custodial payment boundary, trust limitations, source repository, security disclosure path, and the Vercel deployment commit SHA when available.
 
-Resolution and MCP quote tools never spend money. AgentResolver's direct paid endpoints use x402 USDC on Base or Solana and execute only after a caller supplies a valid payment authorization; successful revenue is counted only from confirmed settlement receipts. `/api/execute` remains disabled for generic third-party execution.
+Resolution and MCP quote tools never spend money. AgentResolver's direct paid endpoints use x402 USDC on Base or Solana and execute only after a caller supplies a valid payment authorization; successful revenue is counted only from confirmed settlement receipts. `/api/execute` is a registered-provider handoff router: it creates attribution and returns the selected registered request contract, but does not proxy generic third-party execution or authorize target spend.
 
 Marketplace results can contain third-party payment requirements. Calling agents must apply their own authorization, budget, trust, and safety policy before paying or invoking any third-party service.
 
@@ -145,7 +151,7 @@ Crawler-heavy metadata is served as static content where possible. Upstream disc
 
 ## Telemetry
 
-Resolver and MCP calls emit privacy-conscious structured logs with one-way caller/goal hashes, user-agent, coarse intent tags, and aggregate match counts. Raw goals, raw IP addresses, and target URLs are not written to application logs.
+Resolver and MCP calls emit privacy-conscious structured logs with one-way caller/goal hashes, user-agent, coarse intent tags, aggregate match counts, provider demand signals, routing handoffs, and attributed paid responses. Raw goals and raw IP addresses are not written by the provider-routing layer.
 
 ## Discovery status
 

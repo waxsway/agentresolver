@@ -74,7 +74,7 @@ for (const path of MANIFEST_PATHS) {
     KEEP_RESOURCE_PATHS.has(resourcePath(item))
   );
   manifest.instructions =
-    "Start with GET /api/x402-ping for the $0.001 USDC settlement canary. After a Base payment, use GET /api/x402-settlement-verify?txHash=<hash> for $0.001 independent on-chain receipt verification. Before any autonomous x402 spend, use AgentResolver Guard via GET /api/x402-payment-preflight?url=<https-endpoint> or GET /api/payment-guard?url=<https-endpoint> for $0.001 USDC. Exact buyer-intent aliases for the same Guard engine remain published. After a successful canary, use POST /api/verified-resolve ($0.02) for one live-verified capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
+    "Use POST /api/resolve for free discovery; resolver/MCP responses can return registered provider handoffs through /api/execute. Provider-network terms live at /api/providers and /provider-integration.json. Start with GET /api/x402-ping for the $0.001 USDC settlement canary. After a Base payment, use GET /api/x402-settlement-verify?txHash=<hash> for $0.001 independent on-chain receipt verification. Before any autonomous x402 spend, use AgentResolver Guard via GET /api/x402-payment-preflight?url=<https-endpoint> or GET /api/payment-guard?url=<https-endpoint> for $0.001 USDC. Exact buyer-intent aliases for the same Guard engine remain published. After a successful canary, use POST /api/verified-resolve ($0.02) for one live-verified capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
   writeJson(path, manifest);
 }
 
@@ -89,6 +89,17 @@ const integrations = readJson("public/integrations.json");
 integrations.paidActions = (integrations.paidActions ?? []).filter((item: any) =>
   KEEP_PAID_IDS.has(String(item?.id ?? ""))
 );
+integrations.providerNetwork = {
+  registry: "https://agentresolver.vercel.app/api/providers",
+  execute: "https://agentresolver.vercel.app/api/execute",
+  contract: "https://agentresolver.vercel.app/provider-integration.json",
+  attributionHeader: "x-agentresolver-attribution-id",
+  arbitraryProxying: false,
+  callerSpendingAuthorized: false,
+  providerFundedPilot: {
+    settlement: "https://agentresolver.vercel.app/api/provider-attribution-settle"
+  }
+};
 writeJson("public/integrations.json", integrations);
 
 const openapi = readJson("public/openapi.json");

@@ -1,6 +1,6 @@
 export const metadata = {
   title: "For Providers — AgentResolver",
-  description: "Get discovered by AI agents looking for external tools, APIs, MCP servers, and machine services.",
+  description: "Join AgentResolver's machine-service routing and provider-funded attribution network.",
   alternates: { canonical: "https://agentresolver.vercel.app/providers" }
 };
 
@@ -11,65 +11,76 @@ export default function ProvidersPage() {
   return (
     <main>
       <div className="eyebrow">AGENTRESOLVER FOR PROVIDERS</div>
-      <h1>Be there when an agent needs what you sell.</h1>
+      <h1>Sell to agents without making every agent discover you first.</h1>
       <p className="lead">
-        AgentResolver helps autonomous agents find external capabilities when
-        their current toolset is missing something. Organic inclusion remains
-        free. A provider-funded sponsorship pilot is open for explicitly
-        labeled, relevance-limited placements that never change organic rank.
+        AgentResolver routes machine intent to registered services. Organic
+        discovery stays independent, sponsored placement is explicitly labeled,
+        and a provider-funded pilot can settle an attribution fee after a provider
+        reports an attributed request as fulfilled.
       </p>
 
       <div className="grid">
         <section>
-          <h2>Organic discovery — free</h2>
+          <h2>Registered routing</h2>
           <p>
-            Eligible public providers can appear in resolver results based on
-            capability relevance. Sponsorship is never required for organic
-            inclusion.
+            AgentResolver returns execution-ready handoffs only for registered
+            routes. It does not proxy arbitrary URLs, hold wallet keys, forward
+            payment signatures, or authorize buyer spend.
           </p>
         </section>
         <section>
-          <h2>Founding sponsorship pilot</h2>
+          <h2>Provider-funded success fee</h2>
           <p>
-            Providers can apply for a labeled sponsored placement alongside
-            matching agent intent. Pricing, duration, placement, and reporting
-            are agreed only after operator approval. Applying creates no
-            purchase or financial commitment.
+            Pilot partners can fund distribution instead of requiring every
+            buyer to pay AgentResolver separately. Current machine-readable
+            pilot terms are published through the provider network API.
           </p>
         </section>
         <section>
-          <h2>Trust stays intact</h2>
+          <h2>Sponsored discovery</h2>
           <p>
-            Sponsored treatment is machine-readably labeled, must match the
-            requested capability, and does not alter organic ranking or
-            authorize an agent to spend money.
+            Providers can also apply for disclosed relevance-limited sponsored
+            placement. Sponsorship never changes the organic ranking contract.
+            Applying creates no purchase or financial commitment.
           </p>
         </section>
       </div>
 
       <section>
-        <h2>What the pilot can measure</h2>
+        <h2>Machine flow</h2>
         <p>
-          AgentResolver can distinguish qualified intent from directory probes,
-          liveness crawlers, internal smoke traffic, and paid retries. Pilot
-          reporting is designed around eligible and qualified-intent
-          impressions rather than inflated raw request counts.
+          Agents resolve a capability, receive registered provider routes, ask
+          <code> /api/execute </code> for a handoff and attribution ID, then call
+          the selected provider directly under their own trust and spending
+          policy. Provider partners can settle the attribution fee through
+          <code> /api/provider-attribution-settle</code>.
+        </p>
+        <p>
+          A successful provider-fee settlement proves that the provider paid
+          AgentResolver&apos;s fee. It does not by itself prove the underlying
+          buyer transaction or fulfillment.
+        </p>
+      </section>
+
+      <section>
+        <h2>Privacy-conscious reporting</h2>
+        <p>
+          The routing layer emits hashed demand and attribution events rather
+          than raw goals or raw IP addresses. During the pilot, operator
+          reporting uses existing runtime telemetry; no new paid analytics
+          storage service has been introduced.
         </p>
         <p>
           <a className="button" href={sponsorshipApply}>
-            Apply for the sponsorship pilot
+            Apply for a provider pilot
           </a>
-        </p>
-        <p>
-          Submission is an inquiry only. No placement, billing, ranking,
-          traffic volume, conversion, or revenue is guaranteed.
         </p>
       </section>
 
       <p className="links">
-        <a href="/">AgentResolver</a> ·{" "}
-        <a href="/api/sponsorship">Machine-readable sponsorship info</a> ·{" "}
-        <a href="/.well-known/sponsorship.json">Sponsorship manifest</a> ·{" "}
+        <a href="/api/providers">Provider network API</a> ·{" "}
+        <a href="/provider-integration.json">Integration contract</a> ·{" "}
+        <a href="/api/sponsorship">Sponsorship info</a> ·{" "}
         <a href="/docs">Integration docs</a>
       </p>
     </main>
