@@ -1,0 +1,119 @@
+name: Audit Circle x402 Discovery
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-circle-x402-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Locate AgentResolver in Circle wallet-capable discovery
+        env:
+          DISCOVERY_URL: "https://api.circle.com/v2/x402/discovery/resources"
+          AGENTRESOLVER_ORIGIN: "https://agentresolver.vercel.app"
+          BASE_PAY_TO: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+          SOLANA_PAY_TO: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          base = os.environ["DISCOVERY_URL"]
+          origin = os.environ["AGENTRESOLVER_ORIGIN"].lower()
+          pay_tos = {
+              os.environ["BASE_PAY_TO"].lower(),
+              os.environ["SOLANA_PAY_TO"].lower(),
+          }
+          queries = [
+              {"query": "AgentResolver"},
+              {"query": "agentresolver.vercel.app"},
+              {
+                  "category": "INFRASTRUCTURE",
+                  "network": "base",
+                  "maxUsdPrice": "0.01",
+              },
+          ]
+
+          seen = {}
+          responses = []
+
+          def fetch(params):
+              url = f"{base}?{urllib.parse.urlencode(params)}"
+              request = urllib.request.Request(
+                  url,
+                  headers={"user-agent": "AgentResolver-Circle-Discovery-Audit/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  payload = json.loads(response.read().decode("utf-8"))
+              return url, payload
+
+          def candidates(payload):
+              if isinstance(payload, list):
+                  return payload
+              if not isinstance(payload, dict):
+                  return []
+              for key in ("items", "resources", "data", "results"):
+                  value = payload.get(key)
+                  if isinstance(value, list):
+                      return value
+                  if isinstance(value, dict):
+                      for inner in ("items", "resources", "results"):
+                          nested = value.get(inner)
+                          if isinstance(nested, list):
+                              return nested
+              return []
+
+          for params in queries:
+              url, payload = fetch(params)
+              items = candidates(payload)
+              responses.append({
+                  "url": url,
+                  "topLevelType": type(payload).__name__,
+                  "candidateCount": len(items),
+              })
+              for item in items:
+                  if not isinstance(item, dict):
+                      continue
+                  raw = json.dumps(item, separators=(",", ":"), sort_keys=True).lower()
+                  if origin not in raw and not any(pay_to in raw for pay_to in pay_tos):
+                      continue
+                  resource = item.get("resource")
+                  key = resource if isinstance(resource, str) else raw
+                  seen[key] = item
+
+          matches = list(seen.values())
+          summary = {
+              "listed": bool(matches),
+              "matchCount": len(matches),
+              "queries": responses,
+              "matches": matches[:20],
+          }
+          print(json.dumps(summary, indent=2, sort_keys=True))
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+              fh.write("# Circle x402 Discovery audit\n\n")
+              fh.write("- Public/keyless lookup only; no wallet action and no payment attempted.\n")
+              fh.write(f"- AgentResolver listed: **{str(bool(matches)).lower()}**\n")
+              fh.write(f"- Matching resources: **{len(matches)}**\n")
+              fh.write("\n```json\n")
+              fh.write(json.dumps(summary, indent=2, sort_keys=True)[:16000])
+              fh.write("\n```\n")
+
+          if not matches:
+              print(
+                  "::warning::AgentResolver was not found in Circle's public x402 Discovery API. "
+                  "This is a buyer-distribution blocker, not a runtime payment failure."
+              )
+          PY
