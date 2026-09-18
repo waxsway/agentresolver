@@ -20,3 +20,9 @@ test("Paywitness self-list uses the canonical $0.001 settlement canary", () => {
   assert.match(workflow, /str\(item\.get\("amount"\)\) == "1000"/);
   assert.match(workflow, /0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8/);
 });
+
+
+test("Paywitness lane marks its AgentResolver self-probe internal", () => {
+  const workflow = readFileSync(".github/workflows/register-paywitness-paid-canary-once.yml", "utf8");
+  assert.match(workflow, /x-agentresolver-internal: 1/);
+});
