@@ -357,3 +357,34 @@ test("challenge handoff embeds executable client install choices", () => {
   assert.equal(handoff.clientInstalls.httpPython, "pip install x402");
   assert.match(handoff.clientInstalls.agentSkill, /skills add waxsway\/agentresolver/);
 });
+
+
+test("buyer setup exposes OpenCode and Claude Code x402 handoffs", () => {
+  const setup = x402BuyerSetup();
+  const coding = setup.clients.codingTools;
+  assert.ok(coding.sharedPackages.includes("@x402/fetch"));
+  assert.equal(coding.paymentWrapper, "wrapFetchWithPayment");
+  assert.equal(coding.paymentGuardUrl, "https://agentresolver.vercel.app/api/payment-guard");
+
+  assert.equal(coding.openCode.runtime, "OpenCode");
+  assert.equal(coding.openCode.integration, "plugin");
+  assert.equal(coding.openCode.pluginPath, ".opencode/plugins/x402-payment.ts");
+  assert.equal(coding.openCode.toolName, "x402-fetch");
+  assert.ok(coding.openCode.behavior.some((step) => /Guard fee/i.test(step)));
+  assert.ok(coding.openCode.behavior.some((step) => /separate caller authorization/i.test(step)));
+
+  assert.equal(coding.claudeCode.runtime, "Claude Code");
+  assert.equal(coding.claudeCode.integration, "PostToolUse hook");
+  assert.equal(coding.claudeCode.hookEvent, "PostToolUse");
+  assert.equal(coding.claudeCode.matcher, "WebFetch");
+  assert.equal(coding.claudeCode.scriptPath, ".claude/scripts/handle-x402.mjs");
+  assert.ok(coding.claudeCode.behavior.some((step) => /Guard fee/i.test(step)));
+  assert.ok(coding.claudeCode.behavior.some((step) => /separate caller authorization/i.test(step)));
+
+  assert.match(coding.authorizationModel, /must not turn every 402 into an automatic spend/i);
+  assert.doesNotMatch(JSON.stringify(coding), /PRIVATE_KEY|seed phrase|0xYourPrivateKey/i);
+  assert.equal(
+    setup.officialReferences.cloudflareCodingToolsX402,
+    "https://developers.cloudflare.com/agents/tools/payments/x402/pay-with-tool-plugins/"
+  );
+});
