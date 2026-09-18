@@ -2,7 +2,7 @@
   "version": "1.5",
   "origin": "agentresolver.vercel.app",
   "display_name": "AgentResolver",
-  "description": "AgentResolver Guard is $0.001 USDC verify-before-pay infrastructure for autonomous x402 buyers, with free fallback capability discovery.",
+  "description": "AgentResolver Guard is $0.001 USDC verify-before-pay infrastructure plus $0.001 post-payment settlement receipt verification for autonomous x402 buyers, with free fallback capability discovery.",
   "payout_address": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
   "payments": {
     "x402": {
@@ -62,6 +62,40 @@
         "allowUnpaidPostProbe"
       ],
       "repeat_use": "before_each_autonomous_x402_spend",
+      "spending_authorized": false
+    },
+    {
+      "name": "x402_settlement_verify",
+      "description": "Verify a completed Base USDC x402 settlement from its transaction hash, including EIP-3009 payment shape, USDC Transfer evidence, confirmations, and optional expected recipient/amount assertions.",
+      "endpoint": "/api/x402-settlement-verify",
+      "method": "GET",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "preferred_method": "GET",
+      "price": {
+        "amount": 0.001,
+        "currency": "USDC"
+      },
+      "use_when": "After a Base x402 payment returns a transaction hash and the agent needs independent on-chain settlement receipt evidence before trusting downstream workflow state.",
+      "tags": [
+        "x402 settlement verify",
+        "settlement receipt",
+        "transaction receipt verify",
+        "payment evidence",
+        "USDC",
+        "Base",
+        "EIP-3009"
+      ],
+      "required_query": [
+        "txHash"
+      ],
+      "optional_query": [
+        "expectedPayTo",
+        "expectedAmountAtomic"
+      ],
+      "repeat_use": "after_base_x402_settlement_when_receipt_evidence_is_needed",
       "spending_authorized": false
     },
     {
