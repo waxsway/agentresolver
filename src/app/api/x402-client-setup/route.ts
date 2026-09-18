@@ -45,9 +45,10 @@ export async function GET(req: Request) {
       atomicAmount: capability?.atomicAmount ?? null
     }),
     {
-    headers: {
-      "cache-control": "public, max-age=300",
-      "access-control-allow-origin": "*"
+      headers: {
+        "cache-control": "public, max-age=300",
+        "access-control-allow-origin": "*"
+      }
     }
   );
 }
