@@ -34,7 +34,8 @@ export type ConfiguredPaymentRail =
 
 export function configuredPaymentRail(
   capabilityId: string,
-  env: Readonly<Record<string, string | undefined>> = process.env
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  network: string | null = null
 ): ConfiguredPaymentRail {
   const circleEnabled = env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
   const cdpEnabled = env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1";
@@ -45,6 +46,7 @@ export function configuredPaymentRail(
   );
   const cdpEnabledForCapability = cdpEnabled && cdpCapabilities.has(capabilityId);
 
+  if (network?.startsWith("solana:")) return "payai";
   if (cdpEnabledForCapability && circleEnabled) return "coinbase-cdp+circle-gateway";
   if (cdpEnabledForCapability) return "coinbase-cdp";
   if (circleEnabled) return "payai+circle-gateway";
@@ -208,12 +210,13 @@ export async function logPaidRetryRejection(
 ) {
   if (!req.headers.get("payment-signature") || response.status < 400) return;
   const failure = await extractX402FailureReason(response);
+  const receipt = parseX402SettlementHeader(response.headers.get("payment-response"));
   console.log(JSON.stringify({
     event: "paid_capability_paid_retry_rejected",
     at: new Date().toISOString(),
     capabilityId,
     requestId: requestId || null,
-    configuredPaymentRail: configuredPaymentRail(capabilityId, env),
+    configuredPaymentRail: configuredPaymentRail(capabilityId, env, receipt?.network ?? null),
     responseStatus: response.status,
     reason: failure.reason,
     reasonSource: failure.source
@@ -234,7 +237,7 @@ export function logX402Settlement(
     at: new Date().toISOString(),
     capabilityId,
     requestId: requestId || null,
-    configuredPaymentRail: configuredPaymentRail(capabilityId, env),
+    configuredPaymentRail: configuredPaymentRail(capabilityId, env, receipt.network),
     responseStatus: response.status,
     success: receipt.success,
     network: receipt.network,
