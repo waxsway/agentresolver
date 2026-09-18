@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export function GET() {
   const cdpCapabilities = new Set(
@@ -48,7 +48,7 @@ export function GET() {
     },
     {
       headers: {
-        "cache-control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+        "cache-control": "private, no-store, max-age=0",
         "access-control-allow-origin": "*"
       }
     }
