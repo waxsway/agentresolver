@@ -102,10 +102,20 @@ async function mirrorPaymentChallengeBody(
     resumeUrl
   );
 
+  const rewrittenHeaderValue = encodePaymentRequiredHeader(rewrittenHeaderChallenge);
+  const headerChallengeWithinBudget =
+    Buffer.byteLength(rewrittenHeaderValue, "utf8") < 8192
+      ? rewrittenHeaderChallenge
+      : withRequestAwareChallengeHandoff(
+          headerChallenge,
+          capabilityId,
+          requestMethod
+        );
+
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
-  headers.set("payment-required", encodePaymentRequiredHeader(rewrittenHeaderChallenge));
+  headers.set("payment-required", encodePaymentRequiredHeader(headerChallengeWithinBudget));
   const error = resumeUrl
     ? x402BuyerSetupChallengeError(capabilityId, requestMethod, resumeUrl)
     : x402BuyerSetupChallengeError(capabilityId, requestMethod);
