@@ -84,7 +84,8 @@ async function mirrorPaymentChallengeBody(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
   requestMethod?: string,
-  resumeUrl?: string | null
+  resumeUrl?: string | null,
+  minimalChallenge = false
 ) {
   if (response.status !== 402) return response;
   const headerChallenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
@@ -95,6 +96,17 @@ async function mirrorPaymentChallengeBody(
     current = await response.clone().json();
   } catch {
     current = null;
+  }
+
+  if (minimalChallenge) {
+    const headers = new Headers(response.headers);
+    headers.set("content-type", "application/json; charset=utf-8");
+    headers.set("cache-control", "no-store");
+    return new NextResponse(JSON.stringify(headerChallenge), {
+      status: 402,
+      statusText: response.statusText,
+      headers
+    });
   }
 
   const bodyChallenge =
@@ -224,6 +236,7 @@ function stampInfrastructureHeaders(
 export type DeterministicPaidRouteOptions = Readonly<{
   paidGet?: boolean;
   endpoint?: string;
+  minimalChallenge?: boolean;
 }>;
 
 export function x402BazaarProviderMetadata(capabilityId: PaidCapabilityId) {
@@ -461,10 +474,12 @@ export function createDeterministicPaidRoute(
         mimeType: "application/json",
         serviceName: bazaarProviderMetadata.serviceName,
         tags: [...bazaarProviderMetadata.tags],
-        extensions: {
-          ...discoveryExtension,
-          agentresolver: x402ChallengeHeaderHandoff(capabilityId)
-        }
+        extensions: options.minimalChallenge
+          ? discoveryExtension
+          : {
+              ...discoveryExtension,
+              agentresolver: x402ChallengeHeaderHandoff(capabilityId)
+            }
       }
     }, server) as PaidHandler;
   }
@@ -495,13 +510,13 @@ export function createDeterministicPaidRoute(
         resumeUrl
       );
       await logPaidRetryRejection(req, response, capabilityId, requestId);
-      const compatibleResponse = resumeUrl
-        ? await mirrorPaymentChallengeBody(response, capabilityId, req.method, resumeUrl)
-        : await mirrorPaymentChallengeBody(
-            response,
-            capabilityId,
-            req.method
-          );
+      const compatibleResponse = await mirrorPaymentChallengeBody(
+        response,
+        capabilityId,
+        req.method,
+        resumeUrl,
+        options.minimalChallenge
+      );
       logX402Settlement(compatibleResponse, capabilityId, requestId);
       return compatibleResponse;
     } catch (error) {
