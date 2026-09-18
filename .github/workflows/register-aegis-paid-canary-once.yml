@@ -2,9 +2,8 @@ name: Register Aegis Paid Canary Once
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Deploy Production"]
-    types: [completed]
+  schedule:
+    - cron: "11 */12 * * *"
   push:
     branches: [main]
     paths:
@@ -15,10 +14,6 @@ permissions:
 
 jobs:
   register:
-    if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
@@ -86,7 +81,7 @@ jobs:
           case "$code" in
             200) ;;
             429|500|502|503|504|530|000)
-              echo "::notice::Aegis lint is temporarily unavailable (HTTP $code); recurring deploy hooks will retry."
+              echo "::notice::Aegis lint is temporarily unavailable (HTTP $code); the scheduled zero-spend audit will retry."
               touch /tmp/aegis-unavailable
               ;;
             402)

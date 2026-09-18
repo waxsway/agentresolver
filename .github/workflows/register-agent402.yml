@@ -2,9 +2,8 @@ name: Register Agent402 Index
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Deploy Production"]
-    types: [completed]
+  schedule:
+    - cron: "19 */12 * * *"
   push:
     branches: [main]
     paths:
@@ -14,10 +13,6 @@ permissions:
 
 jobs:
   register:
-    if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
