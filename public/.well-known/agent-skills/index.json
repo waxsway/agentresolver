@@ -6,7 +6,7 @@
       "type": "skill-md",
       "description": "Verify live x402 payment terms before an autonomous agent authorizes USDC spend. Use immediately before paying an unfamiliar or changed x402 endpoint, or when price, payTo, network, asset, scheme, or resource binding must be checked fail-closed.",
       "url": "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md",
-      "digest": "sha256:554fe05e9c04f0195cc212c8d5df7f31f470a12029502547b7c9c907a292382a"
+      "digest": "sha256:6176fd13cd951b2685f8d3d79cd4785a21c57182fb67df724103cdf0a4b1f327"
     }
   ]
 }
