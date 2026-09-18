@@ -822,6 +822,70 @@ export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
   } as const;
 }
 
+
+export function x402BuyerSetupCompact(context: X402BuyerSetupContext = {}) {
+  const full = x402BuyerSetup(context);
+  const challenge = full.challengeContext;
+
+  return {
+    schemaVersion: 1,
+    free: true,
+    mode: "challenge_compact" as const,
+    purpose:
+      "Resume the exact challenged x402 request with a caller-controlled signer and spend policy.",
+    challengeContext: challenge,
+    next: challenge
+      ? {
+          action: "retry_challenged_request" as const,
+          request: {
+            method: challenge.method,
+            url: challenge.resumeUrl
+          },
+          payment: {
+            protocol: "x402" as const,
+            version: 2,
+            retryHeader: "PAYMENT-SIGNATURE" as const,
+            priceUsd: challenge.priceUsd,
+            atomicAmount: challenge.atomicAmount
+          },
+          clients: {
+            typescript: {
+              install: X402_CHALLENGE_CLIENT_INSTALLS.httpTypescript,
+              package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpTypescript.package,
+              wrapper: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpTypescript.wrapper
+            },
+            python: {
+              install: X402_CHALLENGE_CLIENT_INSTALLS.httpPython,
+              package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.package,
+              client: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.client
+            },
+            mcp: {
+              install: X402_CHALLENGE_CLIENT_INSTALLS.mcpTypescript,
+              package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.package,
+              factory: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.factory,
+              approvalHook: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.approvalHook
+            },
+            walletMcp: {
+              install: X402_CHALLENGE_CLIENT_INSTALLS.walletMcp,
+              package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.package,
+              tools: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.tools
+            }
+          },
+          authorization:
+            "Use only a caller-controlled signer. Independently authorize the exact returned x402 requirement before creating PAYMENT-SIGNATURE. AgentResolver never authorizes or signs the spend."
+        }
+      : null,
+    fullSetupUrl: X402_BUYER_SETUP_URL,
+    paymentGuard: "https://agentresolver.vercel.app/api/payment-guard",
+    authorizationBoundary: {
+      callerControlsSigner: true,
+      callerControlsSpendPolicy: true,
+      agentResolverReceivesPrivateKey: false,
+      agentResolverAuthorizesSpend: false
+    }
+  } as const;
+}
+
 export function x402BuyerSetupHint(capabilityId: string, method?: string | null) {
   const handoff = x402ChallengeBuyerHandoff(capabilityId, method);
   return {
