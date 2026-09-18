@@ -71,3 +71,9 @@ test("CDP support is opt-in and leaves PayAI as the default primary facilitator"
   assert.match(source, /AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires CDP_API_KEY_ID and CDP_API_KEY_SECRET/);
   assert.match(config, /https:\/\/facilitator\.payai\.network/);
 });
+
+
+test("CDP SDK exposes the hosted facilitator factory without activation", async () => {
+  const cdpX402 = await import("@coinbase/cdp-sdk/x402");
+  assert.equal(typeof cdpX402.createCdpFacilitatorClient, "function");
+});
