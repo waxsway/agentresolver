@@ -43,20 +43,6 @@ jobs:
           if [ "$current_main" != "$VALIDATED_SHA" ]; then
             echo "fresh=false" >> "$GITHUB_OUTPUT"
             echo "Skipping stale CI result immediately: main already advanced."
-            exit 0
-          fi
-
-          # Most AgentResolver revenue work lands in short bursts. Give main one
-          # quiet window before any paid Vercel build work starts so superseded
-          # commits are discarded while GitHub-hosted CI is still cheap.
-          echo "Validated main is current. Waiting 90 seconds to coalesce rapid application merges before spending Vercel build CPU."
-          sleep 90
-
-          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
-          echo "current_main_after_coalesce=$current_main"
-          if [ "$current_main" != "$VALIDATED_SHA" ]; then
-            echo "fresh=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping superseded release: main advanced during the build-coalescing window."
           else
             echo "fresh=true" >> "$GITHUB_OUTPUT"
           fi
@@ -164,8 +150,29 @@ jobs:
             echo "Validated main has no application drift from canonical production; Vercel build/deploy is unnecessary."
           fi
 
-      - name: Require Vercel deployment credential
+      - name: Coalesce application releases before Vercel build
         if: steps.initial_freshness.outputs.fresh == 'true' && steps.application_changes.outputs.deploy == 'true'
+        id: prebuild_freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Application drift detected. Waiting 90 seconds to coalesce rapid merges before spending Vercel build CPU."
+          sleep 90
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          echo "validated_sha=$VALIDATED_SHA"
+          echo "current_main_after_coalesce=$current_main"
+          if [ "$current_main" != "$VALIDATED_SHA" ]; then
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping superseded release: main advanced during the build-coalescing window."
+          else
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Require Vercel deployment credential
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -175,18 +182,27 @@ jobs:
           fi
 
       - name: Setup Node
-        if: steps.initial_freshness.outputs.fresh == 'true' && steps.application_changes.outputs.deploy == 'true'
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: '22'
           package-manager-cache: false
 
       - name: Install Vercel CLI
-        if: steps.initial_freshness.outputs.fresh == 'true' && steps.application_changes.outputs.deploy == 'true'
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true'
         run: npm install --global vercel@48.8.0 --no-audit --no-fund
 
       - name: Reset Vercel project link
-        if: steps.initial_freshness.outputs.fresh == 'true' && steps.application_changes.outputs.deploy == 'true'
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -195,15 +211,24 @@ jobs:
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
 
       - name: Pull production configuration
-        if: steps.initial_freshness.outputs.fresh == 'true' && steps.application_changes.outputs.deploy == 'true'
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true'
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build validated production artifact
-        if: steps.initial_freshness.outputs.fresh == 'true' && steps.application_changes.outputs.deploy == 'true'
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true'
         run: vercel build --prod --token="$VERCEL_TOKEN"
 
       - name: Recheck main immediately before deploy
-        if: steps.initial_freshness.outputs.fresh == 'true' && steps.application_changes.outputs.deploy == 'true'
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true'
         id: predeploy_freshness
         shell: bash
         run: |
@@ -223,6 +248,7 @@ jobs:
         if: >-
           steps.initial_freshness.outputs.fresh == 'true' &&
           steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true' &&
           steps.predeploy_freshness.outputs.fresh == 'true'
         shell: bash
         run: |
@@ -301,6 +327,7 @@ jobs:
       - name: Report stale deploy suppression
         if: >-
           steps.initial_freshness.outputs.fresh != 'true' ||
+          (steps.application_changes.outputs.deploy == 'true' && steps.prebuild_freshness.outputs.fresh == 'false') ||
           (steps.application_changes.outputs.deploy == 'true' && steps.predeploy_freshness.outputs.fresh == 'false')
         run: echo "No production deployment occurred because this CI result was no longer the tip of main."
 

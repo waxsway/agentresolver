@@ -74,7 +74,7 @@ test("production drift detection fails closed when the live deployment SHA is un
 test("production deploy coalesces rapid main changes before spending Vercel build CPU", () => {
   const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
 
-  assert.match(workflow, /Waiting 90 seconds to coalesce rapid application merges/);
+  assert.match(workflow, /Application drift detected\. Waiting 90 seconds to coalesce rapid merges/);
   assert.match(workflow, /sleep 90/);
   assert.match(workflow, /current_main_after_coalesce/);
   assert.match(workflow, /Skipping stale CI result immediately/);
@@ -86,4 +86,14 @@ test("production drift ignores repository-only docs and existing metadata-only f
 
   assert.match(workflow, /tests\/\*\|docs\/\*\|README\.md\|AGENTS\.md/);
   assert.match(workflow, /package-lock\.json\|server\.json\) ;;/);
+});
+
+
+test("automation-only changes bypass the build coalescing delay", () => {
+  const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
+  const driftIndex = workflow.indexOf("Detect application drift from production");
+  const coalesceIndex = workflow.indexOf("Coalesce application releases before Vercel build");
+  assert.ok(driftIndex >= 0 && coalesceIndex > driftIndex);
+  assert.match(workflow, /Coalesce application releases before Vercel build[\s\S]*application_changes\.outputs\.deploy == 'true'/);
+  assert.match(workflow, /Require Vercel deployment credential[\s\S]*prebuild_freshness\.outputs\.fresh == 'true'/);
 });
