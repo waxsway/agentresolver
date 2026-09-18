@@ -162,6 +162,10 @@ test("generated machine surfaces prefer GET for the settlement canary", () => {
     0.001
   );
   assert.equal(
+    getOutputSchema?.properties?.next?.properties?.preflight?.properties?.method?.const,
+    "GET"
+  );
+  assert.equal(
     getOutputSchema?.properties?.next?.properties?.single?.properties?.capabilityId?.const,
     "verified-resolve"
   );
@@ -193,6 +197,7 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   assert.equal(output?.example?.next?.preflight?.capabilityId, "x402-payment-preflight");
   assert.equal(output?.example?.next?.preflight?.endpoint, "https://agentresolver.vercel.app/api/x402-payment-preflight");
   assert.equal(output?.example?.next?.preflight?.priceUsd, 0.001);
+  assert.equal(output?.example?.next?.preflight?.method, "GET");
   assert.deepEqual(output?.example?.next?.preflight?.inputExample, {
     url: "https://example.com/api",
     method: "GET",
