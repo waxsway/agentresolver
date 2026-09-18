@@ -43,6 +43,22 @@ test("signed retries remain the strongest conversion signal", () => {
   assert.equal(traffic.reason, "payment_signature_present");
 });
 
+test("legacy x-payment retries are measured as payment attempts instead of crawler traffic", () => {
+  const req = new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    method: "GET",
+    headers: {
+      "user-agent": "legacy-x402-client/1.0",
+      "x-payment": "opaque-legacy-payment"
+    }
+  });
+  const traffic = classifyTraffic(req, { path: "/api/x402-ping" });
+
+  assert.equal(traffic.trafficClass, "paid_retry");
+  assert.equal(traffic.external, true);
+  assert.equal(traffic.sponsorEligible, false);
+  assert.equal(traffic.reason, "legacy_x_payment_present");
+});
+
 test("paid capability schemas avoid unsupported uri formats", () => {
   const source = readFileSync("src/lib/paidCapabilities.ts", "utf8");
   assert.doesNotMatch(source, /format:\s*"uri"/);

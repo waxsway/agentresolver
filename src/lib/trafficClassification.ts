@@ -71,8 +71,19 @@ export function classifyTraffic(
     try { return new URL(req.url).pathname; } catch { return ""; }
   })();
 
-  if (context.hasPayment || req.headers.get("payment-signature")) {
-    return { trafficClass: "paid_retry", external: true, sponsorEligible: false, reason: "payment_signature_present" };
+  const hasPaymentSignature = Boolean(req.headers.get("payment-signature"));
+  const hasLegacyXPayment = Boolean(req.headers.get("x-payment"));
+  if (context.hasPayment || hasPaymentSignature || hasLegacyXPayment) {
+    return {
+      trafficClass: "paid_retry",
+      external: true,
+      sponsorEligible: false,
+      reason: hasPaymentSignature
+        ? "payment_signature_present"
+        : hasLegacyXPayment
+          ? "legacy_x_payment_present"
+          : "payment_context_marked"
+    };
   }
 
   if (req.headers.get("x-agentresolver-internal") === "1" || INTERNAL_UA.some((token) => ua.includes(token))) {
