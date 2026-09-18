@@ -34,6 +34,17 @@ test("settled canary next actions expose canonical preflight without removing re
   const batch = getPaidCapability("batch-verified-resolve");
 
   assert.equal(next.catalogUrl, `${CANONICAL_ORIGIN}/.well-known/x402`);
+  assert.deepEqual(next.recommended, {
+    capabilityId: preflight.id,
+    endpoint: `${CANONICAL_ORIGIN}${preflight.endpoint}`,
+    method: "GET",
+    priceUsd: preflight.priceUsd,
+    useWhen: preflight.useWhen,
+    inputExample: preflight.example,
+    reason: "Your x402 client just proved it can settle and receive paid delivery. Use AgentResolver Guard before the next autonomous x402 spend to validate the live payment terms.",
+    repeatUse: "before_every_autonomous_x402_spend",
+    paymentAuthorization: "separate_caller_authorization_required"
+  });
   assert.deepEqual(next.preflight, {
     capabilityId: preflight.id,
     endpoint: `${CANONICAL_ORIGIN}${preflight.endpoint}`,
@@ -58,6 +69,10 @@ test("settled canary next actions expose canonical preflight without removing re
     useWhen: batch.useWhen,
     inputExample: batch.example
   });
+  assert.equal(next.recommended.capabilityId, "x402-payment-preflight");
+  assert.equal(next.recommended.priceUsd, 0.001);
+  assert.equal(next.recommended.repeatUse, "before_every_autonomous_x402_spend");
+  assert.equal(next.recommended.paymentAuthorization, "separate_caller_authorization_required");
   assert.equal(next.preflight.priceUsd, 0.001);
   assert.equal(next.single.priceUsd, 0.02);
   assert.equal(next.batch.priceUsd, 0.05);
