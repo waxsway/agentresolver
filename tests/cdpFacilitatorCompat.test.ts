@@ -96,12 +96,12 @@ test("CDP support is opt-in, Base-only, and preserves PayAI for Solana", () => {
   const config = readFileSync("src/lib/x402Config.ts", "utf8");
 
   assert.match(source, /import\("@coinbase\/cdp-sdk\/x402"\)/);
-  assert.match(source, /createCdpFacilitatorClient\(\)/);
+  assert.match(source, /createCdpFacilitatorClient\(\{/);
   assert.match(source, /const cdpBaseFacilitator = cdpFacilitator/);
   assert.match(source, /supported\.kinds\.filter\(\(kind\) => kind\.network === X402_NETWORK\)/);
   assert.match(source, /new x402ResourceServer\(\[cdpBaseFacilitator, standardFacilitator\]\)/);
   assert.match(source, /solanaFacilitator: "payai"/);
-  assert.match(source, /AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires CDP_API_KEY_ID and CDP_API_KEY_SECRET/);
+  assert.match(source, /AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires a CDP API key ID and API key secret/);
   assert.match(config, /https:\/\/facilitator\.payai\.network/);
 });
 
