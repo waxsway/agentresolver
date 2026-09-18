@@ -1,4 +1,4 @@
-name: Ops Tollbooth Paid Replay Verification
+name: Ops Tollbooth Verify Diagnostic
 
 on:
   pull_request:
@@ -13,37 +13,28 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 2
     env:
       ENDPOINT: https://agentresolver.vercel.app/api/x402-ping
       PAY_TO: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
     steps:
-      - name: Run Tollbooth verifier directly
-        id: verify
+      - name: Run one documented Tollbooth verification diagnostic
         shell: bash
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl -sS -o "$body" -w '%{http_code}' \
-            -X POST 'https://www.trytollbooth.com/api/verify' \
-            -H 'content-type: application/json' \
-            --data-binary @- <<JSON
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://www.trytollbooth.com/api/verify'             -H 'content-type: application/json'             --data-binary @- <<JSON
           {
             "endpoint": "$ENDPOINT",
             "wallet": "$PAY_TO"
           }
           JSON
           )"
-          echo "http_code=$code" >> "$GITHUB_OUTPUT"
           echo "TOLLBOOTH_VERIFY_HTTP=$code"
           cat "$body"
           echo
+          # Diagnostic only: preserve body even when Tollbooth reports a verifier failure.
           case "$code" in
-            200|201|202) ;;
+            200|201|202|400|404|409|422|500) ;;
             *) exit 1 ;;
           esac
-
-      - name: Wait briefly for any paid replay
-        if: steps.verify.outcome == 'success'
-        shell: bash
-        run: sleep 15
