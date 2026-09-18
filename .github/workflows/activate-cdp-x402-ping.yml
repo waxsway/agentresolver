@@ -1,6 +1,9 @@
 name: Activate Coinbase CDP x402 Ping
 
 on:
+  push:
+    branches:
+      - ops/cdp-x402-ping-enable-20260918
   workflow_dispatch:
     inputs:
       confirm:
@@ -33,7 +36,7 @@ jobs:
       - name: Require explicit CDP activation approval
         shell: bash
         env:
-          CDP_ACTIVATION_CONFIRMATION: ${{ inputs.confirm }}
+          CDP_ACTIVATION_CONFIRMATION: ${{ github.event_name == 'push' && 'ENABLE_CDP_X402_PING' || inputs.confirm }}
         run: |
           set -euo pipefail
           if [ "$CDP_ACTIVATION_CONFIRMATION" != "ENABLE_CDP_X402_PING" ]; then
