@@ -32,3 +32,9 @@ test("Aegis external outages defer safely instead of failing or paying", () => {
   assert.match(workflow, /advertised lint as free but returned 402\. No payment was attempted/);
   assert.match(workflow, /advertised discovery as free but returned 402\. No payment was attempted/);
 });
+
+
+test("Aegis lane marks its AgentResolver self-probe internal", () => {
+  const workflow = readFileSync(".github/workflows/register-aegis-paid-canary-once.yml", "utf8");
+  assert.match(workflow, /x-agentresolver-internal: 1/);
+});
