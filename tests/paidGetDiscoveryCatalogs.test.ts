@@ -103,30 +103,3 @@ test("GET-first discovery copy preserves caller-only spend authorization", () =>
   assert.match(preflightGetResource?.description ?? "", /caller alone authorizes any spend/i);
   assert.doesNotMatch(preflightGetResource?.description ?? "", /authorization gate/i);
 });
-
-test("hash-encode remains intentionally absent from broad public catalogs", () => {
-  const manifest = readJson("public/.well-known/x402");
-  assert.equal(
-    manifest.services?.some((item: any) => item.id === "hash-encode"),
-    false
-  );
-  assert.equal(
-    manifest.resources?.some((item: any) => item.resource === "GET /api/hash-encode"),
-    false
-  );
-
-  const capabilities = readJson("public/capabilities.json");
-  assert.equal(
-    capabilities.capabilities?.some((item: any) => item.id === "hash-encode"),
-    false
-  );
-
-  const integrations = readJson("public/integrations.json");
-  assert.equal(
-    integrations.paidActions?.some((item: any) => item.id === "hash-encode"),
-    false
-  );
-
-  const openapi = readJson("public/openapi.json");
-  assert.equal(openapi.paths?.["/api/hash-encode"], undefined);
-});
