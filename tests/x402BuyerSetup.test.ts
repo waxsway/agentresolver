@@ -45,8 +45,13 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.equal(setup.agentSkill.url, PAYMENT_GUARD_SKILL_URL);
   assert.equal(
     setup.agentSkill.installCommand,
+    "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard"
+  );
+  assert.equal(
+    setup.agentSkill.wellKnownInstallCommand,
     "npx skills add https://agentresolver.vercel.app --skill agentresolver-payment-guard"
   );
+  assert.equal(setup.agentSkill.repository, "waxsway/agentresolver");
   assert.equal(setup.clients.mcp.typescript.package, "@x402/mcp");
   assert.equal(setup.clients.mcp.typescript.factory, "createx402MCPClient");
   assert.match(setup.clients.mcp.typescript.installCommand, /@x402\/mcp/);
