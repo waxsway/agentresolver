@@ -17,6 +17,7 @@ export const X402_CHALLENGE_CLIENT_INSTALLS = {
   mcpTypescript: "npm install @x402/mcp @x402/evm @x402/svm",
   httpPython: "pip install x402",
   walletMcp: "npx -y x402-trinity-mcp",
+  managedWalletMcp: "npx x402-wallet-mcp",
   agentSkill: "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard"
 } as const;
 
@@ -37,6 +38,12 @@ export const X402_CHALLENGE_CLIENT_ENTRYPOINTS = {
     package: "x402-trinity",
     command: "x402-trinity-mcp",
     tools: ["check_price", "pay_and_fetch", "wallet_status"],
+    defaultNetwork: "eip155:8453"
+  },
+  managedWalletMcp: {
+    package: "x402-wallet-mcp",
+    command: "x402-wallet-mcp",
+    tools: ["query_endpoint", "call_endpoint", "configure_spending", "manage_allowlist", "check_balance"],
     defaultNetwork: "eip155:8453"
   },
   agentSkill: {
@@ -370,6 +377,33 @@ export function x402BuyerSetup() {
           "Send the original paid request; the x402 wrapper handles PAYMENT-REQUIRED and the authorized PAYMENT-SIGNATURE retry."
         ]
       },
+      x402WalletMcp: {
+        runtime: "x402-wallet-mcp",
+        package: "x402-wallet-mcp",
+        mcpCommand: "npx x402-wallet-mcp",
+        paymentGuardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+        defaultNetwork: "eip155:8453",
+        defaultAsset: "USDC",
+        tools: {
+          queryEndpoint: "query_endpoint",
+          callEndpoint: "call_endpoint",
+          discoverEndpoints: "discover_endpoints",
+          configureSpending: "configure_spending",
+          manageAllowlist: "manage_allowlist",
+          checkBalance: "check_balance",
+          transactionHistory: "transaction_history"
+        },
+        authorizationModel:
+          "Keep wallet control and spending policy inside the caller-controlled x402-wallet-mcp runtime. Use query_endpoint before payment. Do not expand spending limits or merchant allowlists merely because a 402 was received; any such policy change requires separate caller authorization. AgentResolver never receives wallet credentials and Guard eligibility does not authorize the later target payment.",
+        behavior: [
+          "Use query_endpoint on the exact AgentResolver Guard URL first so its $0.001 Base-USDC requirement is visible without paying.",
+          "Require caller policy to already permit AgentResolver and the separate $0.001 Guard fee before calling call_endpoint.",
+          "Use call_endpoint on Guard only after that caller-side authorization; the wallet runtime performs the standard 402-sign-retry flow.",
+          "Require Guard decision === eligible and compare the observed target amount, asset, network, payTo, scheme and resource binding against caller policy.",
+          "Require separate caller authorization before a later call_endpoint purchase of the original target.",
+          "Never send wallet credentials, recovery data, signing material or raw payment secrets to AgentResolver."
+        ]
+      },
       x402Trinity: {
         runtime: "x402-trinity MCP wallet",
         package: "x402-trinity",
@@ -552,6 +586,7 @@ export function x402BuyerSetup() {
       axios: "https://github.com/x402-foundation/x402/blob/main/typescript/packages/http/axios/README.md",
       coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md",
       x402Trinity: "https://github.com/devmster/x402-trinity",
+      x402WalletMcp: "https://github.com/onchainexpat/x402-wallet-mcp",
       vercelAiSdkX402Mcp: "https://vercel.com/blog/introducing-x402-mcp-open-protocol-payments-for-mcp-tools",
       cloudflareAgentsX402Mcp: "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md",
       cloudflareCodingToolsX402: "https://developers.cloudflare.com/agents/tools/payments/x402/pay-with-tool-plugins/",
