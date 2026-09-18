@@ -2,6 +2,10 @@ name: Register AgentResolver with true402
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-true402.yml"
   workflow_run:
     workflows: ["Deploy Production"]
     types: [completed]
@@ -13,6 +17,7 @@ jobs:
   register:
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
@@ -30,7 +35,7 @@ jobs:
             .x402 == "1.0" and
             .endpoint == "https://agentresolver.vercel.app/api/x402-ping" and
             .pricing.currency == "USDC" and
-            .pricing.base == 0.001 and
+            (.pricing.base | tostring) == "0.001" and
             .payment.address == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8" and
             .payment.chain == "base" and
             .payment.facilitator == "https://facilitator.payai.network"
