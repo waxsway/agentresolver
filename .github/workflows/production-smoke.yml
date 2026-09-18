@@ -92,6 +92,7 @@ jobs:
             [.services[].id] as $ids |
             ($ids | index("x402-ping") != null) and
             ($ids | index("x402-payment-preflight") != null) and
+            ($ids | index("base-usdc-settlement-verify") != null) and
             ($ids | index("verified-resolve") != null) and
             ($ids | index("batch-verified-resolve") != null) and
             ($ids | index("hash-encode") == null) and
