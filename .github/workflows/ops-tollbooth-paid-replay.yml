@@ -1,0 +1,80 @@
+name: Ops Tollbooth Paid Replay Registration
+
+on:
+  push:
+    branches:
+      - ops/tollbooth-paid-replay-v2-20260918
+    paths:
+      - .github/workflows/ops-tollbooth-paid-replay.yml
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      ENDPOINT: https://agentresolver.vercel.app/api/x402-ping
+      PAY_TO: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+    steps:
+      - name: Check existing listing
+        id: existing
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://www.trytollbooth.com/api/services'             --data-urlencode 'q=AgentResolver')"
+          visible=false
+          if [ "$code" = "200" ] && grep -Fq "$ENDPOINT" "$body"; then visible=true; fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "visible=$visible" >> "$GITHUB_OUTPUT"
+          echo "existing HTTP=$code visible=$visible"
+          head -c 8000 "$body" || true
+          echo
+
+      - name: Register one canonical paid canary
+        id: register
+        if: steps.existing.outputs.visible != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://www.trytollbooth.com/api/services'             -H 'content-type: application/json'             --data-binary @- <<JSON
+          {
+            "name": "AgentResolver x402 Settlement Test",
+            "endpoint": "$ENDPOINT",
+            "category": "developer-tools",
+            "priceUsdc": 0.001,
+            "wallet": "$PAY_TO",
+            "chain": "base",
+            "description": "No-body $0.001 x402 settlement canary for funded agents. Returns a timestamped pong only after successful payment settlement and delivery."
+          }
+          JSON
+          )"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "registration HTTP=$code"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) exit 1 ;;
+          esac
+
+      - name: Verify public listing state
+        id: lookup
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 8
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://www.trytollbooth.com/api/services'             --data-urlencode 'q=AgentResolver')"
+          visible=false
+          if [ "$code" = "200" ] && grep -Fq "$ENDPOINT" "$body"; then visible=true; fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "visible=$visible" >> "$GITHUB_OUTPUT"
+          echo "lookup HTTP=$code visible=$visible"
+          cat "$body"
+          echo
+          test "$code" = "200"
