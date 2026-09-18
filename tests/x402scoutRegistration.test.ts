@@ -42,3 +42,15 @@ test("x402Scout lane runs once on landing and can be retried manually", () => {
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /paths:\n\s+- "\.github\/workflows\/x402scout-register-once\.yml"/);
 });
+
+
+test("x402Scout keeps the payout address a YAML string", () => {
+  assert.match(
+    workflow,
+    /PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"/
+  );
+  assert.doesNotMatch(
+    workflow,
+    /PAYOUT_WALLET: 0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8/
+  );
+});
