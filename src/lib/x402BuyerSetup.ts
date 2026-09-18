@@ -419,6 +419,39 @@ export function x402BuyerSetup() {
           "Never send AgentCore payment-instrument credentials, wallet secrets, connector secrets or signed proof material to AgentResolver outside the standard x402 retry."
         ]
       },
+      codingTools: {
+        sharedPackages: ["@x402/fetch", "@x402/evm", "viem"],
+        paymentWrapper: "wrapFetchWithPayment",
+        paymentGuardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+        openCode: {
+          runtime: "OpenCode",
+          integration: "plugin",
+          pluginPath: ".opencode/plugins/x402-payment.ts",
+          toolName: "x402-fetch",
+          trigger: "Use after the built-in webfetch receives HTTP 402.",
+          behavior: [
+            "Keep the wallet credential inside the caller-controlled OpenCode host; never send it to AgentResolver.",
+            "On a target 402, first call AgentResolver Guard for the exact target URL and expose Guard's separate $0.001 requirement to caller policy.",
+            "Only after caller policy authorizes the Guard fee, retry Guard through wrapFetchWithPayment and require decision === eligible.",
+            "Then require separate caller authorization before retrying the original target through x402-fetch."
+          ]
+        },
+        claudeCode: {
+          runtime: "Claude Code",
+          integration: "PostToolUse hook",
+          hookEvent: "PostToolUse",
+          matcher: "WebFetch",
+          scriptPath: ".claude/scripts/handle-x402.mjs",
+          behavior: [
+            "Inspect the WebFetch result for HTTP 402 without creating a payment first.",
+            "Keep the wallet credential inside the caller-controlled Claude Code hook process; never send it to AgentResolver.",
+            "Before retrying the target, call AgentResolver Guard for that URL and require caller authorization of the separate $0.001 Guard fee.",
+            "Require Guard decision === eligible, then require separate caller authorization before the hook retries the original target with x402 payment."
+          ]
+        },
+        authorizationModel:
+          "A coding-tool hook or plugin must not turn every 402 into an automatic spend. Guard has its own separately authorized $0.001 fee, and an eligible Guard result is evidence rather than authorization for the target payment."
+      },
       cloudflareAgents: {
         runtime: "Cloudflare Agents",
         package: "agents",
@@ -470,6 +503,7 @@ export function x402BuyerSetup() {
       coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md",
       vercelAiSdkX402Mcp: "https://vercel.com/blog/introducing-x402-mcp-open-protocol-payments-for-mcp-tools",
       cloudflareAgentsX402Mcp: "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md",
+      cloudflareCodingToolsX402: "https://developers.cloudflare.com/agents/tools/payments/x402/pay-with-tool-plugins/",
       awsAgentCorePaymentsFrameworks: "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-framework-integrations.html",
       awsAgentCorePaymentsProcess: "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html"
     }
