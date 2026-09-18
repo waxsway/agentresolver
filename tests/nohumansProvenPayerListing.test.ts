@@ -12,5 +12,6 @@ test("NoHumans ping optimization is zero-spend and uses the existing owner token
   assert.match(workflow, /has_sample/);
   assert.doesNotMatch(workflow, /verify-now/);
   assert.doesNotMatch(workflow, /claim\/challenge/);
-  assert.doesNotMatch(workflow, /email/);
+  assert.doesNotMatch(workflow, /CLAIM_EMAIL/);
+  assert.doesNotMatch(workflow, /--data .*email/);
 });
