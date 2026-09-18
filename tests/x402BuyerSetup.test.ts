@@ -256,3 +256,36 @@ test("Coinbase AgentKit exposes a confirmation-first Guard loop", () => {
   assert.ok(agentkit.behavior.some((step) => /separate caller authorization/i.test(step)));
   assert.ok(agentkit.behavior.some((step) => /Do not use make_http_request_with_x402/i.test(step)));
 });
+
+
+test("buyer setup exposes Vercel AI SDK and Cloudflare Agents payment handoffs", () => {
+  const setup = x402BuyerSetup();
+  const vercel = setup.clients.vercelAiSdkMcp;
+  assert.equal(vercel.package, "ai");
+  assert.equal(vercel.paymentPackage, "x402-mcp");
+  assert.equal(vercel.mcpClientFactory, "experimental_createMCPClient");
+  assert.equal(vercel.paymentWrapper, "withPayment");
+  assert.equal(vercel.mcpUrl, "https://agentresolver.vercel.app/mcp");
+  assert.match(vercel.authorizationModel, /caller policy has approved the exact \$0\.001 Guard fee/i);
+  assert.ok(vercel.behavior.some((step) => /@x402\/mcp onPaymentRequested/i.test(step)));
+
+  const cloudflare = setup.clients.cloudflareAgents;
+  assert.equal(cloudflare.package, "agents");
+  assert.equal(cloudflare.x402ClientImport, "agents/x402");
+  assert.equal(cloudflare.wrapper, "withX402Client");
+  assert.equal(cloudflare.confirmationCallback, "requestPaymentConfirmation");
+  assert.equal(cloudflare.confirmationResolver, "resolvePayment");
+  assert.match(cloudflare.authorizationModel, /caller-owned authorization boundary/i);
+  assert.ok(cloudflare.behavior.some((step) => /separate caller authorization/i.test(step)));
+
+  const runtimeText = JSON.stringify({ vercel, cloudflare });
+  assert.doesNotMatch(runtimeText, /PRIVATE_KEY|seed phrase|0xYourPrivateKey/i);
+  assert.equal(
+    setup.officialReferences.vercelAiSdkX402Mcp,
+    "https://vercel.com/blog/introducing-x402-mcp-open-protocol-payments-for-mcp-tools"
+  );
+  assert.equal(
+    setup.officialReferences.cloudflareAgentsX402Mcp,
+    "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md"
+  );
+});
