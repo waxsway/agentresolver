@@ -405,8 +405,10 @@ test("runtime PAYMENT-REQUIRED handoff follows the exact challenged request", as
   const getHeader = getResponse.headers.get("payment-required");
   assert.ok(getHeader);
   const getChallenge = JSON.parse(Buffer.from(getHeader!, "base64").toString("utf8"));
-  assert.equal(getChallenge.extensions?.agentresolver?.info?.method, "GET");
-  const getSetup = new URL(getChallenge.extensions?.agentresolver?.info?.setup);
+  assert.equal(getChallenge.extensions?.agentresolver, undefined);
+  const getSetupHeader = getResponse.headers.get("x-agentresolver-buyer-setup");
+  assert.ok(getSetupHeader);
+  const getSetup = new URL(getSetupHeader!);
   assert.equal(getSetup.searchParams.get("method"), "GET");
   assert.equal(
     getSetup.searchParams.get("resumeUrl"),
@@ -428,8 +430,10 @@ test("runtime PAYMENT-REQUIRED handoff follows the exact challenged request", as
   const postHeader = postResponse.headers.get("payment-required");
   assert.ok(postHeader);
   const postChallenge = JSON.parse(Buffer.from(postHeader!, "base64").toString("utf8"));
-  assert.equal(postChallenge.extensions?.agentresolver?.info?.method, "POST");
-  const postSetup = new URL(postChallenge.extensions?.agentresolver?.info?.setup);
+  assert.equal(postChallenge.extensions?.agentresolver, undefined);
+  const postSetupHeader = postResponse.headers.get("x-agentresolver-buyer-setup");
+  assert.ok(postSetupHeader);
+  const postSetup = new URL(postSetupHeader!);
   assert.equal(postSetup.searchParams.get("method"), "POST");
   assert.equal(postSetup.searchParams.get("resumeUrl"), null);
 });
