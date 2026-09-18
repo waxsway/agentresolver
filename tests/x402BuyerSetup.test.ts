@@ -14,6 +14,7 @@ import {
   x402ChallengeBuyerHandoff,
   x402ChallengeHeaderHandoff,
   x402BuyerSetup,
+  x402BuyerSetupCompact,
   x402BuyerSetupHint
 } from "../src/lib/x402BuyerSetup";
 
@@ -239,6 +240,39 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   ].join("\n");
   assert.doesNotMatch(quickstartText, /privateKeyToAccount|seed phrase|0xYourPrivateKey/i);
 });
+
+test("challenge compact setup exposes one direct retry action without the full integration catalog", () => {
+  const setup = x402BuyerSetupCompact({
+    source: "x402-challenge",
+    capabilityId: "x402-ping",
+    endpoint: "/api/x402-ping",
+    resumeUrl: "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check",
+    method: "GET",
+    priceUsd: 0.001,
+    atomicAmount: "1000"
+  });
+
+  assert.equal(setup.mode, "challenge_compact");
+  assert.equal(setup.challengeContext?.capabilityId, "x402-ping");
+  assert.equal(
+    setup.next?.request.url,
+    "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check"
+  );
+  assert.equal(setup.next?.request.method, "GET");
+  assert.equal(setup.next?.payment.retryHeader, "PAYMENT-SIGNATURE");
+  assert.equal(setup.next?.payment.priceUsd, 0.001);
+  assert.equal(setup.next?.clients.typescript.package, "@x402/fetch");
+  assert.equal(setup.next?.clients.python.client, "x402HttpxClient");
+  assert.equal(setup.next?.clients.mcp.factory, "createx402MCPClient");
+  assert.match(setup.next?.clients.walletMcp.install || "", /x402-trinity-mcp/);
+  assert.equal(setup.fullSetupUrl, X402_BUYER_SETUP_URL);
+  assert.equal(setup.authorizationBoundary.callerControlsSigner, true);
+  assert.equal(setup.authorizationBoundary.agentResolverAuthorizesSpend, false);
+  assert.ok(JSON.stringify(setup).length < 4000);
+  assert.equal((setup as any).clients, undefined);
+  assert.equal((setup as any).officialReferences, undefined);
+});
+
 
 test("buyer setup hint points to the canonical free handoff", () => {
   const hint = x402BuyerSetupHint("x402-payment-preflight");
@@ -592,11 +626,17 @@ test("challenge-attributed setup response preserves exact resume method", async 
   assert.equal(response.headers.get("x-agentresolver-resume-capability"), "x402-ping");
   assert.equal(response.headers.get("x-agentresolver-resume-method"), "POST");
   assert.equal(response.headers.get("x-agentresolver-retry-header"), "PAYMENT-SIGNATURE");
+  assert.equal(response.headers.get("x-agentresolver-setup-mode"), "challenge_compact");
   assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-resume-method/);
+  assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-setup-mode/);
 
   const body = await response.json() as any;
+  assert.equal(body.mode, "challenge_compact");
   assert.equal(body.challengeContext?.method, "POST");
   assert.equal(body.challengeContext?.resumeUrl, "https://agentresolver.vercel.app/api/x402-ping");
+  assert.equal(body.next?.request.method, "POST");
+  assert.equal(body.next?.request.url, "https://agentresolver.vercel.app/api/x402-ping");
+  assert.ok(JSON.stringify(body).length < 4000);
 });
 
 test("POST-only paid route discovery resumes through POST", async () => {
