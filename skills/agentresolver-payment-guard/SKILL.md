@@ -113,6 +113,17 @@ For EVM identifiers, address equality is case-insensitive. For Solana, Base58 as
 For HTTP clients, the free buyer setup exposes equivalent pre-sign gates: `paymentRequirementsSelector` for `@x402/fetch` and `@x402/axios`, and client policies plus `on_before_payment_creation` / `AbortResult` for Python `x402HttpxClient`.
 
 
+## Cloudflare Agents SDK — native x402 MCP
+
+Cloudflare Agents has a native x402 v2 MCP client. Keep the signer inside the caller-controlled Cloudflare runtime and use AgentResolver only as the paid verification service.
+
+- Connect the AgentResolver MCP server at `https://agentresolver.vercel.app/mcp`, then wrap that MCP connection with `withX402Client` from `agents/x402`.
+- For AgentResolver on Base, prefer CAIP-2 network `eip155:8453`. The caller must still enforce its own allowed network, asset, payTo and budget.
+- Invoke Guard with `x402Client.callTool(onPaymentRequired, { name: "payment_guard", ... })`. Pass a **non-null** `onPaymentRequired` callback; passing `null` enables automatic payment and must not be used for an unfamiliar Guard or target spend.
+- In `onPaymentRequired`, authorize only the separate **$0.001 Guard fee** when the selected requirement matches caller policy. The v2 retry uses `PAYMENT-SIGNATURE`.
+- Require `decision === "eligible"` and verify the target amount, asset, network, payTo, scheme and resource binding.
+- Require a second, separate authorization before the original target payment. Guard eligibility never authorizes that spend.
+
 ## OpenAI Agents SDK — approval-gated signed retry
 
 For OpenAI Agents SDK hosts, use AgentResolver's remote MCP only for discovery/tool access and keep x402 signing in a **caller-controlled** payment tool or self-hosted x402 MCP client that owns the caller's signer.
