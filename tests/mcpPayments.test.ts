@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { PAID_CAPABILITY_LIST } from "../src/lib/paidCapabilities";
 import {
   buildStaticMcpPaymentRequirements,
@@ -77,4 +78,15 @@ test("Guard MCP payment resources bind to exact tool identities", () => {
   );
   assert.equal(mcpPaymentResourceUrl(), "https://agentresolver.vercel.app/mcp");
   assert.throws(() => mcpPaymentResourceUrl("bad/tool"), /invalid/i);
+});
+
+
+test("MCP x402 ping advertises structured output and repeat-purchase next actions", () => {
+  const source = readFileSync("src/app/mcp/route.ts", "utf8");
+  const start = source.indexOf('server.registerTool("x402_ping"');
+  assert.ok(start >= 0);
+  const snippet = source.slice(start, start + 1800);
+
+  assert.match(snippet, /outputSchema:\s*x402PingMcpOutputSchema/);
+  assert.match(snippet, /next:\s*X402_PING_NEXT_ACTIONS/);
 });
