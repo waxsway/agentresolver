@@ -32,7 +32,7 @@ jobs:
         env:
           SCOUT_API: https://x402-discovery-api.onrender.com
           ENDPOINT_URL: https://agentresolver.vercel.app/api/x402-ping
-          PAYOUT_WALLET: 0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8
+          PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
         run: |
           set -euo pipefail
 
