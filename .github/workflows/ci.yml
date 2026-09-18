@@ -9,6 +9,13 @@ on:
 permissions:
   contents: read
 
+# Only the newest commit on a PR branch or main needs a full validation build.
+# main is cumulative, so canceling an older in-flight CI run cannot drop changes;
+# the newer SHA validates the complete tree and is the only one eligible to deploy.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
