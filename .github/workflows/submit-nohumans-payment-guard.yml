@@ -90,8 +90,8 @@ jobs:
           set -euo pipefail
           body="$(mktemp)"
           payload="$(jq -cn --arg endpoint "$GUARD_URL" '{
-            name:"AgentResolver Guard — Payment Authorization",
-            description:"$0.001 x402 pre-payment authorization gate for autonomous agents. This live GET example verifies a target x402 challenge and returns a fail-closed eligible/blocked decision plus exact payment terms and evidence. Integrators replace the target URL query parameter and run Guard immediately before each autonomous spend.",
+            name:"AgentResolver Guard — Payment Verification",
+            description:"$0.001 x402 verify-before-pay Guard for autonomous agents. This live GET example verifies a target x402 challenge and returns a fail-closed eligible/blocked decision plus exact payment terms and evidence. The caller alone decides whether to authorize any spend.",
             endpoint_url:$endpoint,
             category:"tools.verification",
             price_amount:0.001,
@@ -199,7 +199,7 @@ jobs:
           set -euo pipefail
           sleep 2
           curl -fsS -G 'https://nohumans.directory/v1/discover' \
-            --data-urlencode 'q=AgentResolver Guard Payment Authorization' \
+            --data-urlencode 'q=AgentResolver Guard Payment Verification' \
             -o /tmp/nohumans-guard-discover.json || true
           cat /tmp/nohumans-guard-discover.json 2>/dev/null || true
           echo
