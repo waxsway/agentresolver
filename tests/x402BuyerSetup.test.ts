@@ -465,10 +465,12 @@ test("buyer setup exposes x402-trinity as a hard-budget wallet-capable MCP hando
 });
 
 
-test("buyer handoff does not advertise legacy X-PAYMENT-only wallet runtimes", () => {
-  const handoff = x402ChallengeBuyerHandoff("x402-ping");
-  const setup = x402BuyerSetup();
+test("buyer handoff excludes legacy wallet MCP until x402 v2 exact retry support exists", () => {
+  const handoff = x402ChallengeBuyerHandoff("x402-payment-preflight") as any;
+  const setup = x402BuyerSetup() as any;
 
-  assert.doesNotMatch(JSON.stringify(handoff), /x402-wallet-mcp/i);
-  assert.doesNotMatch(JSON.stringify(setup), /x402-wallet-mcp/i);
+  assert.equal(handoff.clientInstalls.managedWalletMcp, undefined);
+  assert.equal(handoff.clientEntrypoints.managedWalletMcp, undefined);
+  assert.equal(setup.clients.x402WalletMcp, undefined);
+  assert.equal(setup.officialReferences.x402WalletMcp, undefined);
 });
