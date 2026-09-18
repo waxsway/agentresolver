@@ -47,8 +47,10 @@ export async function GET(req: Request) {
     "access-control-allow-origin": "*"
   };
 
-  if (capabilityId && capability && resumeUrl) {
-    responseHeaders["x-agentresolver-resume-url"] = resumeUrl;
+  if (capabilityId && capability) {
+    const responseResumeUrl =
+      resumeUrl ?? new URL(capability.endpoint, "https://agentresolver.vercel.app").toString();
+    responseHeaders["x-agentresolver-resume-url"] = responseResumeUrl;
     responseHeaders["x-agentresolver-resume-capability"] = capabilityId;
     if (challengeMethod) {
       responseHeaders["x-agentresolver-resume-method"] = challengeMethod;
