@@ -38,6 +38,36 @@ function decodePaymentRequiredHeader(value: string | null): JsonObject | null {
   }
 }
 
+function encodePaymentRequiredHeader(value: JsonObject) {
+  return Buffer.from(JSON.stringify(value), "utf8").toString("base64");
+}
+
+function paymentRequiredChallengeWithBuyerHandoff(
+  challenge: JsonObject,
+  capabilityId: PaidCapabilityId,
+  requestMethod?: string,
+  resumeUrl?: string | null
+) {
+  const currentExtensions =
+    challenge.extensions &&
+    typeof challenge.extensions === "object" &&
+    !Array.isArray(challenge.extensions)
+      ? challenge.extensions as JsonObject
+      : {};
+
+  return {
+    ...challenge,
+    extensions: {
+      ...currentExtensions,
+      agentresolver: x402ChallengeHeaderHandoff(
+        capabilityId,
+        requestMethod,
+        resumeUrl
+      )
+    }
+  } as JsonObject;
+}
+
 async function mirrorPaymentChallengeBody(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
@@ -48,25 +78,26 @@ async function mirrorPaymentChallengeBody(
   const headerChallenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
   if (!headerChallenge) return response;
 
-  let current: unknown = null;
-  try {
-    current = await response.clone().json();
-  } catch {
-    current = null;
-  }
-
-  const bodyChallenge =
-    current &&
-    typeof current === "object" &&
-    !Array.isArray(current) &&
-    "x402Version" in current &&
-    "accepts" in current
-      ? current as JsonObject
-      : headerChallenge;
+  const exactHeaderChallenge = paymentRequiredChallengeWithBuyerHandoff(
+    headerChallenge,
+    capabilityId,
+    requestMethod,
+    resumeUrl
+  );
+  const exactHeaderValue = encodePaymentRequiredHeader(exactHeaderChallenge);
+  const headerChallengeWithinBudget =
+    Buffer.byteLength(exactHeaderValue, "utf8") < 8192
+      ? exactHeaderChallenge
+      : paymentRequiredChallengeWithBuyerHandoff(
+          headerChallenge,
+          capabilityId,
+          requestMethod
+        );
 
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
+  headers.set("payment-required", encodePaymentRequiredHeader(headerChallengeWithinBudget));
   const error = resumeUrl
     ? x402BuyerSetupChallengeError(capabilityId, requestMethod, resumeUrl)
     : x402BuyerSetupChallengeError(capabilityId, requestMethod);
@@ -74,7 +105,7 @@ async function mirrorPaymentChallengeBody(
     ? x402ChallengeBuyerHandoff(capabilityId, requestMethod, resumeUrl)
     : x402ChallengeBuyerHandoff(capabilityId, requestMethod);
   return new NextResponse(JSON.stringify({
-    ...bodyChallenge,
+    ...exactHeaderChallenge,
     error,
     buyerSetup
   }), {
