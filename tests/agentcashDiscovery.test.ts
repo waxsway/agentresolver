@@ -43,7 +43,21 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     .map((item: any) => item?.post)
     .filter((op: any) => op?.tags?.includes("Paid Agent Capabilities"));
 
-  assert.ok(paid.length >= 10);
+  assert.equal(paid.length, 4);
+  assert.deepEqual(
+    Object.keys(openapi.paths || {}).sort(),
+    [
+      "/api/batch-verified-resolve",
+      "/api/health",
+      "/api/payment-guard",
+      "/api/resolve",
+      "/api/verified-resolve",
+      "/api/x402-payment-preflight",
+      "/api/x402-ping"
+    ].sort()
+  );
+  assert.equal(openapi.paths?.["/api/sha256"], undefined);
+  assert.equal(openapi.paths?.["/api/usdc-payment-check"], undefined);
   for (const op of paid as any[]) {
     const info = op["x-payment-info"];
     assert.equal(info?.price?.mode, "fixed");
@@ -53,4 +67,40 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     assert.equal(info?.protocol, "x402");
     assert.equal(typeof info?.priceUsd, "number");
   }
+});
+
+
+test("public discovery stays focused on the settlement-to-Guard revenue funnel", () => {
+  const manifest = JSON.parse(readFileSync("public/.well-known/x402", "utf8"));
+  const capabilities = JSON.parse(readFileSync("public/capabilities.json", "utf8"));
+  const integrations = JSON.parse(readFileSync("public/integrations.json", "utf8"));
+
+  const paidIds = new Set([
+    "x402-ping",
+    "x402-payment-preflight",
+    "verified-resolve",
+    "batch-verified-resolve"
+  ]);
+
+  assert.deepEqual(
+    (manifest.services || []).map((item: any) => item.id).sort(),
+    [...paidIds].sort()
+  );
+  assert.ok(
+    (manifest.resources || []).every((item: any) =>
+      ["/api/x402-ping", "/api/x402-payment-preflight", "/api/verified-resolve", "/api/batch-verified-resolve"]
+        .some((path) => String(item.resource || "").endsWith(path))
+    )
+  );
+
+  const publicPaidCapabilityIds = (capabilities.capabilities || [])
+    .filter((item: any) => Number(item.priceUsd) > 0)
+    .map((item: any) => item.id);
+  assert.deepEqual(publicPaidCapabilityIds.sort(), [...paidIds].sort());
+
+  const integrationIds = (integrations.paidActions || []).map((item: any) => item.id);
+  assert.deepEqual(integrationIds.sort(), [...paidIds].sort());
+
+  assert.match(manifest.instructions || "", /intentionally omitted from public machine catalogs/i);
+  assert.match(openapi.info?.description || "", /reduce unpaid crawler sweeps/i);
 });
