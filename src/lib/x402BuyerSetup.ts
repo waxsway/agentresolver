@@ -94,6 +94,51 @@ export function x402ChallengeBuyerHandoff(capabilityId: string) {
   } as const;
 }
 
+export function x402ChallengeHeaderHandoff(capabilityId: string) {
+  return {
+    version: 1,
+    setup: x402BuyerSetupChallengeUrl(capabilityId),
+    paymentGuard: "https://agentresolver.vercel.app/api/payment-guard",
+    retryHeader: "PAYMENT-SIGNATURE",
+    signer: "callerOwnedSigner",
+    spendAuthorizationRequired: true,
+    clients: {
+      httpTs: {
+        install: X402_CHALLENGE_CLIENT_INSTALLS.httpTypescript,
+        package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpTypescript.package,
+        factory: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpTypescript.factory,
+        schemes: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpTypescript.schemes.map(
+          ({ network, package: schemePackage, clientClass }) => [network, schemePackage, clientClass]
+        )
+      },
+      mcpTs: {
+        install: X402_CHALLENGE_CLIENT_INSTALLS.mcpTypescript,
+        package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.package,
+        factory: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.factory,
+        approvalHook: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.approvalHook,
+        schemes: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.schemes.map(
+          ({ network, package: schemePackage, clientClass }) => [network, schemePackage, clientClass]
+        )
+      },
+      python: {
+        install: X402_CHALLENGE_CLIENT_INSTALLS.httpPython,
+        package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.package,
+        client: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.client,
+        clientFactory: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.clientFactory,
+        evmSchemeImport: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.evmSchemeImport,
+        network: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.evmNetwork
+      },
+      walletMcp: {
+        install: X402_CHALLENGE_CLIENT_INSTALLS.walletMcp,
+        package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.package,
+        command: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.command,
+        tools: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.tools,
+        network: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.defaultNetwork
+      }
+    }
+  } as const;
+}
+
 export type X402BuyerSetup = ReturnType<typeof x402BuyerSetup>;
 
 /**
