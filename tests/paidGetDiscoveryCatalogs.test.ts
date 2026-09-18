@@ -144,3 +144,47 @@ test("x402 settlement verifier is published as a GET-first $0.001 machine resour
     true
   );
 });
+
+
+test("Provider Launch Check is GET-first and focused seller discovery stays accurate", () => {
+  const manifest = readJson("public/.well-known/x402");
+  const service = manifest.services?.find((item: any) => item.id === "provider-launch-check");
+  assert.equal(service?.method, "GET");
+  assert.deepEqual(service?.methods, ["GET", "POST"]);
+  assert.equal(service?.preferredMethod, "GET");
+
+  const getResource = manifest.resources?.find(
+    (item: any) => item.resource === "GET /api/provider-launch-check"
+  );
+  const postResource = manifest.resources?.find(
+    (item: any) => item.resource === "POST /api/provider-launch-check"
+  );
+  assert.ok(getResource);
+  assert.ok(postResource);
+  assert.equal(getResource.price, "$0.05");
+  assert.equal(getResource.inputTransport, "query");
+  assert.equal(
+    getResource.queryParameters?.find((item: any) => item.name === "providerId")?.required,
+    false
+  );
+
+  const capabilities = readJson("public/capabilities.json");
+  const capability = capabilities.capabilities?.find((item: any) => item.id === "provider-launch-check");
+  assert.equal(capability?.method, "GET");
+  assert.equal(capability?.priceUsd, 0.05);
+
+  const integrations = readJson("public/integrations.json");
+  const integration = integrations.paidActions?.find((item: any) => item.id === "provider-launch-check");
+  assert.equal(integration?.method, "GET");
+  assert.equal(integration?.priceUsd, 0.05);
+
+  const openapi = readJson("public/openapi.json");
+  const pathItem = openapi.paths?.["/api/provider-launch-check"];
+  assert.ok(pathItem?.get);
+  assert.ok(pathItem?.post);
+  assert.equal(pathItem.get.operationId, "providerLaunchCheckGet");
+  assert.equal(pathItem.get.requestBody, undefined);
+  assert.equal(pathItem.get["x-agentresolver-product"]?.inputTransport, "query");
+  assert.equal(pathItem.post["x-agentresolver-product"]?.inputTransport, "json-body");
+  assert.equal(pathItem["x-agentresolver-preferred-method"], "GET");
+});
