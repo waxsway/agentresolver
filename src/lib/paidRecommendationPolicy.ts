@@ -42,6 +42,7 @@ export function directOwnedRecommendationInput(
 function paidNextAction(
   capabilityId:
     | "x402-payment-preflight"
+    | "x402-settlement-verify"
     | "verified-resolve"
     | "batch-verified-resolve"
 ) {
@@ -49,7 +50,10 @@ function paidNextAction(
   return {
     capabilityId: capability.id,
     endpoint: `${CANONICAL_ORIGIN}${capability.endpoint}`,
-    method: capabilityId === "x402-payment-preflight" ? "GET" as const : "POST" as const,
+    method:
+      capabilityId === "x402-payment-preflight" || capabilityId === "x402-settlement-verify"
+        ? "GET" as const
+        : "POST" as const,
     priceUsd: capability.priceUsd,
     useWhen: capability.useWhen,
     inputExample: capability.example
@@ -64,6 +68,21 @@ function paidNextAction(
  */
 export function postSettlementCanaryNextActions() {
   const preflight = paidNextAction("x402-payment-preflight");
+  const settlementVerifyProduct = getPaidCapability("x402-settlement-verify");
+  const settlementVerify = {
+    ...paidNextAction("x402-settlement-verify"),
+    inputExample: {
+      txHash: "<payment-response.transaction>",
+      expectedPayTo: "<original Base payment-required accepts[].payTo>",
+      expectedAmountAtomic: "<original Base payment-required accepts[].amount>"
+    },
+    condition: "payment_response.network == eip155:8453" as const,
+    transactionHashSource: "payment-response.transaction" as const,
+    expectedPayToSource: "original payment-required Base accepts[].payTo" as const,
+    expectedAmountAtomicSource: "original payment-required Base accepts[].amount" as const,
+    reason: "If this ping settled on Base, independently verify the exact USDC settlement you just made using the transaction reference returned by x402.",
+    paymentAuthorization: "separate_caller_authorization_required" as const
+  };
   const hashEncode = getPaidCapability("hash-encode");
   const recommended = {
     capabilityId: hashEncode.id,
@@ -79,6 +98,7 @@ export function postSettlementCanaryNextActions() {
   return {
     catalogUrl: `${CANONICAL_ORIGIN}/.well-known/x402`,
     recommended,
+    settlementVerify,
     preflight,
     single: paidNextAction("verified-resolve"),
     batch: paidNextAction("batch-verified-resolve")
