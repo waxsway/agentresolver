@@ -1,0 +1,106 @@
+name: Register AgentResolver with true402
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-true402.yml"
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate live true402 manifest and settlement canary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          manifest_status="$(curl -sS --connect-timeout 5 --max-time 20             -o /tmp/agentresolver-true402-manifest.json             -w '%{http_code}'             https://agentresolver.vercel.app/.well-known/x402-service.json || printf '000')"
+          test "$manifest_status" = "200"
+
+          jq -e '
+            .x402 == "1.0" and
+            .endpoint == "https://agentresolver.vercel.app/api/x402-ping" and
+            .pricing.currency == "USDC" and
+            (.pricing.base | tostring) == "0.001" and
+            .payment.address == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8" and
+            .payment.chain == "base" and
+            .payment.facilitator == "https://facilitator.payai.network"
+          ' /tmp/agentresolver-true402-manifest.json >/dev/null
+
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o /tmp/agentresolver-true402-canary.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             https://agentresolver.vercel.app/api/x402-ping || true)"
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            any(.accepts[];
+              .scheme == "exact" and
+              .network == "eip155:8453" and
+              .amount == "1000" and
+              .payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            )
+          ' /tmp/agentresolver-true402-canary.json >/dev/null
+
+      - name: Register with true402 if absent
+        shell: bash
+        env:
+          TRUE402_API: https://true402.dev/api
+          ORIGIN: https://agentresolver.vercel.app
+        run: |
+          set -euo pipefail
+
+          catalog_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-services.json             -w '%{http_code}'             "$TRUE402_API/v1/services" || printf '000')"
+
+          case "$catalog_status" in
+            200) ;;
+            429|500|502|503|504|000)
+              echo "::warning::true402 catalog is temporarily unavailable (HTTP $catalog_status); registration deferred without spend."
+              exit 0
+              ;;
+            *)
+              echo "Unexpected true402 catalog status: $catalog_status" >&2
+              exit 1
+              ;;
+          esac
+
+          if grep -Fq 'agentresolver.vercel.app' /tmp/true402-services.json; then
+            echo "AgentResolver is already present in true402; refusing duplicate registration."
+            exit 0
+          fi
+
+          payload="$(jq -nc --arg url "$ORIGIN" '{url:$url}')"
+          status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-register.json             -w '%{http_code}'             -X POST "$TRUE402_API/v1/services"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          echo "true402 registration -> HTTP $status"
+          case "$status" in
+            200|201|202|409)
+              ;;
+            429|500|502|503|504|000)
+              echo "::warning::true402 registration is temporarily unavailable (HTTP $status); no spend or identity submission occurred."
+              exit 0
+              ;;
+            *)
+              echo "Unexpected true402 registration status: $status" >&2
+              jq '{error:(.error // null),message:(.message // null)}' /tmp/true402-register.json >&2 || true
+              exit 1
+              ;;
+          esac
+
+          verify_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-services-after.json             -w '%{http_code}'             "$TRUE402_API/v1/services" || printf '000')"
+          if [ "$verify_status" = "200" ] && grep -Fq 'agentresolver.vercel.app' /tmp/true402-services-after.json; then
+            echo "AgentResolver is visible in true402."
+          else
+            echo "::notice::true402 accepted or already knew the listing, but public catalog visibility is not confirmed yet."
+          fi
