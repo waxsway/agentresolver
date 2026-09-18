@@ -118,7 +118,7 @@ jobs:
           body="$(mktemp)"
           payload="$(jq -cn --arg endpoint "$PING_URL" '{
             name:"AgentResolver x402 Settlement Test",
-            description:"$0.001 GET-first x402 settlement canary for autonomous agents. This is AgentResolver's independently settlement-proven purchase path: discover the standard x402 v2 challenge, authorize with the caller wallet policy, retry with PAYMENT-SIGNATURE, and receive a timestamped pong after successful settlement.",
+            description:"$0.001 GET-first x402 settlement canary for autonomous agents. This is AgentResolver's independently settlement-proven purchase path: discover the standard x402 v2 challenge, authorize with the caller wallet policy, perform the standard signed retry, and receive a timestamped pong after successful settlement.",
             endpoint_url:$endpoint,
             category:"tools.verification",
             price_amount:0.001,
