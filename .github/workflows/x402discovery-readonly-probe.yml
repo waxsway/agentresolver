@@ -21,7 +21,7 @@ jobs:
           base='https://x402-discovery-api.onrender.com'
 
           for spec in openapi.json docs; do
-            code="$(curl -sS --connect-timeout 10 --max-time 30               -o "/tmp/x402discovery-$spec" -w '%{http_code}' "$base/$spec" || printf '000')"
+            code="$(curl -sS --connect-timeout 10 --max-time 30 -o "/tmp/x402discovery-$spec" -w '%{http_code}' "$base/$spec" || printf '000')"
             echo "GET /$spec -> HTTP $code"
           done
 
@@ -32,17 +32,17 @@ jobs:
             wellKnown: .paths["/.well-known/x402-discovery"]
           }' /tmp/x402discovery-openapi.json
 
-          catalog_code="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/x402discovery-catalog.json -w '%{http_code}'             "$base/catalog?limit=500" || printf '000')"
+          catalog_code="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/x402discovery-catalog.json -w '%{http_code}' "$base/catalog?limit=500" || printf '000')"
           echo "GET /catalog -> HTTP $catalog_code"
           test "$catalog_code" = "200"
 
           python3 - /tmp/x402discovery-catalog.json <<'PY'
-import json,sys
-data=json.load(open(sys.argv[1],"r",encoding="utf-8"))
-rows=data if isinstance(data,list) else data.get("services") or data.get("items") or data.get("data") or []
-blob=json.dumps(rows,separators=(",",":")).lower()
-print(json.dumps({
-  "rowCount": len(rows) if isinstance(rows,list) else None,
-  "agentresolverPresent": "agentresolver.vercel.app" in blob
-},separators=(",",":")))
-PY
+          import json,sys
+          data=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          rows=data if isinstance(data,list) else data.get("services") or data.get("items") or data.get("data") or []
+          blob=json.dumps(rows,separators=(",",":")).lower()
+          print(json.dumps({
+            "rowCount": len(rows) if isinstance(rows,list) else None,
+            "agentresolverPresent": "agentresolver.vercel.app" in blob
+          },separators=(",",":")))
+          PY
