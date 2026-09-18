@@ -15,3 +15,13 @@ test("NoHumans ping optimization is zero-spend and uses the existing owner token
   assert.doesNotMatch(workflow, /CLAIM_EMAIL/);
   assert.doesNotMatch(workflow, /--data .*email/);
 });
+
+
+test("NoHumans optimization retrieves the sensitive owner token through Vercel's decrypt API without printing it", () => {
+  const workflow = readFileSync(".github/workflows/optimize-nohumans-proven-payer-listing.yml", "utf8");
+  assert.match(workflow, /api\.vercel\.com\/v10\/projects\/\$VERCEL_PROJECT_ID\/env/);
+  assert.match(workflow, /decrypt=true/);
+  assert.match(workflow, /Authorization: Bearer \$VERCEL_TOKEN/);
+  assert.match(workflow, /::add-mask::\$token/);
+  assert.doesNotMatch(workflow, /vercel env pull/);
+});
