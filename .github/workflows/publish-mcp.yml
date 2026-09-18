@@ -29,4 +29,18 @@ jobs:
         run: ./mcp-publisher login github-oidc
 
       - name: Publish AgentResolver
-        run: ./mcp-publisher publish server.json
+        shell: bash
+        run: |
+          set +e
+          output="$(./mcp-publisher publish server.json 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if grep -Fqi 'cannot publish duplicate version' <<<"$output"; then
+            echo "::notice::MCP Registry already has this server.json version; treating publish as idempotent success."
+            exit 0
+          fi
+          exit "$status"
