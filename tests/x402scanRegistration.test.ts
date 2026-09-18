@@ -40,3 +40,11 @@ test("x402scan lane does not run on every application push", () => {
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /paths:\n\s+- "\.github\/workflows\/x402scan-register-once\.yml"/);
 });
+
+
+test("x402scan lane does not log credential-shaped registration response fields", () => {
+  assert.doesNotMatch(workflow, /cat \/tmp\/x402scan-register\.json/);
+  assert.doesNotMatch(workflow, /^\s*apiKey,\s*$/m);
+  assert.match(workflow, /body suppressed/);
+  assert.match(workflow, /\.error \| \{message, data: \(\.data \| \{code, httpStatus\}\)\}/);
+});
