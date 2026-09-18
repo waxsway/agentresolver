@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 4
     env:
       GUARD_URL: https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
+      PREFLIGHT_URL: https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
     steps:
       - name: Verify paid Guard example without spending
         shell: bash
@@ -84,6 +85,41 @@ jobs:
           case "$code" in
             200|201|202|409) ;;
             *) echo "NoHumans Guard submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Submit canonical preflight to NoHumans free verification queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg endpoint "$PREFLIGHT_URL" '{
+            name:"AgentResolver x402 Payment Preflight",
+            description:"Canonical $0.001 x402 verify-before-pay preflight for autonomous agents. Inspects a live target challenge before the caller independently decides whether to authorize payment.",
+            endpoint_url:$endpoint,
+            category:"tools.verification",
+            price_amount:0.001,
+            price_currency:"USDC",
+            chains:["base","solana"]
+          }')"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://nohumans.directory/v1/listings' \
+            -H 'content-type: application/json' \
+            --data "$payload")"
+
+          python3 - "$body" <<'PY'
+          import json, sys
+          raw = open(sys.argv[1], "r", encoding="utf-8").read()
+          payload = json.loads(raw)
+          if isinstance(payload, dict) and "claim_token" in payload:
+              payload["claim_token"] = "[REDACTED]"
+          if isinstance(payload, dict) and isinstance(payload.get("data"), dict) and "claim_token" in payload["data"]:
+              payload["data"]["claim_token"] = "[REDACTED]"
+          print(json.dumps(payload, separators=(",", ":")))
+          PY
+
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "NoHumans canonical preflight submission failed with HTTP $code" >&2; exit 1 ;;
           esac
 
       - name: Check NoHumans discovery visibility
