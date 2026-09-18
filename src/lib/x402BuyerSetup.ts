@@ -91,6 +91,10 @@ export function x402BuyerSetup() {
             hook: "onPaymentRequested",
             stage: "before_wallet_signature",
             toolNames: ["payment_guard", "x402_payment_preflight"],
+            toolResources: {
+              payment_guard: "mcp://tool/payment_guard",
+              x402_payment_preflight: "mcp://tool/x402_payment_preflight"
+            },
             priceUsd: 0.001,
             expectedAtomicUsdc: "1000",
             allowedNetworks: [
@@ -103,22 +107,21 @@ export function x402BuyerSetup() {
                 network: "eip155:8453",
                 amount: "1000",
                 asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
-                resource: "https://agentresolver.vercel.app/mcp"
+                payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
               },
               {
                 scheme: "exact",
                 network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
                 amount: "1000",
                 asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-                payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa",
-                resource: "https://agentresolver.vercel.app/mcp"
+                payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
               }
             ],
             rule:
-              "Return true only when the caller-owned spend policy has authorized this exact AgentResolver Guard fee and the tool, amount, network, scheme, asset and resource match caller expectations; otherwise return false.",
+              "Return true only when the caller-owned spend policy has authorized this exact AgentResolver Guard fee, the amount/network/scheme/asset/payTo tuple matches caller expectations, and paymentRequired.resource.url equals toolResources[toolName]; otherwise return false.",
             approvalHookExample: [
               'const guardTools = new Set(["payment_guard", "x402_payment_preflight"]);',
+              'const guardResources = { payment_guard: "mcp://tool/payment_guard", x402_payment_preflight: "mcp://tool/x402_payment_preflight" };',
               'const allowedGuardRequirements = [',
               '  { network: "eip155:8453", asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8" },',
               '  { network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa" }',
@@ -129,7 +132,7 @@ export function x402BuyerSetup() {
               '  if (!(await hostAllowsGuardSpend(context))) return false;',
               '  if (!guardTools.has(context.toolName)) return false;',
               '  if (context.paymentRequired.x402Version !== 2) return false;',
-              '  if (context.paymentRequired.resource.url !== "https://agentresolver.vercel.app/mcp") return false;',
+              '  if (context.paymentRequired.resource.url !== guardResources[context.toolName]) return false;',
               '  return context.paymentRequired.accepts.some(requirement =>',
               '    requirement.scheme === "exact" &&',
               '    requirement.amount === "1000" &&',
