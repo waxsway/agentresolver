@@ -6,7 +6,7 @@ export function GET() {
   return NextResponse.json({
     name: "agentresolver",
     title: "AgentResolver",
-    description: "Free capability discovery plus optional pay-per-call direct utilities, compatibility checks, and live evidence for autonomous agents.",
+    description: "Paid x402 payment verification for autonomous agents: $0.001 verify-before-pay Guard and $0.001 Base USDC settlement-receipt verification, plus free capability discovery and optional pay-per-call evidence tools.",
     version: "0.1.3",
     transport: { type: "streamable-http", url: `${base}/mcp` },
     serverCard: `${base}/mcp/server-card`,
@@ -32,6 +32,6 @@ export function GET() {
       aiCatalog: `${base}/.well-known/ai-catalog.json`,
       x402: `${base}/.well-known/x402`
     },
-    usageHint: "Use resolve for free discovery. Quote tools never authorize spending; execute a returned x402 action only under the caller's own budget and permission policy."
+    usageHint: "Use x402 settlement verification when a Base transaction receipt must be independently checked, and Guard/preflight before paying unfamiliar x402 endpoints. Use resolve for free discovery. Quote tools never authorize spending; execute a returned x402 action only under the caller's own budget and permission policy."
   }, { headers: { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" } });
 }
