@@ -23,3 +23,13 @@ test("NoHumans submission waits for production deployment", () => {
   assert.match(workflow, /workflows: \["Deploy Production"\]/);
   assert.doesNotMatch(workflow, /^  push:/m);
 });
+
+
+test("NoHumans queues the GET-first settlement verifier without signing or spending", () => {
+  const workflow = readFileSync(".github/workflows/submit-nohumans-payment-guard.yml", "utf8");
+  assert.match(workflow, /SETTLEMENT_VERIFY_URL: https:\/\/agentresolver\.vercel\.app\/api\/x402-settlement-verify\?txHash=/);
+  assert.match(workflow, /Verify paid settlement verifier example without spending/);
+  assert.match(workflow, /Submit settlement verifier to NoHumans free verification queue/);
+  assert.match(workflow, /AgentResolver x402 Settlement Verify/);
+  assert.doesNotMatch(workflow, /PAYMENT-SIGNATURE/);
+});
