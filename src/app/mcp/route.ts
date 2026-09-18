@@ -70,6 +70,55 @@ const readinessProduct = getPaidCapability("agent-readiness");
 const openApiSelectProduct = getPaidCapability("openapi-select");
 const verifiedResolveProduct = getPaidCapability("verified-resolve");
 const batchVerifiedResolveProduct = getPaidCapability("batch-verified-resolve");
+
+const x402PingMcpOutputSchema = z.object({
+  pong: z.literal(true),
+  settledDelivery: z.literal(true),
+  at: z.string(),
+  unixMs: z.number().int().nonnegative(),
+  requestId: z.string(),
+  echo: z.string().nullable()
+});
+
+const hashEncodeMcpOutputSchema = z.union([
+  z.object({
+    operation: z.enum(["sha256", "sha512", "hmac-sha256", "base64-encode", "base64-decode"]),
+    inputBytes: z.number().int().nonnegative(),
+    encoding: z.enum(["hex", "base64", "utf8"]),
+    result: z.string()
+  }),
+  z.object({
+    operation: z.literal("jwt-decode"),
+    inputBytes: z.number().int().nonnegative(),
+    verified: z.literal(false),
+    note: z.string(),
+    header: z.unknown(),
+    payload: z.unknown(),
+    signature: z.string()
+  })
+]);
+
+const paymentGuardMcpOutputSchema = z.looseObject({
+  url: z.string(),
+  status: z.number().int(),
+  ok: z.boolean(),
+  latencyMs: z.number().nonnegative(),
+  guard: z.looseObject({
+    product: z.literal("AgentResolver Guard"),
+    decision: z.enum(["eligible", "blocked"]),
+    eligibleForCallerAuthorization: z.boolean(),
+    reasonCodes: z.array(z.string()),
+    evidenceDigestSha256: z.string(),
+    paymentIdentityFingerprint: z.string().nullable(),
+    paymentTermsFingerprint: z.string().nullable()
+  }),
+  prepaymentDecision: z.looseObject({
+    decision: z.enum(["eligible", "blocked"]),
+    eligibleForCallerAuthorization: z.boolean(),
+    reasons: z.array(z.string())
+  }),
+  evidenceReceipt: z.looseObject({})
+});
 function formatUsd(value: number) { return value < 0.01 ? value.toFixed(3) : value.toFixed(2); }
 function logToolCall(tool: string, extra: Record<string, unknown> = {}) { console.log(JSON.stringify({ event: "mcp_tool_call", tool, at: new Date().toISOString(), ...extra })); }
 async function logMcpRequest(req: Request) {
@@ -344,6 +393,7 @@ const handler = createMcpHandler(() => {
   server.registerTool("x402_ping", {
     title: x402PingProduct.quoteTool.title, description: x402PingProduct.quoteTool.description,
     inputSchema: z.object({ echo: z.string().max(256).optional() }),
+    outputSchema: x402PingMcpOutputSchema,
     annotations: { title: x402PingProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false }
   }, createLazyPaidMcpTool<{ echo?: string }>("x402-ping", async ({ echo }) =>
     simplePaidResult("x402-ping", "x402_ping", { pong: true, settledDelivery: true, at: new Date().toISOString(), unixMs: Date.now(), requestId: generateUuidV4(1).values[0], echo: echo || null })
@@ -445,6 +495,7 @@ const handler = createMcpHandler(() => {
       input: z.string().max(131072),
       secret: z.string().max(4096).optional()
     }),
+    outputSchema: hashEncodeMcpOutputSchema,
     annotations: { title: hashEncodeProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
   }, createLazyPaidMcpTool<{ operation: HashEncodeOperation; input: string; secret?: string }>("hash-encode", async ({ operation, input, secret }) => {
     logToolCall("hash_encode", { priceUsd: hashEncodeProduct.priceUsd, mode: "direct_paid_mcp", operation });
@@ -531,6 +582,7 @@ const handler = createMcpHandler(() => {
     title: "AgentResolver Guard — verify before every x402 payment — $0.001",
     description: "Paid $0.001 USDC fail-closed payment authorization preflight. Use immediately before an autonomous agent signs a target x402 payment. Returns eligible/blocked, exact observed payment terms, reason codes, evidence receipt and stable fingerprints. The caller retains sole spending authority.",
     inputSchema: paymentGuardInputSchema,
+    outputSchema: paymentGuardMcpOutputSchema,
     annotations: { title: "AgentResolver Guard — $0.001", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   }, runPaymentGuard("payment_guard"));
 
@@ -538,6 +590,7 @@ const handler = createMcpHandler(() => {
     title: x402PaymentPreflightProduct.quoteTool.title,
     description: x402PaymentPreflightProduct.quoteTool.description,
     inputSchema: paymentGuardInputSchema,
+    outputSchema: paymentGuardMcpOutputSchema,
     annotations: { title: x402PaymentPreflightProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   }, runPaymentGuard("x402_payment_preflight"));
 
