@@ -1,0 +1,26 @@
+name: Diagnose PayanAgent Catalog Once
+
+on:
+  push:
+    branches:
+      - diag/cdp-readiness-20260917
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Compare PayanAgent public catalog reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in             'api/v1/offers?q=AgentResolver&offerType=api&limit=20'             'api/v1/discover?q=AgentResolver&offerType=api&limit=20'; do
+            body="$(mktemp)"
+            code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}' "https://payanagent.com/$path" || printf '000')"
+            echo "=== $path HTTP $code ==="
+            cat "$body" 2>/dev/null || true
+            echo
+          done
