@@ -1,0 +1,17 @@
+{
+  "sample": true,
+  "product": "x402-ping",
+  "method": "GET",
+  "priceUsd": 0.001,
+  "paidEndpoint": "https://agentresolver.vercel.app/api/x402-ping",
+  "purpose": "Representative free preview of the paid x402 settlement canary response shape.",
+  "paidResponseExample": {
+    "pong": true,
+    "settledDelivery": true,
+    "at": "<ISO-8601 timestamp after settlement>",
+    "unixMs": 0,
+    "requestId": "<execution request id>",
+    "echo": null
+  },
+  "important": "This sample does not perform or imply a payment. The paid endpoint returns delivery only after caller-authorized x402 settlement."
+}
