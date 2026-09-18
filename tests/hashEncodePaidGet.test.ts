@@ -49,8 +49,9 @@ test("hash-encode GET is an exact $0.001 paid utility", async () => {
   assert.equal(response.status, 402);
   const body = await response.json() as any;
   assert.equal(body.resource?.url, url);
-  assert.equal(body.buyerSetup?.method, "GET");
-  assert.match(body.buyerSetup?.setup ?? "", /resumeUrl=/);
+  assert.equal(body.buyerSetup, undefined);
+  assert.equal(body.extensions?.agentresolver?.info?.method, "GET");
+  assert.match(body.extensions?.agentresolver?.info?.setup ?? "", /resumeUrl=/);
   assert.ok(body.accepts?.some((item: any) =>
     item.network === "eip155:8453" &&
     item.amount === "1000" &&

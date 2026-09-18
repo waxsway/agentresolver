@@ -11,7 +11,7 @@ import { logPaidCapabilityAttempt, logPaidRetryRejection, logX402Settlement } fr
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
-import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeError, x402BuyerSetupChallengeUrl, x402ChallengeBuyerHandoff, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
+import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeUrl, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -123,17 +123,7 @@ async function mirrorPaymentChallengeBody(
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
   headers.set("payment-required", encodePaymentRequiredHeader(rewrittenHeaderChallenge));
-  const error = resumeUrl
-    ? x402BuyerSetupChallengeError(capabilityId, requestMethod, resumeUrl)
-    : x402BuyerSetupChallengeError(capabilityId, requestMethod);
-  const buyerSetup = resumeUrl
-    ? x402ChallengeBuyerHandoff(capabilityId, requestMethod, resumeUrl)
-    : x402ChallengeBuyerHandoff(capabilityId, requestMethod);
-  return new NextResponse(JSON.stringify({
-    ...rewrittenBodyChallenge,
-    error,
-    buyerSetup
-  }), {
+  return new NextResponse(JSON.stringify(rewrittenBodyChallenge), {
     status: 402,
     statusText: response.statusText,
     headers
