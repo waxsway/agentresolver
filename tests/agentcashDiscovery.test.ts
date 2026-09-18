@@ -43,21 +43,26 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     .map((item: any) => item?.post)
     .filter((op: any) => op?.tags?.includes("Paid Agent Capabilities"));
 
-  assert.equal(paid.length, 4);
+  assert.equal(paid.length, 10);
   assert.deepEqual(
     Object.keys(openapi.paths || {}).sort(),
     [
+      "/api/api-trust-security-preflight",
       "/api/batch-verified-resolve",
       "/api/health",
       "/api/payment-guard",
+      "/api/prepayment-authorization-gate",
       "/api/resolve",
+      "/api/usdc-payment-check",
       "/api/verified-resolve",
       "/api/x402-payment-preflight",
-      "/api/x402-ping"
+      "/api/x402-ping",
+      "/api/x402-preflight",
+      "/api/x402-transaction-path-payment-gate"
     ].sort()
   );
   assert.equal(openapi.paths?.["/api/sha256"], undefined);
-  assert.equal(openapi.paths?.["/api/usdc-payment-check"], undefined);
+  assert.ok(openapi.paths?.["/api/usdc-payment-check"]?.post);
   for (const op of paid as any[]) {
     const info = op["x-payment-info"];
     assert.equal(info?.price?.mode, "fixed");
