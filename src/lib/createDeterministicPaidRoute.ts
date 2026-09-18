@@ -97,6 +97,17 @@ async function mirrorPaymentChallengeBody(
     current = null;
   }
 
+  if (capabilityId === "x402-ping") {
+    const headers = new Headers(response.headers);
+    headers.set("content-type", "application/json; charset=utf-8");
+    headers.set("cache-control", "no-store");
+    return new NextResponse(JSON.stringify(headerChallenge), {
+      status: 402,
+      statusText: response.statusText,
+      headers
+    });
+  }
+
   const bodyChallenge =
     current &&
     typeof current === "object" &&
@@ -461,10 +472,12 @@ export function createDeterministicPaidRoute(
         mimeType: "application/json",
         serviceName: bazaarProviderMetadata.serviceName,
         tags: [...bazaarProviderMetadata.tags],
-        extensions: {
-          ...discoveryExtension,
-          agentresolver: x402ChallengeHeaderHandoff(capabilityId)
-        }
+        extensions: capabilityId === "x402-ping"
+          ? discoveryExtension
+          : {
+              ...discoveryExtension,
+              agentresolver: x402ChallengeHeaderHandoff(capabilityId)
+            }
       }
     }, server) as PaidHandler;
   }

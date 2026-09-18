@@ -91,11 +91,7 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   assert.deepEqual(getBody.accepts, decodedHeader.accepts);
   assert.deepEqual(getBody.extensions, decodedHeader.extensions);
   assert.equal(decodedHeader.resource?.serviceName, "AgentResolver");
-  assert.equal(decodedHeader.extensions?.agentresolver?.info?.method, "GET");
-  assert.equal(
-    decodedHeader.extensions?.agentresolver?.info?.setup,
-    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
-  );
+  assert.equal(decodedHeader.extensions?.agentresolver, undefined);
   assert.deepEqual(decodedHeader.resource?.tags, [
     "x402",
     "settlement-test",
@@ -138,6 +134,7 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   assert.equal(postBody.x402Version, 2);
   assert.ok(Array.isArray(postBody.accepts));
   assert.equal((postBody as any).buyerSetup, undefined);
+  assert.equal(postBody.extensions?.agentresolver, undefined);
   assert.deepEqual(
     Object.keys(postBody).sort(),
     ["accepts", "error", "extensions", "resource", "x402Version"].sort()
@@ -408,8 +405,10 @@ test("runtime PAYMENT-REQUIRED handoff follows the exact challenged request", as
   const getHeader = getResponse.headers.get("payment-required");
   assert.ok(getHeader);
   const getChallenge = JSON.parse(Buffer.from(getHeader!, "base64").toString("utf8"));
-  assert.equal(getChallenge.extensions?.agentresolver?.info?.method, "GET");
-  const getSetup = new URL(getChallenge.extensions?.agentresolver?.info?.setup);
+  assert.equal(getChallenge.extensions?.agentresolver, undefined);
+  const getSetupHeader = getResponse.headers.get("x-agentresolver-buyer-setup");
+  assert.ok(getSetupHeader);
+  const getSetup = new URL(getSetupHeader!);
   assert.equal(getSetup.searchParams.get("method"), "GET");
   assert.equal(
     getSetup.searchParams.get("resumeUrl"),
@@ -431,8 +430,10 @@ test("runtime PAYMENT-REQUIRED handoff follows the exact challenged request", as
   const postHeader = postResponse.headers.get("payment-required");
   assert.ok(postHeader);
   const postChallenge = JSON.parse(Buffer.from(postHeader!, "base64").toString("utf8"));
-  assert.equal(postChallenge.extensions?.agentresolver?.info?.method, "POST");
-  const postSetup = new URL(postChallenge.extensions?.agentresolver?.info?.setup);
+  assert.equal(postChallenge.extensions?.agentresolver, undefined);
+  const postSetupHeader = postResponse.headers.get("x-agentresolver-buyer-setup");
+  assert.ok(postSetupHeader);
+  const postSetup = new URL(postSetupHeader!);
   assert.equal(postSetup.searchParams.get("method"), "POST");
   assert.equal(postSetup.searchParams.get("resumeUrl"), null);
 });

@@ -61,9 +61,8 @@ test("live x402 challenge hands setup the exact GET purchase URL", async () => {
 
   const body = await response.json() as any;
   assert.equal(body.buyerSetup, undefined);
-  assert.equal(body.extensions?.agentresolver?.info?.method, "GET");
-  assert.equal(body.extensions?.agentresolver?.info?.setup, setupHeader);
-  assert.equal(String(body.extensions?.agentresolver?.info?.setup).includes("_vercel_share"), false);
+  assert.equal(body.extensions?.agentresolver, undefined);
+  assert.equal(setupHeader.includes("_vercel_share"), false);
 });
 
 test("buyer setup returns the exact validated resume URL and rejects injected origins", async () => {
