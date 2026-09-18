@@ -22,7 +22,7 @@ export default function ProvidersPage() {
         <section>
           <h2>Paid launch check</h2>
           <p>
-            Buy a $0.05 USDC x402 readiness and payment-contract check at
+            Buy a machine-native x402 readiness and payment-contract check at
             <code> /api/provider-launch-check</code>. A passing paid result returns
             the bounded registry packet used for provider-network review.
           </p>
