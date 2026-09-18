@@ -64,14 +64,21 @@ function paidNextAction(
  */
 export function postSettlementCanaryNextActions() {
   const preflight = paidNextAction("x402-payment-preflight");
+  const hashEncode = getPaidCapability("hash-encode");
+  const recommended = {
+    capabilityId: hashEncode.id,
+    endpoint: `${CANONICAL_ORIGIN}${hashEncode.endpoint}?operation=sha256&input=agentresolver`,
+    method: "GET" as const,
+    priceUsd: hashEncode.priceUsd,
+    useWhen: hashEncode.useWhen,
+    inputExample: hashEncode.example,
+    reason: "Your x402 client just proved it can settle and receive paid delivery. Reuse the same x402 payment flow on a useful deterministic $0.001 GET with no account or API key.",
+    repeatUse: "when_a_deterministic_hash_or_encoding_transform_is_needed" as const,
+    paymentAuthorization: "separate_caller_authorization_required" as const
+  };
   return {
     catalogUrl: `${CANONICAL_ORIGIN}/.well-known/x402`,
-    recommended: {
-      ...preflight,
-      reason: "Your x402 client just proved it can settle and receive paid delivery. Use AgentResolver Guard before the next autonomous x402 spend to validate the live payment terms.",
-      repeatUse: "before_every_autonomous_x402_spend" as const,
-      paymentAuthorization: "separate_caller_authorization_required" as const
-    },
+    recommended,
     preflight,
     single: paidNextAction("verified-resolve"),
     batch: paidNextAction("batch-verified-resolve")
