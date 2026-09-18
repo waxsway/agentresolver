@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           headers="$(mktemp)"
           body="$(mktemp)"
-          code="$(curl -sS -D "$headers" -o "$body" -w '%{http_code}'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
+          code="$(curl -sS -D "$headers" -o "$body" -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
           test "$code" = "402"
           PAYMENT_REQUIRED="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' "$headers")"
           export PAYMENT_REQUIRED
