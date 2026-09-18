@@ -48,6 +48,7 @@ jobs:
             exit 1
           fi
           grep -F 'agentResolverPaymentGuardGet' /tmp/openapi.json >/dev/null
+          grep -F 'x402SettlementVerifyGet' /tmp/openapi.json >/dev/null
           jq -e '
             (.info["x-guidance"] | type == "string" and length > 0) and
             (.paths["/api/resolve"].post.security == []) and
@@ -58,7 +59,7 @@ jobs:
                 select(type == "object") |
                 select((.tags // []) | index("Paid Agent Capabilities"))
               ] as $paid |
-              ($paid | length >= 10) and
+              ($paid | length >= 11) and
               ($paid | all(
                 (.["x-payment-info"].price.mode == "fixed") and
                 (.["x-payment-info"].price.currency == "USD") and
@@ -80,6 +81,7 @@ jobs:
             [.capabilities[].id] as $ids |
             ($ids | index("x402-ping") != null) and
             ($ids | index("x402-payment-preflight") != null) and
+            ($ids | index("x402-settlement-verify") != null) and
             ($ids | index("verified-resolve") != null) and
             ($ids | index("batch-verified-resolve") != null) and
             ($ids | index("hash-encode") == null) and
@@ -91,6 +93,7 @@ jobs:
             [.services[].id] as $ids |
             ($ids | index("x402-ping") != null) and
             ($ids | index("x402-payment-preflight") != null) and
+            ($ids | index("x402-settlement-verify") != null) and
             ($ids | index("verified-resolve") != null) and
             ($ids | index("batch-verified-resolve") != null) and
             ($ids | index("hash-encode") == null) and
@@ -186,6 +189,8 @@ jobs:
             get_path="$path"
             if [ "$path" = "/api/x402-payment-preflight" ] || [ "$path" = "/api/payment-guard" ]; then
               get_path="$path?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453"
+            elif [ "$path" = "/api/x402-settlement-verify" ]; then
+              get_path="$path?txHash=0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedAmountAtomic=1000"
             fi
             get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
               -D "/tmp/${slug}-get-headers.txt" \
@@ -234,6 +239,7 @@ jobs:
           check_402 'Solidity Selector' '/api/solidity-selector' '{"signature":"transfer(address,uint256)"}' 'solidity-selector' '10000'
           check_402 'EVM Units' '/api/evm-units' '{"mode":"parse","value":"1.5","decimals":18}' 'evm-units' '5000'
           check_402 'x402 Settlement Ping' '/api/x402-ping' '{"echo":"smoke"}' 'x402-ping' '1000'
+          check_402 'x402 Settlement Verify' '/api/x402-settlement-verify' '{"txHash":"0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72","expectedPayTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","expectedAmountAtomic":"1000"}' 'x402-settlement-verify' '1000'
 
           settlement_ping_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/x402-ping-headers.txt)"
           PAYMENT_REQUIRED="$settlement_ping_required" python3 - <<'PY'
