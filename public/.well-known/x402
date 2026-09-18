@@ -4,6 +4,40 @@
   "description": "Machine-native $0.001 x402 settlement canary plus verify-before-pay, API trust/security preflight, endpoint safety evidence, payTo verification and USDC payment verification for autonomous agents. No signup or API key.",
   "resources": [
     {
+      "resource": "GET /api/x402-ping",
+      "name": "x402 Settlement Test — Wallet Facilitator Payment Test Canary",
+      "description": "Cheapest no-body $0.001 USDC x402 settlement test for funded autonomous agents. Use when a wallet-capable agent needs to verify its signer, facilitator, Base payment rail, and paid delivery end-to-end before a larger machine purchase.",
+      "price": "$0.001",
+      "method": "GET",
+      "inputTransport": "query",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "echo": {
+            "type": "string",
+            "maxLength": 256
+          }
+        }
+      },
+      "examples": [
+        {}
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        }
+      ]
+    },
+    {
       "resource": "POST /api/http-inspect",
       "description": "Preflight a public HTTPS or x402 API before an agent depends on or pays it. Returns a live 0-100 trust score, grade and weighted TLS, reachability, latency, redirect and security-header evidence.",
       "price": "$0.001",
