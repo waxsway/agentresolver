@@ -2,5 +2,20 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": false
-  }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "methods": [
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ],
+      "status": 405,
+      "headers": {
+        "Allow": "GET, HEAD, POST, OPTIONS",
+        "Cache-Control": "public, max-age=300"
+      }
+    }
+  ]
 }
