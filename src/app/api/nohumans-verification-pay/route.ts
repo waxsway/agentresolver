@@ -137,7 +137,7 @@ export async function POST(request: Request) {
     return responseFromUpstream(challenge.response, challenge.body, attemptId);
   }
 
-  const ownerToken = process.env.NOHUMANS_OWNER_TOKEN?.trim();
+  const ownerToken = process.env.NOHUMANS_OWNER_TOKEN_CDP_CANARY?.trim();
   if (!ownerToken) {
     logAttempt(attemptId, "owner_token_unavailable", { hasPaymentSignature: true });
 
