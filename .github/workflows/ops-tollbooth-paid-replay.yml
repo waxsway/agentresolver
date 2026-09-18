@@ -1,4 +1,4 @@
-name: Ops Tollbooth Paid Replay Registration
+name: Ops Tollbooth Paid Replay Verification
 
 on:
   pull_request:
@@ -11,76 +11,39 @@ permissions:
   contents: read
 
 jobs:
-  register:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     env:
       ENDPOINT: https://agentresolver.vercel.app/api/x402-ping
       PAY_TO: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
     steps:
-      - name: Discover a valid semantic category without creating a listing
-        id: taxonomy
+      - name: Run Tollbooth verifier directly
+        id: verify
         shell: bash
-        run: |
-          set -euo pipefail
-          accepted=""
-          for category in verification security payments infrastructure utility data other; do
-            body="$(mktemp)"
-            code="$(curl -sS -o "$body" -w '%{http_code}'               -X POST 'https://www.trytollbooth.com/api/services'               -H 'content-type: application/json'               --data-binary "{\"name\":\"AgentResolver taxonomy probe\",\"category\":\"$category\"}")"
-            echo "category=$category HTTP=$code body=$(tr '\n' ' ' < "$body" | head -c 1200)"
-            if [ "$code" = "422" ] && ! grep -Fq '"category":"Unknown category"' "$body"; then
-              accepted="$category"
-              break
-            fi
-          done
-          if [ -z "$accepted" ]; then
-            echo "::error::No semantically suitable Tollbooth category was accepted."
-            exit 1
-          fi
-          echo "category=$accepted" >> "$GITHUB_OUTPUT"
-          echo "accepted category=$accepted"
-
-      - name: Register one canonical paid canary
-        id: register
-        shell: bash
-        env:
-          CATEGORY: ${{ steps.taxonomy.outputs.category }}
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://www.trytollbooth.com/api/services'             -H 'content-type: application/json'             --data-binary @- <<JSON
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://www.trytollbooth.com/api/verify' \
+            -H 'content-type: application/json' \
+            --data-binary @- <<JSON
           {
-            "name": "AgentResolver x402 Settlement Test",
             "endpoint": "$ENDPOINT",
-            "category": "$CATEGORY",
-            "priceUsdc": 0.001,
-            "wallet": "$PAY_TO",
-            "chain": "base",
-            "description": "No-body $0.001 x402 settlement canary for funded agents. Returns a timestamped pong only after successful payment settlement and delivery."
+            "wallet": "$PAY_TO"
           }
           JSON
           )"
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "registration HTTP=$code category=$CATEGORY"
+          echo "http_code=$code" >> "$GITHUB_OUTPUT"
+          echo "TOLLBOOTH_VERIFY_HTTP=$code"
           cat "$body"
           echo
           case "$code" in
-            200|201|202|409) ;;
+            200|201|202) ;;
             *) exit 1 ;;
           esac
 
-      - name: Read public registration state when available
-        if: always()
+      - name: Wait briefly for any paid replay
+        if: steps.verify.outcome == 'success'
         shell: bash
-        run: |
-          set -euo pipefail
-          sleep 8
-          body="$(mktemp)"
-          code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://www.trytollbooth.com/api/services'             --data-urlencode 'q=AgentResolver')"
-          visible=false
-          if [ "$code" = "200" ] && grep -Fq "$ENDPOINT" "$body"; then visible=true; fi
-          echo "lookup HTTP=$code visible=$visible"
-          head -c 12000 "$body" || true
-          echo
-          # Tollbooth's listing GET has returned transient 500s; registration response is authoritative.
-          exit 0
+        run: sleep 15
