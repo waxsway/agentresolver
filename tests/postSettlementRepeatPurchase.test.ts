@@ -20,4 +20,24 @@ test("paid settlement recommends a useful repeat x402 GET", () => {
     "separate_caller_authorization_required"
   );
   assert.equal(next.preflight.capabilityId, "x402-payment-preflight");
+  assert.equal(next.settlementVerify.capabilityId, "x402-settlement-verify");
+  assert.equal(next.settlementVerify.method, "GET");
+  assert.equal(next.settlementVerify.priceUsd, 0.001);
+  assert.equal(
+    next.settlementVerify.endpoint,
+    "https://agentresolver.vercel.app/api/x402-settlement-verify"
+  );
+  assert.equal(
+    next.settlementVerify.condition,
+    "payment_response.network == eip155:8453"
+  );
+  assert.equal(
+    next.settlementVerify.transactionHashSource,
+    "payment-response.transaction"
+  );
+  assert.equal(
+    next.settlementVerify.paymentAuthorization,
+    "separate_caller_authorization_required"
+  );
+  assert.match(String(next.settlementVerify.inputExample.txHash), /payment-response\.transaction/);
 });

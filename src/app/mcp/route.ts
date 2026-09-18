@@ -96,6 +96,15 @@ const x402PingMcpOutputSchema = z.object({
       repeatUse: z.string(),
       paymentAuthorization: z.literal("separate_caller_authorization_required")
     }),
+    settlementVerify: x402PingNextActionSchema.extend({
+      method: z.literal("GET"),
+      condition: z.literal("payment_response.network == eip155:8453"),
+      transactionHashSource: z.literal("payment-response.transaction"),
+      expectedPayToSource: z.literal("original payment-required Base accepts[].payTo"),
+      expectedAmountAtomicSource: z.literal("original payment-required Base accepts[].amount"),
+      reason: z.string(),
+      paymentAuthorization: z.literal("separate_caller_authorization_required")
+    }),
     preflight: x402PingNextActionSchema.extend({ method: z.literal("GET") }),
     single: x402PingNextActionSchema.extend({ method: z.literal("POST") }),
     batch: x402PingNextActionSchema.extend({ method: z.literal("POST") })

@@ -63,6 +63,43 @@ function recommendedNextActionSchema() {
   } as const;
 }
 
+
+function settlementVerifyNextActionSchema() {
+  const action = X402_PING_NEXT_ACTIONS.settlementVerify;
+  return {
+    type: "object",
+    required: [
+      "capabilityId",
+      "endpoint",
+      "method",
+      "priceUsd",
+      "useWhen",
+      "inputExample",
+      "condition",
+      "transactionHashSource",
+      "expectedPayToSource",
+      "expectedAmountAtomicSource",
+      "reason",
+      "paymentAuthorization"
+    ],
+    additionalProperties: false,
+    properties: {
+      capabilityId: { type: "string", const: action.capabilityId },
+      endpoint: { type: "string", const: action.endpoint },
+      method: { type: "string", const: action.method },
+      priceUsd: { type: "number", const: action.priceUsd },
+      useWhen: { type: "string", const: action.useWhen },
+      inputExample: { type: "object", const: action.inputExample },
+      condition: { type: "string", const: action.condition },
+      transactionHashSource: { type: "string", const: action.transactionHashSource },
+      expectedPayToSource: { type: "string", const: action.expectedPayToSource },
+      expectedAmountAtomicSource: { type: "string", const: action.expectedAmountAtomicSource },
+      reason: { type: "string", const: action.reason },
+      paymentAuthorization: { type: "string", const: action.paymentAuthorization }
+    }
+  } as const;
+}
+
 export const X402_PING_OUTPUT_SCHEMA = {
   type: "object",
   required: ["pong", "settledDelivery", "at", "unixMs", "requestId", "echo", "next"],
@@ -81,11 +118,12 @@ export const X402_PING_OUTPUT_SCHEMA = {
     },
     next: {
       type: "object",
-      required: ["catalogUrl", "recommended", "preflight", "single", "batch"],
+      required: ["catalogUrl", "recommended", "settlementVerify", "preflight", "single", "batch"],
       additionalProperties: false,
       properties: {
         catalogUrl: { type: "string", const: X402_PING_NEXT_ACTIONS.catalogUrl },
         recommended: recommendedNextActionSchema(),
+        settlementVerify: settlementVerifyNextActionSchema(),
         preflight: nextActionSchema(X402_PING_NEXT_ACTIONS.preflight),
         single: nextActionSchema(X402_PING_NEXT_ACTIONS.single),
         batch: nextActionSchema(X402_PING_NEXT_ACTIONS.batch)
