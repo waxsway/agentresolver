@@ -1,0 +1,44 @@
+name: Ops vet402 Catalog Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ops-vet402-catalog-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      RESOURCE_URL: https://agentresolver.vercel.app/api/x402-ping
+    steps:
+      - name: Resolve canonical paid canary in vet402
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://vet402.com/api/v1/resolve'             --data-urlencode "q=$RESOURCE_URL")"
+          echo "VET402_RESOLVE_HTTP=$code"
+          cat "$body"
+          echo
+
+          if [ "$code" = "404" ]; then
+            echo "VET402_CATALOGUED=false"
+            exit 0
+          fi
+          test "$code" = "200"
+
+          observatory_id="$(jq -r '.resource.observatory_id // empty' "$body")"
+          echo "VET402_CATALOGUED=true"
+          echo "VET402_OBSERVATORY_ID=$observatory_id"
+          test -n "$observatory_id"
+
+          echo "=== FACTS ==="
+          curl -fsS "https://vet402.com/api/v1/observatory/endpoints/$observatory_id/facts" | jq .
+
+          echo "=== PURCHASES ==="
+          curl -fsS "https://vet402.com/api/v1/observatory/endpoints/$observatory_id/purchases" | jq .
