@@ -116,9 +116,10 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          payload="$(jq -cn --arg endpoint "$PING_URL" '{
+          description="0.001 USDC GET-first x402 settlement canary for autonomous agents. This is AgentResolver independently settlement-proven purchase path: discover the standard x402 v2 challenge, authorize with the caller wallet policy, perform the standard signed retry, and receive a timestamped pong after successful settlement."
+          payload="$(jq -cn --arg endpoint "$PING_URL" --arg description "$description" '{
             name:"AgentResolver x402 Settlement Test",
-            description:"$0.001 GET-first x402 settlement canary for autonomous agents. This is AgentResolver's independently settlement-proven purchase path: discover the standard x402 v2 challenge, authorize with the caller wallet policy, perform the standard signed retry, and receive a timestamped pong after successful settlement.",
+            description:$description,
             endpoint_url:$endpoint,
             category:"tools.verification",
             price_amount:0.001,

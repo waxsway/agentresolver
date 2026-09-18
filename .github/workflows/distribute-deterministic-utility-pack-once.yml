@@ -54,26 +54,69 @@ jobs:
           echo
           case "$code" in 200|201|202|204|409) ;; *) exit 1 ;; esac
 
-      - name: Submit exact utilities to Market402
+      - name: Opt reusable utilities into Market402 paid delivery probes
         shell: bash
         run: |
           set -euo pipefail
           base='https://agentresolver.vercel.app/api'
-          endpoints=(
-            x402-ping sha256 sha512 hmac-sha256 base64-encode base64-decode
-            jwt-decode json-normalize json-schema-validate url-parse uuid-v4 slugify
-          )
-          for path in "${endpoints[@]}"; do
-            url="$base/$path"
-            echo "Market402: $url"
-            code=$(curl -sS -o /tmp/market402.json -w '%{http_code}' \
+
+          submit_post() {
+            local path="$1"
+            local body_json="$2"
+            local url="$base/$path"
+            local payload
+            echo "Market402 paid-probe opt-in: $url"
+            payload="$(jq -cn \
+              --arg resource "$url" \
+              --argjson body "$body_json" \
+              '{
+                resource:$resource,
+                declared_price_usd:0.001,
+                paid_probe_optin:true,
+                sample_input:{method:"POST",body:$body}
+              }')"
+            code="$(curl -sS -o /tmp/market402.json -w '%{http_code}' \
               -X POST 'https://market402.com/submit' \
               -H 'content-type: application/json' \
-              -d "$(jq -n --arg resource "$url" '{resource:$resource,declared_price_usd:0.001}')")
+              --data "$payload")"
             cat /tmp/market402.json
             echo
             test "$code" -ge 200 && test "$code" -lt 300
-          done
+          }
+
+          submit_get() {
+            local url="$1"
+            local payload
+            echo "Market402 paid-probe opt-in: $url"
+            payload="$(jq -cn \
+              --arg resource "$url" \
+              '{
+                resource:$resource,
+                declared_price_usd:0.001,
+                paid_probe_optin:true,
+                sample_input:{method:"GET",queryParams:{}}
+              }')"
+            code="$(curl -sS -o /tmp/market402.json -w '%{http_code}' \
+              -X POST 'https://market402.com/submit' \
+              -H 'content-type: application/json' \
+              --data "$payload")"
+            cat /tmp/market402.json
+            echo
+            test "$code" -ge 200 && test "$code" -lt 300
+          }
+
+          submit_get "$base/x402-ping"
+          submit_get "$base/hash-encode?operation=sha256&input=agentresolver"
+          submit_post sha256 '{"input":"agentresolver"}'
+          submit_post sha512 '{"input":"agentresolver"}'
+          submit_post hmac-sha256 '{"input":"payload","secret":"market402-probe"}'
+          submit_post base64-encode '{"input":"hello"}'
+          submit_post base64-decode '{"input":"aGVsbG8="}'
+          submit_post jwt-decode '{"input":"eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature"}'
+          submit_post json-normalize '{"value":{"b":2,"a":1}}'
+          submit_post json-schema-validate '{"data":{"id":"123"},"schema":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}}}'
+          submit_post url-parse '{"url":"https://example.com/a?x=1&x=2#frag"}'
+          submit_post slugify '{"text":"Hello Agent World","separator":"-"}'
 
       - name: Register high-signal utilities with 402 Index
         shell: bash
