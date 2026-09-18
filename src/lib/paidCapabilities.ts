@@ -129,6 +129,41 @@ export const PAID_CAPABILITIES = {
     example: { mode: "parse", value: "1.5", decimals: 18 },
     quoteTool: { name: "evm_units", title: "EVM units convert — $0.005", description: "Paid $0.005 USDC on Base or Solana exact decimal/base-unit conversion with arbitrary token decimals." }
   },
+  "base-usdc-settlement-verify": {
+    id: "base-usdc-settlement-verify",
+    name: "Base USDC Settlement Verify",
+    operationId: "baseUsdcSettlementVerify",
+    endpoint: "/api/base-usdc-settlement-verify",
+    price: "$0.001",
+    priceUsd: 0.001,
+    atomicAmount: "1000",
+    description: "Verify a Base transaction receipt contains successful USDC settlement evidence. Decodes canonical USDC Transfer logs, counts confirmations, and can fail closed against an expected recipient, atomic amount, and minimum confirmation depth.",
+    useWhen: "After an agent sends or observes a Base USDC payment and needs independent transaction-level settlement evidence before treating the payment as complete.",
+    costClass: "bounded-network",
+    tags: ["base", "usdc", "settlement verification", "transaction receipt", "payment receipt", "x402", "post-payment", "confirmations"],
+    inputSchema: {
+      type: "object",
+      required: ["transactionHash"],
+      additionalProperties: false,
+      properties: {
+        transactionHash: { type: "string", pattern: "^0x[0-9a-fA-F]{64}$" },
+        expectedPayTo: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" },
+        expectedAmountAtomic: { type: "string", pattern: "^[0-9]+$" },
+        minimumConfirmations: { type: "integer", minimum: 1, maximum: 10000 }
+      }
+    },
+    example: {
+      transactionHash: `0x${"00".repeat(32)}`,
+      expectedPayTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+      expectedAmountAtomic: "1000",
+      minimumConfirmations: 1
+    },
+    quoteTool: {
+      name: "base_usdc_settlement_verify",
+      title: "Base USDC settlement verify — $0.001",
+      description: "Paid $0.001 USDC on Base or Solana transaction-receipt verification for a Base USDC payment. Checks successful receipt, canonical USDC Transfer logs, confirmations, and optional expected payee/amount assertions. Evidence only; does not prove provider legitimacy or fulfillment."
+    }
+  },
   "x402-ping": {
     id: "x402-ping", name: "x402 Settlement Test — Wallet Facilitator Payment Test Canary", operationId: "x402SettlementPing", endpoint: "/api/x402-ping",
     price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
