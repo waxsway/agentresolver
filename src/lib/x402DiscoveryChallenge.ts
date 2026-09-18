@@ -4,6 +4,7 @@ import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities
 import { X402_PREFLIGHT_OUTPUT_EXAMPLE, X402_PREFLIGHT_OUTPUT_SCHEMA } from "@/lib/x402PreflightDiscovery";
 import { X402_PING_OUTPUT_EXAMPLE, X402_PING_OUTPUT_SCHEMA } from "@/lib/x402PingDiscovery";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
+import { x402BuyerSetupHint } from "@/lib/x402BuyerSetup";
 import { X402_NETWORK, X402_PAY_TO, X402_SOLANA_ASSET, X402_SOLANA_FEE_PAYER, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -79,7 +80,7 @@ export function x402DiscoveryChallenge(
         output: discoveryOutput
       }),
       agentresolver: {
-        capabilityId: config.id,
+        ...x402BuyerSetupHint(config.id),
         priceUsd: config.priceUsd,
         costClass: config.costClass
       }
