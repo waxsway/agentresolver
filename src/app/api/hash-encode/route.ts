@@ -1,3 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
 import { createDeterministicPaidRoute } from "@/lib/createDeterministicPaidRoute";
 import { runHashEncode, type HashEncodeOperation } from "@/lib/hashEncode";
 
@@ -61,6 +62,40 @@ const route = createDeterministicPaidRoute("hash-encode", async (req) => {
   });
 }, { paidGet: true });
 
+function validateGetRequest(req: NextRequest) {
+  const operation = req.nextUrl.searchParams.get("operation") ?? "";
+  const input = req.nextUrl.searchParams.get("input");
+
+  if (operation === "hmac-sha256") {
+    throw new Error("hmac-sha256 requires POST so secrets never appear in URLs.");
+  }
+  if (!GET_OPERATIONS.has(operation as HashEncodeOperation)) {
+    throw new Error("GET supports sha256, sha512, base64-encode, base64-decode, and jwt-decode.");
+  }
+  if (input === null) {
+    throw new Error("GET requires an input query parameter.");
+  }
+  if (input.length > 4096) {
+    throw new Error("GET input exceeds the 4096-character URL-safe limit; use POST for larger inputs.");
+  }
+}
+
 export const POST = route.POST;
-export const GET = route.GET;
+export async function GET(req: NextRequest) {
+  try {
+    validateGetRequest(req);
+  } catch (error) {
+    return NextResponse.json({
+      error: "INVALID_INPUT",
+      message: error instanceof Error ? error.message : "Invalid GET input."
+    }, {
+      status: 400,
+      headers: {
+        "cache-control": "no-store",
+        "access-control-allow-origin": "*"
+      }
+    });
+  }
+  return route.GET(req);
+}
 export const OPTIONS = route.OPTIONS;
