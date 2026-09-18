@@ -70,27 +70,44 @@ jobs:
           print("CDP_COINBASE_KEY_TARGETS=" + target_summary)
           PY
 
-      - name: Verify production env aliases are injectable without printing values
+      - name: Verify production credential values are retrievable without printing them
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null
-          rm -rf .vercel
-          mkdir -p .vercel
-          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
-          vercel env run --environment=production --token="$VERCEL_TOKEN" -- node -e '
-            const hasId = Boolean(process.env.CDP_API_KEY_ID || process.env.CDI_API_KEY_ID);
-            const hasSecret = Boolean(
-              process.env.CDP_API_KEY_SECRET ||
-              process.env.CDP_API_SECRET ||
-              process.env.CDI_API_KEY_SECRET ||
-              process.env.CDI_API_SECRET
-            );
-            console.log("RUNTIME_CDP_ID_ALIAS_PRESENT=" + hasId);
-            console.log("RUNTIME_CDP_SECRET_ALIAS_PRESENT=" + hasSecret);
-            console.log("RUNTIME_CDP_CREDENTIALS_PRESENT=" + (hasId && hasSecret));
-            if (!hasId || !hasSecret) process.exit(2);
-          '
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          chmod 600 "$response_file"
+
+          status="$(curl -sS --connect-timeout 10 --max-time 30 \
+            -o "$response_file" -w '%{http_code}' \
+            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID&decrypt=true&source=vercel-cli%3Apull" \
+            -H "Authorization: Bearer $VERCEL_TOKEN")"
+          test "$status" = "200"
+
+          python3 - "$response_file" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          envs=payload.get("envs", []) if isinstance(payload, dict) else []
+          values={}
+          for item in envs:
+              if not isinstance(item, dict):
+                  continue
+              targets=item.get("target") or []
+              if isinstance(targets, str):
+                  targets=[targets]
+              key=item.get("key")
+              value=item.get("value")
+              if "production" in targets and isinstance(key, str) and isinstance(value, str) and value:
+                  values[key]=value
+
+          has_id=any(values.get(key) for key in ("CDP_API_KEY_ID","CDI_API_KEY_ID"))
+          has_secret=any(values.get(key) for key in ("CDP_API_KEY_SECRET","CDP_API_SECRET","CDI_API_KEY_SECRET","CDI_API_SECRET"))
+          print(f"RUNTIME_CDP_ID_ALIAS_PRESENT={'true' if has_id else 'false'}")
+          print(f"RUNTIME_CDP_SECRET_ALIAS_PRESENT={'true' if has_secret else 'false'}")
+          print(f"RUNTIME_CDP_CREDENTIALS_PRESENT={'true' if has_id and has_secret else 'false'}")
+          if not (has_id and has_secret):
+              raise SystemExit(2)
+          PY
 
       - name: Audit canonical payment rail state without changing it
         shell: bash

@@ -26,36 +26,28 @@ try {
 }
 
 const envResponse = await fetch(
-  `https://api.vercel.com/v10/projects/${encodeURIComponent(projectId)}/env?teamId=${encodeURIComponent(orgId)}`,
+  `https://api.vercel.com/v10/projects/${encodeURIComponent(projectId)}/env?teamId=${encodeURIComponent(orgId)}&decrypt=true&source=vercel-cli%3Apull`,
   { headers: { Authorization: `Bearer ${token}` } }
 );
 
 if (!envResponse.ok) {
-  console.error(`Unable to read Vercel project environment metadata (HTTP ${envResponse.status}).`);
+  console.error(`Unable to read Vercel production environment (HTTP ${envResponse.status}).`);
   process.exit(1);
 }
 
 const envPayload = await envResponse.json();
-const productionKeys = new Set();
+const runtimeValues = new Map();
 for (const item of Array.isArray(envPayload?.envs) ? envPayload.envs : []) {
   if (!item || typeof item !== "object" || typeof item.key !== "string") continue;
   const targets = Array.isArray(item.target) ? item.target : [item.target].filter(Boolean);
   if (!targets.includes("production")) continue;
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(item.key)) continue;
-  if (item.key.startsWith("VERCEL_") || item.key.startsWith("GITHUB_") || item.key === "CI") continue;
-  productionKeys.add(item.key);
-}
+  const key = item.key;
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+  if (key.startsWith("VERCEL_") || key.startsWith("GITHUB_") || key === "CI") continue;
 
-const runtimeValues = new Map();
-for (const key of productionKeys) {
-  const injected = process.env[key];
-  const pulled = parsed[key];
-  const value =
-    typeof injected === "string" && injected.length > 0
-      ? injected
-      : typeof pulled === "string"
-        ? pulled
-        : "";
+  const apiValue = typeof item.value === "string" ? item.value : "";
+  const pulledValue = typeof parsed[key] === "string" ? parsed[key] : "";
+  const value = apiValue.length > 0 ? apiValue : pulledValue;
   if (value.length > 0) runtimeValues.set(key, value);
 }
 

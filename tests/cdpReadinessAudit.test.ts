@@ -16,8 +16,8 @@ test("CDP readiness audit checks production key names without reading secret val
   assert.match(workflow, /matching_targets/);
   assert.match(workflow, /"CDP" in key\.upper\(\) or "CDI" in key\.upper\(\) or "COINBASE" in key\.upper\(\)/);
   assert.match(workflow, /RUNTIME_CDP_CREDENTIALS_PRESENT/);
-  assert.match(workflow, /vercel env run --environment=production/);
-  assert.doesNotMatch(workflow, /decrypt=true/);
+  assert.match(workflow, /decrypt=true&source=vercel-cli%3Apull/);
+  assert.doesNotMatch(workflow, /vercel env run --environment=production/);
   assert.doesNotMatch(workflow, /\/env\/\$|\/env\/\{/);
 });
 
