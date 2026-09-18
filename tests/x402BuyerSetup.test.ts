@@ -356,6 +356,14 @@ test("challenge handoff embeds executable client install choices", () => {
   assert.match(handoff.clientInstalls.mcpTypescript, /@x402\/mcp/);
   assert.equal(handoff.clientInstalls.httpPython, "pip install x402");
   assert.match(handoff.clientInstalls.agentSkill, /skills add waxsway\/agentresolver/);
+  assert.equal(handoff.clientEntrypoints.httpTypescript.package, "@x402/fetch");
+  assert.equal(handoff.clientEntrypoints.httpTypescript.wrapper, "wrapFetchWithPayment");
+  assert.equal(handoff.clientEntrypoints.mcpTypescript.package, "@x402/mcp");
+  assert.equal(handoff.clientEntrypoints.mcpTypescript.factory, "createx402MCPClient");
+  assert.equal(handoff.clientEntrypoints.httpPython.package, "x402");
+  assert.equal(handoff.clientEntrypoints.httpPython.client, "x402HttpxClient");
+  assert.equal(handoff.clientEntrypoints.agentSkill.repository, "waxsway/agentresolver");
+  assert.equal(handoff.clientEntrypoints.agentSkill.skill, "agentresolver-payment-guard");
 });
 
 
