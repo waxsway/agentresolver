@@ -417,7 +417,10 @@ export function createDeterministicPaidRoute(
         tags: [...bazaarProviderMetadata.tags],
         extensions: {
           ...discoveryExtension,
-          agentresolver: x402ChallengeHeaderHandoff(capabilityId)
+          agentresolver: x402ChallengeHeaderHandoff(
+            capabilityId,
+            options.paidGet ? "GET" : "POST"
+          )
         }
       }
     }, server) as PaidHandler;
