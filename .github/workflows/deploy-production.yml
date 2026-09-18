@@ -252,20 +252,47 @@ jobs:
           grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-deployment' >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-history' >/dev/null
 
-          curl -fsS "$BASE_URL/api/health?deployment=$VALIDATED_SHA" -o /tmp/health.json
-          jq -e '.ok == true and .canonicalPaidRoute == "/api/x402-payment-preflight" and .trust == "/.well-known/agentresolver-trust.json"' /tmp/health.json >/dev/null
+          surfaces_live=0
+          for attempt in {1..30}; do
+            health_ok=0
+            trust_ok=0
+            security_ok=0
 
-          curl -fsS "$BASE_URL/.well-known/agentresolver-trust.json?deployment=$VALIDATED_SHA" -o /tmp/trust.json
-          jq -e --arg sha "$VALIDATED_SHA" '
-            .schemaVersion == 1 and
-            .paymentModel.custodial == false and
-            .canonicalPaidRoute.priceUsd == 0.001 and
-            .deployment.commitSha == $sha and
-            .deployment.sourceCommitUrl == ("https://github.com/waxsway/agentresolver/commit/" + $sha)
-          ' /tmp/trust.json >/dev/null
+            if curl -fsS "$BASE_URL/api/health?deployment=$VALIDATED_SHA" -o /tmp/health.json && \
+              jq -e '.ok == true and .canonicalPaidRoute == "/api/x402-payment-preflight" and .trust == "/.well-known/agentresolver-trust.json"' /tmp/health.json >/dev/null; then
+              health_ok=1
+            fi
 
-          curl -fsS "$BASE_URL/.well-known/security.txt?deployment=$VALIDATED_SHA" -o /tmp/security.txt
-          grep -F 'Canonical: https://agentresolver.vercel.app/.well-known/security.txt' /tmp/security.txt >/dev/null
+            if curl -fsS "$BASE_URL/.well-known/agentresolver-trust.json?deployment=$VALIDATED_SHA" -o /tmp/trust.json && \
+              jq -e --arg sha "$VALIDATED_SHA" '
+                .schemaVersion == 1 and
+                .paymentModel.custodial == false and
+                .canonicalPaidRoute.priceUsd == 0.001 and
+                .deployment.commitSha == $sha and
+                .deployment.sourceCommitUrl == ("https://github.com/waxsway/agentresolver/commit/" + $sha)
+              ' /tmp/trust.json >/dev/null; then
+              trust_ok=1
+            fi
+
+            if curl -fsS "$BASE_URL/.well-known/security.txt?deployment=$VALIDATED_SHA" -o /tmp/security.txt && \
+              grep -F 'Canonical: https://agentresolver.vercel.app/.well-known/security.txt' /tmp/security.txt >/dev/null; then
+              security_ok=1
+            fi
+
+            if [ "$health_ok" = "1" ] && [ "$trust_ok" = "1" ] && [ "$security_ok" = "1" ]; then
+              surfaces_live=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$surfaces_live" != "1" ]; then
+            echo "Canonical production payment route converged, but supporting trust surfaces did not converge in time." >&2
+            cat /tmp/health.json 2>/dev/null || true
+            cat /tmp/trust.json 2>/dev/null || true
+            cat /tmp/security.txt 2>/dev/null || true
+            exit 1
+          fi
 
       - name: Report stale deploy suppression
         if: >-
