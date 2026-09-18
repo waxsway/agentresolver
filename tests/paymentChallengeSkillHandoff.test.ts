@@ -9,6 +9,9 @@ test("paid HTTP responses expose the installable Guard skill handoff", () => {
   assert.match(route, /AGENT_SKILLS_INDEX_URL/);
   assert.match(route, /PAYMENT_GUARD_SKILL_URL/);
   assert.match(route, /access-control-expose-headers/);
+  assert.match(route, /x402BuyerSetupHint\(capabilityId\)/);
+  assert.match(route, /extensions:/);
+  assert.match(route, /agentresolver:/);
 });
 
 test("buyer setup exports canonical Agent Skills discovery URLs", () => {
