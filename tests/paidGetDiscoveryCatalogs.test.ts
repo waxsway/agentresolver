@@ -103,3 +103,15 @@ test("GET-first discovery copy preserves caller-only spend authorization", () =>
   assert.match(preflightGetResource?.description ?? "", /caller alone authorizes any spend/i);
   assert.doesNotMatch(preflightGetResource?.description ?? "", /authorization gate/i);
 });
+
+
+test("x402 settlement canary is a first-class Bazaar discovery resource", () => {
+  const manifest = readJson("public/.well-known/x402");
+  const ping = manifest.resources?.find((item: any) => item.resource === "GET /api/x402-ping");
+  assert.ok(ping, "GET x402-ping must be published as a discovery resource");
+  assert.equal(ping.method, "GET");
+  assert.equal(ping.price, "$0.001");
+  assert.equal(ping.accepts?.[0]?.network, "eip155:8453");
+  assert.equal(ping.accepts?.[0]?.maxAmountRequired, "1000");
+  assert.equal(ping.accepts?.[0]?.payTo, "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8");
+});
