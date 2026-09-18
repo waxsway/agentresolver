@@ -22,7 +22,7 @@ test("x402-ping PAYMENT-REQUIRED stays within an interoperability-friendly heade
   assert.equal(decoded.x402Version, 2);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.pong, true);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.settledDelivery, true);
-  assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.next, undefined);
+  assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.next?.recommended?.capabilityId, "x402-payment-preflight");
   assert.equal(decoded.extensions?.agentresolver?.info?.version, 2);
   assert.equal(decoded.extensions?.agentresolver?.info?.method, "GET");
   assert.equal(
@@ -42,6 +42,17 @@ test("x402-ping PAYMENT-REQUIRED stays within an interoperability-friendly heade
     JSON.stringify(decoded.extensions?.agentresolver),
     /PRIVATE_KEY|seed phrase|0xYourPrivateKey/i
   );
+});
+
+test("runtime ping discovery carries the repeat-purchase hint without growing the challenge", () => {
+  const output = x402RuntimeDiscoveryOutput("x402-ping") as any;
+  assert.equal(output.example.pong, true);
+  assert.equal(output.example.settledDelivery, true);
+  assert.equal(output.example.next.recommended.capabilityId, "x402-payment-preflight");
+  assert.equal(output.schema.type, "object");
+  assert.equal(output.schema.additionalProperties, true);
+  assert.equal(output.schema.properties, undefined);
+  assert.ok(JSON.stringify(output).length < 240);
 });
 
 test("runtime discovery keeps preflight decision metadata compact", () => {
