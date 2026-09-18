@@ -1,0 +1,42 @@
+name: Diagnose CDP Readiness Once
+
+on:
+  push:
+    branches:
+      - diag/cdp-readiness-20260917
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Check production CDP credential key presence only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          response="$(mktemp)"
+          chmod 600 "$response"
+          trap 'rm -f "$response"' EXIT
+          code="$(curl -sS --connect-timeout 10 --max-time 30             -o "$response" -w '%{http_code}'             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN")"
+          test "$code" = "200"
+          jq -r '
+            def prodkeys:
+              [.envs[]? |
+                select(((.target // []) | if type=="string" then [.] else . end) | index("production")) |
+                .key];
+            (prodkeys) as $keys |
+            {
+              cdpApiKeyIdPresent: ($keys | index("CDP_API_KEY_ID") != null),
+              cdpApiKeySecretPresent: ($keys | index("CDP_API_KEY_SECRET") != null),
+              cdpEnableFlagPresent: ($keys | index("AGENTRESOLVER_CDP_FACILITATOR_ENABLED") != null),
+              cdpCapabilityScopePresent: ($keys | index("AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES") != null),
+              circleFlagPresent: ($keys | index("AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED") != null)
+            }' "$response"
