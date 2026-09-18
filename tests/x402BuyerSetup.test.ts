@@ -116,8 +116,11 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.match(approvalExample, /requirement\.scheme === "exact"/);
   assert.match(approvalExample, /requirement\.amount === "1000"/);
   assert.match(approvalExample, /requirement\.network === expected\.network/);
-  assert.match(approvalExample, /requirement\.asset\.toLowerCase\(\)/);
-  assert.match(approvalExample, /requirement\.payTo\.toLowerCase\(\)/);
+  assert.match(approvalExample, /samePaymentIdentifier/);
+  assert.match(approvalExample, /network\.startsWith\("eip155:"\)/);
+  assert.match(approvalExample, /actual === expected/);
+  assert.doesNotMatch(approvalExample, /requirement\.asset\.toLowerCase\(\)/);
+  assert.doesNotMatch(approvalExample, /requirement\.payTo\.toLowerCase\(\)/);
   assert.ok(
     setup.clients.mcp.behavior.some((step) => /onPaymentRequested/i.test(step))
   );
