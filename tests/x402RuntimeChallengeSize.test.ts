@@ -70,3 +70,35 @@ test("runtime discovery keeps preflight decision metadata compact", () => {
   assert.equal(output.example.prepaymentDecision.eligibleForCallerAuthorization, true);
   assert.ok(JSON.stringify(output).length < 1200);
 });
+
+
+test("long exact resume state falls back to compact PAYMENT-REQUIRED handoff", async () => {
+  const longState = "x".repeat(3000);
+  const response = await GET(new NextRequest(
+    `https://agentresolver.vercel.app/api/x402-ping?context=${longState}`,
+    {
+      method: "GET",
+      headers: { "user-agent": "agentresolver-test" }
+    }
+  ));
+
+  assert.equal(response.status, 402);
+  const paymentRequired = response.headers.get("payment-required");
+  assert.ok(paymentRequired);
+  assert.ok(
+    Buffer.byteLength(paymentRequired, "utf8") < 8192,
+    `PAYMENT-REQUIRED is ${Buffer.byteLength(paymentRequired, "utf8")} bytes`
+  );
+
+  const decoded = JSON.parse(Buffer.from(paymentRequired, "base64").toString("utf8")) as any;
+  assert.equal(decoded.extensions?.agentresolver?.info?.method, "GET");
+  const compactSetup = new URL(decoded.extensions?.agentresolver?.info?.setup);
+  assert.equal(compactSetup.searchParams.get("method"), "GET");
+  assert.equal(compactSetup.searchParams.get("resumeUrl"), null);
+
+  const exactSetupHeader = response.headers.get("x-agentresolver-buyer-setup");
+  assert.ok(exactSetupHeader);
+  const exactSetup = new URL(exactSetupHeader);
+  assert.equal(exactSetup.searchParams.get("method"), "GET");
+  assert.match(exactSetup.searchParams.get("resumeUrl") || "", /context=x{100}/);
+});
