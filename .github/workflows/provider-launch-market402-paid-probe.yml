@@ -1,0 +1,77 @@
+name: Provider Launch Market402 Paid Probe
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/provider-launch-market402-paid-probe.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provider-launch-market402-paid-probe
+  cancel-in-progress: true
+
+jobs:
+  optin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      RESOURCE: https://agentresolver.vercel.app/api/provider-launch-check
+    steps:
+      - name: Check current paid-probe roster
+        id: roster
+        shell: bash
+        run: |
+          set -euo pipefail
+          if curl -fsS --connect-timeout 5 --max-time 20             'https://market402.com/optin.json' -o /tmp/market402-optin.json &&
+            grep -Fq "$RESOURCE" /tmp/market402-optin.json; then
+            echo "listed=true" >> "$GITHUB_OUTPUT"
+            echo "Provider Launch Check already appears in Market402 paid-probe opt-in roster."
+          else
+            echo "listed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Submit directly for independent paid delivery probes
+        if: steps.roster.outputs.listed != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg resource "$RESOURCE" '{
+            resource:$resource,
+            declared_price_usd:0.05,
+            paid_probe_optin:true
+          }')"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -X POST 'https://market402.com/submit'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          cat "$body" 2>/dev/null || true
+          echo
+          case "$code" in
+            200|201|202|409)
+              echo "Provider Launch Check submitted directly for Market402 paid probes."
+              ;;
+            429)
+              echo "::notice::Market402 rate-limited the direct submit; the scheduled zero-spend retry will try again without using /selftest."
+              ;;
+            500|502|503|504|000)
+              echo "::notice::Market402 is temporarily unavailable (HTTP $code); scheduled zero-spend retry will try again."
+              ;;
+            *)
+              echo "::warning::Unexpected Market402 submit status $code; no payment or user funds were used."
+              ;;
+          esac
+
+      - name: Recheck public roster
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 5 --max-time 20             'https://market402.com/optin.json' -o /tmp/market402-optin-after.json || exit 0
+          if grep -Fq "$RESOURCE" /tmp/market402-optin-after.json; then
+            echo "Provider Launch Check is visible in the Market402 paid-probe roster."
+          else
+            echo "::notice::Market402 accepted/queued the seller product but its public opt-in roster has not refreshed yet."
+          fi
