@@ -101,12 +101,13 @@ jobs:
               key=item.get("key")
               if not isinstance(key, str):
                   continue
-              if "CDP" not in key.upper() and "COINBASE" not in key.upper():
+              upper=key.upper()
+              if "CDP" not in upper and "CDI" not in upper and "COINBASE" not in upper:
                   continue
               target=item.get("target") or []
               if isinstance(target, str): target=[target]
               rows.append((key, ",".join(sorted(str(v) for v in target))))
-          print("CDP/COINBASE ENV METADATA (names/targets only):")
+          print("CDP/CDI/COINBASE ENV METADATA (names/targets only):")
           for key, targets in sorted(rows):
               print(f"- {key}: [{targets}]")
           PY
