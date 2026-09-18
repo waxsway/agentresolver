@@ -4,6 +4,42 @@ import { NextRequest } from "next/server";
 import { GET, POST } from "../src/app/api/x402-payment-preflight/route";
 import { GET as GUARD_GET, POST as GUARD_POST } from "../src/app/api/payment-guard/route";
 
+async function withMockPayAiSupported<T>(run: () => Promise<T>): Promise<T> {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+
+    if (url === "https://facilitator.payai.network/supported") {
+      return new Response(JSON.stringify({
+        kinds: [
+          { x402Version: 2, scheme: "exact", network: "eip155:8453", extra: {} },
+          {
+            x402Version: 2,
+            scheme: "exact",
+            network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+            extra: { feePayer: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4" }
+          }
+        ],
+        extensions: ["bazaar"],
+        signers: {}
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+
+    return originalFetch(input, init);
+  };
+
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 test("x402 payment preflight supports a simple paid GET challenge", async () => {
   const target = "https://example.com/api";
   const url = new URL("https://agentresolver.vercel.app/api/x402-payment-preflight");
@@ -11,10 +47,12 @@ test("x402 payment preflight supports a simple paid GET challenge", async () => 
   url.searchParams.set("method", "GET");
   url.searchParams.set("maxPriceUsd", "0.01");
 
-  const response = await GET(new NextRequest(url, {
-    method: "GET",
-    headers: { "user-agent": "agentresolver-test" }
-  }));
+  const response = await withMockPayAiSupported(() =>
+    GET(new NextRequest(url, {
+      method: "GET",
+      headers: { "user-agent": "agentresolver-test" }
+    }))
+  );
 
   assert.equal(response.status, 402);
   assert.equal(
@@ -66,10 +104,12 @@ test("AgentResolver Guard alias publishes the same compact GET query contract", 
   url.searchParams.set("method", "GET");
   url.searchParams.set("maxPriceUsd", "0.01");
 
-  const response = await GUARD_GET(new NextRequest(url, {
-    method: "GET",
-    headers: { "user-agent": "agentresolver-test" }
-  }));
+  const response = await withMockPayAiSupported(() =>
+    GUARD_GET(new NextRequest(url, {
+      method: "GET",
+      headers: { "user-agent": "agentresolver-test" }
+    }))
+  );
 
   assert.equal(response.status, 402);
   const paymentRequired = response.headers.get("payment-required");
