@@ -345,33 +345,12 @@ test("buyer setup exposes Vercel AI SDK and Cloudflare Agents payment handoffs",
 });
 
 
-test("buyer setup exposes AWS AgentCore wallet-capable payment handoff", () => {
-  const setup = x402BuyerSetup();
-  const agentcore = setup.clients.awsBedrockAgentCorePayments;
-  assert.equal(agentcore.runtime, "Amazon Bedrock AgentCore Payments");
-  assert.equal(agentcore.protocol, "x402");
-  assert.equal(agentcore.paymentGuardUrl, "https://agentresolver.vercel.app/api/payment-guard");
-  assert.match(agentcore.langGraph.installCommand, /bedrock-agentcore\[langgraph\]/);
-  assert.equal(agentcore.langGraph.middleware, "AgentCorePaymentsMiddleware");
-  assert.match(agentcore.strandsAgents.installCommand, /bedrock-agentcore\[strands-agents\]/);
-  assert.equal(agentcore.strandsAgents.plugin, "AgentCorePaymentsPlugin");
-  assert.equal(agentcore.paymentManager.class, "PaymentManager");
-  assert.equal(agentcore.paymentManager.signedHeaderMethod, "generate_payment_header");
-  assert.match(agentcore.authorizationModel, /caller-owned payment instrument/i);
-  assert.match(agentcore.authorizationModel, /\$0\.001 AgentResolver Guard fee/i);
-  assert.ok(agentcore.behavior.some((step) => /ProcessPayment/i.test(step)));
-  assert.ok(agentcore.behavior.some((step) => /separately authorized/i.test(step)));
-  assert.doesNotMatch(JSON.stringify(agentcore), /PRIVATE_KEY|seed phrase|wallet secret value/i);
-  assert.equal(
-    setup.officialReferences.awsAgentCorePaymentsFrameworks,
-    "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-framework-integrations.html"
-  );
-  assert.equal(
-    setup.officialReferences.awsAgentCorePaymentsProcess,
-    "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html"
-  );
+test("buyer setup does not advertise an incompatible AgentCore payment handoff", () => {
+  const setup = x402BuyerSetup() as any;
+  assert.equal(setup.clients.awsBedrockAgentCorePayments, undefined);
+  assert.equal(setup.officialReferences.awsAgentCorePaymentsFrameworks, undefined);
+  assert.equal(setup.officialReferences.awsAgentCorePaymentsProcess, undefined);
 });
-
 
 test("buyer challenge handoff URLs carry bounded funnel attribution and exact method", () => {
   assert.equal(
