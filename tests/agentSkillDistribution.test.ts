@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -44,4 +45,33 @@ test("installable Guard skill documents the Coinbase AgentKit confirmation-first
   assert.match(installable, /Do not enable dynamic registration merely to bypass the service allowlist/i);
   assert.match(installable, /do not use `make_http_request_with_x402` on an unfamiliar target/i);
   assert.match(published, /## Coinbase AgentKit/);
+});
+
+
+test("installable and published Guard skills carry the network-aware MCP pre-sign gate", () => {
+  for (const text of [installable, published]) {
+    assert.match(text, /## MCP wallet-capable clients — fail-closed pre-sign gate/);
+    assert.match(text, /onPaymentRequested/);
+    assert.match(text, /hostAllowsGuardSpend/);
+    assert.match(text, /mcp:\/\/tool\/payment_guard/);
+    assert.match(text, /mcp:\/\/tool\/x402_payment_preflight/);
+    assert.match(text, /context\.paymentRequired\.resource\.url !== expectedResource/);
+    assert.match(text, /samePaymentIdentifier/);
+    assert.match(text, /network\.startsWith\("eip155:"\)/);
+    assert.match(text, /actual === expected/);
+    assert.match(text, /Solana.*case-sensitive/is);
+  }
+});
+
+test("well-known skill discovery bytes stay synchronized with the canonical installable skill", () => {
+  const discovered = readFileSync(
+    "public/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md",
+    "utf8"
+  );
+  const index = JSON.parse(readFileSync("public/.well-known/agent-skills/index.json", "utf8"));
+  const digest = "sha256:" + createHash("sha256").update(discovered).digest("hex");
+
+  assert.equal(discovered, installable);
+  assert.equal(index.skills[0].name, "agentresolver-payment-guard");
+  assert.equal(index.skills[0].digest, digest);
 });
