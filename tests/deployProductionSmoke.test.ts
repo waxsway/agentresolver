@@ -40,3 +40,17 @@ test("production deploy smoke retries trust surfaces after payment alias converg
   assert.match(workflow, /if \[ "\$contracts_ready" != "1" \]; then/);
   assert.match(workflow, /trust\/health\/security surfaces did not converge/i);
 });
+
+
+test("production deploy preflight probes are marked internal", () => {
+  const occurrences = workflow.match(/x-agentresolver-internal: 1/g) ?? [];
+  assert.ok(occurrences.length >= 2, "deploy drift and post-deploy probes must both be internal");
+  assert.match(
+    workflow,
+    /-H 'x-agentresolver-internal: 1' \\\n\s+"\$BASE_URL\/api\/x402-payment-preflight\?url=/
+  );
+  assert.match(
+    workflow,
+    /-w '%\{http_code\}' -H 'x-agentresolver-internal: 1' "\$BASE_URL\/api\/x402-payment-preflight\?url=/
+  );
+});
