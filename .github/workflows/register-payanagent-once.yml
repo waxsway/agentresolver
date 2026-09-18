@@ -2,6 +2,9 @@ name: Register AgentResolver with PayanAgent Once
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -12,6 +15,10 @@ permissions:
 
 jobs:
   register:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
@@ -43,11 +50,19 @@ jobs:
           body="$(mktemp)"
           code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             --get 'https://payanagent.com/api/v1/offers'             --data-urlencode 'q=AgentResolver'             --data-urlencode 'offerType=api'             --data-urlencode 'limit=100' || printf '000')"
 
-          if [ "$code" != "200" ]; then
-            echo "::warning::PayanAgent catalog lookup returned HTTP $code; continuing with bounded free registration."
-            echo "already_listed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          case "$code" in
+            200) ;;
+            429|500|502|503|504|000)
+              echo "::notice::PayanAgent catalog is temporarily unavailable (HTTP $code); registration is deferred and no payment was attempted."
+              echo "already_listed=unavailable" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+            *)
+              echo "::error::PayanAgent catalog contract changed unexpectedly (HTTP $code)."
+              cat "$body" 2>/dev/null || true
+              exit 1
+              ;;
+          esac
 
           if python3 - "$body" <<'PY'
           import json, sys
@@ -64,7 +79,7 @@ jobs:
           fi
 
       - name: Register zero-spend AgentResolver provider
-        if: steps.existing.outputs.already_listed != 'true'
+        if: steps.existing.outputs.already_listed == 'false'
         id: provider
         shell: bash
         run: |
@@ -87,11 +102,19 @@ jobs:
 
           code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$response" -w '%{http_code}'             -X POST 'https://payanagent.com/api/v1/agents'             -H 'content-type: application/json'             --data-binary @"$request" || printf '000')"
 
-          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
-            echo "PayanAgent provider registration failed with HTTP $code" >&2
-            cat "$response" >&2
-            exit 1
-          fi
+          case "$code" in
+            200|201) ;;
+            429|500|502|503|504|000)
+              echo "::notice::PayanAgent provider registration is temporarily unavailable (HTTP $code); no payment was attempted and a future deploy will retry."
+              echo "registered=false" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+            *)
+              echo "PayanAgent provider registration failed with unexpected HTTP $code" >&2
+              cat "$response" >&2
+              exit 1
+              ;;
+          esac
 
           python3 - "$response" "$GITHUB_OUTPUT" <<'PY'
           import json, sys
@@ -111,9 +134,10 @@ jobs:
           PY
           )"
           echo "::add-mask::$api_key"
+          echo "registered=true" >> "$GITHUB_OUTPUT"
 
       - name: Create PayanAgent x402 relay offers
-        if: steps.existing.outputs.already_listed != 'true'
+        if: steps.existing.outputs.already_listed == 'false' && steps.provider.outputs.registered == 'true'
         shell: bash
         env:
           PAYAN_AGENT_ID: ${{ steps.provider.outputs.agent_id }}
@@ -187,7 +211,7 @@ jobs:
           PY
 
       - name: Verify AgentResolver is visible in PayanAgent catalog
-        if: steps.existing.outputs.already_listed != 'true'
+        if: steps.existing.outputs.already_listed == 'false' && steps.provider.outputs.registered == 'true'
         shell: bash
         run: |
           set -euo pipefail
