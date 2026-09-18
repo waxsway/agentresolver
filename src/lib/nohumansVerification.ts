@@ -5,7 +5,7 @@ export const NOHUMANS_SINGLE_ENDPOINT =
   "https://api.nohumans.directory/v1/listings/e37797ba-55b/verify-now?plan=single";
 export const NOHUMANS_BASE_NETWORK = "eip155:8453";
 export const NOHUMANS_SINGLE_AMOUNT = "3000000";
-export const BASE_USDC = "0x833589fCD6E08f4c7C32D4f71b54bdA02913";
+export const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const NOHUMANS_PAY_TO = "0xA733875f2F7E8A2817040B5c60B63Ae07D58a1d6";
 
 export function assertNoHumansSingleInvoice(value: unknown): asserts value is PaymentRequired {
