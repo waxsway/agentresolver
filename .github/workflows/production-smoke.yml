@@ -58,7 +58,7 @@ jobs:
                 select(type == "object") |
                 select((.tags // []) | index("Paid Agent Capabilities"))
               ] as $paid |
-              ($paid | length >= 10) and
+              ($paid | length >= 11) and
               ($paid | all(
                 (.["x-payment-info"].price.mode == "fixed") and
                 (.["x-payment-info"].price.currency == "USD") and
@@ -80,6 +80,7 @@ jobs:
             [.capabilities[].id] as $ids |
             ($ids | index("x402-ping") != null) and
             ($ids | index("x402-payment-preflight") != null) and
+            ($ids | index("base-usdc-settlement-verify") != null) and
             ($ids | index("verified-resolve") != null) and
             ($ids | index("batch-verified-resolve") != null) and
             ($ids | index("hash-encode") == null) and
@@ -234,6 +235,7 @@ jobs:
           check_402 'Solidity Selector' '/api/solidity-selector' '{"signature":"transfer(address,uint256)"}' 'solidity-selector' '10000'
           check_402 'EVM Units' '/api/evm-units' '{"mode":"parse","value":"1.5","decimals":18}' 'evm-units' '5000'
           check_402 'x402 Settlement Ping' '/api/x402-ping' '{"echo":"smoke"}' 'x402-ping' '1000'
+          check_402 'Base USDC Settlement Verify' '/api/base-usdc-settlement-verify' '{"transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000000","expectedAmountAtomic":"1000","minimumConfirmations":1}' 'base-usdc-settlement-verify' '1000'
 
           settlement_ping_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/x402-ping-headers.txt)"
           PAYMENT_REQUIRED="$settlement_ping_required" python3 - <<'PY'
