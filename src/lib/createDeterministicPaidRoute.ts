@@ -182,10 +182,28 @@ export function cdpFacilitatorEnabledFor(
   return cdpFacilitatorEnabled(env) && cdpFacilitatorCapabilities(env).has(capabilityId);
 }
 
+export function cdpFacilitatorCredentials(
+  env: Readonly<Record<string, string | undefined>> = process.env
+) {
+  const apiKeyId =
+    env.CDP_API_KEY_ID?.trim() ||
+    env.CDI_API_KEY_ID?.trim() ||
+    "";
+  const apiKeySecret =
+    env.CDP_API_KEY_SECRET?.trim() ||
+    env.CDP_API_SECRET?.trim() ||
+    env.CDI_API_KEY_SECRET?.trim() ||
+    env.CDI_API_SECRET?.trim() ||
+    "";
+
+  return { apiKeyId, apiKeySecret };
+}
+
 export function cdpFacilitatorCredentialsPresent(
   env: Readonly<Record<string, string | undefined>> = process.env
 ) {
-  return Boolean(env.CDP_API_KEY_ID?.trim() && env.CDP_API_KEY_SECRET?.trim());
+  const { apiKeyId, apiKeySecret } = cdpFacilitatorCredentials(env);
+  return Boolean(apiKeyId && apiKeySecret);
 }
 
 function isCaip2Network(value: string): value is `${string}:${string}` {
@@ -332,13 +350,17 @@ export function createDeterministicPaidRoute(
     const standardFacilitator = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
     const gatewayEnabled = circleGatewayEnabled();
     const cdpEnabled = cdpFacilitatorEnabledFor(capabilityId);
+    const cdpCredentials = cdpFacilitatorCredentials();
     if (cdpEnabled && !cdpFacilitatorCredentialsPresent()) {
       throw new Error(
-        "AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires CDP_API_KEY_ID and CDP_API_KEY_SECRET."
+        "AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires a CDP API key ID and API key secret."
       );
     }
     const cdpFacilitator = cdpEnabled
-      ? (await import("@coinbase/cdp-sdk/x402")).createCdpFacilitatorClient()
+      ? (await import("@coinbase/cdp-sdk/x402")).createCdpFacilitatorClient({
+          apiKeyId: cdpCredentials.apiKeyId,
+          apiKeySecret: cdpCredentials.apiKeySecret
+        })
       : null;
     const cdpBaseFacilitator = cdpFacilitator ? {
       verify: cdpFacilitator.verify.bind(cdpFacilitator),
