@@ -59,6 +59,16 @@ test("preflight unsigned GET challenge stays below 4 KB and keeps buyer handoff 
   );
   const decoded = JSON.parse(Buffer.from(paymentRequired, "base64").toString("utf8")) as any;
   assert.equal(decoded.extensions?.agentresolver, undefined);
+  assert.ok(decoded.extensions?.bazaar);
+  const body = await response.clone().json() as any;
+  assert.equal(body.extensions, undefined);
+  assert.deepEqual(body.resource, decoded.resource);
+  assert.deepEqual(body.accepts, decoded.accepts);
+  assert.ok(
+    Buffer.byteLength(JSON.stringify(body), "utf8") <
+      Buffer.byteLength(JSON.stringify(decoded), "utf8"),
+    "hot Guard/preflight 402 body should not duplicate Bazaar discovery metadata"
+  );
   assert.ok(response.headers.get("x-agentresolver-buyer-setup"));
   assert.equal(response.headers.get("cache-control"), "public, max-age=0, must-revalidate");
   assert.equal(response.headers.get("cdn-cache-control"), "public, max-age=30");

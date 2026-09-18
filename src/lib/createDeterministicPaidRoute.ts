@@ -138,11 +138,21 @@ async function mirrorPaymentChallengeBody(
           resumeUrl
         );
 
+  const responseBody =
+    capabilityId === "x402-payment-preflight"
+      ? {
+          x402Version: rewrittenHeaderChallenge.x402Version,
+          error: rewrittenHeaderChallenge.error,
+          resource: rewrittenHeaderChallenge.resource,
+          accepts: rewrittenHeaderChallenge.accepts
+        }
+      : rewrittenBodyChallenge;
+
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
   headers.set("payment-required", encodePaymentRequiredHeader(rewrittenHeaderChallenge));
-  return new NextResponse(JSON.stringify(rewrittenBodyChallenge), {
+  return new NextResponse(JSON.stringify(responseBody), {
     status: 402,
     statusText: response.statusText,
     headers
