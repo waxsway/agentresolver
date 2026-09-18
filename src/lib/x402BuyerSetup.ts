@@ -19,6 +19,25 @@ export const X402_CHALLENGE_CLIENT_INSTALLS = {
   agentSkill: "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard"
 } as const;
 
+export const X402_CHALLENGE_CLIENT_ENTRYPOINTS = {
+  httpTypescript: {
+    package: "@x402/fetch",
+    wrapper: "wrapFetchWithPayment"
+  },
+  mcpTypescript: {
+    package: "@x402/mcp",
+    factory: "createx402MCPClient"
+  },
+  httpPython: {
+    package: "x402",
+    client: "x402HttpxClient"
+  },
+  agentSkill: {
+    repository: "waxsway/agentresolver",
+    skill: "agentresolver-payment-guard"
+  }
+} as const;
+
 export function x402ChallengeBuyerHandoff(capabilityId: string) {
   return {
     type: "agentresolver_x402_buyer_handoff",
@@ -28,7 +47,8 @@ export function x402ChallengeBuyerHandoff(capabilityId: string) {
     retryHeader: "PAYMENT-SIGNATURE",
     signerControlledByCaller: true,
     spendAuthorizationRequired: true,
-    clientInstalls: X402_CHALLENGE_CLIENT_INSTALLS
+    clientInstalls: X402_CHALLENGE_CLIENT_INSTALLS,
+    clientEntrypoints: X402_CHALLENGE_CLIENT_ENTRYPOINTS
   } as const;
 }
 
