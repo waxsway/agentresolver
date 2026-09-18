@@ -2,10 +2,6 @@ name: Register AgentResolver with x402scan Once
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/x402scan-register-once.yml"
 
 permissions:
   contents: read
@@ -53,8 +49,6 @@ jobs:
               --data "$payload" || printf '000')"
 
             echo "x402scan registration attempt $attempt -> HTTP $status"
-            cat /tmp/x402scan-register.json 2>/dev/null || true
-            echo
 
             case "$status" in
               200) break ;;
@@ -78,8 +72,8 @@ jobs:
               success,
               registered,
               siwx,
-              public,
-              apiKey,
+              publicCount,
+              apiKeyCount,
               failed,
               skipped,
               deprecated,
@@ -91,10 +85,9 @@ jobs:
 
           if jq -e '.[0].error != null' /tmp/x402scan-register.json >/dev/null 2>&1; then
             echo "x402scan tRPC registration returned an operation error." >&2
-            jq '.[0].error' /tmp/x402scan-register.json >&2
+            jq '.[0].error | {message, data: (.data | {code, httpStatus})}' /tmp/x402scan-register.json >&2
             exit 1
           fi
 
-          echo "x402scan returned an unexpected registration payload." >&2
-          cat /tmp/x402scan-register.json >&2
+          echo "x402scan returned an unexpected registration payload; body suppressed." >&2
           exit 1
