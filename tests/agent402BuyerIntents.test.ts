@@ -46,3 +46,11 @@ test("alias route shares the canonical preflight executor and only overrides its
   assert.match(alias, /executeX402PaymentPreflight/);
   assert.match(alias, /endpoint: "\/api\/usdc-payment-check"/);
 });
+
+
+test("Agent402 audit searches post-settlement receipt verification buyer intents", () => {
+  const workflow = readFileSync(".github/workflows/register-agent402.yml", "utf8");
+  assert.match(workflow, /"x402 settlement verify"/);
+  assert.match(workflow, /"verify x402 transaction"/);
+  assert.match(workflow, /"payment receipt verification"/);
+});

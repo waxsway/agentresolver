@@ -130,3 +130,11 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   assert.match(manifest.instructions || "", /intentionally omitted from public machine catalogs/i);
   assert.match(openapi.info?.description || "", /reduce unpaid crawler sweeps/i);
 });
+
+
+test("AgentCash audit searches post-settlement receipt verification buyer intents", () => {
+  const workflow = readFileSync(".github/workflows/agentcash-register.yml", "utf8");
+  assert.match(workflow, /"x402 settlement verify"/);
+  assert.match(workflow, /"verify x402 transaction"/);
+  assert.match(workflow, /"payment receipt verification"/);
+});
