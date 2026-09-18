@@ -52,30 +52,30 @@ test("CDP activation rechecks main and verifies an unsigned production challenge
   assert.doesNotMatch(workflow, /PAYMENT-SIGNATURE|X-PAYMENT/);
 });
 
-test("public health reports configured rail state without exposing credentials", () => {
+test("public health reports route-local payment rails without exposing credentials", () => {
   assert.match(health, /paymentRails:/);
   assert.match(health, /default: "payai"/);
-  assert.match(health, /x402Ping: cdpFacilitatorEnabledForX402Ping \? "coinbase-cdp" : "payai"/);
-  assert.match(health, /x402PingBase: cdpFacilitatorEnabledForX402Ping \? "coinbase-cdp" : "payai"/);
+  assert.match(health, /x402Ping: "payai"/);
+  assert.match(health, /x402PingBase: "payai"/);
   assert.match(health, /x402PingSolana: "payai"/);
+  assert.match(health, /x402CdpCanary: cdpFacilitatorEnabledForCdpCanary \? "coinbase-cdp" : "disabled"/);
+  assert.match(health, /cdpFacilitatorEnabledForX402Ping: false/);
+  assert.match(health, /cdpFacilitatorEnabledForCdpCanary/);
   assert.match(health, /circleGatewayEnabled/);
   assert.doesNotMatch(health, /CDP_API_KEY_SECRET|CDP_API_KEY_ID/);
 });
 
 
-test("PayAI failover disarms CDP before promoting the known-good deployment", () => {
-  assert.match(payaiFailover, /CLEAN_DEPLOYMENT_ID: dpl_224AqUGm1FJ91kmfPJ56LsDmRQoJ/);
-  assert.match(payaiFailover, /"key": "AGENTRESOLVER_CDP_FACILITATOR_ENABLED"/);
-  assert.match(payaiFailover, /"value": "0"/);
-  assert.match(payaiFailover, /env\?upsert=true&teamId=\$VERCEL_ORG_ID/);
-  assert.match(payaiFailover, /\.paymentRails\.cdpFacilitatorEnabledForX402Ping == false/);
-  assert.match(payaiFailover, /\.paymentRails\.x402PingBase == "payai"/);
-  assert.match(payaiFailover, /\.paymentRails\.x402PingSolana == "payai"/);
-  assert.match(payaiFailover, /\.paymentRails\.circleGatewayEnabled == false/);
-  assert.ok(
-    payaiFailover.indexOf("Disable CDP for known-good PayAI failover") <
-      payaiFailover.indexOf("Promote known-clean deployment without rebuilding")
-  );
+test("CDP runtime recovery re-aliases the known-good deployment without rebuilding or spending", () => {
+  assert.match(payaiFailover, /HEALTHY_DEPLOYMENT_ID: dpl_ErXGyYownF8254n14tDvwwFMiPEv/);
+  assert.match(payaiFailover, /HEALTHY_SHA: c2a05df127548c4ecc87ba73467cef72b6e721c3/);
+  assert.match(payaiFailover, /CANONICAL_ALIAS: agentresolver\.vercel\.app/);
+  assert.match(payaiFailover, /\/v2\/deployments\/\$HEALTHY_DEPLOYMENT_ID\/aliases\?teamId=\$VERCEL_ORG_ID/);
+  assert.match(payaiFailover, /api\/x402-cdp-canary/);
+  assert.match(payaiFailover, /api\/x402-ping/);
+  assert.match(payaiFailover, /canary_sha.*HEALTHY_SHA/);
+  assert.match(payaiFailover, /\.accepts\[0\]\.amount == "1000"/);
+  assert.doesNotMatch(payaiFailover, /vercel build|vercel deploy/);
   assert.doesNotMatch(payaiFailover, /"key": "CDP_API_KEY_ID"|"key": "CDP_API_KEY_SECRET"/);
   assert.doesNotMatch(payaiFailover, /PAYMENT-SIGNATURE|X-PAYMENT/);
 });
