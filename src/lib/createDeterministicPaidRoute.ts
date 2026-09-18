@@ -84,8 +84,7 @@ async function mirrorPaymentChallengeBody(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
   requestMethod?: string,
-  resumeUrl?: string | null,
-  minimalChallenge = false
+  resumeUrl?: string | null
 ) {
   if (response.status !== 402) return response;
   const headerChallenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
@@ -98,7 +97,7 @@ async function mirrorPaymentChallengeBody(
     current = null;
   }
 
-  if (minimalChallenge) {
+  if (capabilityId === "x402-ping") {
     const headers = new Headers(response.headers);
     headers.set("content-type", "application/json; charset=utf-8");
     headers.set("cache-control", "no-store");
@@ -236,7 +235,6 @@ function stampInfrastructureHeaders(
 export type DeterministicPaidRouteOptions = Readonly<{
   paidGet?: boolean;
   endpoint?: string;
-  minimalChallenge?: boolean;
 }>;
 
 export function x402BazaarProviderMetadata(capabilityId: PaidCapabilityId) {
@@ -474,7 +472,7 @@ export function createDeterministicPaidRoute(
         mimeType: "application/json",
         serviceName: bazaarProviderMetadata.serviceName,
         tags: [...bazaarProviderMetadata.tags],
-        extensions: options.minimalChallenge
+        extensions: capabilityId === "x402-ping"
           ? discoveryExtension
           : {
               ...discoveryExtension,
@@ -510,13 +508,13 @@ export function createDeterministicPaidRoute(
         resumeUrl
       );
       await logPaidRetryRejection(req, response, capabilityId, requestId);
-      const compatibleResponse = await mirrorPaymentChallengeBody(
-        response,
-        capabilityId,
-        req.method,
-        resumeUrl,
-        options.minimalChallenge
-      );
+      const compatibleResponse = resumeUrl
+        ? await mirrorPaymentChallengeBody(response, capabilityId, req.method, resumeUrl)
+        : await mirrorPaymentChallengeBody(
+            response,
+            capabilityId,
+            req.method
+          );
       logX402Settlement(compatibleResponse, capabilityId, requestId);
       return compatibleResponse;
     } catch (error) {
