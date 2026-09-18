@@ -90,6 +90,11 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   assert.deepEqual(getBody.accepts, decodedHeader.accepts);
   assert.deepEqual(getBody.extensions, decodedHeader.extensions);
   assert.equal(decodedHeader.resource?.serviceName, "AgentResolver");
+  assert.equal(decodedHeader.extensions?.agentresolver?.info?.method, "GET");
+  assert.equal(
+    decodedHeader.extensions?.agentresolver?.info?.setup,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
+  );
   assert.deepEqual(decodedHeader.resource?.tags, [
     "x402",
     "settlement-test",

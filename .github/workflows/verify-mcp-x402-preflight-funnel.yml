@@ -76,9 +76,25 @@ jobs:
             --data '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}')
 
           test "$http_code" = "402"
-          grep -Fi "x-agentresolver-buyer-setup: $BUYER_SETUP_URL" /tmp/http-x402-preflight.headers >/dev/null
+          expected_setup="$BUYER_SETUP_URL?source=x402-challenge&capabilityId=x402-payment-preflight&method=POST"
+          grep -Fi "x-agentresolver-buyer-setup: $expected_setup" /tmp/http-x402-preflight.headers >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/http-x402-preflight.headers | grep -Fi 'x-agentresolver-buyer-setup' >/dev/null
-          grep -F '"x402Version":2' /tmp/http-x402-preflight.out >/dev/null
+          jq -e --arg setup "$expected_setup" '
+            .x402Version == 2 and
+            .buyerSetup.method == "POST" and
+            .buyerSetup.setup == $setup
+          ' /tmp/http-x402-preflight.out >/dev/null
+
+          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-x402-preflight.headers)"
+          PAYMENT_REQUIRED="$payment_required" EXPECTED_SETUP="$expected_setup" python3 -c '
+          import base64, json, os
+          raw = os.environ["PAYMENT_REQUIRED"].strip()
+          raw += "=" * (-len(raw) % 4)
+          payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
+          info = payload["extensions"]["agentresolver"]["info"]
+          assert info["method"] == "POST"
+          assert info["setup"] == os.environ["EXPECTED_SETUP"]
+          '
 
       - name: Verify free resolve hands x402 buyers to canonical preflight
         shell: bash
