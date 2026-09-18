@@ -68,6 +68,6 @@ jobs:
           vercel firewall diff --json --token="$VERCEL_TOKEN" | tee /tmp/firewall-diff.json
           echo "Draft only. This workflow never publishes firewall changes."
 
-      - name: Verify no firewall publish occurred
+      - name: Confirm draft-only behavior
         run: |
-          echo "No live firewall change was published by this workflow."
+          echo "No live firewall change was activated by this workflow."
