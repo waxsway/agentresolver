@@ -67,10 +67,16 @@ async function mirrorPaymentChallengeBody(
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
+  const error = resumeUrl
+    ? x402BuyerSetupChallengeError(capabilityId, requestMethod, resumeUrl)
+    : x402BuyerSetupChallengeError(capabilityId, requestMethod);
+  const buyerSetup = resumeUrl
+    ? x402ChallengeBuyerHandoff(capabilityId, requestMethod, resumeUrl)
+    : x402ChallengeBuyerHandoff(capabilityId, requestMethod);
   return new NextResponse(JSON.stringify({
     ...bodyChallenge,
-    error: x402BuyerSetupChallengeError(capabilityId, requestMethod, resumeUrl),
-    buyerSetup: x402ChallengeBuyerHandoff(capabilityId, requestMethod, resumeUrl)
+    error,
+    buyerSetup
   }), {
     status: 402,
     statusText: response.statusText,
@@ -123,10 +129,10 @@ function stampInfrastructureHeaders(
   response.headers.set("x-agentresolver-capability", capabilityId);
   response.headers.set("x-agentresolver-request-id", requestId);
   response.headers.set("x-agentresolver-contract-version", "1");
-  response.headers.set(
-    "x-agentresolver-buyer-setup",
-    x402BuyerSetupChallengeUrl(capabilityId, requestMethod, resumeUrl)
-  );
+  const buyerSetupUrl = resumeUrl
+    ? x402BuyerSetupChallengeUrl(capabilityId, requestMethod, resumeUrl)
+    : x402BuyerSetupChallengeUrl(capabilityId, requestMethod);
+  response.headers.set("x-agentresolver-buyer-setup", buyerSetupUrl);
   response.headers.set("x-agentresolver-agent-skills", AGENT_SKILLS_INDEX_URL);
   response.headers.set("x-agentresolver-payment-guard-skill", PAYMENT_GUARD_SKILL_URL);
   response.headers.set(
@@ -425,7 +431,12 @@ export function createDeterministicPaidRoute(
   async function runPaidRequest(req: NextRequest) {
     const requestId = randomUUID();
     const traffic = classifyTraffic(req, { path: endpoint });
-    const resumeUrl = normalizeX402ChallengeResumeUrl(req.url, endpoint);
+    const normalizedResumeUrl = normalizeX402ChallengeResumeUrl(req.url, endpoint);
+    const canonicalResumeUrl = new URL(endpoint, "https://agentresolver.vercel.app").toString();
+    const resumeUrl =
+      normalizedResumeUrl && normalizedResumeUrl !== canonicalResumeUrl
+        ? normalizedResumeUrl
+        : null;
     logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
     try {
       const paidHandler = await getPaidHandler();
@@ -437,12 +448,13 @@ export function createDeterministicPaidRoute(
         resumeUrl
       );
       await logPaidRetryRejection(req, response, capabilityId, requestId);
-      const compatibleResponse = await mirrorPaymentChallengeBody(
-        response,
-        capabilityId,
-        req.method,
-        resumeUrl
-      );
+      const compatibleResponse = resumeUrl
+        ? await mirrorPaymentChallengeBody(response, capabilityId, req.method, resumeUrl)
+        : await mirrorPaymentChallengeBody(
+            response,
+            capabilityId,
+            req.method
+          );
       logX402Settlement(compatibleResponse, capabilityId, requestId);
       return compatibleResponse;
     } catch (error) {
@@ -464,10 +476,6 @@ export function createDeterministicPaidRoute(
 
   async function runDiscoveryRequest(req: NextRequest) {
     const requestId = randomUUID();
-    const resumeUrl = normalizeX402ChallengeResumeUrl(
-      new URL(endpoint, "https://agentresolver.vercel.app").toString(),
-      endpoint
-    );
     const traffic = classifyTraffic(req, { path: endpoint, isDiscovery: true });
     console.log(JSON.stringify({
       event: "paid_capability_discovery",
@@ -480,8 +488,7 @@ export function createDeterministicPaidRoute(
       x402DiscoveryChallenge(capabilityId, { endpoint }),
       capabilityId,
       requestId,
-      "POST",
-      resumeUrl
+      "POST"
     );
   }
 
