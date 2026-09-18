@@ -114,7 +114,8 @@ export function logPaidCapabilityAttempt(
     sponsorEligible: boolean;
     reason: string;
   },
-  requestId?: string
+  requestId?: string,
+  env: Readonly<Record<string, string | undefined>> = process.env
 ) {
   const paymentAttempt = paymentAttemptMetadata(req);
   console.log(JSON.stringify({
@@ -125,7 +126,7 @@ export function logPaidCapabilityAttempt(
     callerHash: callerHash(req),
     userAgent: safeUserAgent(req),
     referrerHost: referrerHost(req),
-    configuredPaymentRail: configuredPaymentRail(capabilityId),
+    configuredPaymentRail: configuredPaymentRail(capabilityId, env),
     hasPaymentSignature: paymentAttempt.hasPaymentSignature,
     hasLegacyXPayment: paymentAttempt.hasLegacyXPayment,
     paymentHeader: paymentAttempt.paymentHeader,

@@ -91,7 +91,7 @@ test("example configuration keeps CDP facilitator disabled", () => {
   assert.match(env, /^AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES=x402-ping$/m);
 });
 
-test("CDP support is opt-in, Base-only, and preserves PayAI for Solana", () => {
+test("CDP support is isolated, Base-only, and preserves PayAI as the route default", () => {
   const source = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
   const config = readFileSync("src/lib/x402Config.ts", "utf8");
 
@@ -99,8 +99,10 @@ test("CDP support is opt-in, Base-only, and preserves PayAI for Solana", () => {
   assert.match(source, /createCdpFacilitatorClient\(\{/);
   assert.match(source, /const cdpBaseFacilitator = cdpFacilitator/);
   assert.match(source, /supported\.kinds\.filter\(\(kind\) => kind\.network === X402_NETWORK\)/);
-  assert.match(source, /new x402ResourceServer\(\[cdpBaseFacilitator, standardFacilitator\]\)/);
-  assert.match(source, /solanaFacilitator: "payai"/);
+  assert.match(source, /basePaymentRailForRoute\(options\)/);
+  assert.match(source, /cdpOnly\s*\?\s*new x402ResourceServer\(cdpBaseFacilitator!\)/);
+  assert.match(source, /if \(!cdpOnly\) \{\s*server\.register\(X402_SOLANA_NETWORK/);
+  assert.match(source, /solanaFacilitator: cdpOnly \? null : "payai"/);
   assert.match(source, /AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires a CDP API key ID and API key secret/);
   assert.match(config, /https:\/\/facilitator\.payai\.network/);
 });
