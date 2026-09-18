@@ -150,15 +150,15 @@ export function x402ChallengeBuyerHandoff(
   const challengeMethod = normalizeX402ChallengeMethod(method);
   return {
     type: "agentresolver_x402_buyer_handoff",
+    version: 2,
     capabilityId,
     ...(challengeMethod ? { method: challengeMethod } : {}),
     setup: x402BuyerSetupChallengeUrl(capabilityId, challengeMethod, resumeUrl),
     protocol: "x402",
     retryHeader: "PAYMENT-SIGNATURE",
+    nextAction: "Fetch setup, authorize the exact returned requirement with caller policy, then retry the challenged request.",
     signerControlledByCaller: true,
-    spendAuthorizationRequired: true,
-    clientInstalls: X402_CHALLENGE_CLIENT_INSTALLS,
-    clientEntrypoints: X402_CHALLENGE_CLIENT_ENTRYPOINTS
+    spendAuthorizationRequired: true
   } as const;
 }
 
@@ -169,49 +169,13 @@ export function x402ChallengeHeaderHandoff(
 ) {
   const challengeMethod = normalizeX402ChallengeMethod(method);
   const info = {
-    version: 1,
+    version: 2,
     ...(challengeMethod ? { method: challengeMethod } : {}),
+    action: "fetch_setup_then_retry" as const,
     setup: x402BuyerSetupChallengeUrl(capabilityId, challengeMethod, resumeUrl),
-    paymentGuard: "https://agentresolver.vercel.app/api/payment-guard",
     retryHeader: "PAYMENT-SIGNATURE",
     signerControlledByCaller: true,
-    spendAuthorizationRequired: true,
-    clients: {
-      httpTs: {
-        install: X402_CHALLENGE_CLIENT_INSTALLS.httpTypescript,
-        package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpTypescript.package,
-        factory: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpTypescript.factory,
-        schemes: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpTypescript.schemes.map(
-          ({ network, package: schemePackage, clientClass }) => [network, schemePackage, clientClass]
-        )
-      },
-      mcpTs: {
-        install: X402_CHALLENGE_CLIENT_INSTALLS.mcpTypescript,
-        package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.package,
-        factory: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.factory,
-        approvalHook: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.approvalHook,
-        schemes: X402_CHALLENGE_CLIENT_ENTRYPOINTS.mcpTypescript.schemes.map(
-          ({ network, package: schemePackage, clientClass }) => [network, schemePackage, clientClass]
-        )
-      },
-      python: {
-        install: X402_CHALLENGE_CLIENT_INSTALLS.httpPython,
-        package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.package,
-        client: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.client,
-        clientFactory: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.clientFactory,
-        signerAdapterImport: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.signerAdapterImport,
-        exactEvmRegistrationImport: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.exactEvmRegistrationImport,
-        registration: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.registration,
-        network: X402_CHALLENGE_CLIENT_ENTRYPOINTS.httpPython.evmNetwork
-      },
-      walletMcp: {
-        install: X402_CHALLENGE_CLIENT_INSTALLS.walletMcp,
-        package: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.package,
-        command: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.command,
-        tools: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.tools,
-        network: X402_CHALLENGE_CLIENT_ENTRYPOINTS.walletMcp.defaultNetwork
-      }
-    }
+    spendAuthorizationRequired: true
   } as const;
 
   return {
@@ -221,22 +185,20 @@ export function x402ChallengeHeaderHandoff(
       additionalProperties: true,
       required: [
         "version",
+        "action",
         "setup",
-        "paymentGuard",
         "retryHeader",
         "signerControlledByCaller",
-        "spendAuthorizationRequired",
-        "clients"
+        "spendAuthorizationRequired"
       ],
       properties: {
-        version: { type: "integer", const: 1 },
+        version: { type: "integer", const: 2 },
         method: { type: "string", enum: ["GET", "POST", "HEAD"] },
+        action: { type: "string", const: "fetch_setup_then_retry" },
         setup: { type: "string" },
-        paymentGuard: { type: "string" },
         retryHeader: { type: "string", const: "PAYMENT-SIGNATURE" },
         signerControlledByCaller: { type: "boolean", const: true },
-        spendAuthorizationRequired: { type: "boolean", const: true },
-        clients: { type: "object" }
+        spendAuthorizationRequired: { type: "boolean", const: true }
       }
     }
   } as const;
