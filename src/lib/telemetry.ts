@@ -75,6 +75,36 @@ export function referrerHost(req: Request): string | null {
   }
 }
 
+export function paymentAttemptMetadata(req: Request) {
+  const paymentSignature = req.headers.get("payment-signature");
+  const legacyXPayment = req.headers.get("x-payment");
+  const raw = paymentSignature || legacyXPayment;
+
+  let x402Version: number | null = null;
+  if (raw) {
+    try {
+      const normalized = raw.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+      const parsed = JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as Record<string, unknown>;
+      if (Number.isInteger(parsed?.x402Version)) x402Version = parsed.x402Version as number;
+    } catch {
+      x402Version = null;
+    }
+  }
+
+  return {
+    hasPaymentAttempt: Boolean(raw),
+    hasPaymentSignature: Boolean(paymentSignature),
+    hasLegacyXPayment: Boolean(legacyXPayment),
+    paymentHeader: paymentSignature
+      ? "payment-signature"
+      : legacyXPayment
+        ? "x-payment"
+        : null,
+    paymentX402Version: x402Version
+  } as const;
+}
+
 export function logPaidCapabilityAttempt(
   req: Request,
   capabilityId: string,
@@ -86,7 +116,7 @@ export function logPaidCapabilityAttempt(
   },
   requestId?: string
 ) {
-  const hasPaymentSignature = Boolean(req.headers.get("payment-signature"));
+  const paymentAttempt = paymentAttemptMetadata(req);
   console.log(JSON.stringify({
     event: "paid_capability_attempt",
     at: new Date().toISOString(),
@@ -96,8 +126,11 @@ export function logPaidCapabilityAttempt(
     userAgent: safeUserAgent(req),
     referrerHost: referrerHost(req),
     configuredPaymentRail: configuredPaymentRail(capabilityId),
-    hasPaymentSignature,
-    phase: hasPaymentSignature ? "paid_retry" : "challenge_request",
+    hasPaymentSignature: paymentAttempt.hasPaymentSignature,
+    hasLegacyXPayment: paymentAttempt.hasLegacyXPayment,
+    paymentHeader: paymentAttempt.paymentHeader,
+    paymentX402Version: paymentAttempt.paymentX402Version,
+    phase: paymentAttempt.hasPaymentAttempt ? "paid_retry" : "challenge_request",
     ...(traffic ? {
       trafficClass: traffic.trafficClass,
       external: traffic.external,
@@ -208,7 +241,8 @@ export async function logPaidRetryRejection(
   requestId?: string,
   env: Readonly<Record<string, string | undefined>> = process.env
 ) {
-  if (!req.headers.get("payment-signature") || response.status < 400) return;
+  const paymentAttempt = paymentAttemptMetadata(req);
+  if (!paymentAttempt.hasPaymentAttempt || response.status < 400) return;
   const failure = await extractX402FailureReason(response);
   const receipt = parseX402SettlementHeader(response.headers.get("payment-response"));
   console.log(JSON.stringify({
@@ -218,6 +252,8 @@ export async function logPaidRetryRejection(
     requestId: requestId || null,
     configuredPaymentRail: configuredPaymentRail(capabilityId, env, receipt?.network ?? null),
     responseStatus: response.status,
+    paymentHeader: paymentAttempt.paymentHeader,
+    paymentX402Version: paymentAttempt.paymentX402Version,
     reason: failure.reason,
     reasonSource: failure.source
   }));
