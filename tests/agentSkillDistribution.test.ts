@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import assert from "node:assert/strict";\nimport { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -44,4 +44,36 @@ test("installable Guard skill documents the Coinbase AgentKit confirmation-first
   assert.match(installable, /Do not enable dynamic registration merely to bypass the service allowlist/i);
   assert.match(installable, /do not use `make_http_request_with_x402` on an unfamiliar target/i);
   assert.match(published, /## Coinbase AgentKit/);
+});
+
+
+test("installable Guard skill carries the executable MCP pre-sign gate", () => {
+  assert.match(installable, /## MCP wallet-capable clients — fail-closed pre-sign gate/);
+  assert.match(installable, /onPaymentRequested/);
+  assert.match(installable, /hostAllowsGuardSpend/);
+  assert.match(installable, /mcp:\/\/tool\/payment_guard/);
+  assert.match(installable, /mcp:\/\/tool\/x402_payment_preflight/);
+  assert.match(installable, /expectedResource/);
+  assert.match(installable, /context\.paymentRequired\.x402Version !== 2/);
+  assert.match(installable, /requirement\.amount === "1000"/);
+  assert.match(installable, /requirement\.asset === expected\.asset/);
+  assert.match(installable, /requirement\.payTo === expected\.payTo/);
+  assert.match(installable, /Solana Base58 identifiers are case-sensitive/i);
+  assert.doesNotMatch(installable, /requirement\.payTo\.toLowerCase/);
+  assert.match(installable, /paymentRequirementsSelector/);
+  assert.match(installable, /on_before_payment_creation/);
+});
+
+
+test("well-known skill discovery bytes stay synchronized with the canonical installable skill", () => {
+  const discovered = readFileSync(
+    "public/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md",
+    "utf8"
+  );
+  const index = JSON.parse(readFileSync("public/.well-known/agent-skills/index.json", "utf8"));
+  const digest = "sha256:" + createHash("sha256").update(discovered).digest("hex");
+
+  assert.equal(discovered, installable);
+  assert.equal(index.skills[0].name, "agentresolver-payment-guard");
+  assert.equal(index.skills[0].digest, digest);
 });
