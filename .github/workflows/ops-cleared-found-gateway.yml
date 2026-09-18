@@ -1,0 +1,65 @@
+name: Ops Cleared Found Gateway Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ops-cleared-found-gateway.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      ORIGIN: https://agentresolver.vercel.app
+    steps:
+      - name: Check Cleared trust record
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             'https://clearedindex.com/api/cleared/check'             --data-urlencode "origin=$ORIGIN")"
+          echo "CLEARED_CHECK_HTTP=$code"
+          cat "$body"
+          echo
+          case "$code" in
+            200|404) ;;
+            *) exit 1 ;;
+          esac
+
+      - name: Search public Cleared index exports
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in cleared.json cleared.txt; do
+            body="$(mktemp)"
+            code="$(curl -sS -o "$body" -w '%{http_code}' "https://clearedindex.com/$path")"
+            echo "=== $path HTTP=$code ==="
+            if [ "$code" = "200" ]; then
+              if grep -i -C 3 -E 'agentresolver|agentresolver\.vercel\.app' "$body"; then
+                echo "CLEARED_EXPORT_MATCH=true path=$path"
+              else
+                echo "CLEARED_EXPORT_MATCH=false path=$path"
+              fi
+            else
+              head -c 2000 "$body" || true
+              echo
+            fi
+          done
+
+      - name: Query one free Gateway route without paying
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}'             -X POST 'https://clearedindex.com/api/cleared/gateway'             -H 'content-type: application/json'             --data '{"category":"tools","strategy":"best_score","preferNetwork":"base","minScore":0}')"
+          echo "CLEARED_GATEWAY_HTTP=$code"
+          cat "$body"
+          echo
+          case "$code" in
+            200|400|404|429) ;;
+            *) exit 1 ;;
+          esac
