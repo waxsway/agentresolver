@@ -36,6 +36,8 @@ export function GET() {
       paymentRails: {
         default: "payai",
         x402Ping: cdpFacilitatorEnabledForX402Ping ? "coinbase-cdp" : "payai",
+        x402PingBase: cdpFacilitatorEnabledForX402Ping ? "coinbase-cdp" : "payai",
+        x402PingSolana: "payai",
         cdpFacilitatorEnabledForX402Ping,
         circleGatewayEnabled
       }

@@ -29,6 +29,8 @@ test("CDP activation only mutates scoped non-secret flags and never enables Circ
   assert.match(workflow, /"key": "AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES"/);
   assert.match(workflow, /"value": "x402-ping"/);
   assert.match(workflow, /Circle Gateway is enabled in canonical production\. Refusing CDP activation/);
+  assert.match(workflow, /\.paymentRails\.x402PingBase == "coinbase-cdp"/);
+  assert.match(workflow, /\.paymentRails\.x402PingSolana == "payai"/);
   assert.doesNotMatch(workflow, /"key": "AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED"/);
   assert.doesNotMatch(workflow, /"key": "CDP_API_KEY_ID"|"key": "CDP_API_KEY_SECRET"/);
 });
@@ -50,6 +52,8 @@ test("public health reports configured rail state without exposing credentials",
   assert.match(health, /paymentRails:/);
   assert.match(health, /default: "payai"/);
   assert.match(health, /x402Ping: cdpFacilitatorEnabledForX402Ping \? "coinbase-cdp" : "payai"/);
+  assert.match(health, /x402PingBase: cdpFacilitatorEnabledForX402Ping \? "coinbase-cdp" : "payai"/);
+  assert.match(health, /x402PingSolana: "payai"/);
   assert.match(health, /circleGatewayEnabled/);
   assert.doesNotMatch(health, /CDP_API_KEY_SECRET|CDP_API_KEY_ID/);
 });

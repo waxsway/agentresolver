@@ -23,10 +23,10 @@ export const AGENTRESOLVER_TRUST_CONTRACT = {
     cdpFacilitator: {
       enabled: process.env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1",
       defaultEnabled: false,
-      scope: "Selected AgentResolver-owned service payments only; default activation scope is x402-ping",
+      scope: "Selected AgentResolver-owned service payments only; initial activation scope is Base settlement for x402-ping while Solana remains on PayAI",
       buyerAuthorizationRequired: true,
       holdsBuyerFunds: false,
-      note: "Optional Coinbase CDP settlement path for Bazaar indexing. Requires explicit production approval and CDP API credentials; existing payTo addresses remain unchanged."
+      note: "Optional Coinbase CDP Base settlement path for Bazaar indexing. Requires explicit production approval and CDP API credentials; existing payTo addresses remain unchanged and x402-ping Solana remains on PayAI."
     },
     circleGatewayNanopayments: {
       enabled: process.env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1",

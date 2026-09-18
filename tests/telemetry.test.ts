@@ -39,6 +39,12 @@ test("configured payment rail keeps CDP bounded to its capability scope", () => 
     AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1",
     AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES: "x402-ping,x402-payment-preflight"
   }), "coinbase-cdp");
+  assert.equal(configuredPaymentRail("x402-ping", {
+    AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1"
+  }, "eip155:8453"), "coinbase-cdp");
+  assert.equal(configuredPaymentRail("x402-ping", {
+    AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1"
+  }, "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"), "payai");
 });
 
 test("configured payment rail reports additive Circle configuration without hiding CDP", () => {
@@ -206,4 +212,39 @@ test("successful settlement telemetry exposes public transaction reference but n
   assert.equal(event.transactionFingerprint, shortHash(transaction));
   assert.equal(event.payerHash, shortHash(payer));
   assert.equal(output.includes(payer), false);
+});
+
+
+test("Solana settlement telemetry stays attributed to PayAI during scoped CDP canary", () => {
+  const transaction = "solana-test-signature";
+  const encoded = Buffer.from(JSON.stringify({
+    success: true,
+    transaction,
+    network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    payer: "ExampleSolanaPayer11111111111111111111111111111",
+    amount: "1000"
+  }), "utf8").toString("base64");
+
+  const response = new Response("{}", {
+    status: 200,
+    headers: { "payment-response": encoded }
+  });
+
+  const original = console.log;
+  let output = "";
+  console.log = (...args: unknown[]) => {
+    output += args.map(String).join(" ");
+  };
+  try {
+    logX402Settlement(response, "x402-ping", "solana-request", {
+      AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "1",
+      AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES: "x402-ping"
+    });
+  } finally {
+    console.log = original;
+  }
+
+  const event = JSON.parse(output);
+  assert.equal(event.network, "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp");
+  assert.equal(event.configuredPaymentRail, "payai");
 });
