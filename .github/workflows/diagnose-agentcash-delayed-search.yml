@@ -1,0 +1,43 @@
+name: Diagnose AgentCash Delayed Search
+
+on:
+  push:
+    branches:
+      - diagnostic/payai-bazaar-status-20260918
+    paths:
+      - ".github/workflows/diagnose-agentcash-delayed-search.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Search AgentCash after index propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME"
+          queries=(
+            'AgentResolver'
+            'x402 payment preflight'
+            'provider launch check'
+            'verify endpoint before paying'
+          )
+          for q in "${queries[@]}"; do
+            echo "=== QUERY $q ==="
+            out="$(mktemp)"
+            npx -y agentcash@0.17.1 search "$q" --format json > "$out"
+            jq --arg q "$q" '{
+              query:$q,
+              totalResults:.data.results.totalResults,
+              agentresolver:[(.data.results.results // [])[] | select((.origin // "") | contains("agentresolver.vercel.app")) | {
+                origin,path,summary,score,resourceTransactions,originTransactions
+              }],
+              top5:[(.data.results.results // [])[:5][] | {
+                origin,path,summary,score,resourceTransactions,originTransactions
+              }]
+            }' "$out"
+          done
