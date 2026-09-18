@@ -8,7 +8,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.equal(openapi.openapi, "3.1.0");
   assert.match(openapi.info?.["x-guidance"] || "", /free capability discovery/i);
   assert.match(openapi.info?.["x-guidance"] || "", /GET \/api\/x402-ping/i);
-  assert.match(openapi.info?.["x-guidance"] || "", /POST \/api\/x402-payment-preflight/i);
+  assert.match(openapi.info?.["x-guidance"] || "", /GET \/api\/x402-payment-preflight/i);
   assert.match(openapi.info?.title || "", /settlement canary/i);
 
   const canary = openapi.paths?.["/api/x402-ping"]?.get;
@@ -43,7 +43,26 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     .map((item: any) => item?.post)
     .filter((op: any) => op?.tags?.includes("Paid Agent Capabilities"));
 
-  assert.ok(paid.length >= 10);
+  assert.equal(paid.length, 10);
+  assert.deepEqual(
+    Object.keys(openapi.paths || {}).sort(),
+    [
+      "/api/api-trust-security-preflight",
+      "/api/batch-verified-resolve",
+      "/api/health",
+      "/api/payment-guard",
+      "/api/prepayment-authorization-gate",
+      "/api/resolve",
+      "/api/usdc-payment-check",
+      "/api/verified-resolve",
+      "/api/x402-payment-preflight",
+      "/api/x402-ping",
+      "/api/x402-preflight",
+      "/api/x402-transaction-path-payment-gate"
+    ].sort()
+  );
+  assert.equal(openapi.paths?.["/api/sha256"], undefined);
+  assert.ok(openapi.paths?.["/api/usdc-payment-check"]?.post);
   for (const op of paid as any[]) {
     const info = op["x-payment-info"];
     assert.equal(info?.price?.mode, "fixed");
@@ -53,4 +72,58 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     assert.equal(info?.protocol, "x402");
     assert.equal(typeof info?.priceUsd, "number");
   }
+});
+
+
+test("public discovery stays focused on the settlement-to-Guard revenue funnel", () => {
+  const manifest = JSON.parse(readFileSync("public/.well-known/x402", "utf8"));
+  const capabilities = JSON.parse(readFileSync("public/capabilities.json", "utf8"));
+  const integrations = JSON.parse(readFileSync("public/integrations.json", "utf8"));
+
+  const paidIds = new Set([
+    "x402-ping",
+    "x402-payment-preflight",
+    "verified-resolve",
+    "batch-verified-resolve"
+  ]);
+  const intentAliasIds = new Set([
+    "usdc-payment-check",
+    "x402-preflight",
+    "prepayment-authorization-gate",
+    "api-trust-security-preflight",
+    "x402-transaction-path-payment-gate"
+  ]);
+  const publicServiceIds = new Set([...paidIds, ...intentAliasIds]);
+  const publicResourcePaths = new Set([
+    "/api/x402-ping",
+    "/api/x402-payment-preflight",
+    "/api/verified-resolve",
+    "/api/batch-verified-resolve",
+    "/api/usdc-payment-check",
+    "/api/x402-preflight",
+    "/api/prepayment-authorization-gate",
+    "/api/api-trust-security-preflight",
+    "/api/x402-transaction-path-payment-gate"
+  ]);
+
+  assert.deepEqual(
+    (manifest.services || []).map((item: any) => item.id).sort(),
+    [...publicServiceIds].sort()
+  );
+  assert.ok(
+    (manifest.resources || []).every((item: any) =>
+      [...publicResourcePaths].some((path) => String(item.resource || "").endsWith(path))
+    )
+  );
+
+  const publicPaidCapabilityIds = (capabilities.capabilities || [])
+    .filter((item: any) => Number(item.priceUsd) > 0)
+    .map((item: any) => item.id);
+  assert.deepEqual(publicPaidCapabilityIds.sort(), [...paidIds].sort());
+
+  const integrationIds = (integrations.paidActions || []).map((item: any) => item.id);
+  assert.deepEqual(integrationIds.sort(), [...paidIds].sort());
+
+  assert.match(manifest.instructions || "", /intentionally omitted from public machine catalogs/i);
+  assert.match(openapi.info?.description || "", /reduce unpaid crawler sweeps/i);
 });
