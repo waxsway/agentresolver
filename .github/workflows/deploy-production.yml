@@ -364,7 +364,7 @@ jobs:
           done
 
           if [ "$cdp_ready" != "1" ]; then
-            echo "::error::New production deployment did not preserve the isolated $0.002 Coinbase CDP canary contract."
+            echo "::error::New production deployment did not preserve the isolated 0.002 USDC Coinbase CDP canary contract."
             cat /tmp/cdp-canary.json 2>/dev/null || true
             cat /tmp/cdp-health.json 2>/dev/null || true
             exit 1
