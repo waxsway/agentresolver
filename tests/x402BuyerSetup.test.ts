@@ -117,7 +117,8 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.match(approvalExample, /requirement\.amount === "1000"/);
   assert.match(approvalExample, /requirement\.network === expected\.network/);
   assert.match(approvalExample, /requirement\.asset === expected\.asset/);
-  assert.match(approvalExample, /requirement\.payTo === expected\.payTo/);\n  assert.doesNotMatch(approvalExample, /toLowerCase/);
+  assert.match(approvalExample, /requirement\.payTo === expected\.payTo/);
+  assert.doesNotMatch(approvalExample, /toLowerCase/);
   assert.ok(
     setup.clients.mcp.behavior.some((step) => /onPaymentRequested/i.test(step))
   );
