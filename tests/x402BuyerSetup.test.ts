@@ -474,3 +474,33 @@ test("buyer handoff excludes legacy wallet MCP until x402 v2 exact retry support
   assert.equal(setup.clients.x402WalletMcp, undefined);
   assert.equal(setup.officialReferences.x402WalletMcp, undefined);
 });
+
+
+test("buyer setup exposes an OpenAI Agents SDK approval-gated x402 handoff", () => {
+  const setup = x402BuyerSetup();
+  const openai = setup.clients.openAiAgentsSdk;
+
+  assert.equal(openai.runtime, "OpenAI Agents SDK");
+  assert.equal(openai.javascript.package, "@openai/agents");
+  assert.equal(openai.javascript.functionToolApproval, "needsApproval");
+  assert.equal(openai.javascript.hostedMcpApproval.requireApproval, "always");
+  assert.equal(openai.javascript.hostedMcpApproval.callback, "onApproval");
+  assert.equal(openai.python.package, "openai-agents");
+  assert.equal(openai.python.functionToolApproval, "needs_approval");
+  assert.equal(openai.python.hostedMcpApproval.requireApproval, "always");
+  assert.equal(openai.python.hostedMcpApproval.callback, "on_approval_request");
+  assert.equal(openai.python.localMcpApproval, "require_approval");
+  assert.equal(openai.python.preApprovalToolGuardrails, "pre_approval_tool_input_guardrails");
+  assert.equal(openai.mcpUrl, "https://agentresolver.vercel.app/mcp");
+  assert.equal(openai.paymentGuardUrl, "https://agentresolver.vercel.app/api/payment-guard");
+  assert.equal(openai.paymentExecution.nativeX402Assumed, false);
+  assert.equal(openai.paymentExecution.retryHeader, "PAYMENT-SIGNATURE");
+  assert.match(openai.paymentExecution.transport, /caller-controlled x402-aware/i);
+  assert.match(openai.authorizationModel, /Do not treat hosted MCP approval as an x402 signer/i);
+  assert.match(openai.authorizationModel, /separate \$0\.001 AgentResolver Guard fee/i);
+  assert.ok(openai.behavior.some((step) => /second, independent approval/i.test(step)));
+  assert.ok(openai.behavior.some((step) => /Fail closed/i.test(step)));
+  assert.equal(setup.officialReferences.openAiAgentsJsMcp, "https://openai.github.io/openai-agents-js/guides/mcp/");
+  assert.equal(setup.officialReferences.openAiAgentsPythonMcp, "https://openai.github.io/openai-agents-python/mcp/");
+  assert.doesNotMatch(JSON.stringify(openai), /0x[a-fA-F0-9]{64}|seed phrase|wallet secret value/i);
+});
