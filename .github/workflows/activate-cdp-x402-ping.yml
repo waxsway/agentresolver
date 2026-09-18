@@ -24,8 +24,6 @@ jobs:
       VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
       VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
-      CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
     steps:
       - name: Checkout current main
         uses: actions/checkout@v5
@@ -33,26 +31,56 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Check credential activation gate
+      - name: Check Vercel production credential gate
         id: credentials
         shell: bash
         run: |
           set -euo pipefail
-
-          if [ -z "${CDP_API_KEY_ID:-}" ] || [ -z "${CDP_API_KEY_SECRET:-}" ]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Coinbase CDP credentials are not configured. CDP remains disabled."
-            exit 0
-          fi
 
           if [ -z "${VERCEL_TOKEN:-}" ]; then
             echo "::error::VERCEL_TOKEN is required before CDP can be activated."
             exit 1
           fi
 
-          echo "::add-mask::$CDP_API_KEY_ID"
-          echo "::add-mask::$CDP_API_KEY_SECRET"
-          echo "ready=true" >> "$GITHUB_OUTPUT"
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          chmod 600 "$response_file"
+
+          status="$(curl -sS             --connect-timeout 10             --max-time 30             -o "$response_file"             -w '%{http_code}'             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN")"
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Unable to inspect Vercel production environment metadata (HTTP $status)."
+            exit 1
+          fi
+
+          ready="$(python3 - "$response_file" <<'PY'
+          import json
+          import sys
+
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          envs = payload.get("envs", []) if isinstance(payload, dict) else []
+
+          required = {"CDP_API_KEY_ID", "CDP_API_KEY_SECRET"}
+          production_keys = set()
+          for item in envs:
+              if not isinstance(item, dict):
+                  continue
+              target = item.get("target") or []
+              if isinstance(target, str):
+                  target = [target]
+              if "production" in target and isinstance(item.get("key"), str):
+                  production_keys.add(item["key"])
+
+          print("true" if required.issubset(production_keys) else "false")
+          PY
+          )"
+
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          if [ "$ready" != "true" ]; then
+            echo "::notice::Coinbase CDP credentials are not present in the Vercel production environment. CDP remains disabled."
+          else
+            echo "Both Coinbase CDP credential keys are present in Vercel production; activation may proceed."
+          fi
 
       - name: Inspect canonical production rail state
         if: steps.credentials.outputs.ready == 'true'
@@ -75,7 +103,7 @@ jobs:
             echo "Canonical production already reports Coinbase CDP for x402-ping."
           else
             echo "active=false" >> "$GITHUB_OUTPUT"
-            echo "Coinbase CDP is credential-ready but not active on canonical x402-ping yet."
+            echo "Coinbase CDP credentials exist, but the rail is not active on canonical x402-ping yet."
           fi
 
       - name: Capture validated main SHA
@@ -89,7 +117,7 @@ jobs:
           echo "sha=$validated_sha" >> "$GITHUB_OUTPUT"
           echo "validated_sha=$validated_sha"
 
-      - name: Upsert scoped CDP production environment
+      - name: Enable scoped CDP production flags
         if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
         shell: bash
         run: |
@@ -101,30 +129,15 @@ jobs:
 
           python3 - "$request_file" <<'PY'
           import json
-          import os
           import sys
 
           payload = [
-              {
-                  "key": "CDP_API_KEY_ID",
-                  "value": os.environ["CDP_API_KEY_ID"],
-                  "type": "sensitive",
-                  "target": ["production"],
-                  "comment": "AgentResolver Coinbase CDP facilitator authentication",
-              },
-              {
-                  "key": "CDP_API_KEY_SECRET",
-                  "value": os.environ["CDP_API_KEY_SECRET"],
-                  "type": "sensitive",
-                  "target": ["production"],
-                  "comment": "AgentResolver Coinbase CDP facilitator authentication",
-              },
               {
                   "key": "AGENTRESOLVER_CDP_FACILITATOR_ENABLED",
                   "value": "1",
                   "type": "plain",
                   "target": ["production"],
-                  "comment": "Enable Coinbase CDP only through explicit credential-gated activation",
+                  "comment": "Enable Coinbase CDP only through credential-gated activation",
               },
               {
                   "key": "AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES",
@@ -141,7 +154,7 @@ jobs:
           status="$(curl -sS             --connect-timeout 10             --max-time 30             -o "$response_file"             -w '%{http_code}'             -X POST             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true&teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN"             -H 'Content-Type: application/json'             --data-binary @"$request_file")"
 
           if [ "$status" != "200" ] && [ "$status" != "201" ]; then
-            echo "::error::Vercel rejected the CDP environment upsert with HTTP $status."
+            echo "::error::Vercel rejected the scoped CDP flag update with HTTP $status."
             exit 1
           fi
 
@@ -152,10 +165,10 @@ jobs:
           payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
           failed = payload.get("failed", []) if isinstance(payload, dict) else []
           if failed:
-              raise SystemExit("Vercel reported one or more failed CDP environment updates.")
+              raise SystemExit("Vercel reported one or more failed CDP flag updates.")
           PY
 
-          echo "Coinbase CDP production configuration was written without exposing credential values."
+          echo "Scoped Coinbase CDP production flags were enabled without reading or copying credential values."
 
       - name: Setup Node
         if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
