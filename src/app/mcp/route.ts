@@ -15,6 +15,7 @@ import { normalizeJson, validateJsonSchema, parseUrl, generateUuidV4, slugify } 
 import { convertEvmUnits, ethereumKeccak256, evmAddressChecksum, soliditySelector } from "@/lib/evmPrecision";
 import { eip712TypedDataHash, ensNamehash, ethereumAbiDecode, ethereumAbiEncode } from "@/lib/evmAdvanced";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
+import { X402_PING_NEXT_ACTIONS } from "@/lib/x402PingDiscovery";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 import { classifyTraffic } from "@/lib/trafficClassification";
 import {
@@ -70,6 +71,52 @@ const readinessProduct = getPaidCapability("agent-readiness");
 const openApiSelectProduct = getPaidCapability("openapi-select");
 const verifiedResolveProduct = getPaidCapability("verified-resolve");
 const batchVerifiedResolveProduct = getPaidCapability("batch-verified-resolve");
+const x402PingMcpOutputSchema = z.object({
+  pong: z.literal(true),
+  settledDelivery: z.literal(true),
+  at: z.string(),
+  unixMs: z.number().int().nonnegative(),
+  requestId: z.string().uuid(),
+  echo: z.string().max(256).nullable(),
+  next: z.object({
+    catalogUrl: z.string().url(),
+    recommended: z.object({
+      capabilityId: z.string(),
+      endpoint: z.string().url(),
+      method: z.literal("GET"),
+      priceUsd: z.number().nonnegative(),
+      useWhen: z.string(),
+      inputExample: z.record(z.string(), z.unknown()),
+      reason: z.string(),
+      repeatUse: z.string(),
+      paymentAuthorization: z.literal("separate_caller_authorization_required")
+    }),
+    preflight: z.object({
+      capabilityId: z.string(),
+      endpoint: z.string().url(),
+      method: z.literal("GET"),
+      priceUsd: z.number().nonnegative(),
+      useWhen: z.string(),
+      inputExample: z.record(z.string(), z.unknown())
+    }),
+    single: z.object({
+      capabilityId: z.string(),
+      endpoint: z.string().url(),
+      method: z.literal("POST"),
+      priceUsd: z.number().nonnegative(),
+      useWhen: z.string(),
+      inputExample: z.record(z.string(), z.unknown())
+    }),
+    batch: z.object({
+      capabilityId: z.string(),
+      endpoint: z.string().url(),
+      method: z.literal("POST"),
+      priceUsd: z.number().nonnegative(),
+      useWhen: z.string(),
+      inputExample: z.record(z.string(), z.unknown())
+    })
+  })
+});
 function formatUsd(value: number) { return value < 0.01 ? value.toFixed(3) : value.toFixed(2); }
 function logToolCall(tool: string, extra: Record<string, unknown> = {}) { console.log(JSON.stringify({ event: "mcp_tool_call", tool, at: new Date().toISOString(), ...extra })); }
 async function logMcpRequest(req: Request) {
@@ -344,9 +391,18 @@ const handler = createMcpHandler(() => {
   server.registerTool("x402_ping", {
     title: x402PingProduct.quoteTool.title, description: x402PingProduct.quoteTool.description,
     inputSchema: z.object({ echo: z.string().max(256).optional() }),
+    outputSchema: x402PingMcpOutputSchema,
     annotations: { title: x402PingProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false }
   }, createLazyPaidMcpTool<{ echo?: string }>("x402-ping", async ({ echo }) =>
-    simplePaidResult("x402-ping", "x402_ping", { pong: true, settledDelivery: true, at: new Date().toISOString(), unixMs: Date.now(), requestId: generateUuidV4(1).values[0], echo: echo || null })
+    simplePaidResult("x402-ping", "x402_ping", {
+      pong: true,
+      settledDelivery: true,
+      at: new Date().toISOString(),
+      unixMs: Date.now(),
+      requestId: generateUuidV4(1).values[0],
+      echo: echo || null,
+      next: X402_PING_NEXT_ACTIONS
+    })
   ));
 
   server.registerTool("sha256", {
