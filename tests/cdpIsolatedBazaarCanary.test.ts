@@ -52,14 +52,17 @@ test("CDP canary source is Base-only and has no PayAI fallback", () => {
   const route = readFileSync("src/app/api/x402-cdp-canary/route.ts", "utf8");
 
   assert.match(route, /endpoint:\s*"\/api\/x402-cdp-canary"/);
+  assert.match(route, /priceOverride:\s*"\$0\.002"/);
   assert.match(route, /basePaymentRail:\s*"coinbase-cdp"/);
+  assert.match(factory, /const routePrice = options\.priceOverride\?\.trim\(\) \|\| product\.price/);
   assert.match(factory, /cdpOnly\s*\?\s*new x402ResourceServer\(cdpBaseFacilitator!\)/);
   assert.match(factory, /if \(!cdpOnly\) \{\s*server\.register\(X402_SOLANA_NETWORK/);
   assert.match(factory, /\.\.\.\(!cdpOnly \? \[\{/);
   assert.match(factory, /CDP-only route requires AGENTRESOLVER_CDP_FACILITATOR_ENABLED=1/);
 });
 
-test("canonical x402-ping route does not opt into Coinbase CDP", () => {
+test("canonical x402-ping remains $0.001 on PayAI", () => {
   const route = readFileSync("src/app/api/x402-ping/route.ts", "utf8");
   assert.doesNotMatch(route, /basePaymentRail:\s*"coinbase-cdp"/);
+  assert.doesNotMatch(route, /priceOverride:/);
 });

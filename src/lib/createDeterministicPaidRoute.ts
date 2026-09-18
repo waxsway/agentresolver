@@ -277,6 +277,11 @@ export type DeterministicPaidRouteOptions = Readonly<{
   paidGet?: boolean;
   endpoint?: string;
   /**
+   * Optional route-local x402 price override. Use only when a facilitator has
+   * a stricter minimum than the canonical capability price.
+   */
+  priceOverride?: string;
+  /**
    * Route-local Base payment rail. Defaults to PayAI so enabling CDP globally
    * cannot silently move existing revenue routes onto a different facilitator.
    * "coinbase-cdp" is intentionally Base-only and has no PayAI fallback.
@@ -534,16 +539,17 @@ export function createDeterministicPaidRoute(
           output: discoveryOutput
         });
 
+    const routePrice = options.priceOverride?.trim() || product.price;
     const accepts = [
       {
         scheme: "exact" as const,
-        price: product.price,
+        price: routePrice,
         network: X402_NETWORK,
         payTo: payTo as `0x${string}`
       },
       ...(!cdpOnly ? [{
         scheme: "exact" as const,
-        price: product.price,
+        price: routePrice,
         network: X402_SOLANA_NETWORK,
         payTo: solanaPayTo
       }] : [])
