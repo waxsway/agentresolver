@@ -92,7 +92,7 @@ export function x402DiscoveryChallenge(
     headers: {
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
-      "access-control-expose-headers": "payment-required",
+      "access-control-expose-headers": "payment-required, link",
       "payment-required": encoded
     }
   });
