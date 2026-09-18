@@ -86,7 +86,9 @@ export function x402DiscoveryChallenge(
   return NextResponse.json(body, {
     status: 402,
     headers: {
-      "cache-control": "no-store",
+      "cache-control": "public, max-age=0, must-revalidate",
+      "cdn-cache-control": "public, max-age=30",
+      "vercel-cdn-cache-control": "public, max-age=30",
       "access-control-allow-origin": "*",
       "access-control-expose-headers": "payment-required",
       "payment-required": encoded
