@@ -23,24 +23,10 @@ test("x402-ping PAYMENT-REQUIRED stays within an interoperability-friendly heade
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.pong, true);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.settledDelivery, true);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.next, undefined);
-  assert.equal(decoded.extensions?.agentresolver?.info?.version, 2);
-  assert.equal(decoded.extensions?.agentresolver?.info?.method, "GET");
+  assert.equal(decoded.extensions?.agentresolver, undefined);
   assert.equal(
-    decoded.extensions?.agentresolver?.info?.setup,
+    response.headers.get("x-agentresolver-buyer-setup"),
     "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
-  );
-  assert.equal(decoded.extensions?.agentresolver?.info?.action, "fetch_setup_then_retry");
-  assert.equal(decoded.extensions?.agentresolver?.info?.retryHeader, "PAYMENT-SIGNATURE");
-  assert.equal(decoded.extensions?.agentresolver?.info?.signerControlledByCaller, true);
-  assert.equal(decoded.extensions?.agentresolver?.info?.spendAuthorizationRequired, true);
-  assert.equal(decoded.extensions?.agentresolver?.schema?.type, "object");
-  assert.ok(decoded.extensions?.agentresolver?.schema?.required?.includes("action"));
-  assert.equal(decoded.extensions?.agentresolver?.schema?.required?.includes("clients"), false);
-  assert.equal(decoded.extensions?.agentresolver?.info?.clients, undefined);
-  assert.ok(JSON.stringify(decoded.extensions?.agentresolver).length < 1200);
-  assert.doesNotMatch(
-    JSON.stringify(decoded.extensions?.agentresolver),
-    /PRIVATE_KEY|seed phrase|0xYourPrivateKey/i
   );
 });
 
