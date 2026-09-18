@@ -9,18 +9,21 @@ test("true402 manifest publishes the input-free $0.001 Base settlement canary", 
   assert.equal(manifest.x402, "1.0");
   assert.equal(manifest.endpoint, "https://agentresolver.vercel.app/api/x402-ping");
   assert.equal(manifest.pricing?.currency, "USDC");
-  assert.equal(manifest.pricing?.base, 0.001);
+  assert.equal(String(manifest.pricing?.base), "0.001");
   assert.equal(manifest.pricing?.unit, "request");
   assert.equal(manifest.payment?.address, "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8");
   assert.equal(manifest.payment?.chain, "base");
   assert.equal(manifest.payment?.facilitator, "https://facilitator.payai.network");
-  assert.ok(manifest.capabilities?.includes("payment-verification"));
+  assert.ok(manifest.capabilities?.includes("verification"));
 });
 
-test("true402 registration is zero-spend, anonymous, and deploy-gated", () => {
+test("true402 registration is zero-spend, anonymous, and lands immediately", () => {
   assert.match(workflow, /https:\/\/true402\.dev\/api/);
   assert.match(workflow, /POST "\$TRUE402_API\/v1\/services"/);
   assert.match(workflow, /\{url:\$url\}/);
+  assert.match(workflow, /push:/);
+  assert.match(workflow, /branches: \[main\]/);
+  assert.match(workflow, /\.github\/workflows\/register-true402\.yml/);
   assert.match(workflow, /workflow_run:/);
   assert.match(workflow, /workflows: \["Deploy Production"\]/);
   assert.match(workflow, /x-agentresolver-internal: 1/);
