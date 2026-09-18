@@ -12,7 +12,7 @@ import { ATTRIBUTION_HEADER, attributionIdFromRequest, logAttributedSettlement }
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
-import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeUrl } from "@/lib/x402BuyerSetup";
+import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeUrl, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -54,6 +54,27 @@ function decodePaymentRequiredHeader(value: string | null): JsonObject | null {
   } catch {
     return null;
   }
+}
+
+function asJsonObject(value: unknown): JsonObject {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonObject
+    : {};
+}
+
+function withRequestAwareChallengeHandoff(
+  challenge: JsonObject,
+  capabilityId: PaidCapabilityId,
+  requestMethod?: string,
+  resumeUrl?: string | null
+): JsonObject {
+  return {
+    ...challenge,
+    extensions: {
+      ...asJsonObject(challenge.extensions),
+      agentresolver: x402ChallengeHeaderHandoff(capabilityId, requestMethod, resumeUrl)
+    }
+  };
 }
 
 function encodePaymentRequiredHeader(challenge: JsonObject) {
@@ -98,11 +119,30 @@ async function mirrorPaymentChallengeBody(
       ? current as JsonObject
       : headerChallenge;
 
+  const rewrittenHeaderChallenge =
+    capabilityId === "x402-payment-preflight"
+      ? headerChallenge
+      : withRequestAwareChallengeHandoff(
+          headerChallenge,
+          capabilityId,
+          requestMethod,
+          resumeUrl
+        );
+  const rewrittenBodyChallenge =
+    capabilityId === "x402-payment-preflight"
+      ? bodyChallenge
+      : withRequestAwareChallengeHandoff(
+          bodyChallenge,
+          capabilityId,
+          requestMethod,
+          resumeUrl
+        );
+
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
-  headers.set("payment-required", encodePaymentRequiredHeader(headerChallenge));
-  return new NextResponse(JSON.stringify(bodyChallenge), {
+  headers.set("payment-required", encodePaymentRequiredHeader(rewrittenHeaderChallenge));
+  return new NextResponse(JSON.stringify(rewrittenBodyChallenge), {
     status: 402,
     statusText: response.statusText,
     headers
@@ -443,7 +483,13 @@ export function createDeterministicPaidRoute(
         mimeType: "application/json",
         serviceName: bazaarProviderMetadata.serviceName,
         tags: [...bazaarProviderMetadata.tags],
-        extensions: discoveryExtension
+        extensions:
+          capabilityId === "x402-ping" || capabilityId === "x402-payment-preflight"
+            ? discoveryExtension
+            : {
+                ...discoveryExtension,
+                agentresolver: x402ChallengeHeaderHandoff(capabilityId)
+              }
       }
     }, server) as PaidHandler;
   }
