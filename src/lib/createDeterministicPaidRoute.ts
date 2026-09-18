@@ -84,7 +84,8 @@ async function mirrorPaymentChallengeBody(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
   requestMethod?: string,
-  resumeUrl?: string | null
+  resumeUrl?: string | null,
+  cacheUnsignedCanonicalGet = false
 ) {
   if (response.status !== 402) return response;
   const headerChallenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
@@ -121,7 +122,15 @@ async function mirrorPaymentChallengeBody(
 
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
-  headers.set("cache-control", "no-store");
+  if (cacheUnsignedCanonicalGet) {
+    headers.set("cache-control", "public, max-age=0, must-revalidate");
+    headers.set("cdn-cache-control", "public, max-age=30");
+    headers.set("vercel-cdn-cache-control", "public, max-age=30");
+  } else {
+    headers.set("cache-control", "no-store");
+    headers.delete("cdn-cache-control");
+    headers.delete("vercel-cdn-cache-control");
+  }
   headers.set("payment-required", encodePaymentRequiredHeader(rewrittenHeaderChallenge));
   const error = resumeUrl
     ? x402BuyerSetupChallengeError(capabilityId, requestMethod, resumeUrl)
@@ -505,12 +514,20 @@ export function createDeterministicPaidRoute(
         resumeUrl
       );
       await logPaidRetryRejection(req, response, capabilityId, requestId);
+      const cacheUnsignedCanonicalGet =
+        capabilityId === "x402-ping" &&
+        req.method.toUpperCase() === "GET" &&
+        !resumeUrl &&
+        !req.headers.get("payment-signature") &&
+        !req.headers.get("x-payment");
       const compatibleResponse = resumeUrl
-        ? await mirrorPaymentChallengeBody(response, capabilityId, req.method, resumeUrl)
+        ? await mirrorPaymentChallengeBody(response, capabilityId, req.method, resumeUrl, false)
         : await mirrorPaymentChallengeBody(
             response,
             capabilityId,
-            req.method
+            req.method,
+            null,
+            cacheUnsignedCanonicalGet
           );
       logX402Settlement(compatibleResponse, capabilityId, requestId);
       return compatibleResponse;
