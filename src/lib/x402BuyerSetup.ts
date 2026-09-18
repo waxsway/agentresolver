@@ -537,6 +537,38 @@ export function x402BuyerSetup() {
           "Do not use make_http_request_with_x402 on an unfamiliar target before Guard and caller authorization because it combines challenge handling and payment."
         ]
       },
+      openAiAgentsSdk: {
+        runtime: "OpenAI Agents SDK",
+        javascript: {
+          package: "@openai/agents",
+          functionToolApproval: "needsApproval",
+          hostedMcpApproval: { requireApproval: "always", callback: "onApproval" }
+        },
+        python: {
+          package: "openai-agents",
+          functionToolApproval: "needs_approval",
+          hostedMcpApproval: { requireApproval: "always", callback: "on_approval_request" },
+          localMcpApproval: "require_approval",
+          preApprovalToolGuardrails: "pre_approval_tool_input_guardrails"
+        },
+        mcpUrl: "https://agentresolver.vercel.app/mcp",
+        paymentGuardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+        paymentExecution: {
+          nativeX402Assumed: false,
+          transport: "caller-controlled x402-aware function tool or self-hosted MCP client",
+          retryHeader: "PAYMENT-SIGNATURE"
+        },
+        authorizationModel:
+          "Use OpenAI Agents SDK approval and guardrail primitives to gate the caller-controlled x402 execution tool. Do not treat hosted MCP approval as an x402 signer. The separate $0.001 AgentResolver Guard fee and the original target payment each require caller-owned authorization.",
+        behavior: [
+          "Expose AgentResolver discovery through MCP, but execute paid Guard requests through a caller-controlled x402-capable function tool or self-hosted MCP client that owns its signer.",
+          "Require needsApproval/needs_approval on the x402 execution tool, or requireApproval/require_approval on a compatible self-hosted MCP tool call, before any paid retry can execute.",
+          "Before approving the Guard tool, verify the exact $0.001 Guard requirement against caller policy and keep wallet credentials outside AgentResolver.",
+          "Require Guard decision === eligible and compare the observed target amount, asset, network, payTo, scheme and resource binding against caller policy.",
+          "Require a second, independent approval for the original target payment; never let Guard eligibility authorize the target spend.",
+          "Fail closed if the host cannot enforce approval before the caller-controlled x402 payment tool creates or sends PAYMENT-SIGNATURE."
+        ]
+      },
       vercelAiSdkMcp: {
         runtime: "Vercel AI SDK",
         package: "ai",
@@ -666,6 +698,10 @@ export function x402BuyerSetup() {
       protocol: "https://github.com/x402-foundation/x402",
       axios: "https://github.com/x402-foundation/x402/blob/main/typescript/packages/http/axios/README.md",
       coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md",
+      openAiAgentsJsMcp: "https://openai.github.io/openai-agents-js/guides/mcp/",
+      openAiAgentsJsTools: "https://openai.github.io/openai-agents-js/guides/tools/",
+      openAiAgentsPythonMcp: "https://openai.github.io/openai-agents-python/mcp/",
+      openAiAgentsPythonHitl: "https://openai.github.io/openai-agents-python/human_in_the_loop/",
       x402Trinity: "https://github.com/devmster/x402-trinity",
       vercelAiSdkX402Mcp: "https://vercel.com/blog/introducing-x402-mcp-open-protocol-payments-for-mcp-tools",
       cloudflareAgentsX402Mcp: "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md",
