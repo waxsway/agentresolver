@@ -16,9 +16,10 @@ concurrency:
 
 jobs:
   deploy:
-    # Re-armed only after the CDP readiness audit proved project Secret metadata
-    # exists and the live canary proves Vercel attaches those Secrets at runtime.
+    # Automatic production deployment is intentionally disabled after the one-shot
+    # CDP release attempt. Re-arm only for an explicitly justified runtime release.
     if: >-
+      false &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
