@@ -614,12 +614,12 @@ test("POST-only paid route discovery resumes through POST", async () => {
 
 
 test("x402 extension handoff preserves the payable method", () => {
-  const getHandoff = x402ChallengeHeaderHandoff("x402-ping", "GET");
+  const resumeUrl = "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check";
+  const getHandoff = x402ChallengeHeaderHandoff("x402-ping", "GET", resumeUrl);
   assert.equal(getHandoff.info.method, "GET");
-  assert.equal(
-    getHandoff.info.setup,
-    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
-  );
+  const getSetup = new URL(getHandoff.info.setup);
+  assert.equal(getSetup.searchParams.get("method"), "GET");
+  assert.equal(getSetup.searchParams.get("resumeUrl"), resumeUrl);
 
   const postHandoff = x402ChallengeHeaderHandoff("sha256", "POST");
   assert.equal(postHandoff.info.method, "POST");
