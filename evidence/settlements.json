@@ -143,11 +143,5 @@
     "The Git history is operated by the repository owner and is not immutable, but every published verified transaction reference can be rechecked independently on its network.",
     "A verified past settlement and successful delivery do not prove third-party provider legitimacy or guarantee future behavior or fulfillment.",
     "Older first-party entries lacking a public transaction reference, if any, remain visible as unverifiedLegacySettlementCount and never increase independently verified counts."
-  ],
-  "paymentRailProvenance": {
-    "field": "reportedPaymentRail",
-    "source": "AgentResolver runtime configuration telemetry attached to the settled request",
-    "independentlyVerified": false,
-    "interpretation": "reportedPaymentRail identifies the facilitator configuration AgentResolver reports as active for that request. Public-chain verification independently proves the USDC transfer and delivery evidence, but does not prove facilitator identity."
-  }
+  ]
 }
