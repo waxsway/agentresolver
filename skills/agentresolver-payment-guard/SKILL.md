@@ -60,6 +60,54 @@ AgentResolver supports its own service payment on:
 Register only payment schemes backed by the caller's own signer and enforce caller-owned limits before signing.
 
 
+## MCP wallet-capable clients — fail-closed pre-sign gate
+
+For `@x402/mcp`, use `onPaymentRequested` before the wallet creates a payment. The host must supply its own `hostAllowsGuardSpend(context)` policy check. Return `false` on every mismatch.
+
+```ts
+const guardToolResources = {
+  payment_guard: "mcp://tool/payment_guard",
+  x402_payment_preflight: "mcp://tool/x402_payment_preflight"
+};
+
+const allowedGuardRequirements = [
+  {
+    network: "eip155:8453",
+    asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+  },
+  {
+    network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+  }
+];
+
+const onPaymentRequested = async (context) => {
+  if (!(await hostAllowsGuardSpend(context))) return false;
+
+  const expectedResource = guardToolResources[context.toolName];
+  if (!expectedResource) return false;
+  if (context.paymentRequired.x402Version !== 2) return false;
+  if (context.paymentRequired.resource.url !== expectedResource) return false;
+
+  return context.paymentRequired.accepts.some((requirement) =>
+    requirement.scheme === "exact" &&
+    requirement.amount === "1000" &&
+    allowedGuardRequirements.some((expected) =>
+      requirement.network === expected.network &&
+      requirement.asset === expected.asset &&
+      requirement.payTo === expected.payTo
+    )
+  );
+};
+```
+
+Use exact string equality for network, asset, and `payTo`. Solana Base58 identifiers are case-sensitive and must never be normalized before comparison. This callback authorizes only the separate $0.001 AgentResolver Guard fee after the host policy has approved it; it does not authorize the target payment.
+
+For HTTP clients, the free buyer setup exposes equivalent pre-sign gates: `paymentRequirementsSelector` for `@x402/fetch` and `@x402/axios`, and client policies plus `on_before_payment_creation` / `AbortResult` for Python `x402HttpxClient`.
+
+
 ## Coinbase AgentKit
 
 For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead of writing a custom payment loop. AgentKit only allows HTTP x402 actions against registered services, and dynamic registration is disabled by default unless the host enables it.
