@@ -504,3 +504,35 @@ test("buyer setup exposes an OpenAI Agents SDK approval-gated x402 handoff", () 
   assert.equal(setup.officialReferences.openAiAgentsPythonMcp, "https://openai.github.io/openai-agents-python/mcp/");
   assert.doesNotMatch(JSON.stringify(openai), /0x[a-fA-F0-9]{64}|seed phrase|wallet secret value/i);
 });
+
+
+test("buyer setup preserves challenged purchase context and exposes one signed-retry canary", () => {
+  const setup = x402BuyerSetup({
+    source: "x402-challenge",
+    capabilityId: "x402-ping",
+    endpoint: "/api/x402-ping",
+    priceUsd: 0.001,
+    atomicAmount: "1000"
+  });
+
+  assert.deepEqual(setup.challengeContext, {
+    source: "x402-challenge",
+    capabilityId: "x402-ping",
+    resumeUrl: "https://agentresolver.vercel.app/api/x402-ping",
+    priceUsd: 0.001,
+    atomicAmount: "1000",
+    retryHeader: "PAYMENT-SIGNATURE",
+    nextAction:
+      "Configure a caller-controlled x402 client, re-request the same challenged capability, independently authorize the exact returned requirement, and let that client perform the PAYMENT-SIGNATURE retry."
+  });
+  assert.equal(setup.signedRetryCanary.capabilityId, "x402-ping");
+  assert.equal(setup.signedRetryCanary.url, "https://agentresolver.vercel.app/api/x402-ping");
+  assert.equal(setup.signedRetryCanary.method, "GET");
+  assert.equal(setup.signedRetryCanary.priceUsd, 0.001);
+  assert.equal(setup.signedRetryCanary.atomicAmount, "1000");
+  assert.match(setup.signedRetryCanary.authorization, /caller-owned spend policy/i);
+  assert.match(setup.signedRetryCanary.onSuccess, /next\.preflight/i);
+
+  const generic = x402BuyerSetup();
+  assert.equal(generic.challengeContext, null);
+});

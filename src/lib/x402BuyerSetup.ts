@@ -181,11 +181,49 @@ export type X402BuyerSetup = ReturnType<typeof x402BuyerSetup>;
  * stop after receiving an x402 challenge because their host has no signer/payment loop.
  * This payload never authorizes spending and never asks a caller to disclose secrets.
  */
-export function x402BuyerSetup() {
+export type X402BuyerSetupContext = {
+  source?: "x402-challenge" | null;
+  capabilityId?: string | null;
+  endpoint?: string | null;
+  priceUsd?: number | null;
+  atomicAmount?: string | null;
+};
+
+export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
+  const challengeContext =
+    context.source === "x402-challenge" && context.capabilityId
+      ? {
+          source: "x402-challenge" as const,
+          capabilityId: context.capabilityId,
+          resumeUrl: context.endpoint
+            ? `https://agentresolver.vercel.app${context.endpoint}`
+            : null,
+          priceUsd: context.priceUsd ?? null,
+          atomicAmount: context.atomicAmount ?? null,
+          retryHeader: "PAYMENT-SIGNATURE" as const,
+          nextAction:
+            "Configure a caller-controlled x402 client, re-request the same challenged capability, independently authorize the exact returned requirement, and let that client perform the PAYMENT-SIGNATURE retry."
+        }
+      : null;
+
   return {
     schemaVersion: 2,
     free: true,
     purpose: "Enable a caller-controlled x402 payment client after a standard MCP or HTTP client receives a 402 challenge.",
+    challengeContext,
+    signedRetryCanary: {
+      capabilityId: "x402-ping",
+      url: "https://agentresolver.vercel.app/api/x402-ping",
+      method: "GET",
+      priceUsd: 0.001,
+      atomicAmount: "1000",
+      purpose:
+        "Cheapest end-to-end AgentResolver test when the caller already has a funded x402 signer and wants to prove challenge -> authorized signature -> settlement -> fulfillment.",
+      authorization:
+        "Use only after caller-owned spend policy independently authorizes the exact $0.001 requirement. AgentResolver never authorizes or signs this spend.",
+      onSuccess:
+        "Follow the paid canary response's next.preflight handoff to x402-payment-preflight for repeat verify-before-pay use."
+    },
     agentResolver: {
       mcp: "https://agentresolver.vercel.app/mcp",
       paidManifest: "https://agentresolver.vercel.app/.well-known/x402",
