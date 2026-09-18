@@ -90,8 +90,7 @@ Resolution is free, read-only, and never authorizes spending.
 
 ## Higher-value paid actions
 
-- x402 Settlement Receipt Verify: GET https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=<hash> — $0.001 USDC.
-- MCP Live Preflight: POST https://agentresolver.vercel.app/api/mcp-probe — $0.001 USDC.
+- x402 Settlement Receipt Verify: GET https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=<hash> — $0.001 USDC.\n- MCP Live Preflight: POST https://agentresolver.vercel.app/api/mcp-probe — $0.001 USDC.
 - Agent Readiness Audit: POST https://agentresolver.vercel.app/api/agent-readiness — $0.005 USDC.
 - Verified Resolve: POST https://agentresolver.vercel.app/api/verified-resolve — $0.02 USDC.
 - Batch Verified Resolve: POST https://agentresolver.vercel.app/api/batch-verified-resolve — $0.05 USDC.
@@ -100,8 +99,7 @@ All paid actions disclose their x402 terms before payment. An unpaid request ret
 
 ## Machine discovery
 
-- Guard: https://agentresolver.vercel.app/api/payment-guard
-- Settlement receipt verify: https://agentresolver.vercel.app/api/x402-settlement-verify
+- Guard: https://agentresolver.vercel.app/api/payment-guard\n- Settlement receipt verify: https://agentresolver.vercel.app/api/x402-settlement-verify
 - Buyer setup: https://agentresolver.vercel.app/api/x402-client-setup
 - MCP: https://agentresolver.vercel.app/mcp
 - x402 manifest: https://agentresolver.vercel.app/.well-known/x402
