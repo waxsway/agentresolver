@@ -22,3 +22,14 @@ test("Market402 paid-probe submissions bind to the exact executable resource URL
   assert.match(workflow, /paid_probe_optin:true/);
   assert.doesNotMatch(workflow, /"sample_input"/);
 });
+
+
+test("Market402 self-tests and opts the settlement verifier into real paid probes", () => {
+  assert.match(workflow, /SETTLEMENT_VERIFY_URL: https:\/\/agentresolver\.vercel\.app\/api\/x402-settlement-verify\?txHash=/);
+  assert.match(workflow, /Free Market402 self-test for settlement verifier/);
+  assert.match(workflow, /--arg url "\$SETTLEMENT_VERIFY_URL"/);
+  assert.match(workflow, /Market402 settlement verifier verdict is/);
+  assert.match(workflow, /Submit settlement verifier and opt into real paid delivery probes/);
+  assert.match(workflow, /--arg resource "\$SETTLEMENT_VERIFY_URL"/);
+  assert.match(workflow, /agentresolver\.vercel\.app\/api\/x402-settlement-verify/);
+});
