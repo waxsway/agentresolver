@@ -43,7 +43,10 @@ export function x402BuyerSetup() {
       discoveryIndex: AGENT_SKILLS_INDEX_URL,
       url: PAYMENT_GUARD_SKILL_URL,
       installCommand:
+        "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard",
+      wellKnownInstallCommand:
         "npx skills add https://agentresolver.vercel.app --skill agentresolver-payment-guard",
+      repository: "waxsway/agentresolver",
       purpose:
         "Install the repeat-use Guard procedure into a compatible agent runtime so pre-payment verification becomes part of the buyer workflow."
     },
