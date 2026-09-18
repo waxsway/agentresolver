@@ -24,9 +24,10 @@ test("x402-ping PAYMENT-REQUIRED stays within an interoperability-friendly heade
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.settledDelivery, true);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.next, undefined);
   assert.equal(decoded.extensions?.agentresolver?.info?.version, 1);
+  assert.equal(decoded.extensions?.agentresolver?.info?.method, "GET");
   assert.equal(
     decoded.extensions?.agentresolver?.info?.setup,
-    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping"
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
   );
   assert.equal(
     decoded.extensions?.agentresolver?.info?.paymentGuard,
