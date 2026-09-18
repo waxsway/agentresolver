@@ -11,7 +11,7 @@ import { logPaidCapabilityAttempt, logPaidRetryRejection, logX402Settlement } fr
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
-import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, x402BuyerSetupChallengeError, x402BuyerSetupChallengeUrl, x402ChallengeBuyerHandoff, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
+import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, x402BuyerSetupChallengeError, x402BuyerSetupChallengeUrl, x402ChallengeBuyerHandoff, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -41,7 +41,8 @@ function decodePaymentRequiredHeader(value: string | null): JsonObject | null {
 async function mirrorPaymentChallengeBody(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
-  requestMethod?: string
+  requestMethod?: string,
+  resumeUrl?: string | null
 ) {
   if (response.status !== 402) return response;
   const headerChallenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
@@ -66,10 +67,16 @@ async function mirrorPaymentChallengeBody(
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
+  const error = resumeUrl
+    ? x402BuyerSetupChallengeError(capabilityId, requestMethod, resumeUrl)
+    : x402BuyerSetupChallengeError(capabilityId, requestMethod);
+  const buyerSetup = resumeUrl
+    ? x402ChallengeBuyerHandoff(capabilityId, requestMethod, resumeUrl)
+    : x402ChallengeBuyerHandoff(capabilityId, requestMethod);
   return new NextResponse(JSON.stringify({
     ...bodyChallenge,
-    error: x402BuyerSetupChallengeError(capabilityId, requestMethod),
-    buyerSetup: x402ChallengeBuyerHandoff(capabilityId, requestMethod)
+    error,
+    buyerSetup
   }), {
     status: 402,
     statusText: response.statusText,
@@ -115,16 +122,17 @@ function stampInfrastructureHeaders(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
   requestId: string,
-  requestMethod?: string
+  requestMethod?: string,
+  resumeUrl?: string | null
 ) {
   response.headers.set("access-control-allow-origin", "*");
   response.headers.set("x-agentresolver-capability", capabilityId);
   response.headers.set("x-agentresolver-request-id", requestId);
   response.headers.set("x-agentresolver-contract-version", "1");
-  response.headers.set(
-    "x-agentresolver-buyer-setup",
-    x402BuyerSetupChallengeUrl(capabilityId, requestMethod)
-  );
+  const buyerSetupUrl = resumeUrl
+    ? x402BuyerSetupChallengeUrl(capabilityId, requestMethod, resumeUrl)
+    : x402BuyerSetupChallengeUrl(capabilityId, requestMethod);
+  response.headers.set("x-agentresolver-buyer-setup", buyerSetupUrl);
   response.headers.set("x-agentresolver-agent-skills", AGENT_SKILLS_INDEX_URL);
   response.headers.set("x-agentresolver-payment-guard-skill", PAYMENT_GUARD_SKILL_URL);
   response.headers.set(
@@ -423,6 +431,12 @@ export function createDeterministicPaidRoute(
   async function runPaidRequest(req: NextRequest) {
     const requestId = randomUUID();
     const traffic = classifyTraffic(req, { path: endpoint });
+    const normalizedResumeUrl = normalizeX402ChallengeResumeUrl(req.url, endpoint);
+    const canonicalResumeUrl = new URL(endpoint, "https://agentresolver.vercel.app").toString();
+    const resumeUrl =
+      normalizedResumeUrl && normalizedResumeUrl !== canonicalResumeUrl
+        ? normalizedResumeUrl
+        : null;
     logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
     try {
       const paidHandler = await getPaidHandler();
@@ -430,14 +444,17 @@ export function createDeterministicPaidRoute(
         await paidHandler(req),
         capabilityId,
         requestId,
-        req.method
+        req.method,
+        resumeUrl
       );
       await logPaidRetryRejection(req, response, capabilityId, requestId);
-      const compatibleResponse = await mirrorPaymentChallengeBody(
-        response,
-        capabilityId,
-        req.method
-      );
+      const compatibleResponse = resumeUrl
+        ? await mirrorPaymentChallengeBody(response, capabilityId, req.method, resumeUrl)
+        : await mirrorPaymentChallengeBody(
+            response,
+            capabilityId,
+            req.method
+          );
       logX402Settlement(compatibleResponse, capabilityId, requestId);
       return compatibleResponse;
     } catch (error) {
@@ -451,7 +468,8 @@ export function createDeterministicPaidRoute(
         NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED" }, { status: 503 }),
         capabilityId,
         requestId,
-        req.method
+        req.method,
+        resumeUrl
       );
     }
   }

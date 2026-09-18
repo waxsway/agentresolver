@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeX402ChallengeMethod, x402BuyerSetup } from "@/lib/x402BuyerSetup";
+import { normalizeX402ChallengeMethod, normalizeX402ChallengeResumeUrl, x402BuyerSetup } from "@/lib/x402BuyerSetup";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import { PAID_CAPABILITIES } from "@/lib/paidCapabilities";
 
@@ -16,6 +16,7 @@ export async function GET(req: Request) {
     ? "x402-challenge"
     : null;
   const requestedCapabilityId = url.searchParams.get("capabilityId");
+  const requestedResumeUrl = url.searchParams.get("resumeUrl");
   const challengeMethod = normalizeX402ChallengeMethod(url.searchParams.get("method"));
   const capabilityId =
     source === "x402-challenge" &&
@@ -36,6 +37,10 @@ export async function GET(req: Request) {
   const capability = capabilityId
     ? PAID_CAPABILITIES[capabilityId as keyof typeof PAID_CAPABILITIES]
     : null;
+  const resumeUrl = capability
+    ? normalizeX402ChallengeResumeUrl(requestedResumeUrl, capability.endpoint) ??
+      new URL(capability.endpoint, "https://agentresolver.vercel.app").toString()
+    : null;
 
   const responseHeaders: Record<string, string> = {
     "cache-control": "public, max-age=300",
@@ -43,8 +48,9 @@ export async function GET(req: Request) {
   };
 
   if (capabilityId && capability) {
-    const resumeUrl = new URL(capability.endpoint, "https://agentresolver.vercel.app").toString();
-    responseHeaders["x-agentresolver-resume-url"] = resumeUrl;
+    const responseResumeUrl =
+      resumeUrl ?? new URL(capability.endpoint, "https://agentresolver.vercel.app").toString();
+    responseHeaders["x-agentresolver-resume-url"] = responseResumeUrl;
     responseHeaders["x-agentresolver-resume-capability"] = capabilityId;
     if (challengeMethod) {
       responseHeaders["x-agentresolver-resume-method"] = challengeMethod;
@@ -63,6 +69,7 @@ export async function GET(req: Request) {
       source,
       capabilityId,
       endpoint: capability?.endpoint ?? null,
+      resumeUrl,
       method: challengeMethod,
       priceUsd: capability?.priceUsd ?? null,
       atomicAmount: capability?.atomicAmount ?? null

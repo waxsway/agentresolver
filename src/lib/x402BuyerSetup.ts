@@ -11,14 +11,48 @@ export function normalizeX402ChallengeMethod(method?: string | null): X402Challe
     : null;
 }
 
-export function x402BuyerSetupChallengeUrl(capabilityId: string, method?: string | null) {
-  const challengeMethod = normalizeX402ChallengeMethod(method);
-  const base = `${X402_BUYER_SETUP_URL}?source=x402-challenge&capabilityId=${encodeURIComponent(capabilityId)}`;
-  return challengeMethod ? `${base}&method=${challengeMethod}` : base;
+const AGENTRESOLVER_ORIGIN = "https://agentresolver.vercel.app";
+
+export function normalizeX402ChallengeResumeUrl(
+  requestUrl?: string | null,
+  endpoint?: string | null
+) {
+  if (!requestUrl || !endpoint || requestUrl.length > 4096) return null;
+  try {
+    const parsed = new URL(requestUrl, AGENTRESOLVER_ORIGIN);
+    if (parsed.origin !== AGENTRESOLVER_ORIGIN || parsed.pathname !== endpoint) return null;
+    parsed.hash = "";
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (key.startsWith("_vercel_")) parsed.searchParams.delete(key);
+    }
+    const normalized = parsed.toString();
+    return normalized.length <= 4096 ? normalized : null;
+  } catch {
+    return null;
+  }
 }
 
-export function x402BuyerSetupChallengeError(capabilityId: string, method?: string | null) {
-  return `Payment required. x402 buyer setup: ${x402BuyerSetupChallengeUrl(capabilityId, method)}`;
+export function x402BuyerSetupChallengeUrl(
+  capabilityId: string,
+  method?: string | null,
+  resumeUrl?: string | null
+) {
+  const challengeMethod = normalizeX402ChallengeMethod(method);
+  const params = new URLSearchParams({
+    source: "x402-challenge",
+    capabilityId
+  });
+  if (challengeMethod) params.set("method", challengeMethod);
+  if (resumeUrl) params.set("resumeUrl", resumeUrl);
+  return `${X402_BUYER_SETUP_URL}?${params.toString()}`;
+}
+
+export function x402BuyerSetupChallengeError(
+  capabilityId: string,
+  method?: string | null,
+  resumeUrl?: string | null
+) {
+  return `Payment required. x402 buyer setup: ${x402BuyerSetupChallengeUrl(capabilityId, method, resumeUrl)}`;
 }
 export const AGENT_SKILLS_INDEX_URL = "https://agentresolver.vercel.app/.well-known/agent-skills/index.json" as const;
 export const PAYMENT_GUARD_SKILL_URL = "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md" as const;
@@ -98,13 +132,17 @@ export const X402_CHALLENGE_CLIENT_ENTRYPOINTS = {
   }
 } as const;
 
-export function x402ChallengeBuyerHandoff(capabilityId: string, method?: string | null) {
+export function x402ChallengeBuyerHandoff(
+  capabilityId: string,
+  method?: string | null,
+  resumeUrl?: string | null
+) {
   const challengeMethod = normalizeX402ChallengeMethod(method);
   return {
     type: "agentresolver_x402_buyer_handoff",
     capabilityId,
     ...(challengeMethod ? { method: challengeMethod } : {}),
-    setup: x402BuyerSetupChallengeUrl(capabilityId, challengeMethod),
+    setup: x402BuyerSetupChallengeUrl(capabilityId, challengeMethod, resumeUrl),
     protocol: "x402",
     retryHeader: "PAYMENT-SIGNATURE",
     signerControlledByCaller: true,
@@ -198,6 +236,7 @@ export type X402BuyerSetupContext = {
   source?: "x402-challenge" | null;
   capabilityId?: string | null;
   endpoint?: string | null;
+  resumeUrl?: string | null;
   method?: string | null;
   priceUsd?: number | null;
   atomicAmount?: string | null;
@@ -210,9 +249,9 @@ export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
       ? {
           source: "x402-challenge" as const,
           capabilityId: context.capabilityId,
-          resumeUrl: context.endpoint
-            ? `https://agentresolver.vercel.app${context.endpoint}`
-            : null,
+          resumeUrl:
+            normalizeX402ChallengeResumeUrl(context.resumeUrl, context.endpoint) ??
+            (context.endpoint ? `https://agentresolver.vercel.app${context.endpoint}` : null),
           method: challengeMethod,
           priceUsd: context.priceUsd ?? null,
           atomicAmount: context.atomicAmount ?? null,
