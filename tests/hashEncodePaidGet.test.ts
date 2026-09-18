@@ -62,6 +62,6 @@ test("hash-encode GET discovery excludes HMAC secrets", () => {
   const input = x402RuntimeDiscoveryInput("hash-encode");
   const operation = input?.schema?.properties?.operation;
   assert.ok(operation?.enum?.includes("sha256"));
-  assert.equal(operation?.enum?.includes("hmac-sha256"), false);
+  assert.equal((operation?.enum as readonly string[] | undefined)?.includes("hmac-sha256"), false);
   assert.deepEqual(input?.example, { operation: "sha256", input: "agentresolver" });
 });
