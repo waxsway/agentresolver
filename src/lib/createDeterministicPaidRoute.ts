@@ -38,6 +38,31 @@ function decodePaymentRequiredHeader(value: string | null): JsonObject | null {
   }
 }
 
+function asJsonObject(value: unknown): JsonObject {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonObject
+    : {};
+}
+
+function withRequestAwareChallengeHandoff(
+  challenge: JsonObject,
+  capabilityId: PaidCapabilityId,
+  requestMethod?: string,
+  resumeUrl?: string | null
+): JsonObject {
+  return {
+    ...challenge,
+    extensions: {
+      ...asJsonObject(challenge.extensions),
+      agentresolver: x402ChallengeHeaderHandoff(capabilityId, requestMethod, resumeUrl)
+    }
+  };
+}
+
+function encodePaymentRequiredHeader(challenge: JsonObject) {
+  return Buffer.from(JSON.stringify(challenge), "utf8").toString("base64");
+}
+
 async function mirrorPaymentChallengeBody(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
@@ -64,9 +89,23 @@ async function mirrorPaymentChallengeBody(
       ? current as JsonObject
       : headerChallenge;
 
+  const rewrittenHeaderChallenge = withRequestAwareChallengeHandoff(
+    headerChallenge,
+    capabilityId,
+    requestMethod,
+    resumeUrl
+  );
+  const rewrittenBodyChallenge = withRequestAwareChallengeHandoff(
+    bodyChallenge,
+    capabilityId,
+    requestMethod,
+    resumeUrl
+  );
+
   const headers = new Headers(response.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
+  headers.set("payment-required", encodePaymentRequiredHeader(rewrittenHeaderChallenge));
   const error = resumeUrl
     ? x402BuyerSetupChallengeError(capabilityId, requestMethod, resumeUrl)
     : x402BuyerSetupChallengeError(capabilityId, requestMethod);
@@ -74,7 +113,7 @@ async function mirrorPaymentChallengeBody(
     ? x402ChallengeBuyerHandoff(capabilityId, requestMethod, resumeUrl)
     : x402ChallengeBuyerHandoff(capabilityId, requestMethod);
   return new NextResponse(JSON.stringify({
-    ...bodyChallenge,
+    ...rewrittenBodyChallenge,
     error,
     buyerSetup
   }), {
@@ -417,10 +456,7 @@ export function createDeterministicPaidRoute(
         tags: [...bazaarProviderMetadata.tags],
         extensions: {
           ...discoveryExtension,
-          agentresolver: x402ChallengeHeaderHandoff(
-            capabilityId,
-            options.paidGet ? "GET" : "POST"
-          )
+          agentresolver: x402ChallengeHeaderHandoff(capabilityId)
         }
       }
     }, server) as PaidHandler;
