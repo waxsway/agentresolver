@@ -18,6 +18,9 @@ test("paid discovery challenge exposes Bazaar input/output schemas and dual rail
   ));
 
   assert.ok(response.headers.get("payment-required"));
+  assert.equal(response.headers.get("cache-control"), "public, max-age=0, must-revalidate");
+  assert.equal(response.headers.get("cdn-cache-control"), "public, max-age=30");
+  assert.equal(response.headers.get("vercel-cdn-cache-control"), "public, max-age=30");
   assert.equal(body.resource.serviceName, "AgentResolver");
   assert.ok(body.resource.description.length <= 240);
   assert.ok(body.resource.tags.length <= 5);
