@@ -233,13 +233,29 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.doesNotMatch(quickstartText, /privateKeyToAccount|seed phrase|0xYourPrivateKey/i);
 });
 
-test("buyer setup hint points to the canonical free handoff", () => {
+test("buyer setup hint embeds a compact executable retry handoff", () => {
   const hint = x402BuyerSetupHint("x402-payment-preflight");
-  assert.equal(hint.url, X402_BUYER_SETUP_URL);
+  assert.equal(
+    hint.url,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-payment-preflight"
+  );
+  assert.equal(hint.retry.challengeHeader, "PAYMENT-REQUIRED");
+  assert.equal(hint.retry.retryHeader, "PAYMENT-SIGNATURE");
+  assert.equal(hint.retry.paymentAuthorizationRequired, true);
+  assert.equal(hint.retry.signerControlledByCaller, true);
+  assert.equal(hint.clients.httpTypescript.package, "@x402/fetch");
+  assert.match(hint.clients.httpTypescript.installCommand, /@x402\/fetch/);
+  assert.equal(hint.clients.httpTypescript.wrapper, "wrapFetchWithPayment");
+  assert.equal(hint.clients.mcpTypescript.package, "@x402/mcp");
+  assert.equal(hint.clients.mcpTypescript.factory, "createx402MCPClient");
+  assert.equal(hint.clients.pythonHttpx.installCommand, "pip install x402");
+  assert.equal(hint.clients.pythonHttpx.client, "x402HttpxClient");
+  assert.match(hint.clients.agentSkill.installCommand, /skills add waxsway\/agentresolver/);
   assert.equal(hint.agentSkillsIndex, AGENT_SKILLS_INDEX_URL);
   assert.equal(hint.paymentGuardSkill, PAYMENT_GUARD_SKILL_URL);
   assert.equal(hint.paymentAuthorizationRequired, true);
   assert.equal(hint.signerControlledByCaller, true);
+  assert.doesNotMatch(JSON.stringify(hint), /private.?key|seed phrase|PAYMENT-SIGNATURE.*[A-Za-z0-9+\/_=-]{20,}/i);
 });
 
 
