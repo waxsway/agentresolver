@@ -165,7 +165,7 @@ jobs:
           body="$(mktemp)"
           payload="$(jq -cn --arg endpoint "$HASH_URL" '{
             name:"AgentResolver Hash & Encode — GET Utility",
-            description:"$0.001 GET-first deterministic SHA-256, SHA-512, Base64 encode/decode, or non-verifying JWT decode for autonomous agents. This listing uses SHA-256 as the zero-setup paid example; HMAC stays POST-only so secrets never appear in URLs.",
+            description:"$0.001 GET-first deterministic SHA-256, SHA-512, Base64 encode/decode, or non-verifying JWT decode for autonomous agents. This listing uses SHA-256 as the zero-setup paid example; hmac-sha256 stays POST-only so secrets never appear in URLs.",
             endpoint_url:$endpoint,
             category:"data.other",
             price_amount:0.001,
