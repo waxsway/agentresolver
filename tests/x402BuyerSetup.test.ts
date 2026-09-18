@@ -12,6 +12,7 @@ import {
   x402BuyerSetupChallengeError,
   x402BuyerSetupChallengeUrl,
   x402ChallengeBuyerHandoff,
+  x402ChallengeHeaderHandoff,
   x402BuyerSetup,
   x402BuyerSetupHint
 } from "../src/lib/x402BuyerSetup";
@@ -609,4 +610,22 @@ test("POST-only paid route discovery resumes through POST", async () => {
     response.headers.get("x-agentresolver-buyer-setup"),
     "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=sha256&method=POST"
   );
+});
+
+
+test("x402 extension handoff preserves the payable method", () => {
+  const getHandoff = x402ChallengeHeaderHandoff("x402-ping", "GET");
+  assert.equal(getHandoff.info.method, "GET");
+  assert.equal(
+    getHandoff.info.setup,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET"
+  );
+
+  const postHandoff = x402ChallengeHeaderHandoff("sha256", "POST");
+  assert.equal(postHandoff.info.method, "POST");
+  assert.equal(
+    postHandoff.info.setup,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=sha256&method=POST"
+  );
+  assert.deepEqual(postHandoff.schema.properties.method.enum, ["GET", "POST", "HEAD"]);
 });
