@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17,47 * * * *"
-  workflow_run:
-    workflows: ["Deploy Production"]
-    types: [completed]
   push:
     branches: [main]
     paths:
@@ -34,7 +31,6 @@ permissions:
 
 jobs:
   audit:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
