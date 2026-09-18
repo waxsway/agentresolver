@@ -23,6 +23,19 @@ test("x402-ping PAYMENT-REQUIRED stays within an interoperability-friendly heade
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.pong, true);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.settledDelivery, true);
   assert.equal(decoded.extensions?.bazaar?.info?.output?.example?.next, undefined);
+  assert.equal(decoded.extensions?.agentresolver?.version, 1);
+  assert.equal(
+    decoded.extensions?.agentresolver?.setup,
+    "https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping"
+  );
+  assert.equal(decoded.extensions?.agentresolver?.retryHeader, "PAYMENT-SIGNATURE");
+  assert.equal(decoded.extensions?.agentresolver?.signer, "callerOwnedSigner");
+  assert.equal(decoded.extensions?.agentresolver?.spendAuthorizationRequired, true);
+  assert.equal(decoded.extensions?.agentresolver?.clients?.httpTs?.factory, "wrapFetchWithPaymentFromConfig");
+  assert.equal(decoded.extensions?.agentresolver?.clients?.mcpTs?.approvalHook, "onPaymentRequested");
+  assert.equal(decoded.extensions?.agentresolver?.clients?.python?.package, "x402[httpx]");
+  assert.equal(decoded.extensions?.agentresolver?.clients?.walletMcp?.command, "x402-trinity-mcp");
+  assert.doesNotMatch(JSON.stringify(decoded.extensions?.agentresolver), /PRIVATE_KEY|seed phrase|0xYourPrivateKey/i);
 });
 
 test("runtime discovery keeps preflight decision metadata compact", () => {
