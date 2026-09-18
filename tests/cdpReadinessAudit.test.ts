@@ -10,6 +10,8 @@ test("CDP readiness audit checks production key names without reading secret val
   assert.match(workflow, /\/v10\/projects\/\$VERCEL_PROJECT_ID\/env\?teamId=\$VERCEL_ORG_ID/);
   assert.match(workflow, /CDP_CREDENTIAL_KEYS_PRESENT/);
   assert.match(workflow, /CDP_COINBASE_PRODUCTION_KEY_NAMES/);
+  assert.match(workflow, /CDP_COINBASE_KEY_TARGETS/);
+  assert.match(workflow, /matching_targets/);
   assert.match(workflow, /"CDP" in key\.upper\(\) or "COINBASE" in key\.upper\(\)/);
   assert.doesNotMatch(workflow, /decrypt=true/);
   assert.doesNotMatch(workflow, /\/env\/\$|\/env\/\{/);
