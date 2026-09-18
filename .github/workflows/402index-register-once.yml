@@ -1,0 +1,123 @@
+name: Register AgentResolver Guard with 402 Index Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/402index-register-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate live canonical Guard
+        shell: bash
+        env:
+          GUARD_URL: https://agentresolver.vercel.app/api/x402-payment-preflight
+          PROBE_BODY: '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}'
+        run: |
+          set -euo pipefail
+
+          code="$(curl -sS             --connect-timeout 5             --max-time 20             -o /tmp/agentresolver-402index-guard.json             -w '%{http_code}'             -X POST "$GUARD_URL"             -H 'content-type: application/json'             -H 'x-agentresolver-internal: 1'             --data "$PROBE_BODY" || true)"
+
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            ([.accepts[] | select(.network == "eip155:8453" and .amount == "1000")] | length) >= 1
+          ' /tmp/agentresolver-402index-guard.json >/dev/null
+
+      - name: Register canonical Guard with 402 Index
+        shell: bash
+        env:
+          INDEX_API: https://402index.io/api/v1
+          GUARD_URL: https://agentresolver.vercel.app/api/x402-payment-preflight
+          PROBE_BODY: '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}'
+        run: |
+          set -euo pipefail
+
+          lookup_status="$(curl -sS             --connect-timeout 10             --max-time 30             -o /tmp/402index-services.json             -w '%{http_code}'             "$INDEX_API/services?q=AgentResolver&protocol=x402&limit=100" || printf '000')"
+
+          case "$lookup_status" in
+            200)
+              if jq -e --arg url "$GUARD_URL" '
+                (.services // []) | any(.url == $url and ((.protocol // "") | ascii_downcase) == "x402")
+              ' /tmp/402index-services.json >/dev/null; then
+                echo "AgentResolver Guard is already visible in 402 Index."
+                exit 0
+              fi
+              ;;
+            402|429|500|502|503|504|000)
+              echo "::warning::402 Index lookup is temporarily unavailable or above its free tier (HTTP $lookup_status); registration deferred without spend."
+              exit 0
+              ;;
+            *)
+              echo "Unexpected 402 Index lookup status: $lookup_status" >&2
+              exit 1
+              ;;
+          esac
+
+          payload="$(jq -nc             --arg url "$GUARD_URL"             --arg probe "$PROBE_BODY"             '{
+              url: $url,
+              name: "AgentResolver Guard — x402 Payment Preflight",
+              protocol: "x402",
+              http_method: "POST",
+              probe_body: $probe,
+              description: "Verify live x402 payment requirements before wallet signing. Returns fail-closed eligible/blocked evidence; AgentResolver does not authorize target spend.",
+              price_usd: 0.001,
+              payment_asset: "USDC",
+              payment_network: "Base",
+              category: "security/payment",
+              provider: "AgentResolver"
+            }')"
+
+          status="$(curl -sS             --connect-timeout 10             --max-time 30             -o /tmp/402index-register.json             -w '%{http_code}'             -X POST "$INDEX_API/register"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          echo "402 Index registration -> HTTP $status"
+
+          case "$status" in
+            200|201)
+              jq '{
+                status: (.status // .service.status // "pending"),
+                service_id: (.id // .service.id // null),
+                protocol: (.protocol // .service.protocol // null),
+                url: (.url // .service.url // null),
+                verification: (
+                  if .verification then
+                    {
+                      httpStatus: .verification.httpStatus,
+                      detectedProtocols: .verification.detectedProtocols
+                    }
+                  else null end
+                )
+              }' /tmp/402index-register.json
+              ;;
+            422)
+              echo "::warning::402 Index could not verify the canonical Guard with the supplied probe body; no spend occurred."
+              jq '{
+                error: (.error // .message // null),
+                suggestedProtocol: (.suggestedProtocol // null),
+                probe: (
+                  if .probe then
+                    {
+                      httpStatus: .probe.httpStatus,
+                      headersPresent: .probe.headersPresent,
+                      detectedProtocols: .probe.detectedProtocols
+                    }
+                  else null end
+                )
+              }' /tmp/402index-register.json
+              ;;
+            402|429|500|502|503|504|000)
+              echo "::warning::402 Index registration is temporarily unavailable or above its free tier (HTTP $status); no spend or identity submission occurred."
+              ;;
+            *)
+              echo "Unexpected 402 Index registration status: $status" >&2
+              jq '{error: (.error // null), message: (.message // null)}' /tmp/402index-register.json >&2 || true
+              exit 1
+              ;;
+          esac
