@@ -295,10 +295,18 @@ test("Coinbase AgentKit exposes a confirmation-first Guard loop", () => {
   assert.equal(agentkit.x402Actions.challenge, "make_http_request");
   assert.equal(agentkit.x402Actions.authorizedRetry, "retry_http_request_with_x402");
   assert.equal(agentkit.x402Actions.automaticPayment, "make_http_request_with_x402");
+  assert.equal(agentkit.discovery.facilitator, "payai");
+  assert.equal(agentkit.discovery.maxUsdcPrice, 0.001);
+  assert.deepEqual(agentkit.discovery.x402Versions, [2]);
+  assert.equal(agentkit.discovery.keyword, null);
+  assert.equal(agentkit.discovery.expectedBaseResource, "https://agentresolver.vercel.app/api/x402-ping");
+  assert.equal(agentkit.discovery.expectedBaseNetwork, "eip155:8453");
+  assert.match(agentkit.discovery.reason, /defaults discover_x402_services to CDP/i);
   assert.equal(agentkit.paymentGuardUrl, "https://agentresolver.vercel.app/api/payment-guard");
   assert.equal(agentkit.serviceApproval.defaultDynamicRegistration, false);
   assert.ok(agentkit.serviceApproval.configKeys.includes("registeredServices"));
   assert.ok(agentkit.serviceApproval.configKeys.includes("allowDynamicServiceRegistration"));
+  assert.ok(agentkit.behavior.some((step) => /facilitator=payai/i.test(step)));
   assert.ok(agentkit.behavior.some((step) => /list_registered_services/i.test(step)));
   assert.ok(agentkit.behavior.some((step) => /register_x402_service/i.test(step)));
   assert.ok(agentkit.behavior.some((step) => /Guard spend/i.test(step)));
