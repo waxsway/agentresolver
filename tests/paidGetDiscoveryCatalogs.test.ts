@@ -115,3 +115,32 @@ test("x402 settlement canary is a first-class Bazaar discovery resource", () => 
   assert.equal(ping.accepts?.[0]?.maxAmountRequired, "1000");
   assert.equal(ping.accepts?.[0]?.payTo, "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8");
 });
+
+
+test("x402 settlement verifier is published as a GET-first $0.001 machine resource", () => {
+  const manifest = readJson("public/.well-known/x402");
+  const service = manifest.services?.find((item: any) => item.id === "x402-settlement-verify");
+  assert.equal(service?.method, "GET");
+  assert.deepEqual(service?.methods, ["GET", "POST"]);
+  assert.equal(service?.preferredMethod, "GET");
+
+  const resource = manifest.resources?.find(
+    (item: any) => item.resource === "GET /api/x402-settlement-verify"
+  );
+  assert.ok(resource);
+  assert.equal(resource.price, "$0.001");
+  assert.equal(resource.inputTransport, "query");
+  assert.equal(resource.accepts?.[0]?.network, "eip155:8453");
+  assert.equal(resource.accepts?.[0]?.maxAmountRequired, "1000");
+
+  const openapi = readJson("public/openapi.json");
+  const pathItem = openapi.paths?.["/api/x402-settlement-verify"];
+  assert.ok(pathItem?.get);
+  assert.ok(pathItem?.post);
+  assert.equal(pathItem["x-agentresolver-preferred-method"], "GET");
+  assert.equal(pathItem.get.requestBody, undefined);
+  assert.equal(
+    pathItem.get.parameters?.find((item: any) => item.name === "txHash")?.required,
+    true
+  );
+});

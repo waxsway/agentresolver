@@ -43,7 +43,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     .map((item: any) => item?.post)
     .filter((op: any) => op?.tags?.includes("Paid Agent Capabilities"));
 
-  assert.equal(paid.length, 10);
+  assert.equal(paid.length, 11);
   assert.deepEqual(
     Object.keys(openapi.paths || {}).sort(),
     [
@@ -56,6 +56,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
       "/api/usdc-payment-check",
       "/api/verified-resolve",
       "/api/x402-payment-preflight",
+      "/api/x402-settlement-verify",
       "/api/x402-ping",
       "/api/x402-preflight",
       "/api/x402-transaction-path-payment-gate"
@@ -83,6 +84,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   const paidIds = new Set([
     "x402-ping",
     "x402-payment-preflight",
+    "x402-settlement-verify",
     "verified-resolve",
     "batch-verified-resolve"
   ]);
@@ -97,6 +99,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   const publicResourcePaths = new Set([
     "/api/x402-ping",
     "/api/x402-payment-preflight",
+    "/api/x402-settlement-verify",
     "/api/verified-resolve",
     "/api/batch-verified-resolve",
     "/api/usdc-payment-check",

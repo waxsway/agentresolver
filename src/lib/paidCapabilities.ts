@@ -140,6 +140,39 @@ export const PAID_CAPABILITIES = {
     example: { echo: "hello" },
     quoteTool: { name: "x402_ping", title: "x402 settlement test — wallet facilitator payment test — $0.001", description: "Paid $0.001 USDC on Base or Solana no-body settlement canary for funded agents. Returns a timestamped pong only after successful x402 payment to verify wallet, facilitator, payment, and delivery end-to-end." }
   },
+  "x402-settlement-verify": {
+    id: "x402-settlement-verify",
+    name: "x402 Settlement Verify — Base USDC Receipt",
+    operationId: "x402SettlementVerify",
+    endpoint: "/api/x402-settlement-verify",
+    price: "$0.001",
+    priceUsd: 0.001,
+    atomicAmount: "1000",
+    description: "Verify a completed Base USDC x402 exact-scheme settlement from its transaction hash. Reads the public Base receipt and transaction, confirms EIP-3009 payment shape, decodes USDC Transfer events, reports confirmation depth, and optionally fails closed against an expected payTo recipient and atomic amount. No wallet key, custody, signing, or arbitrary RPC URL.",
+    useWhen: "After an x402 payment returns a Base transaction hash and an agent needs independent on-chain evidence that the expected USDC transfer actually settled before trusting downstream workflow state.",
+    costClass: "bounded-network",
+    tags: ["x402 settlement verify", "x402 receipt", "payment receipt", "settlement", "base", "usdc", "eip-3009", "transaction verification", "payto verification", "payment evidence"],
+    inputSchema: {
+      type: "object",
+      required: ["txHash"],
+      additionalProperties: false,
+      properties: {
+        txHash: { type: "string", pattern: "^0x[0-9a-fA-F]{64}$" },
+        expectedPayTo: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" },
+        expectedAmountAtomic: { type: "string", pattern: "^[0-9]{1,78}$" }
+      }
+    },
+    example: {
+      txHash: "0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72",
+      expectedPayTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+      expectedAmountAtomic: "1000"
+    },
+    quoteTool: {
+      name: "x402_settlement_verify",
+      title: "x402 settlement verify — Base USDC receipt — $0.001",
+      description: "Paid $0.001 USDC on Base or Solana to independently verify a Base x402 exact-scheme settlement from its transaction hash, including EIP-3009 shape, USDC transfer, confirmations, and optional expected recipient/amount assertions."
+    }
+  },
   "sha256": {
     id: "sha256", name: "SHA-256 Hash", operationId: "sha256Hash", endpoint: "/api/sha256",
     price: "$0.001", priceUsd: 0.001, atomicAmount: "1000",
