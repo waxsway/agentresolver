@@ -3,6 +3,7 @@ import test from "node:test";
 import { PAID_CAPABILITY_LIST } from "../src/lib/paidCapabilities";
 import {
   buildStaticMcpPaymentRequirements,
+  mcpPaymentResourceUrl,
   withX402BuyerSetupHint
 } from "../src/lib/mcpPayments";
 import { X402_BUYER_SETUP_URL } from "../src/lib/x402BuyerSetup";
@@ -65,4 +66,15 @@ test("MCP buyer setup hint is not added to successful paid output", () => {
   }, "x402-payment-preflight");
 
   assert.deepEqual(result.content, [{ type: "text", text: "paid result" }]);
+});
+
+
+test("Guard MCP payment resources bind to exact tool identities", () => {
+  assert.equal(mcpPaymentResourceUrl("payment_guard"), "mcp://tool/payment_guard");
+  assert.equal(
+    mcpPaymentResourceUrl("x402_payment_preflight"),
+    "mcp://tool/x402_payment_preflight"
+  );
+  assert.equal(mcpPaymentResourceUrl(), "https://agentresolver.vercel.app/mcp");
+  assert.throws(() => mcpPaymentResourceUrl("bad/tool"), /invalid/i);
 });
