@@ -104,7 +104,8 @@ jobs:
               -D /tmp/live-preflight-headers.txt \
               -o /tmp/live-preflight-body.json \
               -w '%{http_code}' \
-              "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01" || true)"
+              -H 'x-agentresolver-internal: 1' \
+              "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01" || true)
             candidate="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\\r",""); print $2; exit}' /tmp/live-preflight-headers.txt)"
             if [ "$code" = "402" ] && [[ "$candidate" =~ ^[0-9a-f]{40}$ ]]; then
               production_sha="$candidate"
@@ -228,7 +229,7 @@ jobs:
           # buyer-facing alias and require it to expose the exact validated SHA.
           live=0
           for attempt in {1..30}; do
-            code="$(curl -sS -D /tmp/preflight-headers.txt -o /tmp/preflight-body.json -w '%{http_code}' "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01" || true)"
+            code="$(curl -sS -D /tmp/preflight-headers.txt -o /tmp/preflight-body.json -w '%{http_code}' -H 'x-agentresolver-internal: 1' "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01" || true)"
             deployed_sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\\r",""); print $2; exit}' /tmp/preflight-headers.txt)"
             if [ "$code" = "402" ] && [ "$deployed_sha" = "$VALIDATED_SHA" ]; then
               live=1
