@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           headers="$(mktemp)"
           body="$(mktemp)"
-          code="$(curl -sS -D "$headers" -o "$body" -w '%{http_code}'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
+          code="$(curl -sS -D "$headers" -o "$body" -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             -X GET 'https://agentresolver.vercel.app/api/x402-ping')"
           test "$code" = "402"
           PAYMENT_REQUIRED="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' "$headers")"
           export PAYMENT_REQUIRED
@@ -60,6 +60,11 @@ jobs:
               echo "::notice::Aegis accepted the registration without requiring operator spend."
               cat "$body"
               ;;
+            429|500|502|503|504|530|000)
+              echo "::warning::Aegis is temporarily unavailable/rate-limited (HTTP $code); no payment was attempted and registration is deferred."
+              cat "$body" 2>/dev/null || true
+              touch /tmp/aegis-unavailable
+              ;;
             *)
               echo "::warning::Aegis registration surface returned HTTP $code; no payment was attempted."
               cat "$body" 2>/dev/null || true
@@ -70,15 +75,51 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -G 'https://aegis.borisinc.com/lint'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             | tee /tmp/aegis-lint.json
+          if [ -f /tmp/aegis-unavailable ]; then
+            echo "::notice::Skipping Aegis lint because the registry is temporarily unavailable."
+            exit 0
+          fi
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             --connect-timeout 5 --max-time 20             'https://aegis.borisinc.com/lint'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping' || printf '000')"
+          cat "$body" 2>/dev/null || true
+          echo
+          case "$code" in
+            200) ;;
+            429|500|502|503|504|530|000)
+              echo "::notice::Aegis lint is temporarily unavailable (HTTP $code); recurring deploy hooks will retry."
+              touch /tmp/aegis-unavailable
+              ;;
+            402)
+              echo "::error::Aegis advertised lint as free but returned 402. No payment was attempted."
+              exit 1
+              ;;
+            *) echo "::warning::Unexpected Aegis lint status $code." ;;
+          esac
 
       - name: Check Aegis discovery visibility
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -G 'https://aegis.borisinc.com/discover'             --data-urlencode 'query=AgentResolver'             -o /tmp/aegis-discover.json || true
-          cat /tmp/aegis-discover.json 2>/dev/null || true
-          echo
-          if ! grep -qi 'agentresolver' /tmp/aegis-discover.json 2>/dev/null; then
-            echo "::notice::Aegis accepted the submission but discovery may not reflect it until the next registry sweep."
+          if [ -f /tmp/aegis-unavailable ]; then
+            echo "::notice::Skipping Aegis discovery check because the registry is temporarily unavailable."
+            exit 0
           fi
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}'             --connect-timeout 5 --max-time 20             'https://aegis.borisinc.com/discover'             --data-urlencode 'query=AgentResolver' || printf '000')"
+          cat "$body" 2>/dev/null || true
+          echo
+          case "$code" in
+            200)
+              if ! grep -qi 'agentresolver' "$body" 2>/dev/null; then
+                echo "::notice::Aegis accepted the submission but discovery may not reflect it until the next registry sweep."
+              fi
+              ;;
+            429|500|502|503|504|530|000)
+              echo "::notice::Aegis discovery is temporarily unavailable (HTTP $code); recurring deploy hooks will retry."
+              ;;
+            402)
+              echo "::error::Aegis advertised discovery as free but returned 402. No payment was attempted."
+              exit 1
+              ;;
+            *) echo "::warning::Unexpected Aegis discovery status $code." ;;
+          esac
