@@ -553,7 +553,7 @@ test("challenge-specific buyer setup exposes exact resume response headers", () 
 
 test("paid route handoff distinguishes payable POST discovery from exact paid methods", () => {
   const route = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
-  assert.match(route, /mirrorPaymentChallengeBody\(\s*response,\s*capabilityId,\s*req\.method\s*\)/s);
+  assert.match(route, /mirrorPaymentChallengeBody\(\s*response,\s*capabilityId,\s*req\.method,\s*resumeUrl,\s*false\s*\)/s);
   assert.match(route, /x402BuyerSetupChallengeUrl\(capabilityId, requestMethod\)/);
   assert.match(
     route,
