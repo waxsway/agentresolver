@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("public discovery retains provider routing and provider-funded settlement surfaces", () => {
+test("provider routing is machine-readable without expanding the broad paid catalog", () => {
   const compact = readFileSync("scripts/compact-public-paid-discovery.ts", "utf8");
-  assert.match(compact, /provider-attribution-settle/);
   assert.match(compact, /\/api\/providers/);
   assert.match(compact, /\/api\/execute/);
   assert.match(compact, /x-agentresolver-attribution-id/);
@@ -13,4 +12,11 @@ test("public discovery retains provider routing and provider-funded settlement s
   assert.equal(integration.safety.arbitraryProxying, false);
   assert.equal(integration.safety.callerSpendingAuthorized, false);
   assert.equal(integration.providerFundedPilot.feeUsd, 0.001);
+  assert.match(integration.providerFundedPilot.settlement, /provider-attribution-settle/);
+
+  const publicManifest = JSON.parse(readFileSync("public/.well-known/x402", "utf8"));
+  assert.equal(
+    (publicManifest.services || []).some((item: any) => item.id === "provider-attribution-settle"),
+    false
+  );
 });

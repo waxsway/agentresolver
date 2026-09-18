@@ -15,8 +15,8 @@ export default function ProvidersPage() {
       <p className="lead">
         AgentResolver routes machine intent to registered services. Organic
         discovery stays independent, sponsored placement is explicitly labeled,
-        and the provider-funded pilot can settle a fixed $0.001 USDC attribution
-        fee after a provider reports an attributed request as fulfilled.
+        and a provider-funded pilot can settle an attribution fee after a provider
+        reports an attributed request as fulfilled.
       </p>
 
       <div className="grid">
@@ -32,8 +32,8 @@ export default function ProvidersPage() {
           <h2>Provider-funded success fee</h2>
           <p>
             Pilot partners can fund distribution instead of requiring every
-            buyer to pay AgentResolver separately. The current deterministic
-            pilot fee is $0.001 USDC per provider-reported fulfilled attribution.
+            buyer to pay AgentResolver separately. Current machine-readable
+            pilot terms are published through the provider network API.
           </p>
         </section>
         <section>
