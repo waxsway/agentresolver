@@ -21,21 +21,22 @@ test("runtime MCP card and health surface match registry release version", () =>
   assert.match(health, /\$0\.001 USDC non-custodial x402 verify-before-pay Guard/);
 });
 
-test("CI and production smoke expect the current release version", () => {
+test("CI and focused production smoke expect the current release identity", () => {
   const ci = readFileSync(".github/workflows/ci.yml", "utf8");
   const workflow = readFileSync(".github/workflows/production-smoke.yml", "utf8");
   assert.match(ci, /"version":"0\.1\.4"/);
-  assert.match(workflow, /"version":"0\.1\.4"/);
-  assert.match(workflow, /grep -F '0\.1\.4' \/tmp\/server-card\.json/);
+  assert.match(workflow, /grep -F '"version":"0\.1\.4"' \/tmp\/health\.json/);
+  assert.match(workflow, /\.title \| contains\("AgentResolver Guard"\)/);
+  assert.match(workflow, /\/mcp\/server-card/);
 });
 
-test("production smoke uses valid Guard GET inputs", () => {
+test("production smoke uses valid focused Guard GET inputs", () => {
   const workflow = readFileSync(".github/workflows/production-smoke.yml", "utf8");
-  assert.match(workflow, /get_path="\$path"/);
-  assert.match(workflow, /\/api\/x402-payment-preflight/);
-  assert.match(workflow, /\/api\/payment-guard/);
+  assert.match(workflow, /\/api\/x402-payment-preflight\?url=/);
+  assert.match(workflow, /\/api\/payment-guard\?url=/);
   assert.match(workflow, /url=https%3A%2F%2Fagentresolver\.vercel\.app%2Fapi%2Fx402-ping/);
   assert.match(workflow, /expectedNetwork=eip155%3A8453/);
+  assert.doesNotMatch(workflow, /get_path="\$path"/);
 });
 
 test("production deploy authorizes the tip PR but classifies drift from live production", () => {
