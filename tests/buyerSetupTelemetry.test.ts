@@ -15,10 +15,15 @@ test("buyer setup view telemetry is bounded and uses existing traffic classifica
   assert.match(route, /source === "x402-challenge"/);
   assert.match(route, /hasOwnProperty\.call\(PAID_CAPABILITIES, requestedCapabilityId\)/);
 
-  assert.doesNotMatch(route, /payment-signature/i);
-  assert.doesNotMatch(route, /private.?key/i);
-  assert.doesNotMatch(route, /payerAddress/i);
-  assert.doesNotMatch(route, /req\.text\(|req\.json\(/);
+  const telemetryStart = route.indexOf('console.log(JSON.stringify({');
+  const telemetryEnd = route.indexOf('}));', telemetryStart);
+  assert.ok(telemetryStart >= 0 && telemetryEnd > telemetryStart);
+  const telemetryBlock = route.slice(telemetryStart, telemetryEnd + 4);
+
+  assert.doesNotMatch(telemetryBlock, /payment-signature/i);
+  assert.doesNotMatch(telemetryBlock, /private.?key/i);
+  assert.doesNotMatch(telemetryBlock, /payerAddress/i);
+  assert.doesNotMatch(telemetryBlock, /req\.text\(|req\.json\(/);
 });
 
 

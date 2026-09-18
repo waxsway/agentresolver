@@ -36,6 +36,23 @@ export async function GET(req: Request) {
     ? PAID_CAPABILITIES[capabilityId as keyof typeof PAID_CAPABILITIES]
     : null;
 
+  const responseHeaders: Record<string, string> = {
+    "cache-control": "public, max-age=300",
+    "access-control-allow-origin": "*"
+  };
+
+  if (capabilityId && capability) {
+    const resumeUrl = new URL(capability.endpoint, "https://agentresolver.vercel.app").toString();
+    responseHeaders["x-agentresolver-resume-url"] = resumeUrl;
+    responseHeaders["x-agentresolver-resume-capability"] = capabilityId;
+    responseHeaders["x-agentresolver-retry-header"] = "PAYMENT-SIGNATURE";
+    responseHeaders["access-control-expose-headers"] = [
+      "x-agentresolver-resume-url",
+      "x-agentresolver-resume-capability",
+      "x-agentresolver-retry-header"
+    ].join(", ");
+  }
+
   return NextResponse.json(
     x402BuyerSetup({
       source,
@@ -44,12 +61,7 @@ export async function GET(req: Request) {
       priceUsd: capability?.priceUsd ?? null,
       atomicAmount: capability?.atomicAmount ?? null
     }),
-    {
-      headers: {
-        "cache-control": "public, max-age=300",
-        "access-control-allow-origin": "*"
-      }
-    }
+    { headers: responseHeaders }
   );
 }
 

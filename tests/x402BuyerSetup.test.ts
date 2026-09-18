@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   AGENT_SKILLS_INDEX_URL,
@@ -535,4 +536,16 @@ test("buyer setup preserves challenged purchase context and exposes one signed-r
 
   const generic = x402BuyerSetup();
   assert.equal(generic.challengeContext, null);
+});
+
+
+test("challenge-specific buyer setup exposes exact resume response headers", () => {
+  const route = readFileSync("src/app/api/x402-client-setup/route.ts", "utf8");
+  assert.match(route, /x-agentresolver-resume-url/);
+  assert.match(route, /x-agentresolver-resume-capability/);
+  assert.match(route, /x-agentresolver-retry-header/);
+  assert.match(route, /PAYMENT-SIGNATURE/);
+  assert.match(route, /access-control-expose-headers/);
+  assert.match(route, /new URL\(capability\.endpoint, "https:\/\/agentresolver\.vercel\.app"\)/);
+  assert.match(route, /if \(capabilityId && capability\)/);
 });
