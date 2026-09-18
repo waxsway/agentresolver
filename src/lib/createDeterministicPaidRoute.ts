@@ -271,10 +271,42 @@ function stampInfrastructureHeaders(
   return response;
 }
 
+export type BasePaymentRail = "payai" | "coinbase-cdp";
+
 export type DeterministicPaidRouteOptions = Readonly<{
   paidGet?: boolean;
   endpoint?: string;
+  /**
+   * Route-local Base payment rail. Defaults to PayAI so enabling CDP globally
+   * cannot silently move existing revenue routes onto a different facilitator.
+   * "coinbase-cdp" is intentionally Base-only and has no PayAI fallback.
+   */
+  basePaymentRail?: BasePaymentRail;
 }>;
+
+export function basePaymentRailForRoute(
+  options: DeterministicPaidRouteOptions = {}
+): BasePaymentRail {
+  return options.basePaymentRail ?? "payai";
+}
+
+export function cdpFacilitatorEnabledForRoute(
+  capabilityId: PaidCapabilityId,
+  options: DeterministicPaidRouteOptions = {},
+  env: Readonly<Record<string, string | undefined>> = process.env
+) {
+  return basePaymentRailForRoute(options) === "coinbase-cdp" &&
+    cdpFacilitatorEnabledFor(capabilityId, env);
+}
+
+export function telemetryEnvForRoute(
+  options: DeterministicPaidRouteOptions = {},
+  env: Readonly<Record<string, string | undefined>> = process.env
+): Readonly<Record<string, string | undefined>> {
+  return basePaymentRailForRoute(options) === "coinbase-cdp"
+    ? { ...env, AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED: "0" }
+    : { ...env, AGENTRESOLVER_CDP_FACILITATOR_ENABLED: "0" };
+}
 
 export function x402BazaarProviderMetadata(capabilityId: PaidCapabilityId) {
   if (capabilityId === "x402-payment-preflight") {
@@ -348,9 +380,16 @@ export function createDeterministicPaidRoute(
     if (!/^https:\/\//i.test(facilitatorUrl)) throw new Error("AGENTRESOLVER_X402_FACILITATOR_URL is invalid.");
 
     const standardFacilitator = new HTTPFacilitatorClient({ url: facilitatorUrl, timeoutMs: 10_000 });
-    const gatewayEnabled = circleGatewayEnabled();
-    const cdpEnabled = cdpFacilitatorEnabledFor(capabilityId);
+    const basePaymentRail = basePaymentRailForRoute(options);
+    const cdpOnly = basePaymentRail === "coinbase-cdp";
+    const gatewayEnabled = cdpOnly ? false : circleGatewayEnabled();
+    const cdpEnabled = cdpFacilitatorEnabledForRoute(capabilityId, options);
     const cdpCredentials = cdpFacilitatorCredentials();
+    if (cdpOnly && !cdpEnabled) {
+      throw new Error(
+        "CDP-only route requires AGENTRESOLVER_CDP_FACILITATOR_ENABLED=1 and the capability allowlist."
+      );
+    }
     if (cdpEnabled && !cdpFacilitatorCredentialsPresent()) {
       throw new Error(
         "AGENTRESOLVER_CDP_FACILITATOR_ENABLED requires a CDP API key ID and API key secret."
@@ -427,10 +466,8 @@ export function createDeterministicPaidRoute(
       }
     } : null;
 
-    const server = cdpBaseFacilitator
-      ? circleFacilitator
-        ? new x402ResourceServer([cdpBaseFacilitator, standardFacilitator, circleFacilitator])
-        : new x402ResourceServer([cdpBaseFacilitator, standardFacilitator])
+    const server = cdpOnly
+      ? new x402ResourceServer(cdpBaseFacilitator!)
       : circleFacilitator
         ? new x402ResourceServer([standardFacilitator, circleFacilitator])
         : new x402ResourceServer(standardFacilitator);
@@ -441,11 +478,12 @@ export function createDeterministicPaidRoute(
       server.register(X402_NETWORK, new ExactEvmScheme());
     }
 
-    server
-      .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
-      .registerExtension(bazaarResourceServerExtension);
+    if (!cdpOnly) {
+      server.register(X402_SOLANA_NETWORK, new ExactSvmScheme());
+    }
+    server.registerExtension(bazaarResourceServerExtension);
 
-    if (gatewayEnabled || cdpEnabled) {
+    if (gatewayEnabled || cdpOnly) {
       await server.initialize();
     }
 
@@ -456,7 +494,8 @@ export function createDeterministicPaidRoute(
         capabilityId,
         facilitator: "coinbase-cdp",
         network: X402_NETWORK,
-        solanaFacilitator: "payai",
+        solanaFacilitator: cdpOnly ? null : "payai",
+        baseOnly: cdpOnly,
         bazaarDiscoveryEligible: true
       }));
     }
@@ -495,22 +534,24 @@ export function createDeterministicPaidRoute(
           output: discoveryOutput
         });
 
+    const accepts = [
+      {
+        scheme: "exact" as const,
+        price: product.price,
+        network: X402_NETWORK,
+        payTo: payTo as `0x${string}`
+      },
+      ...(!cdpOnly ? [{
+        scheme: "exact" as const,
+        price: product.price,
+        network: X402_SOLANA_NETWORK,
+        payTo: solanaPayTo
+      }] : [])
+    ];
+
     return withX402<unknown>(handler, {
       [endpoint]: {
-        accepts: [
-          {
-            scheme: "exact",
-            price: product.price,
-            network: X402_NETWORK,
-            payTo: payTo as `0x${string}`
-          },
-          {
-            scheme: "exact",
-            price: product.price,
-            network: X402_SOLANA_NETWORK,
-            payTo: solanaPayTo
-          }
-        ],
+        accepts,
         description: wireMetadata.description,
         mimeType: "application/json",
         serviceName: bazaarProviderMetadata.serviceName,
@@ -541,7 +582,8 @@ export function createDeterministicPaidRoute(
       normalizedResumeUrl && normalizedResumeUrl !== canonicalResumeUrl
         ? normalizedResumeUrl
         : null;
-    logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
+    const paymentRailEnv = telemetryEnvForRoute(options);
+    logPaidCapabilityAttempt(req, capabilityId, traffic, requestId, paymentRailEnv);
     try {
       const paidHandler = await getPaidHandler();
       const paymentRequest = normalizeX402PaymentRequest(req);
@@ -553,7 +595,7 @@ export function createDeterministicPaidRoute(
         resumeUrl,
         attributionId
       );
-      await logPaidRetryRejection(req, response, capabilityId, requestId);
+      await logPaidRetryRejection(req, response, capabilityId, requestId, paymentRailEnv);
       const compatibleResponse = resumeUrl
         ? await mirrorPaymentChallengeBody(response, capabilityId, req.method, resumeUrl)
         : await mirrorPaymentChallengeBody(
@@ -572,7 +614,7 @@ export function createDeterministicPaidRoute(
         compatibleResponse.headers.set("cdn-cache-control", "public, max-age=30");
         compatibleResponse.headers.set("vercel-cdn-cache-control", "public, max-age=30");
       }
-      logX402Settlement(compatibleResponse, capabilityId, requestId);
+      logX402Settlement(compatibleResponse, capabilityId, requestId, paymentRailEnv);
       logAttributedSettlement(compatibleResponse, capabilityId, attributionId);
       return compatibleResponse;
     } catch (error) {
