@@ -86,12 +86,26 @@ export function x402BuyerSetup() {
             schemes: [{ network: "eip155:8453", client: "new ExactEvmScheme(callerOwnedSigner)" }],
             policies: ["caller-defined requirement filters before signing"],
             paymentRequirementsSelector: "caller-defined network/requirement selector"
+          },
+          preSignGuardAuthorization: {
+            hook: "onPaymentRequested",
+            stage: "before_wallet_signature",
+            toolNames: ["payment_guard", "x402_payment_preflight"],
+            priceUsd: 0.001,
+            expectedAtomicUsdc: "1000",
+            allowedNetworks: [
+              "eip155:8453",
+              "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+            ],
+            rule:
+              "Return true only when the caller-owned spend policy has authorized this exact AgentResolver Guard fee and the tool, amount, network, scheme, asset and resource match caller expectations; otherwise return false."
           }
         },
         behavior: [
           "Connect the x402-aware MCP client to https://agentresolver.vercel.app/mcp.",
           "Register only payment schemes/networks backed by the caller's own signer.",
           "Apply caller-owned spend controls or policies before any wallet signature.",
+          "For per-call Guard authorization, use the x402 MCP client's onPaymentRequested hook to verify the intended tool and exact $0.001 requirement before the signer runs.",
           "Call the paid tool normally; the x402-aware client parses PAYMENT-REQUIRED, creates an authorized payment payload, and retries with PAYMENT-SIGNATURE."
         ]
       },
@@ -229,6 +243,7 @@ export function x402BuyerSetup() {
     },
     officialReferences: {
       mcpGuide: "https://github.com/x402-foundation/x402/blob/main/docs/guides/mcp-server-with-x402.md",
+      mcpPreSignPolicy: "https://github.com/x402-foundation/x402/blob/main/docs/guides/mcp-server-with-x402.md#using-the-onpaymentrequested-hook",
       bazaar: "https://github.com/x402-foundation/x402/blob/main/docs/extensions/bazaar.mdx",
       protocol: "https://github.com/x402-foundation/x402",
       axios: "https://github.com/x402-foundation/x402/blob/main/typescript/packages/http/axios/README.md",
