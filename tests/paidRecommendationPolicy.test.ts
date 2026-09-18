@@ -30,6 +30,7 @@ test("canonical x402 preflight recommendation carries the target URL directly", 
 test("settled canary next actions expose canonical preflight without removing resolver handoffs", () => {
   const next = postSettlementCanaryNextActions();
   const preflight = getPaidCapability("x402-payment-preflight");
+  const settlementVerify = getPaidCapability("x402-settlement-verify");
   const hashEncode = getPaidCapability("hash-encode");
   const single = getPaidCapability("verified-resolve");
   const batch = getPaidCapability("batch-verified-resolve");
@@ -54,6 +55,16 @@ test("settled canary next actions expose canonical preflight without removing re
     useWhen: preflight.useWhen,
     inputExample: preflight.example
   });
+  assert.deepEqual(next.settlementVerify, {
+    capabilityId: settlementVerify.id,
+    endpoint: `${CANONICAL_ORIGIN}${settlementVerify.endpoint}`,
+    method: "GET",
+    priceUsd: settlementVerify.priceUsd,
+    useWhen: settlementVerify.useWhen,
+    inputExample: settlementVerify.example,
+    transactionHashSource: "Use the Base transaction hash returned in the PAYMENT-RESPONSE header from a settled x402 request.",
+    paymentAuthorization: "separate_caller_authorization_required"
+  });
   assert.deepEqual(next.single, {
     capabilityId: single.id,
     endpoint: `${CANONICAL_ORIGIN}${single.endpoint}`,
@@ -75,6 +86,9 @@ test("settled canary next actions expose canonical preflight without removing re
   assert.equal(next.recommended.repeatUse, "when_a_deterministic_hash_or_encoding_transform_is_needed");
   assert.equal(next.recommended.paymentAuthorization, "separate_caller_authorization_required");
   assert.equal(next.preflight.priceUsd, 0.001);
+  assert.equal(next.settlementVerify.priceUsd, 0.001);
+  assert.equal(next.settlementVerify.method, "GET");
+  assert.match(next.settlementVerify.transactionHashSource, /PAYMENT-RESPONSE/);
   assert.equal(next.single.priceUsd, 0.02);
   assert.equal(next.batch.priceUsd, 0.05);
   assert.equal(isDirectOwnedCapabilityId(next.preflight.capabilityId), true);

@@ -20,4 +20,12 @@ test("paid settlement recommends a useful repeat x402 GET", () => {
     "separate_caller_authorization_required"
   );
   assert.equal(next.preflight.capabilityId, "x402-payment-preflight");
+  assert.equal(next.settlementVerify.capabilityId, "x402-settlement-verify");
+  assert.equal(next.settlementVerify.method, "GET");
+  assert.equal(next.settlementVerify.priceUsd, 0.001);
+  assert.match(next.settlementVerify.transactionHashSource, /PAYMENT-RESPONSE/);
+  assert.equal(
+    next.settlementVerify.paymentAuthorization,
+    "separate_caller_authorization_required"
+  );
 });
