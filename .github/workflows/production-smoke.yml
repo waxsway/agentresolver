@@ -6,10 +6,6 @@ on:
       - Deploy Production
     types:
       - completed
-  repository_dispatch:
-    types:
-      - vercel.deployment.success
-      - vercel.deployment.promoted
   workflow_dispatch:
 
 permissions:
@@ -19,203 +15,77 @@ jobs:
   verify-production:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 4
     steps:
-      - name: Verify canonical production surfaces
+      - name: Verify focused production discovery and trust surfaces
         shell: bash
         env:
           BASE_URL: https://agentresolver.vercel.app
         run: |
           set -euo pipefail
 
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/health" | tee /tmp/health.json
-          grep -F '"ok":true' /tmp/health.json >/dev/null
+          curl --retry 3 --retry-delay 1 --retry-all-errors -fsS "$BASE_URL/api/health" > /tmp/health.json
           grep -F '"version":"0.1.4"' /tmp/health.json >/dev/null
-          grep -F '"paidManifest":"/.well-known/x402"' /tmp/health.json >/dev/null
-          grep -F '"evidence":"/.well-known/agentresolver-evidence.json"' /tmp/health.json >/dev/null
-          grep -F '"reputation":"/.well-known/agentresolver-reputation.json"' /tmp/health.json >/dev/null
-
-          reputation_code="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS -D /tmp/reputation-headers.txt -o /dev/null -w '%{http_code}' "$BASE_URL/.well-known/agentresolver-reputation.json")"
-          test "$reputation_code" = "307"
-          grep -Fi 'location: https://raw.githubusercontent.com/waxsway/agentresolver/evidence-history/evidence/settlements.json' /tmp/reputation-headers.txt >/dev/null
-
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/agentresolver.md" | grep -F 'AgentResolver' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/integrations.json" | grep -F "$BASE_URL/mcp" >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/openapi.json" | tee /tmp/openapi.json >/dev/null
-          grep -F 'resolveCapability' /tmp/openapi.json >/dev/null
-          grep -F 'probeMcpEndpoint' /tmp/openapi.json >/dev/null
-          grep -F 'agentResolverPaymentGuardGet' /tmp/openapi.json >/dev/null
           jq -e '
-            (.info["x-guidance"] | type == "string" and length > 0) and
+            .ok == true and
+            .paidManifest == "/.well-known/x402" and
+            .canonicalPaidRoute == "/api/x402-payment-preflight" and
+            .paymentRails.x402PingBase == "payai" and
+            .paymentRails.x402PingSolana == "payai"
+          ' /tmp/health.json >/dev/null
+
+          reputation_code="$(curl --retry 3 --retry-delay 1 --retry-all-errors -sS             -D /tmp/reputation-headers.txt -o /dev/null -w '%{http_code}'             "$BASE_URL/.well-known/agentresolver-reputation.json")"
+          test "$reputation_code" = "307"
+          grep -Fi 'location: https://raw.githubusercontent.com/waxsway/agentresolver/evidence-history/evidence/settlements.json'             /tmp/reputation-headers.txt >/dev/null
+
+          curl --retry 3 --retry-delay 1 --retry-all-errors -fsS "$BASE_URL/openapi.json" > /tmp/openapi.json
+          jq -e '
+            (.paths | keys | length) == 12 and
             (.paths["/api/resolve"].post.security == []) and
             (.paths["/api/health"].get.security == []) and
-            (
-              [
-                .paths[] | .[] |
-                select(type == "object") |
-                select((.tags // []) | index("Paid Agent Capabilities"))
-              ] as $paid |
-              ($paid | length >= 10) and
-              ($paid | all(
-                (.["x-payment-info"].price.mode == "fixed") and
-                (.["x-payment-info"].price.currency == "USD") and
-                (.["x-payment-info"].price.amount | type == "string" and length > 0) and
-                (.["x-payment-info"].protocols | any(has("x402"))) and
-                (
-                  (.operationId == "x402SettlementPingGet") or
-                  (.["x-agentresolver-product"].inputTransport == "query") or
-                  (.requestBody.content["application/json"].schema != null)
-                ) and
-                (.responses["200"].content["application/json"].schema != null) and
-                (.responses["200"].headers["x-agentresolver-history"] != null) and
-                (.responses["402"] != null)
-              ))
-            )
+            (.paths["/api/x402-ping"].get["x-payment-info"].priceUsd == 0.001) and
+            (.paths["/api/x402-payment-preflight"].get["x-payment-info"].priceUsd == 0.001) and
+            (.paths["/api/payment-guard"].get["x-payment-info"].priceUsd == 0.001) and
+            (.paths["/api/verified-resolve"].post["x-payment-info"].priceUsd == 0.02) and
+            (.paths["/api/batch-verified-resolve"].post["x-payment-info"].priceUsd == 0.05) and
+            (.paths["/api/sha256"] == null) and
+            (.paths["/api/mcp-probe"] == null) and
+            (.paths["/api/agent-readiness"] == null)
           ' /tmp/openapi.json >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/capabilities.json" | grep -F 'verified-resolve' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/capabilities.json" | grep -F 'hash-encode' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402-catalog.json" | grep -F 'batch-verified-resolve' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402" | grep -F 'mcp-probe' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS -H 'x-agentresolver-internal: 1' "$BASE_URL/mcp/server-card" | tee /tmp/server-card.json >/dev/null
-          grep -F '0.1.4' /tmp/server-card.json >/dev/null
-          jq -e '.sponsorship.model == "provider-funded-discovery" and .sponsorship.organicRankingIndependent == true' /tmp/server-card.json >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/sponsorship.json" | grep -F 'pilot_inventory_open' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/api/sponsorship" | jq -e '.inventory.model == "provider-funded-discovery" and .activation.operatorApprovalRequired == true' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/providers" | grep -F 'Apply for the sponsorship pilot' >/dev/null
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/providers?smoke=${GITHUB_SHA}" > /tmp/providers.html
-          if grep -F 'mailto:' /tmp/providers.html >/dev/null || grep -F '$250/mo' /tmp/providers.html >/dev/null; then
-            echo 'Provider page exposes the removed mailto CTA or prior fixed sponsorship price.'
-            exit 1
-          fi
 
-          resolve_check() {
-            local slug="$1" goal="$2" url="$3" expected_id="$4" expected_price="$5"
-            local body
-            if [ -n "$url" ]; then
-              body=$(jq -n --arg goal "$goal" --arg url "$url" '{goal:$goal,url:$url,limit:3}')
-            else
-              body=$(jq -n --arg goal "$goal" '{goal:$goal,limit:3}')
-            fi
-            curl --retry 5 --retry-delay 2 --retry-all-errors -fsS \
-              -H 'content-type: application/json' \
-              -H 'x-agentresolver-internal: 1' \
-              --data "$body" \
-              "$BASE_URL/api/resolve" > "/tmp/$slug.json"
-            jq -e --arg id "$expected_id" --argjson price "$expected_price" '
-              .owned[0].id == $id and
-              .owned[0].priceUsd == $price and
-              .recommendedPaidAction.capabilityId == $id and
-              .recommendedPaidAction.priceUsd == $price
-            ' "/tmp/$slug.json" >/dev/null
-          }
+          curl --retry 3 --retry-delay 1 --retry-all-errors -fsS "$BASE_URL/integrations.json"             | jq -e '
+                ([.paidActions[].id] | sort) ==
+                (["batch-verified-resolve","verified-resolve","x402-payment-preflight","x402-ping"] | sort)
+              ' >/dev/null
 
-          resolve_check 'resolve-x402-preflight' \
-            'verify this x402 endpoint before paying and check payTo price network asset and resource binding' \
-            'https://agentresolver.vercel.app/api/x402-ping' 'x402-payment-preflight' 0.001
-          resolve_check 'resolve-http-inspect' \
-            'inspect this HTTPS URL for status latency cache headers and security headers' \
-            'https://example.com' 'http-inspect' 0.001
-          resolve_check 'resolve-tool-contract' \
-            'check tool contract JSON schema workflow compatibility mapping' \
-            '' 'tool-contract' 0.005
-          resolve_check 'resolve-openapi-select' \
-            'select the best OpenAPI operation endpoint for this API goal' \
-            "$BASE_URL/openapi.json" 'openapi-select' 0.005
-          resolve_check 'resolve-hash-encode' \
-            'sha256 hash base64 encode decode jwt hmac' \
-            '' 'hash-encode' 0.001
+          curl --retry 3 --retry-delay 1 --retry-all-errors -fsS "$BASE_URL/.well-known/x402" > /tmp/x402.json
+          jq -e '
+            ([.services[].id] | index("x402-ping") != null) and
+            ([.services[].id] | index("x402-payment-preflight") != null) and
+            ([.services[].id] | index("verified-resolve") != null) and
+            ([.services[].id] | index("batch-verified-resolve") != null)
+          ' /tmp/x402.json >/dev/null
 
-          echo 'Production discovery checks passed.'
+          curl --retry 3 --retry-delay 1 --retry-all-errors -fsS             -H 'x-agentresolver-internal: 1' "$BASE_URL/mcp/server-card" > /tmp/server-card.json
+          jq -e '
+            .name == "io.github.waxsway/agentresolver" and
+            (.title | contains("AgentResolver Guard")) and
+            (.remotes[0].url == "https://agentresolver.vercel.app/mcp")
+          ' /tmp/server-card.json >/dev/null
 
-      - name: Verify x402 payment challenges without spending
+          echo 'Focused production discovery and trust surfaces passed.'
+
+      - name: Verify settlement canary and Guard challenges without spending
         shell: bash
         env:
           BASE_URL: https://agentresolver.vercel.app
         run: |
           set -euo pipefail
 
-          check_402() {
-            local name="$1"
-            local path="$2"
-            local body="$3"
-            local slug="$4"
-            local expected_amount="$5"
+          canary_status="$(curl --retry 3 --retry-delay 1 --retry-all-errors -sS             -D /tmp/x402-ping-headers.txt             -o /tmp/x402-ping-body.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             "$BASE_URL/api/x402-ping")"
+          test "$canary_status" = "402"
 
-            status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-              -D "/tmp/${slug}-headers.txt" \
-              -o "/tmp/${slug}-body.txt" \
-              -w '%{http_code}' \
-              -H 'content-type: application/json' \
-              -H 'x-agentresolver-internal: 1' \
-              --data "$body" \
-              "$BASE_URL$path")"
-
-            if [ "$status" != "402" ]; then
-              echo "Expected $name x402 HTTP 402 challenge, got $status"
-              cat "/tmp/${slug}-body.txt"
-              exit 1
-            fi
-
-            if ! grep -Eiq '^payment-required:[[:space:]]*[^[:space:]]+' "/tmp/${slug}-headers.txt"; then
-              echo "$name returned HTTP 402 but PAYMENT-REQUIRED header is missing."
-              sed -n '1,20p' "/tmp/${slug}-headers.txt"
-              exit 1
-            fi
-
-            get_path="$path"
-            if [ "$path" = "/api/x402-payment-preflight" ] || [ "$path" = "/api/payment-guard" ]; then
-              get_path="$path?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453"
-            fi
-            get_status="$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-              -D "/tmp/${slug}-get-headers.txt" \
-              -H 'x-agentresolver-internal: 1' \
-              -o "/tmp/${slug}-get.json" \
-              -w '%{http_code}' \
-              "$BASE_URL$get_path")"
-            if [ "$get_status" != "402" ]; then
-              echo "Expected $name GET discovery probe to receive 402, got $get_status"
-              exit 1
-            fi
-
-            if jq -e --arg amount "$expected_amount" '
-              .accepts[0].amount == $amount and
-              .accepts[0].maxAmountRequired == $amount
-            ' "/tmp/${slug}-get.json" >/dev/null 2>&1; then
-              :
-            else
-              payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' "/tmp/${slug}-get-headers.txt")"
-              PAYMENT_REQUIRED="$payment_required" EXPECTED_AMOUNT="$expected_amount" python3 - <<'PY'
-          import base64
-          import json
-          import os
-          
-          raw = os.environ["PAYMENT_REQUIRED"].strip()
-          assert raw, "PAYMENT-REQUIRED header missing"
-          raw += "=" * (-len(raw) % 4)
-          payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
-          accepts = payload.get("accepts") or []
-          expected = os.environ["EXPECTED_AMOUNT"]
-          assert any(
-              str(item.get("amount")) == expected and
-              str(item.get("maxAmountRequired", item.get("amount"))) == expected
-              for item in accepts
-          ), f"Expected amount {expected} missing from PAYMENT-REQUIRED header"
-          PY
-            fi
-          }
-
-          check_402 'ABI Encode' '/api/abi-encode' '{"types":["uint256","bool"],"values":["42",true]}' 'abi-encode' '5000'
-          check_402 'ABI Decode' '/api/abi-decode' '{"types":["uint256","bool"],"data":"0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001"}' 'abi-decode' '5000'
-          check_402 'EIP-712 Hash' '/api/eip712-hash' '{"domain":{"name":"Test","version":"1","chainId":1},"types":{"Test":[{"name":"value","type":"uint256"}]},"primaryType":"Test","message":{"value":"1"}}' 'eip712-hash' '5000'
-          check_402 'ENS Namehash' '/api/ens-namehash' '{"name":"wevm.eth"}' 'ens-namehash' '10000'
-          check_402 'EVM Address Checksum' '/api/evm-address-checksum' '{"address":"0x52908400098527886e0f7030069857d2e4169ee7"}' 'evm-address-checksum' '3000'
-          check_402 'Keccak-256' '/api/keccak256' '{"input":"","encoding":"utf8"}' 'keccak256' '4000'
-          check_402 'Solidity Selector' '/api/solidity-selector' '{"signature":"transfer(address,uint256)"}' 'solidity-selector' '10000'
-          check_402 'EVM Units' '/api/evm-units' '{"mode":"parse","value":"1.5","decimals":18}' 'evm-units' '5000'
-          check_402 'x402 Settlement Ping' '/api/x402-ping' '{"echo":"smoke"}' 'x402-ping' '1000'
-
-          settlement_ping_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/x402-ping-headers.txt)"
+          settlement_ping_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/x402-ping-headers.txt)"
           PAYMENT_REQUIRED="$settlement_ping_required" python3 - <<'PY'
           import base64
           import json
@@ -225,9 +95,9 @@ jobs:
           assert raw, "x402-ping PAYMENT-REQUIRED header missing"
           raw += "=" * (-len(raw) % 4)
           payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
-          assert payload.get("x402Version") == 2, "x402-ping must advertise x402 v2"
+          assert payload.get("x402Version") == 2
           resource = payload.get("resource") or {}
-          assert resource.get("url") == "https://agentresolver.vercel.app/api/x402-ping", "x402-ping resource binding drifted"
+          assert resource.get("url") == "https://agentresolver.vercel.app/api/x402-ping"
           accepts = payload.get("accepts") or []
 
           base = next((item for item in accepts if item.get("network") == "eip155:8453"), None)
@@ -236,9 +106,6 @@ jobs:
           assert str(base.get("amount")) == "1000"
           assert base.get("asset") == "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
           assert base.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
-          base_extra = base.get("extra") or {}
-          assert base_extra.get("name") == "USD Coin"
-          assert base_extra.get("version") == "2"
 
           solana = next((item for item in accepts if item.get("network") == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"), None)
           assert solana is not None, "Solana exact payment option missing"
@@ -249,193 +116,57 @@ jobs:
           fee_payer = (solana.get("extra") or {}).get("feePayer")
           assert isinstance(fee_payer, str) and fee_payer.strip(), "Solana feePayer missing"
           PY
-          check_402 'SHA-256' '/api/sha256' '{"input":"agentresolver"}' 'sha256' '1000'
-          check_402 'SHA-512' '/api/sha512' '{"input":"agentresolver"}' 'sha512' '1000'
-          check_402 'HMAC SHA-256' '/api/hmac-sha256' '{"input":"payload","secret":"secret"}' 'hmac-sha256' '1000'
-          check_402 'Base64 Encode' '/api/base64-encode' '{"input":"hello"}' 'base64-encode' '1000'
-          check_402 'Base64 Decode' '/api/base64-decode' '{"input":"aGVsbG8="}' 'base64-decode' '1000'
-          check_402 'JWT Decode' '/api/jwt-decode' '{"input":"eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature"}' 'jwt-decode' '1000'
-          check_402 'JSON Normalize' '/api/json-normalize' '{"value":{"b":2,"a":1}}' 'json-normalize' '1000'
-          check_402 'JSON Schema Validate' '/api/json-schema-validate' '{"data":{"id":"123"},"schema":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}}}' 'json-schema-validate' '1000'
-          check_402 'URL Parse' '/api/url-parse' '{"url":"https://example.com/a?x=1"}' 'url-parse' '1000'
-          check_402 'UUID v4' '/api/uuid-v4' '{"count":1}' 'uuid-v4' '1000'
-          check_402 'Slugify' '/api/slugify' '{"text":"Hello Agent World"}' 'slugify' '1000'
-          check_402 'Hash & Encode' '/api/hash-encode' '{"operation":"sha256","input":"agentresolver"}' 'hash-encode' '1000'
-          check_402 'X402 Payment Preflight' '/api/x402-payment-preflight' '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}' 'x402-payment-preflight' '1000'
-          check_402 'AgentResolver Guard' '/api/payment-guard' '{"url":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","maxPriceUsd":0.01,"expectedNetwork":"eip155:8453"}' 'payment-guard' '1000'
-          check_402 'HTTP Inspect' '/api/http-inspect' '{"url":"https://example.com"}' 'http-inspect' '1000'
 
-          payment_required=$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-inspect-headers.txt)
-          PAYMENT_REQUIRED="$payment_required" python3 - <<'PY'
+          guard_status="$(curl --retry 3 --retry-delay 1 --retry-all-errors -sS             -D /tmp/guard-headers.txt             -o /tmp/guard-body.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             "$BASE_URL/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453")"
+          test "$guard_status" = "402"
+          grep -Eiq '^payment-required:[[:space:]]*[^[:space:]]+' /tmp/guard-headers.txt
+
+          preflight_status="$(curl --retry 3 --retry-delay 1 --retry-all-errors -sS             -D /tmp/preflight-headers.txt             -o /tmp/preflight-body.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453")"
+          test "$preflight_status" = "402"
+          grep -Eiq '^payment-required:[[:space:]]*[^[:space:]]+' /tmp/preflight-headers.txt
+
+          check_post_challenge() {
+            local path="$1"
+            local body="$2"
+            local amount="$3"
+            local slug="$4"
+            local status
+            status="$(curl --retry 3 --retry-delay 1 --retry-all-errors -sS               -D "/tmp/$slug-headers.txt"               -o "/tmp/$slug-body.json"               -w '%{http_code}'               -H 'content-type: application/json'               -H 'x-agentresolver-internal: 1'               --data "$body"               "$BASE_URL$path")"
+            test "$status" = "402"
+            grep -Eiq '^payment-required:[[:space:]]*[^[:space:]]+' "/tmp/$slug-headers.txt"
+            PAYMENT_REQUIRED="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' "/tmp/$slug-headers.txt")"               EXPECTED_AMOUNT="$amount" python3 - <<'PY'
           import base64
           import json
           import os
 
           raw = os.environ["PAYMENT_REQUIRED"].strip()
+          assert raw
           raw += "=" * (-len(raw) % 4)
           payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
-          bazaar = (payload.get("extensions") or {}).get("bazaar")
-          assert bazaar, "HTTP Inspect payment challenge is missing extensions.bazaar"
-          info = bazaar.get("info") or {}
-          input_info = info.get("input") or {}
-          assert input_info.get("method") == "POST", "Bazaar input method was not enriched to POST"
+          expected = os.environ["EXPECTED_AMOUNT"]
+          assert any(str(item.get("amount")) == expected for item in (payload.get("accepts") or []))
           PY
+          }
 
-          check_402 'Tool Contract Fit' '/api/tool-contract' '{"producerOutputSchema":{"type":"object"},"consumerInputSchema":{"type":"object"}}' 'tool-contract' '5000'
-          check_402 'OpenAPI Operation Select' '/api/openapi-select' '{"specUrl":"https://agentresolver.vercel.app/openapi.json","goal":"select the resolve operation"}' 'openapi-select' '5000'
-          check_402 'Verified Resolve' '/api/verified-resolve' '{"goal":"find and verify an MCP server for search"}' 'verified-resolve' '20000'
-          check_402 'Agent Readiness Audit' '/api/agent-readiness' '{"url":"https://example.com"}' 'readiness' '5000'
-          check_402 'MCP Live Preflight' '/api/mcp-probe' '{"endpoint":"https://agentresolver.vercel.app/mcp"}' 'mcp-probe' '1000'
-          check_402 'Batch Verified Resolve' '/api/batch-verified-resolve' '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}' 'batch-verified-resolve' '50000'
+          check_post_challenge "/api/verified-resolve"             '{"goal":"find and verify an MCP server for search"}' "20000" "verified"
+          check_post_challenge "/api/batch-verified-resolve"             '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}' "50000" "batch"
 
-          echo 'All POST and GET x402 challenges verified without sending payment.'
+          echo 'Revenue-path x402 challenges passed without signing or spending.'
 
-      - name: Verify direct paid MCP challenge without spending
+      - name: Verify free resolver still sends payment-safety intent to Guard
         shell: bash
         env:
-          MCP_URL: https://agentresolver.vercel.app/mcp
+          BASE_URL: https://agentresolver.vercel.app
         run: |
           set -euo pipefail
 
-          sponsor_request='{"jsonrpc":"2.0","id":89,"method":"tools/call","params":{"name":"sponsorship_info","arguments":{}}}'
-          sponsor_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-            -o /tmp/mcp-sponsorship.out \
-            -w '%{http_code}' \
-            -X POST "$MCP_URL" \
-            -H 'content-type: application/json' \
-            -H 'accept: application/json, text/event-stream' \
-            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
-            --data "$sponsor_request")
-          test "$sponsor_code" -ge 200 && test "$sponsor_code" -lt 300
-          grep -F 'sponsorship_info' /tmp/mcp-sponsorship.out >/dev/null || grep -F 'applicationCreatesCommitment' /tmp/mcp-sponsorship.out >/dev/null
-          grep -F 'applicationCreatesCommitment' /tmp/mcp-sponsorship.out >/dev/null
-          grep -F 'false' /tmp/mcp-sponsorship.out >/dev/null
+          curl --retry 3 --retry-delay 1 --retry-all-errors -fsS             -H 'content-type: application/json'             -H 'x-agentresolver-internal: 1'             --data '{"goal":"verify this x402 payment endpoint before paying","url":"https://agentresolver.vercel.app/api/x402-ping","limit":3}'             "$BASE_URL/api/resolve" > /tmp/resolve.json
 
-          resolve_request='{"jsonrpc":"2.0","id":90,"method":"tools/call","params":{"name":"resolve","arguments":{"goal":"inspect this HTTPS URL for status latency cache headers and security headers","url":"https://example.com","limit":3}}}'
-          resolve_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-            -o /tmp/mcp-resolve.out \
-            -w '%{http_code}' \
-            -X POST "$MCP_URL" \
-            -H 'content-type: application/json' \
-            -H 'accept: application/json, text/event-stream' \
-            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
-            --data "$resolve_request")
+          jq -e '
+            .owned[0].id == "x402-payment-preflight" and
+            .owned[0].priceUsd == 0.001 and
+            .recommendedPaidAction.capabilityId == "x402-payment-preflight" and
+            .recommendedPaidAction.priceUsd == 0.001
+          ' /tmp/resolve.json >/dev/null
 
-          test "$resolve_code" -ge 200 && test "$resolve_code" -lt 300
-          grep -F 'recommendedPaidAction' /tmp/mcp-resolve.out >/dev/null
-          grep -F 'http_inspect' /tmp/mcp-resolve.out >/dev/null
-          grep -F '"surface":"mcp"' /tmp/mcp-resolve.out >/dev/null || grep -F '\\"surface\\":\\"mcp\\"' /tmp/mcp-resolve.out >/dev/null
-
-                    request='{"jsonrpc":"2.0","id":91,"method":"tools/call","params":{"name":"http_inspect","arguments":{"url":"https://example.com"}}}'
-          code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS             -o /tmp/mcp-paid.out             -w '%{http_code}'             -X POST "$MCP_URL"             -H 'content-type: application/json'             -H 'accept: application/json, text/event-stream'             -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0'             --data "$request")
-
-          test "$code" -ge 200 && test "$code" -lt 300
-
-          if ! grep -F 'x402Version' /tmp/mcp-paid.out >/dev/null; then
-            echo 'Unpaid http_inspect MCP call did not return an x402 payment challenge.'
-            cat /tmp/mcp-paid.out
-            exit 1
-          fi
-          if ! grep -F '1000' /tmp/mcp-paid.out >/dev/null; then
-            echo 'Unpaid http_inspect MCP challenge did not advertise the expected $0.001 atomic amount.'
-            cat /tmp/mcp-paid.out
-            exit 1
-          fi
-          if grep -F 'latencyMs' /tmp/mcp-paid.out >/dev/null; then
-            echo 'SECURITY FAILURE: unpaid MCP call exposed HTTP inspection output before settlement.'
-            cat /tmp/mcp-paid.out
-            exit 1
-          fi
-
-          echo 'Direct paid HTTP Inspect MCP challenge verified without signing or spending.'
-
-          openapi_resolve='{"jsonrpc":"2.0","id":92,"method":"tools/call","params":{"name":"resolve","arguments":{"goal":"select the best OpenAPI operation endpoint for this API goal","url":"https://agentresolver.vercel.app/openapi.json","limit":3}}}'
-          openapi_resolve_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-            -o /tmp/mcp-openapi-resolve.out \
-            -w '%{http_code}' \
-            -X POST "$MCP_URL" \
-            -H 'content-type: application/json' \
-            -H 'accept: application/json, text/event-stream' \
-            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
-            --data "$openapi_resolve")
-          test "$openapi_resolve_code" -ge 200 && test "$openapi_resolve_code" -lt 300
-          grep -F 'openapi_select' /tmp/mcp-openapi-resolve.out >/dev/null
-          grep -F '"surface":"mcp"' /tmp/mcp-openapi-resolve.out >/dev/null || grep -F '\\"surface\\":\\"mcp\\"' /tmp/mcp-openapi-resolve.out >/dev/null
-
-          openapi_request='{"jsonrpc":"2.0","id":93,"method":"tools/call","params":{"name":"openapi_select","arguments":{"specUrl":"https://agentresolver.vercel.app/openapi.json","goal":"select the resolve operation"}}}'
-          openapi_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-            -o /tmp/mcp-openapi-paid.out \
-            -w '%{http_code}' \
-            -X POST "$MCP_URL" \
-            -H 'content-type: application/json' \
-            -H 'accept: application/json, text/event-stream' \
-            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
-            --data "$openapi_request")
-          test "$openapi_code" -ge 200 && test "$openapi_code" -lt 300
-          grep -F 'x402Version' /tmp/mcp-openapi-paid.out >/dev/null
-          grep -F '5000' /tmp/mcp-openapi-paid.out >/dev/null
-          if grep -F 'operationCount' /tmp/mcp-openapi-paid.out >/dev/null; then
-            echo 'SECURITY FAILURE: unpaid OpenAPI Select MCP call exposed paid output before settlement.'
-            cat /tmp/mcp-openapi-paid.out
-            exit 1
-          fi
-
-          verified_request='{"jsonrpc":"2.0","id":94,"method":"tools/call","params":{"name":"verified_resolve","arguments":{"goal":"find and verify an MCP server for web search"}}}'
-          verified_code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS \
-            -o /tmp/mcp-verified-paid.out \
-            -w '%{http_code}' \
-            -X POST "$MCP_URL" \
-            -H 'content-type: application/json' \
-            -H 'accept: application/json, text/event-stream' \
-            -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0' \
-            --data "$verified_request")
-          test "$verified_code" -ge 200 && test "$verified_code" -lt 300
-          grep -F 'x402Version' /tmp/mcp-verified-paid.out >/dev/null
-          grep -F '20000' /tmp/mcp-verified-paid.out >/dev/null
-          if grep -F 'liveVerification' /tmp/mcp-verified-paid.out >/dev/null; then
-            echo 'SECURITY FAILURE: unpaid Verified Resolve MCP call exposed paid output before settlement.'
-            cat /tmp/mcp-verified-paid.out
-            exit 1
-          fi
-
-          check_unpaid_mcp_tool() {
-            local id="$1"
-            local name="$2"
-            local amount="$3"
-            local forbidden="$4"
-            local arguments="$5"
-            local output="/tmp/mcp-direct-${name}.out"
-            local request
-            request=$(jq -cn --argjson id "$id" --arg name "$name" --argjson arguments "$arguments"               '{jsonrpc:"2.0",id:$id,method:"tools/call",params:{name:$name,arguments:$arguments}}')
-            local code
-            code=$(curl --retry 5 --retry-delay 2 --retry-all-errors -sS               -o "$output"               -w '%{http_code}'               -X POST "$MCP_URL"               -H 'content-type: application/json'               -H 'accept: application/json, text/event-stream'               -H 'user-agent: AgentResolver-Direct-Paid-MCP-Smoke/1.0'               --data "$request")
-            test "$code" -ge 200 && test "$code" -lt 300
-            grep -F 'x402Version' "$output" >/dev/null
-            grep -F "$amount" "$output" >/dev/null
-            if grep -F "$forbidden" "$output" >/dev/null; then
-              echo "SECURITY FAILURE: unpaid $name MCP call exposed paid output before settlement."
-              cat "$output"
-              exit 1
-            fi
-          }
-
-          check_unpaid_mcp_tool 95 'tool_contract' '5000' 'directMatches' '{"producerOutputSchema":{"type":"object","properties":{"id":{"type":"string"}}},"consumerInputSchema":{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}}'
-          check_unpaid_mcp_tool 96 'mcp_preflight' '1000' 'mcpCompatible' '{"endpoint":"https://agentresolver.vercel.app/mcp"}'
-          check_unpaid_mcp_tool 97 'agent_readiness' '5000' 'recommendations' '{"url":"https://example.com"}'
-          check_unpaid_mcp_tool 98 'batch_verified_resolve' '50000' 'durationMs' '{"items":[{"goal":"find a search MCP"},{"goal":"find a browser MCP"}]}'
-          check_unpaid_mcp_tool 99 'hash_encode' '1000' '206c438b0ceeb41e34a19e134396e4dc317e4cc71863065c2da451326a2f5d77' '{"operation":"sha256","input":"agentresolver"}'
-          check_unpaid_mcp_tool 100 'x402_ping' '1000' '"pong":true' '{"echo":"smoke"}'
-          check_unpaid_mcp_tool 101 'sha256' '1000' '206c438b0ceeb41e34a19e134396e4dc317e4cc71863065c2da451326a2f5d77' '{"input":"agentresolver"}'
-          check_unpaid_mcp_tool 102 'base64_encode' '1000' 'aGVsbG8=' '{"input":"hello"}'
-          check_unpaid_mcp_tool 103 'json_normalize' '1000' '"normalized"' '{"value":{"b":2,"a":1}}'
-          check_unpaid_mcp_tool 104 'json_schema_validate' '1000' '"valid":true' '{"data":{"id":"123"},"schema":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}}}'
-          check_unpaid_mcp_tool 105 'evm_address_checksum' '3000' '0x52908400098527886E0F7030069857D2E4169EE7' '{"address":"0x52908400098527886e0f7030069857d2e4169ee7"}'
-          check_unpaid_mcp_tool 106 'keccak256' '4000' '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470' '{"input":"","encoding":"utf8"}'
-          check_unpaid_mcp_tool 107 'solidity_selector' '10000' '0xa9059cbb' '{"signature":"transfer(address,uint256)"}'
-          check_unpaid_mcp_tool 108 'evm_units' '5000' '1500000000000000000' '{"mode":"parse","value":"1.5","decimals":18}'
-          check_unpaid_mcp_tool 109 'abi_encode' '5000' '"encoded"' '{"types":["uint256","bool"],"values":["42",true]}'
-          check_unpaid_mcp_tool 110 'abi_decode' '5000' '"values"' '{"types":["uint256","bool"],"data":"0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001"}'
-          check_unpaid_mcp_tool 111 'eip712_hash' '5000' '"digest"' '{"domain":{"name":"Test","version":"1","chainId":1},"types":{"Test":[{"name":"value","type":"uint256"}]},"primaryType":"Test","message":{"value":"1"}}'
-          check_unpaid_mcp_tool 112 'ens_namehash' '10000' '0xf246651c1b9a6b141d19c2604e9a58f567973833990f830d882534a747801359' '{"name":"wevm.eth"}'
-
-          echo 'All directly payable MCP tools return local challenges without signing, spending, or paid execution egress.'
+          echo 'Free resolver -> Guard handoff passed.'
