@@ -363,6 +363,34 @@ export function x402BuyerSetup() {
           "If the host needs exact amount/network/asset/payTo/resource enforcement before the Guard signature, use the official @x402/mcp onPaymentRequested gate instead of relying on prompt text."
         ]
       },
+      awsBedrockAgentCorePayments: {
+        runtime: "Amazon Bedrock AgentCore Payments",
+        protocol: "x402",
+        paymentGuardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+        langGraph: {
+          installCommand: "pip install 'bedrock-agentcore[langgraph]'",
+          config: "AgentCorePaymentsConfig",
+          middleware: "AgentCorePaymentsMiddleware"
+        },
+        strandsAgents: {
+          installCommand: "pip install 'bedrock-agentcore[strands-agents]'",
+          config: "AgentCorePaymentsPluginConfig",
+          plugin: "AgentCorePaymentsPlugin"
+        },
+        paymentManager: {
+          class: "PaymentManager",
+          signedHeaderMethod: "generate_payment_header"
+        },
+        authorizationModel:
+          "Use an AgentCore payment session with a caller-owned payment instrument and deterministic budget. The separate $0.001 AgentResolver Guard fee must fit caller policy; Guard eligibility still does not authorize the target payment.",
+        behavior: [
+          "Invoke the AgentResolver Guard URL through the AgentCore-managed HTTP path so the runtime receives its standard x402 402 challenge.",
+          "Let AgentCore Payments enforce the active session budget, generate payment proof through ProcessPayment, and retry Guard with the signed proof.",
+          "Require Guard decision === eligible and verify the observed target amount, asset, network, payTo, scheme and resource binding.",
+          "Only then invoke the original target through a separately authorized caller-owned AgentCore payment session or policy.",
+          "Never send AgentCore payment-instrument credentials, wallet secrets, connector secrets or signed proof material to AgentResolver outside the standard x402 retry."
+        ]
+      },
       cloudflareAgents: {
         runtime: "Cloudflare Agents",
         package: "agents",
@@ -413,7 +441,9 @@ export function x402BuyerSetup() {
       axios: "https://github.com/x402-foundation/x402/blob/main/typescript/packages/http/axios/README.md",
       coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md",
       vercelAiSdkX402Mcp: "https://vercel.com/blog/introducing-x402-mcp-open-protocol-payments-for-mcp-tools",
-      cloudflareAgentsX402Mcp: "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md"
+      cloudflareAgentsX402Mcp: "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md",
+      awsAgentCorePaymentsFrameworks: "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-framework-integrations.html",
+      awsAgentCorePaymentsProcess: "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html"
     }
   } as const;
 }
