@@ -86,3 +86,20 @@ test("AgentResolver Guard is additive to the canonical preflight contract", () =
   assert.equal(guard.post.operationId, "agentResolverPaymentGuardPost");
   assert.equal(canonical.post.operationId, "x402PaymentPreflightPayToVerification");
 });
+
+
+test("GET-first discovery copy preserves caller-only spend authorization", () => {
+  const openapi = readJson("public/openapi.json");
+  assert.match(openapi.info?.description ?? "", /payment verification for autonomous buyers/i);
+  assert.doesNotMatch(openapi.info?.description ?? "", /payment authorization for autonomous buyers/i);
+  assert.match(openapi.info?.["x-guidance"] ?? "", /GET \/api\/x402-payment-preflight/);
+
+  const manifest = readJson("public/.well-known/x402");
+  const preflightGetResource = manifest.resources?.find(
+    (item: any) => item.resource === "GET /api/x402-payment-preflight"
+  );
+  assert.match(preflightGetResource?.name ?? "", /payment verification/i);
+  assert.doesNotMatch(preflightGetResource?.name ?? "", /payment authorization/i);
+  assert.match(preflightGetResource?.description ?? "", /caller alone authorizes any spend/i);
+  assert.doesNotMatch(preflightGetResource?.description ?? "", /authorization gate/i);
+});
