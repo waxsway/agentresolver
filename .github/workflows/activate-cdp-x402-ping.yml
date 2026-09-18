@@ -194,7 +194,7 @@ jobs:
 
       - name: Install pinned Vercel CLI
         if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
-        run: npm install --global vercel@48.8.0 --no-audit --no-fund
+        run: npm install --global vercel@59.11.7 --no-audit --no-fund
 
       - name: Link Vercel project
         if: steps.credentials.outputs.ready == 'true' && steps.live_state.outputs.active != 'true'
@@ -238,7 +238,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          deployment_url="$(vercel env run --environment=production --token="$VERCEL_TOKEN" -- node .github/scripts/vercel-deploy-prebuilt-runtime-env.mjs .vercel/.env.production.local)"
+          deployment_url="$(vercel env run -e production --token="$VERCEL_TOKEN" -- node .github/scripts/vercel-deploy-prebuilt-runtime-env.mjs .vercel/.env.production.local)"
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
           echo "Deployed credential-activated x402-ping rail."
 
