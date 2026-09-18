@@ -43,13 +43,14 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     .map((item: any) => item?.post)
     .filter((op: any) => op?.tags?.includes("Paid Agent Capabilities"));
 
-  assert.equal(paid.length, 10);
+  assert.equal(paid.length, 11);
   assert.deepEqual(
     Object.keys(openapi.paths || {}).sort(),
     [
       "/api/api-trust-security-preflight",
       "/api/batch-verified-resolve",
       "/api/health",
+      "/api/hash-encode",
       "/api/payment-guard",
       "/api/prepayment-authorization-gate",
       "/api/resolve",
@@ -63,6 +64,11 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   );
   assert.equal(openapi.paths?.["/api/sha256"], undefined);
   assert.ok(openapi.paths?.["/api/usdc-payment-check"]?.post);
+  assert.ok(openapi.paths?.["/api/hash-encode"]?.get);
+  assert.equal(
+    openapi.paths?.["/api/hash-encode"]?.get?.["x-payment-info"]?.priceUsd,
+    0.001
+  );
   for (const op of paid as any[]) {
     const info = op["x-payment-info"];
     assert.equal(info?.price?.mode, "fixed");
@@ -83,6 +89,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   const paidIds = new Set([
     "x402-ping",
     "x402-payment-preflight",
+    "hash-encode",
     "verified-resolve",
     "batch-verified-resolve"
   ]);
@@ -97,6 +104,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   const publicResourcePaths = new Set([
     "/api/x402-ping",
     "/api/x402-payment-preflight",
+    "/api/hash-encode",
     "/api/verified-resolve",
     "/api/batch-verified-resolve",
     "/api/usdc-payment-check",
