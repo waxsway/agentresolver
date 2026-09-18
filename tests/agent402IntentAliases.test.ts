@@ -47,7 +47,9 @@ test("exact-intent aliases bind 402 discovery to their own resource URLs", async
     assert.equal(response.status, 402, alias.id);
     const body = await response.json() as any;
     assert.equal(body.resource?.url, `https://agentresolver.vercel.app${alias.endpoint}`, alias.id);
-    assert.equal(body.extensions?.agentresolver?.capabilityId, "x402-payment-preflight", alias.id);
+    assert.equal(body.extensions?.agentresolver, undefined, alias.id);
+    assert.ok(body.extensions?.bazaar?.info, alias.id);
+    assert.ok(body.extensions?.bazaar?.schema, alias.id);
     assert.ok(body.accepts?.some((item: any) => item.network === "eip155:8453" && item.amount === "1000"), alias.id);
     assert.ok(body.accepts?.some((item: any) => item.network === "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" && item.amount === "1000"), alias.id);
   }

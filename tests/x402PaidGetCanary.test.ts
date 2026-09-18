@@ -75,7 +75,11 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
     item.payTo === "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
   ));
   const decodedHeader = JSON.parse(Buffer.from(getPaymentRequired!, "base64").toString("utf8"));
-  assert.deepEqual(getBody, decodedHeader);
+  assert.equal(decodedHeader.error, "Payment required");
+  assert.match(getBody.error || "", /https:\/\/agentresolver\.vercel\.app\/api\/x402-client-setup/);
+  assert.deepEqual(getBody.resource, decodedHeader.resource);
+  assert.deepEqual(getBody.accepts, decodedHeader.accepts);
+  assert.deepEqual(getBody.extensions, decodedHeader.extensions);
   assert.equal(decodedHeader.resource?.serviceName, "AgentResolver");
   assert.deepEqual(decodedHeader.resource?.tags, [
     "x402",
@@ -118,6 +122,20 @@ test("x402-ping exposes a payable GET while preserving POST", async () => {
   const postBody = await postResponse.json() as any;
   assert.equal(postBody.x402Version, 2);
   assert.ok(Array.isArray(postBody.accepts));
+});
+
+test("x402 discovery challenge uses standard extensions and body-visible buyer setup", async () => {
+  const response = x402DiscoveryChallenge("x402-ping");
+  const body = await response.json() as any;
+  const paymentRequired = response.headers.get("payment-required");
+  assert.ok(paymentRequired);
+
+  const decoded = JSON.parse(Buffer.from(paymentRequired!, "base64").toString("utf8"));
+  assert.deepEqual(body, decoded);
+  assert.match(body.error || "", /https:\/\/agentresolver\.vercel\.app\/api\/x402-client-setup/);
+  assert.equal(body.extensions?.agentresolver, undefined);
+  assert.ok(body.extensions?.bazaar?.info);
+  assert.ok(body.extensions?.bazaar?.schema);
 });
 
 test("generated machine surfaces prefer GET for the settlement canary", () => {
