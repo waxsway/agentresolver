@@ -2,6 +2,8 @@ name: Register Paywitness Paid Canary Once
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "23 * * * *"
   workflow_run:
     workflows: ["Deploy Production"]
     types: [completed]
