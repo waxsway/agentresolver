@@ -9,7 +9,7 @@ export function GET() {
       .map((value) => value.trim())
       .filter(Boolean)
   );
-  const cdpFacilitatorEnabledForX402Ping =
+  const cdpFacilitatorEnabledForCdpCanary =
     process.env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1" &&
     cdpCapabilities.has("x402-ping");
   const circleGatewayEnabled = process.env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1";
@@ -39,10 +39,12 @@ export function GET() {
       registry: "io.github.waxsway/agentresolver",
       paymentRails: {
         default: "payai",
-        x402Ping: cdpFacilitatorEnabledForX402Ping ? "coinbase-cdp" : "payai",
-        x402PingBase: cdpFacilitatorEnabledForX402Ping ? "coinbase-cdp" : "payai",
+        x402Ping: "payai",
+        x402PingBase: "payai",
         x402PingSolana: "payai",
-        cdpFacilitatorEnabledForX402Ping,
+        x402CdpCanary: cdpFacilitatorEnabledForCdpCanary ? "coinbase-cdp" : "disabled",
+        cdpFacilitatorEnabledForX402Ping: false,
+        cdpFacilitatorEnabledForCdpCanary,
         circleGatewayEnabled
       }
     },
