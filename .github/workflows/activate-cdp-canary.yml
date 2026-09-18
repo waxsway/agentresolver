@@ -1,0 +1,219 @@
+name: Activate Coinbase CDP Canary
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coinbase-cdp-canary-activation
+  cancel-in-progress: false
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
+      CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
+      BASE_URL: https://agentresolver.vercel.app
+    steps:
+      - name: Check Coinbase credential gate
+        id: credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CDP_API_KEY_ID:-}" ] && [ -z "${CDP_API_KEY_SECRET:-}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Coinbase CDP credentials are not configured; activation remains dormant."
+            exit 0
+          fi
+
+          if [ -z "${CDP_API_KEY_ID:-}" ] || [ -z "${CDP_API_KEY_SECRET:-}" ]; then
+            echo "Coinbase CDP credential pair is incomplete; refusing partial activation." >&2
+            exit 1
+          fi
+
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN is not configured; refusing activation." >&2
+            exit 1
+          fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether production is already activated
+        if: steps.credentials.outputs.ready == 'true'
+        id: current
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          suffix="cdpActivationCheck=$GITHUB_RUN_ID"
+          if curl -fsS -H 'cache-control: no-cache' "$BASE_URL/api/health?$suffix" -o /tmp/health.json &&
+            jq -e '
+              .configuredPaymentRails.x402Ping == "coinbase-cdp" and
+              .configuredPaymentRails.x402PaymentPreflight == "payai" and
+              .configuredPaymentRails.circleGatewayEnabled == false
+            ' /tmp/health.json >/dev/null; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+            echo "Canonical production already has the bounded Coinbase CDP canary rail active."
+          else
+            echo "active=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout current main
+        if: steps.credentials.outputs.ready == 'true' && steps.current.outputs.active != 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Require checkout to still be current main
+        if: steps.credentials.outputs.ready == 'true' && steps.current.outputs.active != 'true'
+        id: freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          validated_sha="$(git rev-parse HEAD)"
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          echo "validated_sha=$validated_sha" >> "$GITHUB_OUTPUT"
+          if [ "$validated_sha" != "$current_main" ]; then
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "Main advanced before activation preparation; refusing stale activation."
+          else
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.freshness.outputs.fresh == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Install pinned Vercel CLI
+        if: steps.freshness.outputs.fresh == 'true'
+        run: npm install --global vercel@48.8.0 --no-audit --no-fund
+
+      - name: Link Vercel project
+        if: steps.freshness.outputs.fresh == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Require Circle Gateway to remain disabled
+        if: steps.freshness.outputs.fresh == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel env run -e production --token="$VERCEL_TOKEN" --             node -e 'process.exit(process.env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1" ? 42 : 0)' ||
+          {
+            code=$?
+            if [ "$code" = "42" ]; then
+              echo "Circle Gateway is enabled in production; refusing Coinbase CDP activation." >&2
+            else
+              echo "Unable to verify the production Circle Gateway setting." >&2
+            fi
+            exit "$code"
+          }
+
+      - name: Configure bounded CDP rail, build, and deploy
+        if: steps.freshness.outputs.fresh == 'true'
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          id_file="$(mktemp)"
+          secret_file="$(mktemp)"
+          enabled_file="$(mktemp)"
+          scope_file="$(mktemp)"
+          printf '%s' "$CDP_API_KEY_ID" > "$id_file"
+          printf '%s' "$CDP_API_KEY_SECRET" > "$secret_file"
+          printf '%s' "1" > "$enabled_file"
+          printf '%s' "x402-ping" > "$scope_file"
+
+          activation_committed=0
+          cleanup() {
+            rm -f "$id_file" "$secret_file" "$enabled_file" "$scope_file"
+          }
+          rollback_flag() {
+            if [ "$activation_committed" != "1" ]; then
+              printf '%s' "0" | vercel env add AGENTRESOLVER_CDP_FACILITATOR_ENABLED production                 --force --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+            fi
+            cleanup
+          }
+          trap rollback_flag ERR
+          trap cleanup EXIT
+
+          vercel env add CDP_API_KEY_ID production --force --sensitive             --token="$VERCEL_TOKEN" < "$id_file" >/dev/null
+          vercel env add CDP_API_KEY_SECRET production --force --sensitive             --token="$VERCEL_TOKEN" < "$secret_file" >/dev/null
+          vercel env add AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES production --force             --token="$VERCEL_TOKEN" < "$scope_file" >/dev/null
+          vercel env add AGENTRESOLVER_CDP_FACILITATOR_ENABLED production --force             --token="$VERCEL_TOKEN" < "$enabled_file" >/dev/null
+
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null
+          vercel build --prod --token="$VERCEL_TOKEN"
+
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          validated_sha="${{ steps.freshness.outputs.validated_sha }}"
+          if [ "$current_main" != "$validated_sha" ]; then
+            echo "Main advanced during the CDP build; disabling the activation flag and refusing stale deploy."
+            printf '%s' "0" | vercel env add AGENTRESOLVER_CDP_FACILITATOR_ENABLED production               --force --token="$VERCEL_TOKEN" >/dev/null
+            activation_committed=1
+            exit 0
+          fi
+
+          deployment_url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          activation_committed=1
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify canonical bounded CDP activation
+        if: steps.deploy.outputs.url != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ready=0
+          for attempt in {1..30}; do
+            suffix="cdpActivation=$GITHUB_RUN_ID&attempt=$attempt"
+            if curl -fsS -H 'cache-control: no-cache' "$BASE_URL/api/health?$suffix" -o /tmp/cdp-health.json &&
+              jq -e '
+                .configuredPaymentRails.x402Ping == "coinbase-cdp" and
+                .configuredPaymentRails.x402PaymentPreflight == "payai" and
+                .configuredPaymentRails.circleGatewayEnabled == false
+              ' /tmp/cdp-health.json >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" != "1" ]; then
+            echo "Canonical production did not report the bounded Coinbase CDP rail." >&2
+            exit 1
+          fi
+
+          code="$(curl -sS             -D /tmp/cdp-canary-headers.txt             -o /tmp/cdp-canary.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             "$BASE_URL/api/x402-ping" || true)"
+          test "$code" = "402"
+
+          jq -e '
+            .x402Version == 2 and
+            ([.accepts[] | select(
+              .scheme == "exact" and
+              .network == "eip155:8453" and
+              .amount == "1000"
+            )] | length) >= 1
+          ' /tmp/cdp-canary.json >/dev/null
+
+          echo "Coinbase CDP is configured only for x402-ping; no payment was sent."
