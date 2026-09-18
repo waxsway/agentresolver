@@ -15,30 +15,33 @@ jobs:
     timeout-minutes: 4
     env:
       VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
-      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
       HEALTHY_DEPLOYMENT_ID: dpl_ErXGyYownF8254n14tDvwwFMiPEv
       HEALTHY_SHA: c2a05df127548c4ecc87ba73467cef72b6e721c3
+      CANONICAL_ALIAS: agentresolver.vercel.app
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - name: Roll production traffic back without rebuilding
+      - name: Move canonical alias to healthy deployment without rebuilding
         shell: bash
         run: |
           set -euo pipefail
-          code="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/rollback.json -w '%{http_code}' \
-            -X POST "https://api.vercel.com/v1/projects/$VERCEL_PROJECT_ID/rollback/$HEALTHY_DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID" \
-            -H "Authorization: Bearer $VERCEL_TOKEN")"
-          echo "ROLLBACK_HTTP=$code"
+          code="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/alias.json -w '%{http_code}' \
+            -X POST "https://api.vercel.com/v2/deployments/$HEALTHY_DEPLOYMENT_ID/aliases?teamId=$VERCEL_ORG_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary "$(jq -nc --arg alias "$CANONICAL_ALIAS" '{alias:$alias,redirect:null}')")"
+          echo "ALIAS_HTTP=$code"
           case "$code" in
-            200|201|202) ;;
-            *) cat /tmp/rollback.json; exit 1 ;;
+            200|201) ;;
+            *) cat /tmp/alias.json; exit 1 ;;
           esac
+          jq '{alias,oldDeploymentId}' /tmp/alias.json || true
 
       - name: Verify canonical CDP canary and paid ping
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in {1..45}; do
-            suffix="rollback=$GITHUB_RUN_ID-$attempt"
+          for attempt in {1..30}; do
+            suffix="aliasRestore=$GITHUB_RUN_ID-$attempt"
             canary_code="$(curl -sS --max-time 15 -D /tmp/canary-h -o /tmp/canary-b -w '%{http_code}' "https://agentresolver.vercel.app/api/x402-cdp-canary?$suffix" || true)"
             canary_sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/canary-h)"
             ping_code="$(curl -sS --max-time 15 -o /tmp/ping-b -w '%{http_code}' "https://agentresolver.vercel.app/api/x402-ping?$suffix" || true)"
@@ -58,6 +61,6 @@ jobs:
             fi
             sleep 2
           done
-          echo "::error::Canonical production did not recover the known-good CDP canary."
+          echo "::error::Canonical alias did not recover the known-good CDP canary."
           cat /tmp/canary-b 2>/dev/null || true
           exit 1
