@@ -5,8 +5,6 @@ const PING_ID = "x402-ping";
 const PING_ENDPOINT = "/api/x402-ping";
 const PREFLIGHT_ID = "x402-payment-preflight";
 const PREFLIGHT_ENDPOINT = "/api/x402-payment-preflight";
-const HASH_ID = "hash-encode";
-const HASH_ENDPOINT = "/api/hash-encode";
 const GUARD_ENDPOINT = "/api/payment-guard";
 const X402_MANIFEST_PATHS = [
   "public/.well-known/x402",
@@ -41,33 +39,6 @@ const pingQueryParameters = [
     description: "Optional bounded text echoed by the paid settlement response.",
     schema: { type: "string", maxLength: 256 },
     example: "hello"
-  }
-];
-
-const hashQueryExample = {
-  operation: "sha256",
-  input: "agentresolver"
-};
-
-const hashQueryParameters = [
-  {
-    name: "operation",
-    in: "query",
-    required: true,
-    description: "GET-safe deterministic transform. HMAC remains POST-only so secrets never appear in URLs.",
-    schema: {
-      type: "string",
-      enum: ["sha256", "sha512", "base64-encode", "base64-decode", "jwt-decode"]
-    },
-    example: "sha256"
-  },
-  {
-    name: "input",
-    in: "query",
-    required: true,
-    description: "Bounded input for the selected deterministic transform.",
-    schema: { type: "string", maxLength: 4096 },
-    example: "agentresolver"
   }
 ];
 
@@ -133,27 +104,6 @@ for (const path of X402_MANIFEST_PATHS) {
   markGetFirst(pingService);
   pingService.queryExample = pingQueryExample;
 
-  const hashService = manifest.services?.find((item: any) => item.id === HASH_ID);
-  if (!hashService) throw new Error(`${HASH_ID} service is missing from ${path}.`);
-  markGetFirst(hashService);
-  hashService.queryExample = hashQueryExample;
-
-  const hashPost = manifest.resources?.find(
-    (item: any) => item.resource === `POST ${HASH_ENDPOINT}`
-  );
-  if (!hashPost) throw new Error(`${HASH_ID} POST resource is missing from ${path}.`);
-  const hashGet = clone(hashPost);
-  hashGet.id = "hash-encode-get";
-  hashGet.name = "Hash & Encode — GET-first deterministic utility";
-  hashGet.method = "GET";
-  hashGet.methods = ["GET", "POST"];
-  hashGet.preferredMethod = "GET";
-  hashGet.resource = `GET ${HASH_ENDPOINT}`;
-  hashGet.description = "$0.001 GET-first deterministic SHA-256, SHA-512, Base64 encode/decode, or non-verifying JWT decode. HMAC remains POST-only so secrets never appear in URLs.";
-  hashGet.inputTransport = "query";
-  hashGet.queryParameters = hashQueryParameters;
-  hashGet.examples = [hashQueryExample];
-
   const preflightService = manifest.services?.find((item: any) => item.id === PREFLIGHT_ID);
   if (!preflightService) throw new Error(`${PREFLIGHT_ID} service is missing from ${path}.`);
   markGetFirst(preflightService);
@@ -183,27 +133,21 @@ for (const path of X402_MANIFEST_PATHS) {
   preflightGet.repeatUse = "before_every_autonomous_x402_spend";
 
   manifest.resources = [
-    ...manifest.resources.filter(
-      (item: any) =>
-        item.resource !== `GET ${PREFLIGHT_ENDPOINT}` &&
-        item.resource !== `GET ${HASH_ENDPOINT}`
-    ),
-    hashGet,
+    ...manifest.resources.filter((item: any) => item.resource !== `GET ${PREFLIGHT_ENDPOINT}`),
     preflightGet
   ];
 
-  manifest.instructions = "Use AgentResolver Guard immediately before every autonomous x402 spend: GET /api/x402-payment-preflight?url=<https-endpoint> costs $0.001 USDC and returns a fail-closed eligible/blocked decision, exact target payment terms, reason codes and evidence fingerprints. POST remains supported for body-bearing workflows. For a useful zero-setup paid call, GET /api/hash-encode?operation=sha256&input=<text> costs $0.001 USDC. For the cheapest end-to-end paid integration check, GET /api/x402-ping costs $0.001 USDC; successful canaries hand off to POST /api/verified-resolve ($0.02) or POST /api/batch-verified-resolve ($0.05). POST /api/resolve remains free for discovery. A 402 is a quote, never spending authorization.";
+  manifest.instructions = "Use AgentResolver Guard immediately before every autonomous x402 spend: GET /api/x402-payment-preflight?url=<https-endpoint> costs $0.001 USDC and returns a fail-closed eligible/blocked decision, exact target payment terms, reason codes and evidence fingerprints. POST remains supported for body-bearing workflows. For the cheapest end-to-end paid integration check, GET /api/x402-ping costs $0.001 USDC; successful canaries hand off to POST /api/verified-resolve ($0.02) or POST /api/batch-verified-resolve ($0.05). POST /api/resolve remains free for discovery. A 402 is a quote, never spending authorization.";
 
   writeJson(path, manifest);
 }
 
 const capabilities = readJson("public/capabilities.json");
-for (const id of [PING_ID, PREFLIGHT_ID, HASH_ID]) {
+for (const id of [PING_ID, PREFLIGHT_ID]) {
   const capability = capabilities.capabilities?.find((item: any) => item.id === id);
   if (!capability) throw new Error(`${id} is missing from capabilities.json.`);
   markGetFirst(capability);
   if (id === PING_ID) capability.queryExample = pingQueryExample;
-  if (id === HASH_ID) capability.queryExample = hashQueryExample;
   if (id === PREFLIGHT_ID) {
     capability.queryExample = preflightQueryExample;
     capability.brandName = "AgentResolver Guard";
@@ -214,15 +158,11 @@ for (const id of [PING_ID, PREFLIGHT_ID, HASH_ID]) {
 writeJson("public/capabilities.json", capabilities);
 
 const integrations = readJson("public/integrations.json");
-for (const id of [PING_ID, PREFLIGHT_ID, HASH_ID]) {
+for (const id of [PING_ID, PREFLIGHT_ID]) {
   const integration = integrations.paidActions?.find((item: any) => item.id === id);
   if (!integration) throw new Error(`${id} is missing from integrations.json.`);
   markGetFirst(integration);
   if (id === PING_ID) integration.queryExample = pingQueryExample;
-  if (id === HASH_ID) {
-    integration.queryExample = hashQueryExample;
-    integration.postBodyExample = integration.bodyExample;
-  }
   if (id === PREFLIGHT_ID) {
     integration.queryExample = preflightQueryExample;
     integration.postBodyExample = integration.bodyExample;
@@ -236,8 +176,8 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  description: "Machine-readable x402 settlement testing and payment verification for autonomous buyers. Validate x402 payment requirements before wallet signing with AgentResolver Guard: check payTo recipient, quoted USDC price, allowed network, asset, exact scheme and resource binding, then receive a fail-closed eligible/blocked decision and evidence. Start with GET /api/x402-ping for the lowest-friction $0.001 USDC end-to-end settlement canary, or GET /api/hash-encode?operation=sha256&input=<text> for a useful $0.001 deterministic paid utility. A successful canary exposes POST /api/verified-resolve ($0.02) for one missing capability decision and POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Guard is available through GET /api/payment-guard or canonical GET /api/x402-payment-preflight; POST remains available for body-bearing workflows. POST /api/resolve remains available for free capability discovery.",
-  "x-guidance": "Validate x402 payment requirements before wallet signing with AgentResolver Guard. Funded agents should prefer GET: call GET /api/payment-guard?url=<https-endpoint> or canonical GET /api/x402-payment-preflight?url=<https-endpoint> for a $0.001 fail-closed check of payTo, quoted USDC price, network, asset, scheme and resource binding. Use GET /api/x402-ping for a $0.001 end-to-end wallet/facilitator/settlement test, or GET /api/hash-encode?operation=sha256&input=<text> for a useful $0.001 deterministic paid utility. After a successful canary, use POST /api/verified-resolve ($0.02) or POST /api/batch-verified-resolve ($0.05). POST /api/x402-payment-preflight remains compatible for body-bearing workflows. POST /api/resolve remains available for free capability discovery. A 402 is a quote, not spending authorization."
+  description: "Machine-readable x402 settlement testing and payment verification for autonomous buyers. Validate x402 payment requirements before wallet signing with AgentResolver Guard: check payTo recipient, quoted USDC price, allowed network, asset, exact scheme and resource binding, then receive a fail-closed eligible/blocked decision and evidence. Start with GET /api/x402-ping for the lowest-friction $0.001 USDC end-to-end settlement canary. A successful canary exposes POST /api/verified-resolve ($0.02) for one missing capability decision and POST /api/batch-verified-resolve ($0.05) for 2–4 decisions. Guard is available through GET /api/payment-guard or canonical GET /api/x402-payment-preflight; POST remains available for body-bearing workflows. POST /api/resolve remains available for free capability discovery.",
+  "x-guidance": "Validate x402 payment requirements before wallet signing with AgentResolver Guard. Funded agents should prefer GET: call GET /api/payment-guard?url=<https-endpoint> or canonical GET /api/x402-payment-preflight?url=<https-endpoint> for a $0.001 fail-closed check of payTo, quoted USDC price, network, asset, scheme and resource binding. Use GET /api/x402-ping for a $0.001 end-to-end wallet/facilitator/settlement test. After a successful canary, use POST /api/verified-resolve ($0.02) or POST /api/batch-verified-resolve ($0.05). POST /api/x402-payment-preflight remains compatible for body-bearing workflows. POST /api/resolve remains available for free capability discovery. A 402 is a quote, not spending authorization."
 };
 
 const pingPath = openapi.paths?.[PING_ENDPOINT];
@@ -252,31 +192,6 @@ pingPath.get["x-agentresolver-product"] = {
 };
 pingPath.get.parameters = pingQueryParameters;
 pingPath.get["x-agentresolver-product"].inputTransport = "query";
-
-const hashPath = openapi.paths?.[HASH_ENDPOINT];
-const hashPostOperation = hashPath?.post;
-if (!hashPostOperation) throw new Error("hash-encode POST is missing from openapi.json.");
-
-const hashGetOperation = clone(hashPostOperation);
-hashGetOperation.operationId = "hashAndEncodeGet";
-hashGetOperation.summary = "Hash or encode through a GET-first paid utility";
-hashGetOperation.description = "$0.001 USDC GET-first deterministic SHA-256, SHA-512, Base64 encode/decode, or non-verifying JWT decode. HMAC remains POST-only so secrets never appear in URLs.";
-delete hashGetOperation.requestBody;
-hashGetOperation.parameters = hashQueryParameters;
-hashGetOperation["x-agentresolver-product"] = {
-  ...(hashGetOperation["x-agentresolver-product"] ?? {}),
-  preferredMethod: "GET",
-  backwardCompatibleMethods: ["POST"],
-  inputTransport: "query"
-};
-hashPostOperation["x-agentresolver-product"] = {
-  ...(hashPostOperation["x-agentresolver-product"] ?? {}),
-  preferredMethod: "GET",
-  preferredOperation: "hashAndEncodeGet",
-  inputTransport: "json-body"
-};
-hashPath.get = hashGetOperation;
-hashPath["x-agentresolver-preferred-method"] = "GET";
 
 const preflightPath = openapi.paths?.[PREFLIGHT_ENDPOINT];
 const preflightPost = preflightPath?.post;
