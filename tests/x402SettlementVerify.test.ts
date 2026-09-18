@@ -152,7 +152,10 @@ test("settlement verify GET is a $0.001 paid route with no request body", async 
   const body = await response.json() as any;
   assert.equal(body.resource?.url, url);
   assert.equal(body.buyerSetup, undefined);
-  assert.equal(body.extensions?.agentresolver?.info?.method, "GET");
+  assert.equal(body.extensions?.agentresolver, undefined);
+  const setup = response.headers.get("x-agentresolver-buyer-setup");
+  assert.ok(setup);
+  assert.equal(new URL(setup).searchParams.get("method"), "GET");
   assert.ok(body.accepts?.some((item: any) =>
     item.network === "eip155:8453" &&
     item.amount === "1000" &&

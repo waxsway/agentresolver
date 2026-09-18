@@ -1,0 +1,26 @@
+name: Verify Provider Partner Registry
+
+on:
+  pull_request:
+    paths:
+      - "config/provider-partners.json"
+      - "scripts/verify-provider-partners.mjs"
+      - ".github/workflows/provider-partner-registry.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci --ignore-scripts
+      - name: Verify paid provider launch proofs
+        run: node scripts/verify-provider-partners.mjs config/provider-partners.json
