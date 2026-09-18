@@ -151,7 +151,7 @@ For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead 
 6. Require `decision === "eligible"` and compare the observed amount, asset, network, payTo, scheme and resource binding against caller policy.
 7. Only after separate authorization for the target amount, call `retry_http_request_with_x402` for the original target challenge.
 
-AgentKit also exposes `discover_x402_services` for discovery. Do not enable dynamic registration merely to bypass the service allowlist, and do not use `make_http_request_with_x402` on an unfamiliar target before Guard and caller authorization because that action combines challenge handling and payment.
+AgentKit defaults `discover_x402_services` to the CDP facilitator. AgentResolver's currently verified Bazaar listing is on **PayAI**, so for AgentResolver discovery explicitly use `facilitator: "payai"`, `maxUsdcPrice: 0.001`, and `x402Versions: [2]` with no keyword filter. On Base, the expected canary resource is `https://agentresolver.vercel.app/api/x402-ping`. After discovery, keep the normal service allowlist/registration step before calling it. Do not enable dynamic registration merely to bypass the service allowlist, and do not use `make_http_request_with_x402` on an unfamiliar target before Guard and caller authorization because that action combines challenge handling and payment.
 
 ## MCP
 
