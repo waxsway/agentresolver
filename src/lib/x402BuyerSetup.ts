@@ -340,6 +340,44 @@ export function x402BuyerSetup() {
           "Only after separate caller authorization for the target amount, use retry_http_request_with_x402 on the original target challenge.",
           "Do not use make_http_request_with_x402 on an unfamiliar target before Guard and caller authorization because it combines challenge handling and payment."
         ]
+      },
+      vercelAiSdkMcp: {
+        runtime: "Vercel AI SDK",
+        package: "ai",
+        paymentPackage: "x402-mcp",
+        mcpClientFactory: "experimental_createMCPClient",
+        paymentWrapper: "withPayment",
+        transport: "StreamableHTTPClientTransport",
+        mcpUrl: "https://agentresolver.vercel.app/mcp",
+        guardTool: "payment_guard",
+        authorizationModel:
+          "Keep the paying account inside the caller runtime. Do not invoke a payment-wrapped Guard tool until caller policy has approved the exact $0.001 Guard fee. For hard per-requirement enforcement before signing, prefer the official @x402/mcp onPaymentRequested gate published above.",
+        behavior: [
+          "Create an AI SDK MCP client for https://agentresolver.vercel.app/mcp using StreamableHTTPClientTransport.",
+          "Wrap the MCP client with x402-mcp only with a caller-controlled local account; never send wallet secrets to AgentResolver.",
+          "Before invoking payment_guard or x402_payment_preflight through the payment wrapper, require caller-owned approval of the separate $0.001 Guard fee.",
+          "Require the paid Guard result to be eligible and validate its observed target payment terms before separately authorizing the target payment.",
+          "If the host needs exact amount/network/asset/payTo/resource enforcement before the Guard signature, use the official @x402/mcp onPaymentRequested gate instead of relying on prompt text."
+        ]
+      },
+      cloudflareAgents: {
+        runtime: "Cloudflare Agents",
+        package: "agents",
+        x402ClientImport: "agents/x402",
+        wrapper: "withX402Client",
+        confirmationCallback: "requestPaymentConfirmation",
+        confirmationResolver: "resolvePayment",
+        mcpUrl: "https://agentresolver.vercel.app/mcp",
+        guardTool: "payment_guard",
+        authorizationModel:
+          "Use the payment confirmation callback as a caller-owned authorization boundary. Resolve true only after the host has approved the Guard fee and verified the pending payment requirement; never auto-confirm an unfamiliar payment.",
+        behavior: [
+          "Connect the Cloudflare Agents x402 MCP client to https://agentresolver.vercel.app/mcp.",
+          "Call payment_guard for the target endpoint and route the resulting paid request through the runtime's payment confirmation callback.",
+          "Fail closed unless the host policy permits the separate $0.001 Guard fee and the pending requirement matches the expected Guard tool/payment context.",
+          "After Guard returns eligible, require separate caller authorization before paying the original target.",
+          "If the runtime cannot expose enough pending-payment detail for exact requirement checks, use the official @x402/mcp onPaymentRequested gate rather than auto-confirming."
+        ]
       }
     },
     recommendedSpendLoop: [
@@ -370,7 +408,9 @@ export function x402BuyerSetup() {
       bazaar: "https://github.com/x402-foundation/x402/blob/main/docs/extensions/bazaar.mdx",
       protocol: "https://github.com/x402-foundation/x402",
       axios: "https://github.com/x402-foundation/x402/blob/main/typescript/packages/http/axios/README.md",
-      coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md"
+      coinbaseAgentKit: "https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md",
+      vercelAiSdkX402Mcp: "https://vercel.com/blog/introducing-x402-mcp-open-protocol-payments-for-mcp-tools",
+      cloudflareAgentsX402Mcp: "https://github.com/cloudflare/agents/blob/main/examples/x402-mcp/README.md"
     }
   } as const;
 }
