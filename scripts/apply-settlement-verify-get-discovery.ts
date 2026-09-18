@@ -74,13 +74,13 @@ for (const path of MANIFEST_PATHS) {
 
   const get = clone(post);
   get.id = "x402-settlement-verify-get";
-  get.name = "x402 Settlement Verify — GET-first Base USDC receipt evidence";
+  get.name = "x402 settlement verify";
   get.method = "GET";
   get.methods = ["GET", "POST"];
   get.preferredMethod = "GET";
   get.resource = `GET ${ENDPOINT}`;
   get.description =
-    "GET-first $0.001 x402 exact-scheme settlement verification. Supply a Base transaction hash and optional expected recipient/amount as query parameters; after AgentResolver payment settles, the response independently checks the public Base receipt, EIP-3009 transaction shape, USDC Transfer logs and confirmation depth. This proves settlement evidence, not provider legitimacy.";
+    "x402 settlement verify and payment receipt verification for $0.001. Supply a Base transaction hash and optional expected recipient/amount as query parameters; after AgentResolver payment settles, the response independently checks the public Base receipt, EIP-3009 transaction shape, USDC Transfer logs and confirmation depth. This proves settlement evidence, not provider legitimacy.";
   get.inputTransport = "query";
   get.queryParameters = queryParameters;
   get.examples = [queryExample];
