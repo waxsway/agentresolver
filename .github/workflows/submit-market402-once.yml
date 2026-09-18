@@ -49,3 +49,4 @@ jobs:
           submit "tool-contract" 0.005
           submit "verified-resolve" 0.02
           submit "batch-verified-resolve" 0.05
+          submit "provider-launch-check" 0.05
