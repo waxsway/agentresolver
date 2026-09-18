@@ -4,12 +4,14 @@ import test from "node:test";
 import {
   assertNoHumansSingleInvoice,
   BASE_USDC,
+  NOHUMANS_LISTING_ID,
   NOHUMANS_PAY_TO,
+  NOHUMANS_SINGLE_ENDPOINT,
 } from "../src/lib/nohumansVerification";
 
 const valid = {
   x402Version: 2,
-  resource: { url: "https://api.nohumans.directory/v1/listings/28e33786-f07/verify-now" },
+  resource: { url: "https://api.nohumans.directory/v1/listings/e37797ba-55b/verify-now" },
   accepts: [
     {
       scheme: "exact",
@@ -20,6 +22,14 @@ const valid = {
     },
   ],
 };
+
+test("targets the fresh claimed NoHumans CDP listing", () => {
+  assert.equal(NOHUMANS_LISTING_ID, "e37797ba-55b");
+  assert.equal(
+    NOHUMANS_SINGLE_ENDPOINT,
+    "https://api.nohumans.directory/v1/listings/e37797ba-55b/verify-now?plan=single",
+  );
+});
 
 test("accepts the exact authorized NoHumans $3 invoice", () => {
   assert.doesNotThrow(() => assertNoHumansSingleInvoice(valid));
