@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-static";
 
+function cdpCapabilitySet() {
+  const configured = process.env.AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES?.trim();
+  return new Set((configured || "x402-ping").split(",").map((value) => value.trim()).filter(Boolean));
+}
+
+function configuredPaymentRail(capabilityId: string) {
+  return process.env.AGENTRESOLVER_CDP_FACILITATOR_ENABLED === "1" &&
+    cdpCapabilitySet().has(capabilityId)
+    ? "coinbase-cdp"
+    : "payai";
+}
+
 export function GET() {
   return NextResponse.json(
     {
@@ -15,6 +27,11 @@ export function GET() {
       openapi: "/openapi.json",
       paidManifest: "/.well-known/x402",
       canonicalPaidRoute: "/api/x402-payment-preflight",
+      configuredPaymentRails: {
+        x402Ping: configuredPaymentRail("x402-ping"),
+        x402PaymentPreflight: configuredPaymentRail("x402-payment-preflight"),
+        circleGatewayEnabled: process.env.AGENTRESOLVER_CIRCLE_GATEWAY_ENABLED === "1"
+      },
       trust: "/.well-known/agentresolver-trust.json",
       evidence: "/.well-known/agentresolver-evidence.json",
       reputation: "/.well-known/agentresolver-reputation.json",
