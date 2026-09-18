@@ -170,7 +170,31 @@ export function x402BuyerSetup() {
             "const fetchWithPayment = wrapFetchWithPayment(fetch, client);",
             "",
             'const response = await fetchWithPayment("https://agentresolver.vercel.app/api/x402-ping");'
-          ]
+          ],
+          preSignGuardAuthorization: {
+            mechanism: "paymentRequirementsSelector",
+            stage: "after_402_before_payment_payload_creation",
+            guardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+            expectedAtomicUsdc: "1000",
+            expectedRequirements: [
+              {
+                scheme: "exact",
+                network: "eip155:8453",
+                amount: "1000",
+                asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              },
+              {
+                scheme: "exact",
+                network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+                amount: "1000",
+                asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+              }
+            ],
+            rule:
+              "Only invoke the payment-wrapped request for the exact Guard URL after caller policy authorizes the $0.001 fee. The paymentRequirementsSelector must reject every requirement that does not exactly match one approved tuple before payment payload creation."
+          }
         },
         axios: {
           package: "@x402/axios",
@@ -194,7 +218,31 @@ export function x402BuyerSetup() {
             'const response = await axiosWithPayment.get("https://agentresolver.vercel.app/api/x402-ping");'
           ],
           authorizationRule:
-            "The Axios wrapper automatically retries a 402 with payment. Use it only after caller-owned policy has authorized the exact requirement or behind a caller-defined paymentRequirementsSelector."
+            "The Axios wrapper automatically retries a 402 with payment. Use it only after caller-owned policy has authorized the exact requirement or behind a caller-defined paymentRequirementsSelector.",
+          preSignGuardAuthorization: {
+            mechanism: "paymentRequirementsSelector",
+            stage: "after_402_before_payment_payload_creation",
+            guardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+            expectedAtomicUsdc: "1000",
+            expectedRequirements: [
+              {
+                scheme: "exact",
+                network: "eip155:8453",
+                amount: "1000",
+                asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              },
+              {
+                scheme: "exact",
+                network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+                amount: "1000",
+                asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+              }
+            ],
+            rule:
+              "Only invoke the payment-wrapped Axios request for the exact Guard URL after caller policy authorizes the $0.001 fee. Reject every unmatched requirement in paymentRequirementsSelector before payment payload creation."
+          }
         },
         python: {
           package: "x402",
@@ -222,7 +270,33 @@ export function x402BuyerSetup() {
             "        return response",
             "",
             "response = asyncio.run(main())"
-          ]
+          ],
+          preSignGuardAuthorization: {
+            mechanisms: ["client_policies", "on_before_payment_creation"],
+            hook: "on_before_payment_creation",
+            abortType: "AbortResult",
+            stage: "before_payment_payload_creation",
+            guardUrl: "https://agentresolver.vercel.app/api/payment-guard",
+            expectedAtomicUsdc: "1000",
+            expectedRequirements: [
+              {
+                scheme: "exact",
+                network: "eip155:8453",
+                amount: "1000",
+                asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              },
+              {
+                scheme: "exact",
+                network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+                amount: "1000",
+                asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+              }
+            ],
+            rule:
+              "Use client policies to reject disallowed requirements and on_before_payment_creation to return AbortResult for any selected Guard requirement not authorized by caller policy before a payment payload is created."
+          }
         },
         behavior: [
           "Create an x402Client and register only exact schemes backed by the caller's own signer.",
