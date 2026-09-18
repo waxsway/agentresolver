@@ -78,3 +78,14 @@ test("well-known skill discovery bytes stay synchronized with the canonical inst
   assert.equal(index.skills[0].name, "agentresolver-payment-guard");
   assert.equal(index.skills[0].digest, digest);
 });
+
+
+test("published compatibility skill points to the exact-resource pre-sign gate", () => {
+  assert.match(published, /## MCP wallet-capable clients — fail-closed pre-sign gate/);
+  assert.match(published, /onPaymentRequested/);
+  assert.match(published, /mcp:\/\/tool\/payment_guard/);
+  assert.match(published, /mcp:\/\/tool\/x402_payment_preflight/);
+  assert.match(published, /amount === "1000"/);
+  assert.match(published, /Solana Base58 asset and payTo values/i);
+  assert.match(published, /\.well-known\/agent-skills\/agentresolver-payment-guard\/SKILL\.md/);
+});
