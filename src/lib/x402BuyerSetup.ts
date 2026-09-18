@@ -1,6 +1,14 @@
 export const X402_BUYER_SETUP_PATH = "/api/x402-client-setup" as const;
 export const X402_BUYER_SETUP_URL = `https://agentresolver.vercel.app${X402_BUYER_SETUP_PATH}` as const;
 export const X402_BUYER_SETUP_ERROR = `Payment required. x402 buyer setup: ${X402_BUYER_SETUP_URL}` as const;
+
+export function x402BuyerSetupChallengeUrl(capabilityId: string) {
+  return `${X402_BUYER_SETUP_URL}?source=x402-challenge&capabilityId=${encodeURIComponent(capabilityId)}`;
+}
+
+export function x402BuyerSetupChallengeError(capabilityId: string) {
+  return `Payment required. x402 buyer setup: ${x402BuyerSetupChallengeUrl(capabilityId)}`;
+}
 export const AGENT_SKILLS_INDEX_URL = "https://agentresolver.vercel.app/.well-known/agent-skills/index.json" as const;
 export const PAYMENT_GUARD_SKILL_URL = "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md" as const;
 
