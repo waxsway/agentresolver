@@ -189,3 +189,32 @@ export async function runProviderLaunchCheck(input: ProviderLaunchCheckInput) {
     ]
   };
 }
+
+
+export function providerLaunchReferenceInput(params: URLSearchParams): ProviderLaunchCheckInput {
+  const endpoint =
+    params.get("endpoint")?.trim() ||
+    "https://agentresolver.vercel.app/api/x402-ping";
+  const origin =
+    params.get("origin")?.trim() ||
+    "https://agentresolver.vercel.app";
+
+  return parseProviderLaunchCheckInput({
+    providerId: params.get("providerId") || "agentresolver-reference",
+    providerName: params.get("providerName") || "AgentResolver Reference Provider",
+    capabilityId: params.get("capabilityId") || "x402-ping",
+    name: params.get("name") || "AgentResolver x402 Settlement Ping",
+    description:
+      params.get("description") ||
+      "Reference x402 service used to demonstrate paid provider launch verification.",
+    origin,
+    endpoint,
+    method: params.get("method") || "GET",
+    probeUrl: params.get("probeUrl") || endpoint,
+    priceUsd: params.get("priceUsd") || "0.001",
+    network: params.get("network") || "eip155:8453",
+    tags: params.getAll("tag").length
+      ? params.getAll("tag")
+      : ["x402", "provider-launch", "reference"]
+  });
+}
