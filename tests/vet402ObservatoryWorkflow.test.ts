@@ -14,9 +14,11 @@ test("vet402 audit is observation-only and watches the paid canary", () => {
   assert.doesNotMatch(source, /Authorization:\s*Bearer/);
 });
 
-test("vet402 audit tolerates catalog propagation without failing deploys", () => {
+test("vet402 audit tolerates catalog propagation on a bounded schedule without deploy fan-out", () => {
   assert.match(source, /VET402_CATALOGUED=false/);
   assert.match(source, /vet402 has not imported the AgentResolver paid canary yet/);
-  assert.match(source, /workflow_run:/);
   assert.match(source, /schedule:/);
+  assert.match(source, /workflow_dispatch:/);
+  assert.doesNotMatch(source, /workflow_run:/);
+  assert.doesNotMatch(source, /workflows: \["Deploy Production"\]/);
 });
