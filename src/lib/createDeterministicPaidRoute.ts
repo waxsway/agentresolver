@@ -38,7 +38,11 @@ function decodePaymentRequiredHeader(value: string | null): JsonObject | null {
   }
 }
 
-async function mirrorPaymentChallengeBody(response: NextResponse<unknown>, capabilityId: PaidCapabilityId) {
+async function mirrorPaymentChallengeBody(
+  response: NextResponse<unknown>,
+  capabilityId: PaidCapabilityId,
+  requestMethod?: string
+) {
   if (response.status !== 402) return response;
   const headerChallenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
   if (!headerChallenge) return response;
@@ -64,8 +68,8 @@ async function mirrorPaymentChallengeBody(response: NextResponse<unknown>, capab
   headers.set("cache-control", "no-store");
   return new NextResponse(JSON.stringify({
     ...bodyChallenge,
-    error: x402BuyerSetupChallengeError(capabilityId),
-    buyerSetup: x402ChallengeBuyerHandoff(capabilityId)
+    error: x402BuyerSetupChallengeError(capabilityId, requestMethod),
+    buyerSetup: x402ChallengeBuyerHandoff(capabilityId, requestMethod)
   }), {
     status: 402,
     statusText: response.statusText,
@@ -110,13 +114,17 @@ function isCaip2Network(value: string): value is `${string}:${string}` {
 function stampInfrastructureHeaders(
   response: NextResponse<unknown>,
   capabilityId: PaidCapabilityId,
-  requestId: string
+  requestId: string,
+  requestMethod?: string
 ) {
   response.headers.set("access-control-allow-origin", "*");
   response.headers.set("x-agentresolver-capability", capabilityId);
   response.headers.set("x-agentresolver-request-id", requestId);
   response.headers.set("x-agentresolver-contract-version", "1");
-  response.headers.set("x-agentresolver-buyer-setup", x402BuyerSetupChallengeUrl(capabilityId));
+  response.headers.set(
+    "x-agentresolver-buyer-setup",
+    x402BuyerSetupChallengeUrl(capabilityId, requestMethod)
+  );
   response.headers.set("x-agentresolver-agent-skills", AGENT_SKILLS_INDEX_URL);
   response.headers.set("x-agentresolver-payment-guard-skill", PAYMENT_GUARD_SKILL_URL);
   response.headers.set(
@@ -418,9 +426,18 @@ export function createDeterministicPaidRoute(
     logPaidCapabilityAttempt(req, capabilityId, traffic, requestId);
     try {
       const paidHandler = await getPaidHandler();
-      const response = stampInfrastructureHeaders(await paidHandler(req), capabilityId, requestId);
+      const response = stampInfrastructureHeaders(
+        await paidHandler(req),
+        capabilityId,
+        requestId,
+        req.method
+      );
       await logPaidRetryRejection(req, response, capabilityId, requestId);
-      const compatibleResponse = await mirrorPaymentChallengeBody(response, capabilityId);
+      const compatibleResponse = await mirrorPaymentChallengeBody(
+        response,
+        capabilityId,
+        req.method
+      );
       logX402Settlement(compatibleResponse, capabilityId, requestId);
       return compatibleResponse;
     } catch (error) {
@@ -433,7 +450,8 @@ export function createDeterministicPaidRoute(
       return stampInfrastructureHeaders(
         NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED" }, { status: 503 }),
         capabilityId,
-        requestId
+        requestId,
+        req.method
       );
     }
   }
@@ -451,7 +469,8 @@ export function createDeterministicPaidRoute(
     return stampInfrastructureHeaders(
       x402DiscoveryChallenge(capabilityId, { endpoint }),
       capabilityId,
-      requestId
+      requestId,
+      "POST"
     );
   }
 
