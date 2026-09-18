@@ -42,6 +42,7 @@ export function directOwnedRecommendationInput(
 function paidNextAction(
   capabilityId:
     | "x402-payment-preflight"
+    | "x402-settlement-verify"
     | "verified-resolve"
     | "batch-verified-resolve"
 ) {
@@ -49,7 +50,9 @@ function paidNextAction(
   return {
     capabilityId: capability.id,
     endpoint: `${CANONICAL_ORIGIN}${capability.endpoint}`,
-    method: capabilityId === "x402-payment-preflight" ? "GET" as const : "POST" as const,
+    method: capabilityId === "x402-payment-preflight" || capabilityId === "x402-settlement-verify"
+      ? "GET" as const
+      : "POST" as const,
     priceUsd: capability.priceUsd,
     useWhen: capability.useWhen,
     inputExample: capability.example
@@ -64,6 +67,12 @@ function paidNextAction(
  */
 export function postSettlementCanaryNextActions() {
   const preflight = paidNextAction("x402-payment-preflight");
+  const settlementVerifyBase = paidNextAction("x402-settlement-verify");
+  const settlementVerify = {
+    ...settlementVerifyBase,
+    transactionHashSource: "Use the Base transaction hash returned in the PAYMENT-RESPONSE header from a settled x402 request.",
+    paymentAuthorization: "separate_caller_authorization_required" as const
+  };
   const hashEncode = getPaidCapability("hash-encode");
   const recommended = {
     capabilityId: hashEncode.id,
@@ -80,6 +89,7 @@ export function postSettlementCanaryNextActions() {
     catalogUrl: `${CANONICAL_ORIGIN}/.well-known/x402`,
     recommended,
     preflight,
+    settlementVerify,
     single: paidNextAction("verified-resolve"),
     batch: paidNextAction("batch-verified-resolve")
   };
