@@ -12,6 +12,7 @@ test("crawler cost guard stages a signer-safe log-only draft and never publishes
   assert.match(workflow, /--rate-limit-requests 120/);
   assert.match(workflow, /--rate-limit-keys ip/);
   assert.match(workflow, /--rate-limit-action log/);
+  assert.match(workflow, /vercel@48\.8\.0/);
   assert.match(workflow, /Draft only/);
   assert.doesNotMatch(workflow, /^\s*vercel firewall publish\b/m);
 });
