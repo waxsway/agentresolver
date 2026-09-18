@@ -15,3 +15,11 @@ test("NoHumans workflow queues Guard, preflight, and targeted hash utility witho
   assert.match(workflow, /chains:\["base","solana"\]/);
   assert.doesNotMatch(workflow, /PAYMENT-SIGNATURE|private.?key|seed phrase/i);
 });
+
+
+test("NoHumans submission waits for production deployment", () => {
+  const workflow = readFileSync(".github/workflows/submit-nohumans-payment-guard.yml", "utf8");
+  assert.match(workflow, /workflow_run:/);
+  assert.match(workflow, /workflows: \["Deploy Production"\]/);
+  assert.doesNotMatch(workflow, /^  push:/m);
+});
