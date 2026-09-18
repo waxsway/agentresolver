@@ -97,3 +97,9 @@ test("automation-only changes bypass the build coalescing delay", () => {
   assert.match(workflow, /Coalesce application releases before Vercel build[\s\S]*application_changes\.outputs\.deploy == 'true'/);
   assert.match(workflow, /Require Vercel deployment credential[\s\S]*prebuild_freshness\.outputs\.fresh == 'true'/);
 });
+
+
+test("production deploy trigger is scoped to main CI", () => {
+  const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
+  assert.match(workflow, /workflow_run:[\s\S]*workflows: \["CI"\][\s\S]*types: \[completed\][\s\S]*branches: \[main\]/);
+});
