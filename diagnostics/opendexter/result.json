@@ -1,0 +1,40 @@
+{
+  "http": "200",
+  "requestedUrl": "https://agentresolver.vercel.app/api/x402-ping",
+  "response": {
+    "ok": true,
+    "origin": "https://agentresolver.vercel.app",
+    "routes": [
+      {
+        "auditOutcome": "incomplete",
+        "auditionId": null,
+        "delta": null,
+        "fixInstructions": null,
+        "graderSourceTier": null,
+        "incompleteReason": "OpenDexter could not settle a test payment on a chain this route accepts. This is on our side \u2014 please retry shortly.",
+        "inputSourceTier": null,
+        "mcpTool": null,
+        "outcome": "skipped",
+        "previousScore": null,
+        "registered": true,
+        "score": null,
+        "serviceProfile": null,
+        "shareUrl": null,
+        "status": "skipped",
+        "synthesizedSkill": null,
+        "url": "https://agentresolver.vercel.app/api/x402-ping",
+        "verdict": null
+      }
+    ],
+    "source": "probe",
+    "summary": {
+      "avgScore": null,
+      "failed": 0,
+      "registered": 0,
+      "siwx": 0,
+      "skipped": 1,
+      "total": 1
+    },
+    "warnings": []
+  }
+}
