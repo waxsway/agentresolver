@@ -59,9 +59,23 @@ test("live x402 challenge hands setup the exact GET purchase URL", async () => {
     "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check"
   );
 
+  const paymentRequired = response.headers.get("payment-required");
+  assert.ok(paymentRequired);
+  assert.ok(Buffer.byteLength(paymentRequired, "utf8") < 8192);
+  const decoded = JSON.parse(Buffer.from(paymentRequired, "base64").toString("utf8")) as any;
+  const extensionSetup = new URL(decoded.extensions?.agentresolver?.info?.setup);
+  assert.equal(decoded.extensions?.agentresolver?.info?.method, "GET");
+  assert.equal(extensionSetup.searchParams.get("method"), "GET");
+  assert.equal(
+    extensionSetup.searchParams.get("resumeUrl"),
+    "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check"
+  );
+  assert.equal(extensionSetup.searchParams.has("_vercel_share"), false);
+
   const body = await response.json() as any;
   assert.equal(body.buyerSetup?.method, "GET");
   assert.equal(body.buyerSetup?.setup, setupHeader);
+  assert.equal(body.extensions?.agentresolver?.info?.setup, decoded.extensions?.agentresolver?.info?.setup);
   assert.equal(String(body.buyerSetup?.setup).includes("_vercel_share"), false);
 });
 
