@@ -10,6 +10,17 @@ test("paid discovery challenge exposes Bazaar input/output schemas and dual rail
   assert.equal(body.x402Version, 2);
   assert.ok(body.extensions?.bazaar?.schema?.properties?.input);
   assert.ok(body.extensions?.bazaar?.schema?.properties?.output);
+  assert.equal(body.extensions?.agentresolver?.type, "agentresolver_x402_buyer_setup");
+  assert.equal(
+    body.extensions?.agentresolver?.url,
+    "https://agentresolver.vercel.app/api/x402-client-setup"
+  );
+  assert.equal(
+    body.extensions?.agentresolver?.paymentGuardSkill,
+    "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md"
+  );
+  assert.equal(body.extensions?.agentresolver?.paymentAuthorizationRequired, true);
+  assert.equal(body.extensions?.agentresolver?.signerControlledByCaller, true);
 
   assert.ok(body.accepts.some((item: any) => item.network === "eip155:8453"));
   assert.ok(body.accepts.some((item: any) =>
@@ -17,7 +28,14 @@ test("paid discovery challenge exposes Bazaar input/output schemas and dual rail
     item.payTo === "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
   ));
 
-  assert.ok(response.headers.get("payment-required"));
+  const paymentRequired = response.headers.get("payment-required");
+  assert.ok(paymentRequired);
+  const decodedHeader = JSON.parse(Buffer.from(paymentRequired!, "base64").toString("utf8"));
+  assert.equal(
+    decodedHeader.extensions?.agentresolver?.url,
+    "https://agentresolver.vercel.app/api/x402-client-setup"
+  );
+  assert.equal(decodedHeader.extensions?.agentresolver?.paymentAuthorizationRequired, true);
   assert.equal(body.resource.serviceName, "AgentResolver");
   assert.ok(body.resource.description.length <= 240);
   assert.ok(body.resource.tags.length <= 5);
