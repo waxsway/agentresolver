@@ -15,7 +15,7 @@ export const PAYMENT_GUARD_SKILL_URL = "https://agentresolver.vercel.app/.well-k
 export const X402_CHALLENGE_CLIENT_INSTALLS = {
   httpTypescript: "npm install @x402/core @x402/evm @x402/svm @x402/fetch",
   mcpTypescript: "npm install @x402/mcp @x402/evm @x402/svm",
-  httpPython: "pip install \"x402[httpx]\"",
+  httpPython: "pip install \"x402[httpx,evm]\"",
   walletMcp: "npx -y x402-trinity-mcp",
   agentSkill: "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard"
 } as const;
@@ -28,13 +28,13 @@ export const X402_CHALLENGE_CLIENT_ENTRYPOINTS = {
     schemes: [
       {
         network: "eip155:8453",
-        package: "@x402/evm",
+        package: "@x402/evm/exact/client",
         clientClass: "ExactEvmScheme",
         signer: "callerOwnedSigner"
       },
       {
         network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-        package: "@x402/svm",
+        package: "@x402/svm/exact/client",
         clientClass: "ExactSvmScheme",
         signer: "callerOwnedSigner"
       }
@@ -61,12 +61,19 @@ export const X402_CHALLENGE_CLIENT_ENTRYPOINTS = {
     ]
   },
   httpPython: {
-    package: "x402[httpx]",
+    package: "x402",
+    install: "pip install \"x402[httpx,evm]\"",
     client: "x402HttpxClient",
     clientFactory: "x402Client",
-    evmSchemeImport: "x402.mechanisms.evm.exact.ExactEvmScheme",
+    clientFactoryImport: "from x402 import x402Client",
+    httpClientImport: "from x402.http.clients import x402HttpxClient",
+    signerAdapter: "EthAccountSigner",
+    signerAdapterImport: "from x402.mechanisms.evm import EthAccountSigner",
+    exactEvmRegistration: "register_exact_evm_client",
+    exactEvmRegistrationImport: "from x402.mechanisms.evm.exact.register import register_exact_evm_client",
+    registration: "register_exact_evm_client(client, EthAccountSigner(callerOwnedAccount))",
     evmNetwork: "eip155:8453",
-    signer: "callerOwnedSigner"
+    signer: "callerOwnedAccount"
   },
   walletMcp: {
     package: "x402-trinity",
@@ -346,7 +353,7 @@ export function x402BuyerSetup() {
         },
         python: {
           package: "x402",
-          installCommand: "pip install x402",
+          installCommand: "pip install \"x402[httpx,evm]\"",
           client: "x402HttpxClient",
           evmSignerAdapter: "EthAccountSigner",
           exactEvmRegistration: "register_exact_evm_client",
