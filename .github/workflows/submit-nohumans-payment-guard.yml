@@ -23,6 +23,7 @@ jobs:
     env:
       GUARD_URL: https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
       PREFLIGHT_URL: https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
+      HASH_URL: https://agentresolver.vercel.app/api/hash-encode?operation=sha256&input=agentresolver
     steps:
       - name: Verify paid Guard example without spending
         shell: bash
@@ -46,6 +47,41 @@ jobs:
           bazaar = (payload.get("extensions") or {}).get("bazaar") or {}
           output = ((bazaar.get("info") or {}).get("output") or {}).get("example") or {}
           assert (output.get("prepaymentDecision") or {}).get("decision") in ("eligible", "blocked")
+          PY
+
+      - name: Verify paid hash utility without spending
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          code="$(curl -sS -D "$headers" -o "$body" -w '%{http_code}' "$HASH_URL")"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          assert payload.get("x402Version") == 2
+          accepts = payload.get("accepts") or []
+          assert any(
+              item.get("network") == "eip155:8453"
+              and str(item.get("amount")) == "1000"
+              and item.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          bazaar = (payload.get("extensions") or {}).get("bazaar") or {}
+          input_example = ((bazaar.get("info") or {}).get("input") or {})
+          assert input_example.get("type") == "http"
+          query_params = input_example.get("queryParams") or {}
+          assert query_params.get("operation") == "sha256"
+          assert query_params.get("input") == "agentresolver"
+          input_schema = (((bazaar.get("schema") or {}).get("properties") or {}).get("input") or {})
+          operation = (
+              (input_schema.get("properties") or {})
+              .get("queryParams", {})
+              .get("properties", {})
+              .get("operation", {})
+          )
+          assert "hmac-sha256" not in (operation.get("enum") or [])
           PY
 
       - name: Submit Guard to NoHumans free verification queue
@@ -122,6 +158,41 @@ jobs:
             *) echo "NoHumans canonical preflight submission failed with HTTP $code" >&2; exit 1 ;;
           esac
 
+      - name: Submit hash utility to NoHumans free verification queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg endpoint "$HASH_URL" '{
+            name:"AgentResolver Hash & Encode — GET Utility",
+            description:"$0.001 GET-first deterministic SHA-256, SHA-512, Base64 encode/decode, or non-verifying JWT decode for autonomous agents. This listing uses SHA-256 as the zero-setup paid example; hmac-sha256 stays POST-only so secrets never appear in URLs.",
+            endpoint_url:$endpoint,
+            category:"data.other",
+            price_amount:0.001,
+            price_currency:"USDC",
+            chains:["base","solana"]
+          }')"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://nohumans.directory/v1/listings' \
+            -H 'content-type: application/json' \
+            --data "$payload")"
+
+          python3 - "$body" <<'PY'
+          import json, sys
+          raw = open(sys.argv[1], "r", encoding="utf-8").read()
+          payload = json.loads(raw)
+          if isinstance(payload, dict) and "claim_token" in payload:
+              payload["claim_token"] = "[REDACTED]"
+          if isinstance(payload, dict) and isinstance(payload.get("data"), dict) and "claim_token" in payload["data"]:
+              payload["data"]["claim_token"] = "[REDACTED]"
+          print(json.dumps(payload, separators=(",", ":")))
+          PY
+
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "NoHumans hash utility submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
       - name: Check NoHumans discovery visibility
         shell: bash
         run: |
@@ -134,4 +205,13 @@ jobs:
           echo
           if ! grep -qi 'agentresolver' /tmp/nohumans-guard-discover.json 2>/dev/null; then
             echo "::notice::NoHumans accepted or already knew the Guard listing; public search may refresh on its next indexing cycle."
+          fi
+
+          curl -fsS -G 'https://nohumans.directory/v1/discover' \
+            --data-urlencode 'q=AgentResolver Hash Encode' \
+            -o /tmp/nohumans-hash-discover.json || true
+          cat /tmp/nohumans-hash-discover.json 2>/dev/null || true
+          echo
+          if ! grep -qi 'hash' /tmp/nohumans-hash-discover.json 2>/dev/null; then
+            echo "::notice::NoHumans accepted or already knew the hash utility listing; public search may refresh on its next indexing cycle."
           fi
