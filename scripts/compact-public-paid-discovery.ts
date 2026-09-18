@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const KEEP_PAID_IDS = new Set([
   "x402-ping",
   "x402-payment-preflight",
+  "hash-encode",
   "verified-resolve",
   "batch-verified-resolve"
 ]);
@@ -21,6 +22,7 @@ const KEEP_OPENAPI_PATHS = new Set([
   "/api/x402-ping",
   "/api/x402-payment-preflight",
   "/api/payment-guard",
+  "/api/hash-encode",
   "/api/verified-resolve",
   "/api/batch-verified-resolve",
   "/api/usdc-payment-check",
@@ -33,6 +35,7 @@ const KEEP_OPENAPI_PATHS = new Set([
 const KEEP_RESOURCE_PATHS = new Set([
   "/api/x402-ping",
   "/api/x402-payment-preflight",
+  "/api/hash-encode",
   "/api/verified-resolve",
   "/api/batch-verified-resolve",
   "/api/usdc-payment-check",
@@ -71,7 +74,7 @@ for (const path of MANIFEST_PATHS) {
     KEEP_RESOURCE_PATHS.has(resourcePath(item))
   );
   manifest.instructions =
-    "Start with GET /api/x402-ping for the $0.001 USDC settlement canary. Before any autonomous x402 spend, use AgentResolver Guard via GET /api/x402-payment-preflight?url=<https-endpoint> or GET /api/payment-guard?url=<https-endpoint> for $0.001 USDC. Exact buyer-intent aliases for the same Guard engine remain published. After a successful canary, use POST /api/verified-resolve ($0.02) for one live-verified capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
+    "Start with GET /api/x402-ping for the $0.001 USDC settlement canary, or GET /api/hash-encode?operation=sha256&input=<text> for a useful $0.001 deterministic paid call. Before any autonomous x402 spend, use AgentResolver Guard via GET /api/x402-payment-preflight?url=<https-endpoint> or GET /api/payment-guard?url=<https-endpoint> for $0.001 USDC. Exact buyer-intent aliases for the same Guard engine remain published. After a successful canary, use POST /api/verified-resolve ($0.02) for one live-verified capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
   writeJson(path, manifest);
 }
 
@@ -95,8 +98,8 @@ openapi.paths = Object.fromEntries(
 openapi.info = {
   ...(openapi.info ?? {}),
   description:
-    "Focused machine catalog for x402 settlement testing and payment verification for autonomous buyers. Use GET /api/x402-ping for a $0.001 USDC settlement canary. Before an autonomous x402 purchase, use AgentResolver Guard via GET /api/payment-guard or canonical GET /api/x402-payment-preflight for a $0.001 fail-closed payment-path check. Exact buyer-intent Guard aliases remain published, while unrelated paid utilities stay live but are omitted from public machine discovery to reduce unpaid crawler sweeps. Free capability discovery remains available through POST /api/resolve.",
+    "Focused machine catalog for x402 settlement testing, payment verification, and one useful zero-setup paid utility. Use GET /api/x402-ping for a $0.001 USDC settlement canary or GET /api/hash-encode?operation=sha256&input=<text> for a $0.001 deterministic paid call. Before an autonomous x402 purchase, use AgentResolver Guard via GET /api/payment-guard or canonical GET /api/x402-payment-preflight for a $0.001 fail-closed payment-path check. Exact buyer-intent Guard aliases remain published, while unrelated paid utilities stay live but are omitted from public machine discovery to reduce unpaid crawler sweeps. Free capability discovery remains available through POST /api/resolve.",
   "x-guidance":
-    "Prefer the shortest paid funnel: GET /api/x402-ping -> GET /api/payment-guard or GET /api/x402-payment-preflight -> POST /api/verified-resolve or /api/batch-verified-resolve when needed. Exact Guard buyer-intent aliases remain discoverable. Public discovery intentionally excludes unrelated paid utilities even though those routes remain live. Free capability discovery remains available through POST /api/resolve. Payment remains caller-authorized."
+    "Prefer a $0.001 GET entrypoint: GET /api/x402-ping for settlement testing or GET /api/hash-encode?operation=sha256&input=<text> for useful deterministic work. Before autonomous x402 spend, use GET /api/payment-guard or GET /api/x402-payment-preflight, then POST /api/verified-resolve or /api/batch-verified-resolve when needed. Exact Guard buyer-intent aliases remain discoverable. Public discovery intentionally excludes unrelated paid utilities even though those routes remain live. Free capability discovery remains available through POST /api/resolve. Payment remains caller-authorized."
 };
 writeJson("public/openapi.json", openapi);
