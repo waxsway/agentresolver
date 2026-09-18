@@ -42,8 +42,10 @@ test("Tollbooth lane is idempotent, bounded, and outage-safe", () => {
   assert.doesNotMatch(workflow, /cat \/tmp\/tollbooth-register\.json/);
 });
 
-test("Tollbooth lane runs once when landed and remains manually retryable", () => {
+test("Tollbooth lane retries hourly while absent and remains manually retryable", () => {
   assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /cron: "17 \\* \\* \\* \\*"/);
   assert.match(
     workflow,
     /paths:\n\s+- "\.github\/workflows\/register-tollbooth-once\.yml"/
