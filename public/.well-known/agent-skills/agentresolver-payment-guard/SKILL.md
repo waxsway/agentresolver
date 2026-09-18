@@ -59,6 +59,68 @@ AgentResolver supports its own service payment on:
 
 Register only payment schemes backed by the caller's own signer and enforce caller-owned limits before signing.
 
+
+## MCP wallet-capable clients — fail-closed pre-sign gate
+
+For `@x402/mcp`, use `onPaymentRequested` before the wallet creates a payment. The host must supply its own `hostAllowsGuardSpend(context)` policy check. Return `false` on every mismatch.
+
+```ts
+const guardToolResources = {
+  payment_guard: "mcp://tool/payment_guard",
+  x402_payment_preflight: "mcp://tool/x402_payment_preflight"
+};
+
+const allowedGuardRequirements = [
+  {
+    network: "eip155:8453",
+    asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+  },
+  {
+    network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    payTo: "AoQNzm7dB7dhBXfgq9ywqkfkS68fg2e1JwcxrgXnkLXa"
+  }
+];
+
+const onPaymentRequested = async (context) => {
+  if (!(await hostAllowsGuardSpend(context))) return false;
+
+  const expectedResource = guardToolResources[context.toolName];
+  if (!expectedResource) return false;
+  if (context.paymentRequired.x402Version !== 2) return false;
+  if (context.paymentRequired.resource.url !== expectedResource) return false;
+
+  return context.paymentRequired.accepts.some((requirement) =>
+    requirement.scheme === "exact" &&
+    requirement.amount === "1000" &&
+    allowedGuardRequirements.some((expected) =>
+      requirement.network === expected.network &&
+      requirement.asset === expected.asset &&
+      requirement.payTo === expected.payTo
+    )
+  );
+};
+```
+
+Use exact string equality for network, asset, and `payTo`. Solana Base58 identifiers are case-sensitive and must never be normalized before comparison. This callback authorizes only the separate $0.001 AgentResolver Guard fee after host policy approval; it does not authorize the target payment.
+
+For HTTP clients, the free buyer setup exposes equivalent native pre-sign gates: `paymentRequirementsSelector` for `@x402/fetch` and `@x402/axios`, and client policies plus `on_before_payment_creation` / `AbortResult` for Python `x402HttpxClient`.
+
+## Coinbase AgentKit
+
+For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead of writing a custom payment loop. AgentKit only allows HTTP x402 actions against registered services, and dynamic registration is disabled by default unless the host enables it.
+
+1. Call `list_registered_services` before the first request.
+2. Ensure the exact target and `https://agentresolver.vercel.app` are approved. If `allowDynamicServiceRegistration` is enabled, intentionally call `register_x402_service` for each. Otherwise the host administrator must include them in `registeredServices`.
+3. Call `make_http_request` on the approved exact target. This exposes the target's 402 terms without paying.
+4. Build the AgentResolver Guard URL with that target plus caller-owned constraints and call `make_http_request` on the approved AgentResolver origin. This exposes Guard's separate $0.001 challenge without paying.
+5. Only if the caller's own policy authorizes the Guard fee, call `retry_http_request_with_x402` for Guard.
+6. Require `decision === "eligible"` and compare the observed amount, asset, network, payTo, scheme and resource binding against caller policy.
+7. Only after separate authorization for the target amount, call `retry_http_request_with_x402` for the original target challenge.
+
+AgentKit also exposes `discover_x402_services` for discovery. Do not enable dynamic registration merely to bypass the service allowlist, and do not use `make_http_request_with_x402` on an unfamiliar target before Guard and caller authorization because that action combines challenge handling and payment.
+
 ## MCP
 
 Remote MCP endpoint:
