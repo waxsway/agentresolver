@@ -105,7 +105,7 @@ jobs:
               -o /tmp/live-preflight-body.json \
               -w '%{http_code}' \
               -H 'x-agentresolver-internal: 1' \
-              "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01" || true)
+              "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01" || true)"
             candidate="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\\r",""); print $2; exit}' /tmp/live-preflight-headers.txt)"
             if [ "$code" = "402" ] && [[ "$candidate" =~ ^[0-9a-f]{40}$ ]]; then
               production_sha="$candidate"
