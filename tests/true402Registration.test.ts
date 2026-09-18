@@ -17,12 +17,14 @@ test("true402 manifest publishes the input-free $0.001 Base settlement canary", 
   assert.ok(manifest.capabilities?.includes("verification"));
 });
 
-test("true402 registration is zero-spend, anonymous, and manual-only after acceptance", () => {
+test("true402 registration is zero-spend, anonymous, and self-triggers only when its workflow changes", () => {
   assert.match(workflow, /https:\/\/true402\.dev\/api/);
   assert.match(workflow, /POST "\$TRUE402_API\/v1\/services"/);
   assert.match(workflow, /\{url:\$url\}/);
   assert.match(workflow, /workflow_dispatch:/);
-  assert.doesNotMatch(workflow, /^\s*push:/m);
+  assert.match(workflow, /^\s*push:/m);
+  assert.match(workflow, /branches: \[main\]/);
+  assert.match(workflow, /\.github\/workflows\/register-true402\.yml/);
   assert.doesNotMatch(workflow, /^\s*workflow_run:/m);
   assert.match(workflow, /x-agentresolver-internal: 1/);
   assert.match(workflow, /refusing duplicate registration/i);
