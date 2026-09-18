@@ -15,6 +15,7 @@ import { normalizeJson, validateJsonSchema, parseUrl, generateUuidV4, slugify } 
 import { convertEvmUnits, ethereumKeccak256, evmAddressChecksum, soliditySelector } from "@/lib/evmPrecision";
 import { eip712TypedDataHash, ensNamehash, ethereumAbiDecode, ethereumAbiEncode } from "@/lib/evmAdvanced";
 import { createLazyPaidMcpTool } from "@/lib/mcpPayments";
+import { X402_PING_NEXT_ACTIONS } from "@/lib/x402PingDiscovery";
 import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
 import { classifyTraffic } from "@/lib/trafficClassification";
 import {
@@ -62,6 +63,35 @@ const urlParseProduct = getPaidCapability("url-parse");
 const uuidV4Product = getPaidCapability("uuid-v4");
 const slugifyProduct = getPaidCapability("slugify");
 const hashEncodeProduct = getPaidCapability("hash-encode");
+
+const x402PingNextActionSchema = z.object({
+  capabilityId: z.string(),
+  endpoint: z.string().url(),
+  method: z.enum(["GET", "POST"]),
+  priceUsd: z.number().nonnegative(),
+  useWhen: z.string(),
+  inputExample: z.record(z.string(), z.unknown())
+});
+
+const x402PingMcpOutputSchema = z.object({
+  pong: z.literal(true),
+  settledDelivery: z.literal(true),
+  at: z.string(),
+  unixMs: z.number().int().nonnegative(),
+  requestId: z.string(),
+  echo: z.string().max(256).nullable(),
+  next: z.object({
+    catalogUrl: z.string().url(),
+    recommended: x402PingNextActionSchema.extend({
+      reason: z.string(),
+      repeatUse: z.string(),
+      paymentAuthorization: z.string()
+    }),
+    preflight: x402PingNextActionSchema,
+    single: x402PingNextActionSchema,
+    batch: x402PingNextActionSchema
+  })
+});
 const httpInspectProduct = getPaidCapability("http-inspect");
 const x402PaymentPreflightProduct = getPaidCapability("x402-payment-preflight");
 const toolContractProduct = getPaidCapability("tool-contract");
@@ -344,9 +374,18 @@ const handler = createMcpHandler(() => {
   server.registerTool("x402_ping", {
     title: x402PingProduct.quoteTool.title, description: x402PingProduct.quoteTool.description,
     inputSchema: z.object({ echo: z.string().max(256).optional() }),
+    outputSchema: x402PingMcpOutputSchema,
     annotations: { title: x402PingProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false }
   }, createLazyPaidMcpTool<{ echo?: string }>("x402-ping", async ({ echo }) =>
-    simplePaidResult("x402-ping", "x402_ping", { pong: true, settledDelivery: true, at: new Date().toISOString(), unixMs: Date.now(), requestId: generateUuidV4(1).values[0], echo: echo || null })
+    simplePaidResult("x402-ping", "x402_ping", {
+      pong: true,
+      settledDelivery: true,
+      at: new Date().toISOString(),
+      unixMs: Date.now(),
+      requestId: generateUuidV4(1).values[0],
+      echo: echo || null,
+      next: X402_PING_NEXT_ACTIONS
+    })
   ));
 
   server.registerTool("sha256", {
