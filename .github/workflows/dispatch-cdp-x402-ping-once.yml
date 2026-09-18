@@ -1,10 +1,7 @@
-name: Dispatch Guarded CDP x402 Ping Once
+name: Dispatch Legacy CDP x402 Ping Manually
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/dispatch-cdp-x402-ping-once.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
