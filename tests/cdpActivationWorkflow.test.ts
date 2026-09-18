@@ -4,6 +4,7 @@ import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/activate-cdp-x402-ping.yml", "utf8");
 const health = readFileSync("src/app/api/health/route.ts", "utf8");
+const payaiFailover = readFileSync(".github/workflows/restore-clean-after-nohumans.yml", "utf8");
 
 test("CDP activation cannot run automatically", () => {
   assert.match(workflow, /workflow_dispatch:/);
@@ -59,4 +60,22 @@ test("public health reports configured rail state without exposing credentials",
   assert.match(health, /x402PingSolana: "payai"/);
   assert.match(health, /circleGatewayEnabled/);
   assert.doesNotMatch(health, /CDP_API_KEY_SECRET|CDP_API_KEY_ID/);
+});
+
+
+test("PayAI failover disarms CDP before promoting the known-good deployment", () => {
+  assert.match(payaiFailover, /CLEAN_DEPLOYMENT_ID: dpl_224AqUGm1FJ91kmfPJ56LsDmRQoJ/);
+  assert.match(payaiFailover, /"key": "AGENTRESOLVER_CDP_FACILITATOR_ENABLED"/);
+  assert.match(payaiFailover, /"value": "0"/);
+  assert.match(payaiFailover, /env\?upsert=true&teamId=\$VERCEL_ORG_ID/);
+  assert.match(payaiFailover, /\.paymentRails\.cdpFacilitatorEnabledForX402Ping == false/);
+  assert.match(payaiFailover, /\.paymentRails\.x402PingBase == "payai"/);
+  assert.match(payaiFailover, /\.paymentRails\.x402PingSolana == "payai"/);
+  assert.match(payaiFailover, /\.paymentRails\.circleGatewayEnabled == false/);
+  assert.ok(
+    payaiFailover.indexOf("Disable CDP for known-good PayAI failover") <
+      payaiFailover.indexOf("Promote known-clean deployment without rebuilding")
+  );
+  assert.doesNotMatch(payaiFailover, /"key": "CDP_API_KEY_ID"|"key": "CDP_API_KEY_SECRET"/);
+  assert.doesNotMatch(payaiFailover, /PAYMENT-SIGNATURE|X-PAYMENT/);
 });
