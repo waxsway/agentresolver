@@ -23,6 +23,7 @@ jobs:
     env:
       GUARD_URL: https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
       PREFLIGHT_URL: https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
+      SETTLEMENT_VERIFY_URL: https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedAmountAtomic=1000
     steps:
       - name: Free Market402 self-test for canonical preflight
         shell: bash
@@ -70,6 +71,29 @@ jobs:
               raise SystemExit(f"Market402 canary verdict is {verdict!r}, expected 'spec_compliant'")
           PY
 
+      - name: Free Market402 self-test for settlement verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://market402.com/selftest' \
+            -H 'content-type: application/json' \
+            --data "$(jq -cn --arg url "$SETTLEMENT_VERIFY_URL" '{url:$url}')")"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202) ;;
+            *) echo "Market402 settlement verifier self-test failed with HTTP $code" >&2; exit 1 ;;
+          esac
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          verdict = payload.get("summary", {}).get("verdict")
+          if verdict != "spec_compliant":
+              raise SystemExit(f"Market402 settlement verifier verdict is {verdict!r}, expected 'spec_compliant'")
+          PY
+
       - name: Submit paid GET canary and opt into real paid delivery probes
         shell: bash
         run: |
@@ -88,6 +112,27 @@ jobs:
           case "$code" in
             200|201|202|409) ;;
             *) echo "Market402 canary submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+      - name: Submit settlement verifier and opt into real paid delivery probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg resource "$SETTLEMENT_VERIFY_URL" '{
+            resource:$resource,
+            declared_price_usd:0.001,
+            paid_probe_optin:true
+          }')"
+          code="$(curl -sS -o "$body" -w '%{http_code}' \
+            -X POST 'https://market402.com/submit' \
+            -H 'content-type: application/json' \
+            --data "$payload")"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "Market402 settlement verifier submission failed with HTTP $code" >&2; exit 1 ;;
           esac
 
       - name: Submit canonical preflight and opt into real paid delivery probes
@@ -175,4 +220,7 @@ jobs:
           fi
           if ! grep -q 'agentresolver.vercel.app/api/payment-guard' /tmp/optin.json; then
             echo "::warning::Market402 accepted the AgentResolver Guard submission but its public opt-in roster has not refreshed yet."
+          fi
+          if ! grep -q 'agentresolver.vercel.app/api/x402-settlement-verify' /tmp/optin.json; then
+            echo "::warning::Market402 accepted the settlement verifier submission but its public opt-in roster has not refreshed yet."
           fi
