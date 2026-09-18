@@ -1,0 +1,222 @@
+name: Register NoHumans Provider Launch Reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-nohumans-provider-launch-reference.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: register-nohumans-provider-launch-reference
+  cancel-in-progress: true
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      SAMPLE_QUERY: https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build concrete GET-first reference URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >/tmp/reference-url
+          from urllib.parse import urlencode
+          base="https://agentresolver.vercel.app/api/provider-launch-check"
+          params=[
+            ("providerId","agentresolver-reference"),
+            ("providerName","AgentResolver Reference Provider"),
+            ("capabilityId","x402-ping"),
+            ("name","AgentResolver x402 Settlement Ping"),
+            ("description","Reference x402 service used to demonstrate paid provider launch verification."),
+            ("origin","https://agentresolver.vercel.app"),
+            ("endpoint","https://agentresolver.vercel.app/api/x402-ping"),
+            ("method","GET"),
+            ("probeUrl","https://agentresolver.vercel.app/api/x402-ping"),
+            ("priceUsd","0.001"),
+            ("network","eip155:8453"),
+            ("tag","x402"),
+            ("tag","provider-launch"),
+            ("tag","reference"),
+          ]
+          print(base+"?"+urlencode(params))
+          PY
+          echo "REFERENCE_URL=$(cat /tmp/reference-url)" >> "$GITHUB_ENV"
+
+      - name: Verify reference contract and free sample
+        shell: bash
+        run: |
+          set -euo pipefail
+          paid_body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$paid_body" -w '%{http_code}' "$REFERENCE_URL")"
+          test "$code" = "402"
+
+          sample_code="$(curl -sS --connect-timeout 5 --max-time 20             -o /tmp/sample.json -w '%{http_code}' "$SAMPLE_QUERY")"
+          test "$sample_code" = "200"
+          jq -e . /tmp/sample.json >/dev/null
+
+          python3 - "$paid_body" <<'PY'
+          import json, sys
+          body=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          assert body.get("x402Version")==2
+          accepts=body.get("accepts") or []
+          assert any(
+              item.get("network")=="eip155:8453"
+              and str(item.get("amount"))=="50000"
+              and item.get("payTo")=="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          bazaar=((body.get("extensions") or {}).get("bazaar") or {}).get("info") or {}
+          assert (bazaar.get("input") or {}).get("method")=="GET"
+          PY
+
+      - name: Skip if exact reference URL is already listed
+        id: existing
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -G 'https://api.nohumans.directory/v1/resolve'             --data-urlencode "url=$REFERENCE_URL" || printf '000')"
+          if [ "$code" = "200" ] && jq -e '.match == "active"' "$body" >/dev/null 2>&1; then
+            id="$(jq -r '.listing.id // .id // empty' "$body")"
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "listing_id=$id" >> "$GITHUB_OUTPUT"
+            echo "NoHumans reference listing already active: $id"
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Submit reference listing with buyer-complete metadata
+        id: submit
+        if: steps.existing.outputs.already != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn             --arg endpoint "$REFERENCE_URL"             --arg sample "$SAMPLE_QUERY"             '{
+              name:"AgentResolver Provider Launch Check — Reference Contract",
+              description:"GET-first $0.05 USDC x402 seller-launch verification reference contract. Verifies a known-good x402 provider route end to end and returns a machine-readable launch report; production sellers use the same endpoint with their own provider fields.",
+              endpoint_url:$endpoint,
+              category:"tools.verification",
+              price_amount:0.05,
+              price_currency:"USDC",
+              chains:["base","solana"],
+              sample_query:$sample,
+              request_schema:{type:"object",additionalProperties:false,properties:{}},
+              response_schema:{
+                type:"object",
+                required:["product","paidVerification","eligibleForRegistryReview","decision","provider","readiness","paymentProbe","registryEntry","commercialTerms","submission","limitations","invocation"],
+                additionalProperties:true,
+                properties:{
+                  product:{type:"string"},
+                  paidVerification:{type:"boolean",const:true},
+                  eligibleForRegistryReview:{type:"boolean"},
+                  decision:{type:"string"},
+                  provider:{type:"object"},
+                  readiness:{type:"object"},
+                  paymentProbe:{type:"object"},
+                  registryEntry:{type:"object"},
+                  commercialTerms:{type:"object"},
+                  submission:{type:"object"},
+                  limitations:{type:"array"},
+                  invocation:{type:"object"}
+                }
+              }
+            }')"
+
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -X POST 'https://api.nohumans.directory/v1/listings'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          case "$code" in
+            200|201)
+              id="$(jq -r '.id // empty' "$body")"
+              token="$(jq -r '.claim_token // empty' "$body")"
+              test -n "$id"
+              test -n "$token"
+              echo "::add-mask::$token"
+              printf '%s' "$token" >/tmp/nohumans-provider-reference-token
+              echo "listing_id=$id" >> "$GITHUB_OUTPUT"
+              echo "created=true" >> "$GITHUB_OUTPUT"
+              jq 'del(.claim_token)' "$body"
+              ;;
+            409)
+              echo "::notice::NoHumans reports this exact reference listing already exists; refusing to create a duplicate."
+              jq . "$body" 2>/dev/null || cat "$body"
+              echo "created=false" >> "$GITHUB_OUTPUT"
+              ;;
+            429|500|502|503|504|000)
+              echo "::notice::NoHumans temporarily unavailable/rate-limited (HTTP $code); no spend or identity action attempted."
+              echo "created=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              jq . "$body" 2>/dev/null || cat "$body"
+              echo "::error::Unexpected NoHumans submission status $code."
+              exit 1
+              ;;
+          esac
+
+      - name: Store one-time edit key without deploying
+        if: steps.submit.outputs.created == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+          token="$(cat /tmp/nohumans-provider-reference-token)"
+          id="${{ steps.submit.outputs.listing_id }}"
+          echo "::add-mask::$token"
+          vercel env rm NOHUMANS_PROVIDER_LAUNCH_REFERENCE_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          vercel env add NOHUMANS_PROVIDER_LAUNCH_REFERENCE_TOKEN production --sensitive --token="$VERCEL_TOKEN" <<<"$token" >/dev/null
+          vercel env rm NOHUMANS_PROVIDER_LAUNCH_REFERENCE_ID production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          vercel env add NOHUMANS_PROVIDER_LAUNCH_REFERENCE_ID production --token="$VERCEL_TOKEN" <<<"$id" >/dev/null
+          rm -f /tmp/nohumans-provider-reference-token
+          echo "Stored listing ID and private edit key; no Vercel deployment was requested."
+
+      - name: Verify listing metadata
+        if: steps.submit.outputs.created == 'true' || steps.existing.outputs.already == 'true'
+        shell: bash
+        env:
+          CREATED_ID: ${{ steps.submit.outputs.listing_id }}
+          EXISTING_ID: ${{ steps.existing.outputs.listing_id }}
+        run: |
+          set -euo pipefail
+          id="${CREATED_ID:-${EXISTING_ID:-}}"
+          test -n "$id"
+          curl -fsS --connect-timeout 5 --max-time 20             "https://api.nohumans.directory/v1/listings/$id"             -o /tmp/listing.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open("/tmp/listing.json","r",encoding="utf-8"))
+          summary={
+            "id":data.get("id"),
+            "status":data.get("status"),
+            "has_sample":data.get("has_sample"),
+            "sample_query":data.get("sample_query"),
+            "request_schema_present":bool(data.get("request_schema")),
+            "response_schema_present":bool(data.get("response_schema")),
+            "paid_verified":data.get("paid_verified"),
+            "probe_count":data.get("probe_count"),
+          }
+          print(json.dumps(summary,separators=(",",":")))
+          assert data.get("has_sample") is True
+          assert data.get("sample_query")=="https://agentresolver.vercel.app/.well-known/agentresolver-evidence.json"
+          assert bool(data.get("request_schema"))
+          assert bool(data.get("response_schema"))
+          PY
+
+      - name: Remove local token
+        if: always()
+        shell: bash
+        run: rm -f /tmp/nohumans-provider-reference-token
