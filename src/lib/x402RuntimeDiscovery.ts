@@ -24,6 +24,31 @@ export function x402RuntimeDiscoveryOutput(capabilityId: PaidCapabilityId) {
     } as const;
   }
 
+  if (capabilityId === "x402-settlement-verify") {
+    return {
+      example: {
+        settled: true,
+        verdict: "verified",
+        paymentShape: "eip3009-exact",
+        transferCount: 1
+      },
+      schema: {
+        type: "object",
+        required: ["settled", "verdict", "paymentShape", "transferCount"],
+        additionalProperties: true,
+        properties: {
+          settled: { type: "boolean" },
+          verdict: {
+            type: "string",
+            enum: ["verified", "reverted", "not_usdc_eip3009", "expectation_mismatch", "not_found"]
+          },
+          paymentShape: { type: "string", enum: ["eip3009-exact", "other", "unknown"] },
+          transferCount: { type: "integer", minimum: 0 }
+        }
+      }
+    } as const;
+  }
+
   if (capabilityId === "x402-payment-preflight") {
     return {
       example: {
@@ -73,6 +98,38 @@ export function x402RuntimeDiscoveryInput(capabilityId: PaidCapabilityId) {
             type: "string",
             maxLength: 256,
             description: "Optional text echoed by the paid settlement response."
+          }
+        }
+      }
+    } as const;
+  }
+
+  if (capabilityId === "x402-settlement-verify") {
+    return {
+      example: {
+        txHash: "0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72",
+        expectedPayTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        expectedAmountAtomic: "1000"
+      },
+      schema: {
+        type: "object",
+        required: ["txHash"],
+        additionalProperties: false,
+        properties: {
+          txHash: {
+            type: "string",
+            pattern: "^0x[0-9a-fA-F]{64}$",
+            description: "Base mainnet transaction hash returned by an x402 settlement."
+          },
+          expectedPayTo: {
+            type: "string",
+            pattern: "^0x[0-9a-fA-F]{40}$",
+            description: "Optional expected USDC recipient; mismatch fails closed."
+          },
+          expectedAmountAtomic: {
+            type: "string",
+            pattern: "^[0-9]{1,78}$",
+            description: "Optional expected six-decimal USDC atomic amount; mismatch fails closed."
           }
         }
       }
