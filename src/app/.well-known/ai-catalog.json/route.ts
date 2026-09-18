@@ -14,14 +14,17 @@ const catalog = {
       type: "application/mcp-server-card+json",
       url: "https://agentresolver.vercel.app/mcp/server-card",
       description:
-        "Free machine-first capability resolver for autonomous agents with live x402 service discovery.",
+        "Paid x402 payment-verification infrastructure for autonomous agents: $0.001 verify-before-pay checks and $0.001 Base USDC settlement-receipt verification, plus free capability discovery.",
       capabilities: [
         "CapabilityResolver",
         "ToolDiscovery",
         "MCPDiscovery",
         "X402Discovery",
         "APISelection",
-        "MachineServiceRouting"
+        "MachineServiceRouting",
+        "X402PaymentPreflight",
+        "X402SettlementVerification",
+        "PaymentReceiptVerification"
       ],
       tags: [
         "agents",
@@ -29,7 +32,10 @@ const catalog = {
         "x402",
         "tool-discovery",
         "api-discovery",
-        "routing"
+        "routing",
+        "payment-verification",
+        "settlement-receipt",
+        "transaction-verification"
       ],
       version: "0.1.0",
       representativeQueries: [
@@ -37,7 +43,10 @@ const catalog = {
         "find an MCP server for this capability",
         "find a machine-payable x402 service for this job",
         "compare external services that can satisfy my goal",
-        "what tool should my agent use next"
+        "what tool should my agent use next",
+        "verify an x402 settlement receipt from a Base transaction hash",
+        "verify a Base USDC x402 payment recipient and amount",
+        "check an x402 endpoint before paying it"
       ]
     }
   ]

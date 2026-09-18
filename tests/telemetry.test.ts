@@ -129,6 +129,10 @@ test("failed retry reason extraction finds standard x402 verify reasons but igno
     paymentFailureReasonFromJson({ paymentSignature: "super-secret", message: "do not log me" }),
     null
   );
+  assert.equal(
+    paymentFailureReasonFromJson({ error: "invalid_payload: contract call failed: unable to call contract: execution reverted" }),
+    "invalid_payload: contract call failed: unable to call contract: execution reverted"
+  );
 
   const response = new Response(JSON.stringify({
     x402Version: 2,

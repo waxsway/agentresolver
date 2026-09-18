@@ -175,7 +175,8 @@ const PAYMENT_FAILURE_REASON_KEYS = [
   "rejectedReason",
   "reason",
   "code",
-  "errorType"
+  "errorType",
+  "error"
 ] as const;
 
 function boundedFailureReason(value: unknown): string | null {
