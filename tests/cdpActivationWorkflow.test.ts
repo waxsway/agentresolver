@@ -14,9 +14,12 @@ test("CDP activation cannot run automatically", () => {
   assert.doesNotMatch(workflow, /^\s*push:/m);
 });
 
-test("CDP activation requires both Coinbase credential keys in Vercel production without decrypting them", () => {
+test("CDP activation accepts canonical or existing production credential aliases without decrypting them", () => {
   assert.match(workflow, /\/v10\/projects\/\$VERCEL_PROJECT_ID\/env\?teamId=\$VERCEL_ORG_ID/);
-  assert.match(workflow, /required = \{"CDP_API_KEY_ID", "CDP_API_KEY_SECRET"\}/);
+  assert.match(workflow, /id_keys = \{"CDP_API_KEY_ID", "CDI_API_KEY_ID"\}/);
+  assert.match(workflow, /secret_keys = \{"CDP_API_KEY_SECRET", "CDP_API_SECRET", "CDI_API_KEY_SECRET", "CDI_API_SECRET"\}/);
+  assert.match(workflow, /has_id = bool\(id_keys & production_keys\)/);
+  assert.match(workflow, /has_secret = bool\(secret_keys & production_keys\)/);
   assert.match(workflow, /"production" in target/);
   assert.match(workflow, /CDP remains disabled/);
   assert.doesNotMatch(workflow, /secrets\.CDP_API_KEY_ID|secrets\.CDP_API_KEY_SECRET/);
