@@ -47,18 +47,21 @@ jobs:
               if isinstance(target, str):
                   target=[target]
               key=item.get("key")
-              if isinstance(key, str) and ("CDP" in key.upper() or "COINBASE" in key.upper()):
+              if isinstance(key, str) and ("CDP" in key.upper() or "CDI" in key.upper() or "COINBASE" in key.upper()):
                   matching_targets.setdefault(key, set()).update(str(value) for value in target)
               if "production" in target and isinstance(key, str):
                   production_keys.add(key)
-          required={"CDP_API_KEY_ID","CDP_API_KEY_SECRET"}
+          id_keys={"CDP_API_KEY_ID","CDI_API_KEY_ID"}
+          secret_keys={"CDP_API_KEY_SECRET","CDP_API_SECRET","CDI_API_KEY_SECRET","CDI_API_SECRET"}
           matching=sorted(
               key for key in production_keys
-              if "CDP" in key.upper() or "COINBASE" in key.upper()
+              if "CDP" in key.upper() or "CDI" in key.upper() or "COINBASE" in key.upper()
           )
-          print(f"CDP_API_KEY_ID_PRESENT={'true' if 'CDP_API_KEY_ID' in production_keys else 'false'}")
-          print(f"CDP_API_KEY_SECRET_PRESENT={'true' if 'CDP_API_KEY_SECRET' in production_keys else 'false'}")
-          print(f"CDP_CREDENTIAL_KEYS_PRESENT={'true' if required.issubset(production_keys) else 'false'}")
+          has_id=bool(id_keys & production_keys)
+          has_secret=bool(secret_keys & production_keys)
+          print(f"CDP_CREDENTIAL_ID_ALIAS_PRESENT={'true' if has_id else 'false'}")
+          print(f"CDP_CREDENTIAL_SECRET_ALIAS_PRESENT={'true' if has_secret else 'false'}")
+          print(f"CDP_CREDENTIAL_KEYS_PRESENT={'true' if has_id and has_secret else 'false'}")
           print("CDP_COINBASE_PRODUCTION_KEY_NAMES=" + ",".join(matching))
           target_summary=";".join(
               f"{key}:[{','.join(sorted(targets))}]"
@@ -66,6 +69,28 @@ jobs:
           )
           print("CDP_COINBASE_KEY_TARGETS=" + target_summary)
           PY
+
+      - name: Verify production env aliases are injectable without printing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          vercel env run --environment=production --token="$VERCEL_TOKEN" -- node -e '
+            const hasId = Boolean(process.env.CDP_API_KEY_ID || process.env.CDI_API_KEY_ID);
+            const hasSecret = Boolean(
+              process.env.CDP_API_KEY_SECRET ||
+              process.env.CDP_API_SECRET ||
+              process.env.CDI_API_KEY_SECRET ||
+              process.env.CDI_API_SECRET
+            );
+            console.log("RUNTIME_CDP_ID_ALIAS_PRESENT=" + hasId);
+            console.log("RUNTIME_CDP_SECRET_ALIAS_PRESENT=" + hasSecret);
+            console.log("RUNTIME_CDP_CREDENTIALS_PRESENT=" + (hasId && hasSecret));
+            if (!hasId || !hasSecret) process.exit(2);
+          '
 
       - name: Audit canonical payment rail state without changing it
         shell: bash

@@ -258,7 +258,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          deployment_url="$(node .github/scripts/vercel-deploy-prebuilt-runtime-env.mjs .vercel/.env.production.local)"
+          deployment_url="$(vercel env run --environment=production --token="$VERCEL_TOKEN" -- node .github/scripts/vercel-deploy-prebuilt-runtime-env.mjs .vercel/.env.production.local)"
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
           echo "deployed=$deployment_url"
 

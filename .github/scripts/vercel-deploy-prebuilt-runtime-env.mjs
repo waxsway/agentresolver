@@ -7,6 +7,7 @@ const envFile = process.argv[2] || ".vercel/.env.production.local";
 const token = process.env.VERCEL_TOKEN;
 const orgId = process.env.VERCEL_ORG_ID;
 const projectId = process.env.VERCEL_PROJECT_ID;
+
 if (!token) {
   console.error("VERCEL_TOKEN is required.");
   process.exit(1);
@@ -24,18 +25,64 @@ try {
   process.exit(1);
 }
 
+const envResponse = await fetch(
+  `https://api.vercel.com/v10/projects/${encodeURIComponent(projectId)}/env?teamId=${encodeURIComponent(orgId)}`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+
+if (!envResponse.ok) {
+  console.error(`Unable to read Vercel project environment metadata (HTTP ${envResponse.status}).`);
+  process.exit(1);
+}
+
+const envPayload = await envResponse.json();
+const productionKeys = new Set();
+for (const item of Array.isArray(envPayload?.envs) ? envPayload.envs : []) {
+  if (!item || typeof item !== "object" || typeof item.key !== "string") continue;
+  const targets = Array.isArray(item.target) ? item.target : [item.target].filter(Boolean);
+  if (!targets.includes("production")) continue;
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(item.key)) continue;
+  if (item.key.startsWith("VERCEL_") || item.key.startsWith("GITHUB_") || item.key === "CI") continue;
+  productionKeys.add(item.key);
+}
+
+const runtimeValues = new Map();
+for (const key of productionKeys) {
+  const injected = process.env[key];
+  const pulled = parsed[key];
+  const value =
+    typeof injected === "string" && injected.length > 0
+      ? injected
+      : typeof pulled === "string"
+        ? pulled
+        : "";
+  if (value.length > 0) runtimeValues.set(key, value);
+}
+
+const cdpEnabled = runtimeValues.get("AGENTRESOLVER_CDP_FACILITATOR_ENABLED") === "1";
+if (cdpEnabled) {
+  const hasId = ["CDP_API_KEY_ID", "CDI_API_KEY_ID"].some((key) => runtimeValues.has(key));
+  const hasSecret = [
+    "CDP_API_KEY_SECRET",
+    "CDP_API_SECRET",
+    "CDI_API_KEY_SECRET",
+    "CDI_API_SECRET"
+  ].some((key) => runtimeValues.has(key));
+  if (!hasId || !hasSecret) {
+    console.error(
+      "CDP is enabled but the production runtime environment did not provide both a supported API key ID and API key secret alias."
+    );
+    process.exit(1);
+  }
+}
+
 const args = ["deploy", "--prebuilt", "--prod", "--no-wait", `--token=${token}`];
 let forwarded = 0;
 
-for (const [key, value] of Object.entries(parsed)) {
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
-  if (key.startsWith("VERCEL_") || key.startsWith("GITHUB_") || key === "CI") continue;
-  if (typeof value !== "string") continue;
-
-  if (/(SECRET|TOKEN|PASSWORD|PRIVATE|API_KEY|KEY_ID)/i.test(key) && value.length > 0) {
+for (const [key, value] of runtimeValues) {
+  if (/(SECRET|TOKEN|PASSWORD|PRIVATE|API_KEY|KEY_ID)/i.test(key)) {
     console.error(`::add-mask::${value}`);
   }
-
   args.push("--env", `${key}=${value}`);
   forwarded += 1;
 }
@@ -44,6 +91,8 @@ if (forwarded === 0) {
   console.error("No production project environment variables were available for runtime forwarding.");
   process.exit(1);
 }
+
+console.error(`Forwarding ${forwarded} production project environment variables to the deployment runtime.`);
 
 const result = spawnSync("vercel", args, {
   cwd: process.cwd(),
