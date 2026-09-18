@@ -1,7 +1,9 @@
-name: Register AgentResolver with x402Scout Once
+name: Register AgentResolver with x402Scout
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "29 * * * *"
   push:
     branches: [main]
     paths:
