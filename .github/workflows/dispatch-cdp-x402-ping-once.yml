@@ -1,0 +1,25 @@
+name: Dispatch Guarded CDP x402 Ping Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/dispatch-cdp-x402-ping-once.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Dispatch existing guarded CDP activation
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run activate-cdp-x402-ping.yml             --repo "$GITHUB_REPOSITORY"             --ref main             -f confirm=ENABLE_CDP_X402_PING
+          echo "Guarded CDP activation dispatched. The activation workflow owns credential checks, Circle veto, scoped env flags, build, deploy, and unsigned verification."
