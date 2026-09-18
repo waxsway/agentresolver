@@ -330,3 +330,44 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
     "batch-verified-resolve"
   );
 });
+
+test("runtime PAYMENT-REQUIRED handoff follows the exact challenged request", async () => {
+  const getResponse = await GET(new NextRequest(
+    "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check",
+    {
+      method: "GET",
+      headers: { "user-agent": "agentresolver-test" }
+    }
+  ));
+  assert.equal(getResponse.status, 402);
+  const getHeader = getResponse.headers.get("payment-required");
+  assert.ok(getHeader);
+  const getChallenge = JSON.parse(Buffer.from(getHeader!, "base64").toString("utf8"));
+  assert.equal(getChallenge.extensions?.agentresolver?.info?.method, "GET");
+  const getSetup = new URL(getChallenge.extensions?.agentresolver?.info?.setup);
+  assert.equal(getSetup.searchParams.get("method"), "GET");
+  assert.equal(
+    getSetup.searchParams.get("resumeUrl"),
+    "https://agentresolver.vercel.app/api/x402-ping?echo=buyer-check"
+  );
+
+  const postResponse = await POST(new NextRequest(
+    "https://agentresolver.vercel.app/api/x402-ping",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "agentresolver-test"
+      },
+      body: JSON.stringify({ echo: "buyer-check" })
+    }
+  ));
+  assert.equal(postResponse.status, 402);
+  const postHeader = postResponse.headers.get("payment-required");
+  assert.ok(postHeader);
+  const postChallenge = JSON.parse(Buffer.from(postHeader!, "base64").toString("utf8"));
+  assert.equal(postChallenge.extensions?.agentresolver?.info?.method, "POST");
+  const postSetup = new URL(postChallenge.extensions?.agentresolver?.info?.setup);
+  assert.equal(postSetup.searchParams.get("method"), "POST");
+  assert.equal(postSetup.searchParams.get("resumeUrl"), null);
+});
