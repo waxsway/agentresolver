@@ -1,0 +1,203 @@
+name: Register AgentResolver with PayanAgent Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-payanagent-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify canonical Base x402 settlement canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             'https://agentresolver.vercel.app/api/x402-ping')"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          assert payload.get("x402Version") == 2
+          accepts = payload.get("accepts") or []
+          assert any(
+              item.get("network") == "eip155:8453"
+              and str(item.get("amount")) == "1000"
+              and item.get("payTo") == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          PY
+
+      - name: Check whether PayanAgent already ingested AgentResolver
+        id: existing
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             --get 'https://payanagent.com/api/v1/offers'             --data-urlencode 'q=AgentResolver'             --data-urlencode 'offerType=api'             --data-urlencode 'limit=100' || printf '000')"
+
+          if [ "$code" != "200" ]; then
+            echo "::warning::PayanAgent catalog lookup returned HTTP $code; continuing with bounded free registration."
+            echo "already_listed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if python3 - "$body" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          blob = json.dumps(data, separators=(",", ":")).lower()
+          raise SystemExit(0 if "agentresolver.vercel.app" in blob else 1)
+          PY
+          then
+            echo "PayanAgent already contains an AgentResolver resource; refusing to create a duplicate provider."
+            echo "already_listed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "AgentResolver not found in PayanAgent catalog."
+            echo "already_listed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Register zero-spend AgentResolver provider
+        if: steps.existing.outputs.already_listed != 'true'
+        id: provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          request="$(mktemp)"
+          response="$(mktemp)"
+          python3 - "$request" <<'PY'
+          import json, sys
+          payload = {
+              "name": "AgentResolver",
+              "description": "Non-custodial x402 verify-before-pay infrastructure for autonomous agents.",
+              "walletAddress": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+              "chain": "base",
+              "tags": ["x402", "payment-guard", "agent-payments", "preflight"],
+              "providerType": "api",
+              "agentUrl": "https://agentresolver.vercel.app",
+          }
+          json.dump(payload, open(sys.argv[1], "w", encoding="utf-8"), separators=(",", ":"))
+          PY
+
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$response" -w '%{http_code}'             -X POST 'https://payanagent.com/api/v1/agents'             -H 'content-type: application/json'             --data-binary @"$request" || printf '000')"
+
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+            echo "PayanAgent provider registration failed with HTTP $code" >&2
+            cat "$response" >&2
+            exit 1
+          fi
+
+          python3 - "$response" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          agent_id = payload.get("agentId") or payload.get("id")
+          api_key = payload.get("apiKey")
+          if not agent_id or not api_key:
+              raise SystemExit("PayanAgent registration response omitted agentId/apiKey")
+          print(f"agent_id={agent_id}", file=open(sys.argv[2], "a", encoding="utf-8"))
+          print(f"api_key={api_key}", file=open(sys.argv[2], "a", encoding="utf-8"))
+          print(f"Registered PayanAgent provider {agent_id}")
+          PY
+          api_key="$(python3 - "$response" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          print(payload["apiKey"])
+          PY
+          )"
+          echo "::add-mask::$api_key"
+
+      - name: Create PayanAgent x402 relay offers
+        if: steps.existing.outputs.already_listed != 'true'
+        shell: bash
+        env:
+          PAYAN_AGENT_ID: ${{ steps.provider.outputs.agent_id }}
+          PAYAN_API_KEY: ${{ steps.provider.outputs.api_key }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$PAYAN_API_KEY"
+
+          create_offer() {
+            local payload_file="$1"
+            local response_file="$2"
+            local code
+            code="$(curl -sS --connect-timeout 5 --max-time 25               -o "$response_file" -w '%{http_code}'               -X POST 'https://payanagent.com/api/v1/offers'               -H 'content-type: application/json'               -H "authorization: Bearer $PAYAN_API_KEY"               --data-binary @"$payload_file" || printf '000')"
+            if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+              echo "PayanAgent offer creation failed with HTTP $code" >&2
+              cat "$response_file" >&2
+              exit 1
+            fi
+          }
+
+          ping_payload="$(mktemp)"
+          ping_response="$(mktemp)"
+          python3 - "$ping_payload" <<'PY'
+          import json, sys
+          payload = {
+              "title": "AgentResolver Settlement Ping",
+              "description": "Minimal $0.001 x402 settlement canary for funded agents. Verifies payment and paid delivery end to end.",
+              "category": "Developer Tools",
+              "tags": ["x402", "settlement-test", "agent-payments", "usdc"],
+              "offerType": "api",
+              "externalUrl": "https://agentresolver.vercel.app/api/x402-ping",
+              "httpMethod": "GET",
+              "inputSchema": "No input required. GET the resource; successful paid fulfillment returns a timestamped pong.",
+          }
+          json.dump(payload, open(sys.argv[1], "w", encoding="utf-8"), separators=(",", ":"))
+          PY
+          create_offer "$ping_payload" "$ping_response"
+
+          guard_payload="$(mktemp)"
+          guard_response="$(mktemp)"
+          python3 - "$guard_payload" <<'PY'
+          import json, sys
+          payload = {
+              "title": "AgentResolver Guard — Verify x402 Before Paying",
+              "description": "For $0.001 USDC, inspect a live x402 endpoint before wallet signing and return a fail-closed eligible/blocked decision with payment-term evidence.",
+              "category": "Security",
+              "tags": ["x402", "payment-guard", "preflight", "wallet-safety", "usdc"],
+              "offerType": "api",
+              "externalUrl": "https://agentresolver.vercel.app/api/payment-guard",
+              "httpMethod": "POST",
+              "verificationBody": {
+                  "url": "https://agentresolver.vercel.app/api/x402-ping",
+                  "method": "GET",
+                  "maxPriceUsd": 0.01,
+                  "expectedNetwork": "eip155:8453",
+              },
+              "inputSchema": "{\"type\":\"object\",\"required\":[\"url\"],\"properties\":{\"url\":{\"type\":\"string\",\"format\":\"uri\"},\"method\":{\"type\":\"string\"},\"maxPriceUsd\":{\"type\":\"number\"},\"expectedPayTo\":{\"type\":\"string\"},\"expectedNetwork\":{\"type\":\"string\"}}}",
+          }
+          json.dump(payload, open(sys.argv[1], "w", encoding="utf-8"), separators=(",", ":"))
+          PY
+          create_offer "$guard_payload" "$guard_response"
+
+          python3 - "$ping_response" "$guard_response" <<'PY'
+          import json, sys
+          for label, path in [("ping", sys.argv[1]), ("guard", sys.argv[2])]:
+              payload = json.load(open(path, "r", encoding="utf-8"))
+              offer_id = payload.get("offerId") or payload.get("_id") or payload.get("id")
+              if not offer_id:
+                  raise SystemExit(f"{label} offer response omitted offer id")
+              print(json.dumps({"offer": label, "offerId": offer_id}, separators=(",", ":")))
+          PY
+
+      - name: Verify AgentResolver is visible in PayanAgent catalog
+        if: steps.existing.outputs.already_listed != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --retry 5 --retry-delay 3 --retry-all-errors             --connect-timeout 5 --max-time 30             -o "$body" -w '%{http_code}'             --get 'https://payanagent.com/api/v1/offers'             --data-urlencode 'q=AgentResolver'             --data-urlencode 'offerType=api'             --data-urlencode 'limit=100')"
+          test "$code" = "200"
+          python3 - "$body" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          blob = json.dumps(data, separators=(",", ":")).lower()
+          assert "agentresolver" in blob
+          print("AgentResolver is visible in PayanAgent catalog.")
+          PY
