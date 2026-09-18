@@ -24,18 +24,16 @@ test("PayanAgent registration is idempotent and publishes both buyer funnel stag
   assert.match(workflow, /expectedNetwork": "eip155:8453"/);
 });
 
-
 test("PayanAgent lane marks its AgentResolver self-probe internal", () => {
   assert.match(workflow, /x-agentresolver-internal: 1/);
 });
 
-
-test("PayanAgent outages defer safely and retry after successful deploys or the hourly zero-spend schedule", () => {
+test("PayanAgent outages defer safely to the hourly zero-spend schedule without deploy fan-out", () => {
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /cron: "41 \* \* \* \*"/);
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["Deploy Production"\]/);
-  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /workflow_run:/);
+  assert.doesNotMatch(workflow, /workflows: \["Deploy Production"\]/);
   assert.match(workflow, /429\|500\|502\|503\|504\|000/);
   assert.match(workflow, /already_listed=unavailable/);
   assert.match(workflow, /registered=false/);
