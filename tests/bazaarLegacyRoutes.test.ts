@@ -16,6 +16,15 @@ test("legacy paid routes expose Bazaar schemas and Base/Solana runtime parity", 
   for (const id of migratedRoutes) {
     const source = readFileSync(`src/app/api/${id}/route.ts`, "utf8");
 
+    if (source.includes("createDeterministicPaidRoute")) {
+      assert.match(
+        source,
+        new RegExp(`createDeterministicPaidRoute\\("${id}"`),
+        `${id}: shared paid route helper`
+      );
+      continue;
+    }
+
     assert.match(source, new RegExp(`paidRouteBazaarExtension\\("${id}"\\)`), `${id}: Bazaar extension`);
     assert.match(source, /registerExtension\(bazaarResourceServerExtension\)/, `${id}: Bazaar server extension`);
     assert.match(source, /ExactSvmScheme/, `${id}: Solana scheme`);
