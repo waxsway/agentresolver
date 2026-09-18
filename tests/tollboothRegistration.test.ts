@@ -45,7 +45,7 @@ test("Tollbooth lane is idempotent, bounded, and outage-safe", () => {
 test("Tollbooth lane retries hourly while absent and remains manually retryable", () => {
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /schedule:/);
-  assert.match(workflow, /cron: "17 \\* \\* \\* \\*"/);
+  assert.ok(workflow.includes('    - cron: "17 * * * *"'));
   assert.match(
     workflow,
     /paths:\n\s+- "\.github\/workflows\/register-tollbooth-once\.yml"/
