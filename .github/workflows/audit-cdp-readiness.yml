@@ -49,9 +49,14 @@ jobs:
               if "production" in target and isinstance(key, str):
                   production_keys.add(key)
           required={"CDP_API_KEY_ID","CDP_API_KEY_SECRET"}
+          matching=sorted(
+              key for key in production_keys
+              if "CDP" in key.upper() or "COINBASE" in key.upper()
+          )
           print(f"CDP_API_KEY_ID_PRESENT={'true' if 'CDP_API_KEY_ID' in production_keys else 'false'}")
           print(f"CDP_API_KEY_SECRET_PRESENT={'true' if 'CDP_API_KEY_SECRET' in production_keys else 'false'}")
           print(f"CDP_CREDENTIAL_KEYS_PRESENT={'true' if required.issubset(production_keys) else 'false'}")
+          print("CDP_COINBASE_PRODUCTION_KEY_NAMES=" + ",".join(matching))
           PY
 
       - name: Audit canonical payment rail state without changing it
