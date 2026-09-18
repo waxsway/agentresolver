@@ -16,6 +16,11 @@ test("prebuilt production deploys forward pulled project env into runtime", () =
   assert.match(helper, /parseEnv/);
   assert.match(helper, /args\.push\("--env"/);
   assert.match(helper, /startsWith\("VERCEL_"\)/);
+  assert.match(helper, /"--no-wait"/);
+  assert.match(helper, /v13\/deployments/);
+  assert.match(helper, /v10\/projects/);
+  assert.match(helper, /promote/);
+  assert.match(helper, /deployment\.readyState \|\| deployment\.state/);
 });
 
 test("health rail state is evaluated at runtime rather than baked at build time", () => {
