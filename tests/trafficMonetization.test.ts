@@ -14,6 +14,14 @@ test("traffic classifier separates internal, probes, discovery, intent, and paym
   assert.equal(internal.trafficClass, "internal_test");
   assert.equal(internal.external, false);
 
+  const automatedFetch = classifyTraffic(new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "user-agent": "Vercel MCP Fetch" }
+  }));
+  assert.equal(automatedFetch.trafficClass, "automated_fetch");
+  assert.equal(automatedFetch.external, true);
+  assert.equal(automatedFetch.sponsorEligible, false);
+  assert.equal(automatedFetch.reason, "known_automated_fetch_user_agent");
+
   const directory = classifyTraffic(new Request("https://agentresolver.vercel.app/mcp", {
     headers: { "user-agent": "rokmcp-collector/0.2" }
   }), { mcpMethod: "tools/list" });
