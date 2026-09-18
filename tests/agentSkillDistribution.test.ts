@@ -33,6 +33,19 @@ test("published skill mirrors the current GET-first Guard contract", () => {
 });
 
 
+test("installable Guard skill exposes the Cloudflare Agents native x402 handoff", () => {
+  for (const text of [installable, published]) {
+    assert.match(text, /## Cloudflare Agents SDK — native x402 MCP/);
+    assert.match(text, /withX402Client/);
+    assert.match(text, /agents\/x402/);
+    assert.match(text, /callTool\(onPaymentRequired/);
+    assert.match(text, /non-null/);
+    assert.match(text, /passing `null` enables automatic payment/i);
+    assert.match(text, /PAYMENT-SIGNATURE/);
+    assert.match(text, /second, separate authorization/i);
+  }
+});
+
 test("installable Guard skill exposes the OpenAI Agents SDK signed-retry handoff", () => {
   for (const text of [installable, published]) {
     assert.match(text, /## OpenAI Agents SDK — approval-gated signed retry/);
