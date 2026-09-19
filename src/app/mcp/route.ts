@@ -20,6 +20,8 @@ import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/tele
 import { classifyTraffic } from "@/lib/trafficClassification";
 import { resolveProviderRoutes } from "@/lib/providerNetwork";
 import { parseProviderLaunchCheckInput, runProviderLaunchCheck } from "@/lib/providerLaunchCheck";
+import { procureCapability } from "@/lib/procureCapability";
+import type { ProcurementConstraints } from "@/lib/procurement";
 import {
   getActiveSponsor,
   logSponsorImpression,
@@ -164,7 +166,7 @@ async function logMcpRequest(req: Request) {
     };
     const method = typeof body?.method === "string" ? body.method : "unknown";
     const tool = method === "tools/call" && typeof body?.params?.name === "string" ? body.params.name : null;
-    const goal = method === "tools/call" && tool === "resolve" && typeof body?.params?.arguments?.goal === "string"
+    const goal = method === "tools/call" && (tool === "resolve" || tool === "procure") && typeof body?.params?.arguments?.goal === "string"
       ? body.params.arguments.goal.trim()
       : "";
     const hasMcpPayment = Boolean(body?.params?._meta?.["x402/payment"]);
@@ -194,7 +196,7 @@ async function logMcpRequest(req: Request) {
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
-    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `resolve` for free whenever an external capability is missing. Providers can call `sponsorship_info` to inspect the labeled sponsorship pilot; sponsorship never changes organic ranking. Priced AgentResolver tools are directly payable over x402 inside MCP: an x402-aware client can receive a local payment challenge, apply its own spending policy, and retry the same tools/call with payment. Unpaid tool calls never execute paid capability work. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
+    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `procure` when an external capability must satisfy concrete budget/network/protocol/schema constraints; use `resolve` for broad free discovery. Providers can call `sponsorship_info` to inspect the labeled sponsorship pilot; sponsorship never changes organic ranking. Priced AgentResolver tools are directly payable over x402 inside MCP: an x402-aware client can receive a local payment challenge, apply its own spending policy, and retry the same tools/call with payment. Unpaid tool calls never execute paid capability work. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
   });
 
   server.registerTool("sponsorship_info", {
@@ -344,6 +346,71 @@ const handler = createMcpHandler(() => {
       nextAction: rec ? (rec.surface === "mcp" ? `Optional direct MCP execution costs ${formatUsd(rec.priceUsd)} USDC on Base. Call ${rec.tool} with the prefilled input only if your existing spending policy independently authorizes it.` : `Optional live evidence costs ${formatUsd(rec.priceUsd)} USDC on Base. The executable request is prefilled. Execute only if your existing spending policy independently authorizes it.`) : "Choose the best relevant result; refine the goal and resolve again if needed.",
       rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, providerNetwork: `${CANONICAL}/api/providers`, execute: `${CANONICAL}/api/execute`, paidManifest: `${CANONICAL}/.well-known/x402` } };
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
+  });
+
+  server.registerTool("procure", {
+    title: "Procure a compatible capability",
+    description: "Free open-world procurement. Declare the capability needed plus hard budget, network, protocol, schema, side-effect and auth constraints. AgentResolver rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a non-custodial execution/payment handoff without authorizing spend.",
+    inputSchema: z.object({
+      goal: z.string().min(1).max(1000),
+      limit: z.number().int().min(1).max(20).optional(),
+      constraints: z.object({
+        maxPriceUsd: z.number().min(0).max(1000).optional(),
+        preferredNetworks: z.array(z.string().min(1).max(128)).max(8).optional(),
+        protocol: z.enum(["x402", "mcp", "any"]).optional(),
+        requireHttps: z.boolean().optional(),
+        availableInputSchema: z.record(z.string(), z.unknown()).optional(),
+        requiredOutputSchema: z.record(z.string(), z.unknown()).optional(),
+        sideEffect: z.enum(["read-only", "state-changing", "any"]).optional(),
+        auth: z.enum(["none", "wallet", "api-key", "any"]).optional()
+      }).optional()
+    }),
+    annotations: {
+      title: "Procure a compatible capability",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true
+    }
+  }, async ({ goal, limit, constraints }) => {
+    const result = await procureCapability(
+      goal,
+      (constraints || {}) as ProcurementConstraints,
+      limit || 5,
+      CANONICAL
+    );
+    logToolCall("procure", {
+      goalHash: shortHash(goal),
+      goalLength: goal.length,
+      intentTags: classifyIntent(goal),
+      candidateCount: result.candidateCount,
+      returnedCount: result.candidates.length,
+      selectedSource: result.selected?.source || null,
+      selectedStatus: result.selected?.status || null,
+      selectedPriceUsd: result.selected?.priceUsd ?? null
+    });
+    const output = {
+      schemaVersion: 1,
+      resolver: "AgentResolver",
+      mode: "open_world_non_custodial_procurement",
+      goal,
+      constraints: constraints || {},
+      selected: result.selected,
+      candidates: result.candidates,
+      verification: result.verification,
+      boundaries: {
+        accountRequired: false,
+        apiKeyRequired: false,
+        callerWalletControlledByAgentResolver: false,
+        callerSpendAuthorizedByAgentResolver: false,
+        arbitraryProxying: false,
+        unknownMetadataIsNotTreatedAsVerified: true
+      }
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(output) }],
+      structuredContent: output
+    };
   });
 
   const simplePaidResult = (capabilityId: PaidCapabilityId, tool: string, report: Record<string, unknown>) => {

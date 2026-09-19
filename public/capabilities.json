@@ -8,6 +8,27 @@
   },
   "capabilities": [
     {
+      "id": "capability-procurement",
+      "name": "Capability Procurement",
+      "description": "Find a compatible external tool, API, MCP server or paid machine service under explicit budget, network, protocol, schema, side-effect and auth constraints. Unknown metadata stays unknown instead of being treated as verified.",
+      "tags": [
+        "capability procurement",
+        "tool procurement",
+        "api procurement",
+        "mcp",
+        "x402",
+        "routing",
+        "budget",
+        "schema compatibility",
+        "non-custodial"
+      ],
+      "priceUsd": 0,
+      "mode": "owned",
+      "status": "live",
+      "endpoint": "/api/procure",
+      "method": "POST"
+    },
+    {
       "id": "capability-search",
       "name": "Capability Search",
       "description": "Find the best external tool, API, MCP server, or machine service for a goal.",
@@ -147,5 +168,12 @@
     "organicRankingIndependent": true,
     "details": "https://agentresolver.vercel.app/api/sponsorship",
     "machineReadable": "https://agentresolver.vercel.app/.well-known/sponsorship.json"
+  },
+  "procurement": {
+    "method": "POST",
+    "url": "https://agentresolver.vercel.app/api/procure",
+    "priceUsd": 0,
+    "nonCustodial": true,
+    "authorizesSpend": false
   }
 }
