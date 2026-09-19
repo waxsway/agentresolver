@@ -7,11 +7,14 @@ const llms = readFileSync("public/llms.txt", "utf8");
 const agentDoc = readFileSync("public/agentresolver.md", "utf8");
 const issueForm = readFileSync(".github/ISSUE_TEMPLATE/sponsorship.yml", "utf8");
 
-test("provider funnel does not publish unapproved fixed sponsorship pricing", () => {
-  assert.doesNotMatch(providers, /\$\s*\d+/);
+test("provider commerce pricing is not presented as paid sponsorship", () => {
+  // Provider success-fee economics may be public. Sponsorship pricing remains
+  // separate, inquiry-only inventory and must not be smuggled into this funnel.
+  assert.match(providers, /success fee is 2%/i);
+  assert.match(providers, /\$0\.001 minimum/i);
+  assert.doesNotMatch(providers, /sponsored placement/i);
+  assert.doesNotMatch(providers, /sponsorship price/i);
   assert.doesNotMatch(providers, /mailto:/i);
-  assert.match(providers, /Applying creates no\s+purchase or financial commitment/i);
-  assert.match(providers, /issues\/new\?template=sponsorship\.yml/);
 });
 
 test("machine docs disclose sponsorship without changing organic ranking", () => {
