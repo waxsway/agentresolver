@@ -116,6 +116,7 @@ export async function POST(req: Request) {
         priceUsd: route.execute.priceUsd,
         asset: route.execute.asset,
         networks: route.execute.networks,
+        paymentIdentity: route.execute.paymentIdentity,
         spendingAuthorized: false
       }
     },
@@ -129,7 +130,7 @@ export async function POST(req: Request) {
       callerMustIndependentlyAuthorizeTargetSpend: true
     },
     next:
-      "Call the returned registered endpoint directly under the caller's own trust and spending policy. Preserve x-agentresolver-attribution-id so an AgentResolver-owned paid route can correlate a later settlement."
+      "Call the returned registered endpoint directly under the caller's own trust and spending policy. Preserve x-agentresolver-attribution-id. If this provider route exposes a registered Base-USDC payment identity, the provider can later prove the buyer settlement to AgentResolver before paying the success fee."
   }, {
     headers: {
       "cache-control": "no-store",
