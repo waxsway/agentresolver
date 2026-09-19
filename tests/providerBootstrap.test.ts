@@ -151,7 +151,7 @@ test("explicit provider origin can immediately seed a relevant verified procurem
 
 test("seeded provider candidate is omitted when irrelevant or live verification fails", async () => {
   const irrelevant = await discoverSeededDomainProviderCandidates(
-    "generate an image",
+    "use the image tool",
     ["https://provider.example"],
     {
       manifestFetcher: async () => [route],
