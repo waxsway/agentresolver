@@ -32,3 +32,4 @@ jobs:
           set -euo pipefail
           timeout 90s npx -y skills@1.5.26 add waxsway/agentresolver --list | tee /tmp/skills-list.txt
           grep -F 'agentresolver-payment-guard' /tmp/skills-list.txt >/dev/null
+          grep -F 'agentresolver-procurement' /tmp/skills-list.txt >/dev/null
