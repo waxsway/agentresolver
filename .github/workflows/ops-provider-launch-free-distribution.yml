@@ -1,0 +1,92 @@
+name: One-shot provider-launch free distribution
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  distribute:
+    if: github.head_ref == 'ops/provider-launch-free-distribution-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Register $0.05 provider launch check on 402 Index if absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://agentresolver.vercel.app/api/provider-launch-check'
+
+          existing_code="$(curl -sS --retry 2 --max-time 20 -o /tmp/402index-existing.json -w '%{http_code}'             'https://402index.io/api/v1/services?q=AgentResolver&limit=100' || true)"
+          echo "AR_402INDEX_QUERY_HTTP=$existing_code"
+
+          if [ "$existing_code" = "200" ] && jq -e --arg endpoint "$endpoint"             '.. | objects | select((.url // "") == $endpoint)' /tmp/402index-existing.json >/dev/null 2>&1; then
+            echo "AR_402INDEX_PROVIDER_LAUNCH=already_registered"
+          else
+            payload="$(jq -nc --arg url "$endpoint" '{
+              url:$url,
+              name:"AgentResolver Provider Launch Check",
+              protocol:"x402",
+              http_method:"GET",
+              description:"Paid 0.05 USDC provider readiness and x402 contract verification for machine-service sellers. GET runs a known-good reference provider check; POST supports full onboarding packets.",
+              price_usd:0.05,
+              payment_asset:"USDC",
+              payment_network:"Base",
+              category:"developer-tools",
+              provider:"AgentResolver"
+            }')"
+
+            code="$(curl -sS --retry 2 --max-time 25 -o /tmp/402index-register.json -w '%{http_code}'               -X POST 'https://402index.io/api/v1/register'               -H 'content-type: application/json'               --data-binary "$payload" || true)"
+            echo "AR_402INDEX_PROVIDER_LAUNCH_HTTP=$code"
+            jq -c '{
+              id:(.service.id // .id // null),
+              status:(.service.status // .status // null),
+              url:(.service.url // .url // null),
+              health_status:(.service.health_status // .health_status // null),
+              error:(.error // null),
+              message:(.message // null)
+            }' /tmp/402index-register.json 2>/dev/null || true
+            case "$code" in
+              200|201|409) ;;
+              *) echo "::error::402 Index provider-launch registration failed"; exit 1 ;;
+            esac
+          fi
+
+      - name: Register $0.05 provider launch check on x402dash if absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://agentresolver.vercel.app/api/provider-launch-check'
+
+          existing_code="$(curl -sS --retry 2 --max-time 20 -o /tmp/x402dash-existing.json -w '%{http_code}'             'https://api.x402dash.com/v1/endpoints?limit=100&q=agentresolver' || true)"
+          echo "X402DASH_QUERY_HTTP=$existing_code"
+
+          if [ "$existing_code" = "200" ] && jq -e --arg endpoint "$endpoint"             '.. | strings | select(. == $endpoint)' /tmp/x402dash-existing.json >/dev/null 2>&1; then
+            echo "X402DASH_PROVIDER_LAUNCH=already_registered"
+            exit 0
+          fi
+
+          payload="$(jq -nc --arg url "$endpoint" '{
+            url:$url,
+            name:"AgentResolver Provider Launch Check",
+            description:"Paid 0.05 USDC seller-side readiness and x402 contract verification for machine-service providers. GET executes a known-good reference verification; POST accepts the full provider packet.",
+            category:"Developer Tools",
+            tags:["x402","provider-onboarding","seller-verification","provider-network","agents"]
+          }')"
+          code="$(curl -sS --retry 2 --max-time 25 -o /tmp/x402dash-register.json -w '%{http_code}'             -X POST 'https://api.x402dash.com/v1/register'             -H 'content-type: application/json'             --data-binary "$payload" || true)"
+          echo "X402DASH_PROVIDER_LAUNCH_HTTP=$code"
+          jq -c '{
+            id:(.id // null),
+            url:(.url // .endpoint // null),
+            status:(.status // null),
+            integration_readiness:(.integration_readiness // null),
+            error:(.error // null),
+            message:(.message // null)
+          }' /tmp/x402dash-register.json 2>/dev/null || true
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "::error::x402dash provider-launch registration failed"; exit 1 ;;
+          esac
