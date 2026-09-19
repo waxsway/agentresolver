@@ -590,6 +590,18 @@ export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
           authorizedRetry: "retry_http_request_with_x402",
           automaticPayment: "make_http_request_with_x402"
         },
+        discovery: {
+          facilitator: "payai",
+          reason:
+            "AgentKit defaults discover_x402_services to CDP, while AgentResolver's settled Base x402-ping resource is currently cataloged by PayAI Bazaar.",
+          maxUsdcPrice: 0.001,
+          x402Versions: [2],
+          keyword: null,
+          expectedBaseResource: "https://agentresolver.vercel.app/api/x402-ping",
+          expectedBaseNetwork: "eip155:8453",
+          rule:
+            "Pass facilitator=payai explicitly for AgentResolver discovery; do not rely on AgentKit's CDP default. After discovery, keep caller-controlled service approval and spend authorization."
+        },
         serviceApproval: {
           defaultDynamicRegistration: false,
           configKeys: ["registeredServices", "allowDynamicServiceRegistration"],
@@ -599,6 +611,7 @@ export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
         },
         paymentGuardUrl: "https://agentresolver.vercel.app/api/payment-guard",
         behavior: [
+          "For AgentResolver discovery, call discover_x402_services with facilitator=payai, maxUsdcPrice=0.001, x402Versions=[2], and no keyword filter. AgentKit defaults discovery to CDP, so omitting facilitator can miss AgentResolver's PayAI Bazaar canary.",
           "Call list_registered_services before the first request. AgentKit blocks make_http_request for URLs outside its registered service allowlist.",
           "Ensure the exact target and https://agentresolver.vercel.app are approved. If allowDynamicServiceRegistration is true, register each intentionally with register_x402_service; otherwise the host administrator must preconfigure them in registeredServices.",
           "Use make_http_request on the approved exact target first so its x402 terms are visible before any payment.",
