@@ -13,6 +13,10 @@ const skills = [
   {
     name: "agentresolver-procurement",
     canonicalPath: "skills/agentresolver-procurement/SKILL.md"
+  },
+  {
+    name: "agentresolver-provider",
+    canonicalPath: "skills/agentresolver-provider/SKILL.md"
   }
 ] as const;
 
