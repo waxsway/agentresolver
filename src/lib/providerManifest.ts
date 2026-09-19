@@ -274,7 +274,7 @@ export function domainProviderChallengeMatches(
     }
   }
 
-  return (
+  return Boolean(
     report.status === 402 &&
     challenge.detected === true &&
     challenge.challengeHeaderPresent === true &&
