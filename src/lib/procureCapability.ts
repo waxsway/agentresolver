@@ -4,9 +4,12 @@ import { discoverPayAiResources, type PayAiMatch } from "@/lib/payaiDiscovery";
 import { discover402IndexServices, type Index402Match } from "@/lib/index402Discovery";
 import {
   discoverVerifiedDomainProviderRoutes,
+  fetchDomainProviderManifest,
   quoteProviderSuccessFee,
+  verifyDomainProviderRouteChallenge,
   type DomainProviderRoute
 } from "@/lib/providerManifest";
+import { normalizeProviderSeedOrigins } from "@/lib/providerBootstrap";
 import { ATTRIBUTION_HEADER, createAttributionId } from "@/lib/transactionAttribution";
 import {
   ATTRIBUTION_RECEIPT_HEADER,
@@ -264,6 +267,124 @@ function canonicalCandidateUrl(value: string | null) {
   } catch {
     return null;
   }
+}
+
+function routeRelevance(goal: string, route: DomainProviderRoute) {
+  const wanted = new Set(
+    goal
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+  );
+  const haystack = [
+    route.capabilityId,
+    route.name,
+    route.description,
+    route.providerName,
+    ...route.tags
+  ]
+    .join(" ")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return haystack.reduce(
+    (score, token) => score + (wanted.has(token) ? 1 : 0),
+    0
+  );
+}
+
+function normalizeSeededDomainProvider(
+  route: DomainProviderRoute,
+  sourceRank: number
+): ProcurementCandidate {
+  const successFee = quoteProviderSuccessFee(route.amountAtomic);
+  return {
+    id: `domain-seed:${route.providerId}:${route.routeId}`,
+    source: "agentresolver-domain-seed",
+    sourceRank,
+    name: route.name,
+    description: route.description,
+    endpoint: route.endpoint,
+    protocol: "x402",
+    priceUsd: route.priceUsd,
+    networks: [route.network],
+    inputSchema: null,
+    outputSchema: null,
+    sideEffect: "unknown",
+    auth: "wallet",
+    execute: {
+      method: route.method,
+      url: route.endpoint,
+      protocol: "x402",
+      priceUsd: route.priceUsd,
+      paymentIdentity: {
+        network: route.network,
+        asset: route.asset,
+        payTo: route.payTo,
+        amountAtomic: route.amountAtomic
+      },
+      providerCommercialTerms: {
+        model: "provider-success-fee",
+        successFeeBps: route.successFeeBps,
+        minimumSuccessFeeUsd: route.minimumSuccessFeeUsd,
+        quotedFeeUsd: successFee.feeUsd,
+        buyerPaysAgentResolverExtraFee: false
+      },
+      spendingAuthorizationRequired: true
+    },
+    evidence: {
+      discovery: "caller-supplied-provider-origin",
+      domainProviderEnrollment: {
+        verifiedBy: "same-origin-well-known-manifest+live-x402-challenge",
+        liveX402ChallengeVerified: true,
+        manifestUrl: route.manifestUrl,
+        origin: route.origin,
+        providerId: route.providerId,
+        providerName: route.providerName,
+        routeId: route.routeId,
+        capabilityId: route.capabilityId,
+        successFeeBps: route.successFeeBps,
+        minimumSuccessFeeUsd: route.minimumSuccessFeeUsd
+      }
+    }
+  };
+}
+
+async function discoverSeededDomainProviderCandidates(
+  goal: string,
+  providerOrigins: string[] | undefined
+) {
+  const origins = normalizeProviderSeedOrigins(providerOrigins);
+  if (origins.length === 0) return [];
+
+  const manifests = await Promise.all(
+    origins.map((origin) => fetchDomainProviderManifest(origin))
+  );
+
+  const relevant = manifests
+    .flat()
+    .map((route) => ({ route, relevance: routeRelevance(goal, route) }))
+    .filter((item) => item.relevance > 0)
+    .sort((a, b) => b.relevance - a.relevance)
+    .slice(0, 5);
+
+  const verified = await Promise.all(
+    relevant.map(async (item) => ({
+      ...item,
+      verified: await verifyDomainProviderRouteChallenge(item.route)
+    }))
+  );
+
+  return verified
+    .filter((item) => item.verified)
+    .map((item, index) =>
+      normalizeSeededDomainProvider(item.route, index + 1)
+    );
 }
 
 async function enrichDomainProviderCandidates(
@@ -553,11 +674,16 @@ export type ProcurementResult = {
   };
 };
 
+export type ProcurementOptions = {
+  providerOrigins?: string[];
+};
+
 export async function procureCapability(
   goal: string,
   constraints: ProcurementConstraints,
   limit: number,
-  baseUrl: string
+  baseUrl: string,
+  options: ProcurementOptions = {}
 ): Promise<ProcurementResult> {
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 20));
   const candidateLimit = Math.min(safeLimit * 2, 10);
@@ -569,7 +695,7 @@ export async function procureCapability(
       ? constraints.protocol
       : "any";
 
-  const [resolution, partnerRoutes, payai, index402] = await Promise.all([
+  const [resolution, partnerRoutes, payai, index402, seededProviders] = await Promise.all([
     resolveGoal(goal, undefined, candidateLimit),
     Promise.resolve(
       resolveProviderRoutes(goal, candidateLimit).filter(
@@ -584,11 +710,18 @@ export async function procureCapability(
       : discover402IndexServices(goal, candidateLimit, {
           maxPriceUsd: constraints.maxPriceUsd,
           protocol: index402Protocol
-        })
+        }),
+    constraints.protocol === "mcp"
+      ? Promise.resolve([])
+      : discoverSeededDomainProviderCandidates(
+          goal,
+          options.providerOrigins
+        )
   ]);
 
   const rawCandidates = dedupeCandidates([
     ...resolution.owned.map((match) => normalizeOwned(match, baseUrl)),
+    ...seededProviders,
     ...partnerRoutes.map(normalizePartner),
     ...index402.map(normalize402Index),
     ...payai.map(normalizePayAi),
