@@ -14,6 +14,12 @@ test("automatic production deploy is hard-disabled after the one-shot provider-n
   assert.match(workflow, /\/api\/providers/);
   assert.match(workflow, /provider-success-fee-quote/);
   assert.match(workflow, /provider-success-fee-verify/);
+  assert.match(workflow, /\.domainEnrollment\.status == "open"/);
+  assert.match(workflow, /\.domainEnrollment\.operatorReviewRequired == false/);
+  assert.match(workflow, /\.sellerMonetization\.successFeeBps == 200/);
+  assert.match(workflow, /\.sellerMonetization\.feePaidAfterVerifiedBuyerSettlement == true/);
+  assert.doesNotMatch(workflow, /\.providerFunding\.successFeeBps == 200/);
+  assert.doesNotMatch(workflow, /\.providerEnrollment\.mode == "domain-controlled-well-known"/);
 });
 
 test("production deploy uses the proven prebuilt path and verifies the isolated CDP canary", () => {
