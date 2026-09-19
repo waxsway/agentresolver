@@ -173,5 +173,14 @@
       "feeQuote": "https://agentresolver.vercel.app/api/provider-success-fee-quote",
       "feeVerify": "https://agentresolver.vercel.app/api/provider-success-fee-verify"
     }
+  },
+  "frameworkFallbacks": {
+    "manifest": "https://agentresolver.vercel.app/framework-integrations.json",
+    "defaultMcp": "https://agentresolver.vercel.app/mcp/control",
+    "defaultTools": [
+      "procure",
+      "resolve"
+    ],
+    "policy": "Use native tools first; when no native tool clearly satisfies the task, call procure. Paid verification remains separately authorized."
   }
 }
