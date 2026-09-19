@@ -41,3 +41,11 @@ test("free procurement does not select unknown candidates or upsell unverifiable
   assert.match(procurement, /verifierCanResolveUnknowns/);
   assert.match(procurement, /current live verifier cannot prove all of them/);
 });
+
+
+test("x402 payment liveness cannot erase unrelated capability unknowns", () => {
+  assert.match(verified, /type: "x402-live-contract-unproven"/);
+  assert.match(verified, /remainingUnknownConstraints/);
+  assert.match(verified, /payment evidence cannot prove every requested capability property/);
+  assert.match(verified, /const contractProven =[\s\S]*remainingUnknownConstraints\.length === 0/);
+});
