@@ -1,0 +1,80 @@
+name: One-shot NoHumans useful-route submission
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    if: github.head_ref == 'ops/nohumans-useful-routes-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Submit missing useful AgentResolver routes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          discover="$(curl -fsS --retry 2 --max-time 20 'https://nohumans.directory/v1/discover?q=AgentResolver')"
+
+          submit_if_missing() {
+            local endpoint="$1"
+            local payload_file="$2"
+            local label="$3"
+
+            if printf '%s' "$discover" | jq -e --arg endpoint "$endpoint" '.. | strings | select(. == $endpoint)' >/dev/null; then
+              echo "$label=already_listed"
+              return 0
+            fi
+
+            code="$(curl -sS --retry 2 --max-time 20 -o /tmp/submit.json -w '%{http_code}'               -X POST 'https://nohumans.directory/v1/listings'               -H 'content-type: application/json'               --data-binary @"$payload_file" || true)"
+
+            echo "$label=http_$code"
+            if [ "$code" = "200" ] || [ "$code" = "201" ] || [ "$code" = "409" ]; then
+              jq -c '{
+                id: (.id // .listing.id // null),
+                name: (.name // .listing.name // null),
+                endpoint_url: (.endpoint_url // .listing.endpoint_url // null),
+                status: (.status // .listing.status // null),
+                error: (.error // null),
+                message: (.message // null)
+              }' /tmp/submit.json 2>/dev/null || true
+              return 0
+            fi
+
+            echo "::error::$label submission failed"
+            jq -c '{error, message}' /tmp/submit.json 2>/dev/null || true
+            return 1
+          }
+
+          cat >/tmp/settlement.json <<'JSON'
+          {
+            "name": "AgentResolver — x402 Settlement Verification",
+            "description": "Independent Base USDC x402 settlement receipt verification from a transaction hash: EIP-3009 shape, USDC transfer, confirmation depth, expected payTo and amount checks. No API key.",
+            "endpoint_url": "https://agentresolver.vercel.app/api/x402-settlement-verify",
+            "category": "data.x402",
+            "price_amount": 0.001,
+            "chains": ["base", "solana"],
+            "sample_query": "https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=0x439885dab80375051b5295df179b668a6a67490d20c3e1cb4725809f4ea4b5b8&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedAmountAtomic=1000"
+          }
+          JSON
+
+          cat >/tmp/preflight.json <<'JSON'
+          {
+            "name": "AgentResolver Guard — x402 Payment Preflight",
+            "description": "Verify an x402 endpoint before wallet signing: live payTo, USDC price, network, asset, exact scheme and resource binding with a fail-closed eligible/blocked decision. No API key.",
+            "endpoint_url": "https://agentresolver.vercel.app/api/x402-payment-preflight",
+            "category": "infra.trust",
+            "price_amount": 0.001,
+            "chains": ["base", "solana"],
+            "sample_query": "https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.001&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedNetwork=eip155%3A8453"
+          }
+          JSON
+
+          submit_if_missing             'https://agentresolver.vercel.app/api/x402-settlement-verify'             /tmp/settlement.json             NOHUMANS_SETTLEMENT_VERIFY
+
+          submit_if_missing             'https://agentresolver.vercel.app/api/x402-payment-preflight'             /tmp/preflight.json             NOHUMANS_PAYMENT_PREFLIGHT
