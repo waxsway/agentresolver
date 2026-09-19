@@ -1,0 +1,84 @@
+name: One-shot true402 registration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: github.head_ref == 'ops/true402-register-once-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check catalog and register AgentResolver
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          catalog="$(curl -fsS --retry 2 --max-time 15 'https://true402.dev/api/v1/services?q=AgentResolver&limit=100')"
+          if printf '%s' "$catalog" | jq -e '.. | strings | select(test("agentresolver\\.vercel\\.app"; "i"))' >/dev/null; then
+            echo "TRUE402_ALREADY_LISTED=true"
+            exit 0
+          fi
+
+          cat > /tmp/register.json <<'JSON'
+          {
+            "url": "https://agentresolver.vercel.app",
+            "manifest": {
+              "x402": "1.0",
+              "name": "AgentResolver",
+              "description": "Machine-native x402 payment verification, preflight, settlement verification, procurement, and provider commerce infrastructure for autonomous agents.",
+              "capabilities": [
+                "x402",
+                "payment-verification",
+                "payment-preflight",
+                "settlement-verification",
+                "agent-procurement",
+                "machine-commerce"
+              ],
+              "pricing": {
+                "currency": "USDC",
+                "base": "0.001",
+                "unit": "request"
+              },
+              "payment": {
+                "address": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+                "chain": "base",
+                "facilitator": "https://facilitator.payai.network"
+              },
+              "endpoint": "https://agentresolver.vercel.app/api/x402-ping"
+            }
+          }
+          JSON
+
+          code="$(curl -sS --retry 2 --max-time 20 -o /tmp/true402-response.json -w '%{http_code}' \
+            -X POST 'https://true402.dev/api/v1/services' \
+            -H 'content-type: application/json' \
+            --data-binary @/tmp/register.json || true)"
+
+          if [ "$code" = "201" ] || [ "$code" = "200" ] || [ "$code" = "409" ]; then
+            echo "TRUE402_REGISTRATION_HTTP=$code"
+            jq -c '{id, name, url, endpoint, error, message}' /tmp/true402-response.json 2>/dev/null || cat /tmp/true402-response.json
+            exit 0
+          fi
+
+          fallback_code="$(curl -sS --retry 2 --max-time 20 -o /tmp/true402-fallback.json -w '%{http_code}' \
+            -X POST 'https://true402.dev/api/v1/services/register' \
+            -H 'content-type: application/json' \
+            --data-binary @/tmp/register.json || true)"
+
+          echo "TRUE402_PRIMARY_HTTP=$code"
+          echo "TRUE402_FALLBACK_HTTP=$fallback_code"
+          if [ "$fallback_code" = "201" ] || [ "$fallback_code" = "200" ] || [ "$fallback_code" = "409" ]; then
+            jq -c '{id, name, url, endpoint, error, message}' /tmp/true402-fallback.json 2>/dev/null || cat /tmp/true402-fallback.json
+            exit 0
+          fi
+
+          echo "::error::true402 registration failed"
+          cat /tmp/true402-response.json 2>/dev/null || true
+          cat /tmp/true402-fallback.json 2>/dev/null || true
+          exit 1
