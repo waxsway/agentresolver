@@ -232,6 +232,7 @@ export async function verifiedResolve(
   options: {
     url?: string;
     constraints?: ProcurementConstraints;
+    providerOrigins?: string[];
     baseUrl?: string;
   } = {}
 ) {
@@ -247,7 +248,8 @@ export async function verifiedResolve(
     procurementGoal,
     constraints,
     5,
-    options.baseUrl || CANONICAL_ORIGIN
+    options.baseUrl || CANONICAL_ORIGIN,
+    { providerOrigins: options.providerOrigins }
   );
 
   const toProbe = probePriority(procurement);
@@ -371,6 +373,7 @@ export async function verifiedResolve(
     targetUrl: options.url || null,
     generatedAt: new Date().toISOString(),
     constraints,
+    providerOrigins: options.providerOrigins || [],
     procurement,
     verificationPolicy: {
       maxLiveProbes: MAX_LIVE_PROBES,
