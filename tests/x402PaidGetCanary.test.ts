@@ -334,7 +334,12 @@ test("x402-ping advertises a strict paid delivery output contract", async () => 
   assert.equal(output?.example?.next?.single?.endpoint, "https://agentresolver.vercel.app/api/verified-resolve");
   assert.equal(output?.example?.next?.single?.priceUsd, 0.02);
   assert.deepEqual(output?.example?.next?.single?.inputExample, {
-    goal: "Find and verify an MCP server for web search"
+    goal: "Find and verify a paid web search service",
+    constraints: {
+      maxPriceUsd: 0.05,
+      protocol: "x402",
+      preferredNetworks: ["eip155:8453"]
+    }
   });
   assert.equal(output?.example?.next?.batch?.capabilityId, "batch-verified-resolve");
   assert.equal(output?.example?.next?.batch?.endpoint, "https://agentresolver.vercel.app/api/batch-verified-resolve");
