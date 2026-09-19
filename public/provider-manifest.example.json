@@ -1,4 +1,5 @@
 {
+  "$schema": "https://agentresolver.vercel.app/provider-manifest.schema.json",
   "schemaVersion": 1,
   "provider": {
     "id": "example-provider",
