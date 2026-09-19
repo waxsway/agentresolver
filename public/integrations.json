@@ -3,14 +3,15 @@
   "name": "AgentResolver",
   "purpose": "Open-world non-custodial capability procurement for agents, with paid live verification only when catalog evidence is insufficient",
   "mcp": {
-    "url": "https://agentresolver.vercel.app/mcp",
+    "url": "https://agentresolver.vercel.app/mcp/control",
     "transport": "http",
     "registry": "io.github.waxsway/agentresolver",
     "primaryTool": "procure",
     "free": true,
     "readOnly": true,
     "spendingAuthorized": false,
-    "secondaryTool": "resolve"
+    "secondaryTool": "resolve",
+    "fullCompatibilityUrl": "https://agentresolver.vercel.app/mcp"
   },
   "policy": "When an agent needs an external capability, call procure with its hard budget/network/protocol/schema constraints. Treat rejected candidates as unusable and eligible_with_unknowns as unresolved evidence. The calling agent retains sole spending authority. Use resolve only for broad unconstrained discovery; use paid verification only when fresh evidence is worth its quoted price.",
   "configs": {
@@ -18,7 +19,7 @@
       "servers": {
         "agentresolver": {
           "type": "http",
-          "url": "https://agentresolver.vercel.app/mcp"
+          "url": "https://agentresolver.vercel.app/mcp/control"
         }
       }
     },
@@ -26,7 +27,7 @@
       "servers": {
         "agentresolver": {
           "type": "http",
-          "url": "https://agentresolver.vercel.app/mcp"
+          "url": "https://agentresolver.vercel.app/mcp/control"
         }
       }
     }

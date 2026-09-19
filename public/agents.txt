@@ -2,7 +2,8 @@
 # Repeat-use x402 verify-before-pay checks plus free capability discovery and low-cost live evidence.
 
 Origin: https://agentresolver.vercel.app
-MCP: https://agentresolver.vercel.app/mcp
+MCP: https://agentresolver.vercel.app/mcp/control
+MCP-Full-Compatibility: https://agentresolver.vercel.app/mcp
 Skills: https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md
 OpenAPI: https://agentresolver.vercel.app/openapi.json
 X402-Manifest: https://agentresolver.vercel.app/.well-known/x402

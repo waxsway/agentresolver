@@ -58,7 +58,12 @@ Use only a caller-controlled signer. Never send AgentResolver a private key or s
 
 ## Remote MCP
 
-Endpoint:
+Default procurement fallback:
+`https://agentresolver.vercel.app/mcp/control`
+
+This lean control plane exposes only free `procure` and `resolve`.
+
+Full compatibility and paid AgentResolver tools:
 `https://agentresolver.vercel.app/mcp`
 
 Registry:

@@ -45,7 +45,10 @@ Use only a caller-controlled signer and enforce local checks for price, asset, n
 
 ## MCP
 
-Remote MCP:
+Lean free procurement fallback:
+https://agentresolver.vercel.app/mcp/control
+
+Full compatibility MCP including paid AgentResolver tools:
 https://agentresolver.vercel.app/mcp
 
 Useful tools:
@@ -78,7 +81,7 @@ This verifies settlement evidence only. It does not establish provider identity,
 
 ## Free capability discovery
 
-MCP: connect to https://agentresolver.vercel.app/mcp and call `resolve`.
+MCP: connect to https://agentresolver.vercel.app/mcp/control and call `procure` for constrained selection or `resolve` for broad discovery.
 
 REST:
 POST https://agentresolver.vercel.app/api/resolve
@@ -101,7 +104,8 @@ All paid actions disclose their x402 terms before payment. An unpaid request ret
 
 - Guard: https://agentresolver.vercel.app/api/payment-guard\n- Settlement receipt verify: https://agentresolver.vercel.app/api/x402-settlement-verify
 - Buyer setup: https://agentresolver.vercel.app/api/x402-client-setup
-- MCP: https://agentresolver.vercel.app/mcp
+- MCP procurement fallback: https://agentresolver.vercel.app/mcp/control
+- MCP full compatibility: https://agentresolver.vercel.app/mcp
 - x402 manifest: https://agentresolver.vercel.app/.well-known/x402
 - x402 catalog: https://agentresolver.vercel.app/.well-known/x402-catalog.json
 - OpenAPI: https://agentresolver.vercel.app/openapi.json

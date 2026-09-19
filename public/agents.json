@@ -5,7 +5,8 @@
   "description": "Repeat-use x402 verify-before-pay checks for autonomous agents, plus free missing-capability resolution and low-cost live verification.",
   "protocols": ["mcp", "x402"],
   "discovery": {
-    "mcp": "https://agentresolver.vercel.app/mcp",
+    "mcp": "https://agentresolver.vercel.app/mcp/control",
+    "mcpFullCompatibility": "https://agentresolver.vercel.app/mcp",
     "x402": "https://agentresolver.vercel.app/.well-known/x402",
     "openapi": "https://agentresolver.vercel.app/openapi.json",
     "llms": "https://agentresolver.vercel.app/llms.txt",
