@@ -198,7 +198,7 @@ export async function verifyProviderConversion(
 
   const successFeeQuote =
     settlement.settled && resolved.kind === "domain-manifest"
-      ? quoteProviderSuccessFee(identity.amountAtomic)
+      ? quoteProviderSuccessFee(identity.amountAtomic, input.attributionId)
       : settlement.settled
         ? {
             grossAmountAtomic: identity.amountAtomic,
