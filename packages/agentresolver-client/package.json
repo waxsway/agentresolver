@@ -1,0 +1,34 @@
+{
+  "name": "agentresolver-client",
+  "version": "0.1.0",
+  "description": "Framework-neutral non-custodial capability procurement client for AgentResolver.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "keywords": [
+    "ai-agents",
+    "agent-tools",
+    "capability-discovery",
+    "capability-procurement",
+    "mcp",
+    "x402",
+    "non-custodial"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waxsway/agentresolver.git",
+    "directory": "packages/agentresolver-client"
+  },
+  "homepage": "https://agentresolver.vercel.app"
+}
