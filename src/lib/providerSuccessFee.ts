@@ -1,7 +1,8 @@
 import {
   parseProviderConversionVerifyInput,
   verifyProviderConversion,
-  type ProviderConversionVerifyInput
+  type ProviderConversionVerifyInput,
+  type ProviderConversionVerifyOptions
 } from "@/lib/providerConversionVerification";
 import {
   BASE_NETWORK,
@@ -33,9 +34,7 @@ export function parseProviderSuccessFeeVerifyInput(
 
 export async function quoteVerifiedProviderSuccessFee(
   input: ProviderConversionVerifyInput,
-  options: {
-    rpc?: BaseRpc;
-    env?: Readonly<Record<string, string | undefined>>;
+  options: ProviderConversionVerifyOptions & {
     payTo?: string;
   } = {}
 ) {
@@ -89,9 +88,7 @@ export async function quoteVerifiedProviderSuccessFee(
 
 export async function verifyProviderSuccessFee(
   input: ProviderSuccessFeeVerifyInput,
-  options: {
-    rpc?: BaseRpc;
-    env?: Readonly<Record<string, string | undefined>>;
+  options: ProviderConversionVerifyOptions & {
     payTo?: string;
   } = {}
 ) {
