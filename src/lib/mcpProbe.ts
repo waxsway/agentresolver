@@ -3,6 +3,14 @@ import https from "node:https";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
+export type McpToolEvidence = {
+  name: string;
+  description: string | null;
+  inputSchema: Record<string, unknown> | null;
+  outputSchema: Record<string, unknown> | null;
+  annotations: Record<string, unknown> | null;
+};
+
 export type McpProbeReport = {
   endpoint: string;
   reachable: boolean;
@@ -20,6 +28,7 @@ export type McpProbeReport = {
     latencyMs: number | null;
     count: number | null;
     names: string[];
+    items: McpToolEvidence[];
   };
   notes: string[];
 };
@@ -355,6 +364,7 @@ export async function probeMcpEndpoint(input: string): Promise<McpProbeReport> {
   let toolsStatus: number | null = null;
   let toolsLatency: number | null = null;
   let toolNames: string[] = [];
+  let toolItems: McpToolEvidence[] = [];
   let toolCount: number | null = null;
 
   if (initialized) {
@@ -384,10 +394,22 @@ export async function probeMcpEndpoint(input: string): Promise<McpProbeReport> {
       const tools = Array.isArray(toolsResult?.tools) ? toolsResult.tools : null;
       if (tools) {
         toolCount = tools.length;
-        toolNames = tools
-          .map((tool) => asRecord(tool)?.name)
-          .filter((name): name is string => typeof name === "string")
+        toolItems = tools
+          .map((tool) => asRecord(tool))
+          .filter((tool): tool is Record<string, unknown> => Boolean(tool))
+          .map((tool) => ({
+            name: typeof tool.name === "string" ? tool.name : "",
+            description:
+              typeof tool.description === "string"
+                ? tool.description.slice(0, 2000)
+                : null,
+            inputSchema: asRecord(tool.inputSchema),
+            outputSchema: asRecord(tool.outputSchema),
+            annotations: asRecord(tool.annotations)
+          }))
+          .filter((tool) => Boolean(tool.name))
           .slice(0, 50);
+        toolNames = toolItems.map((tool) => tool.name);
       } else {
         notes.push("MCP initialize succeeded, but tools/list did not return a tools array.");
       }
@@ -418,7 +440,8 @@ export async function probeMcpEndpoint(input: string): Promise<McpProbeReport> {
       status: toolsStatus,
       latencyMs: toolsLatency,
       count: toolCount,
-      names: toolNames
+      names: toolNames,
+      items: toolItems
     },
     notes
   };

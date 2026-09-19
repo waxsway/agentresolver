@@ -110,9 +110,10 @@ function semanticTokens(value: string) {
   ];
 }
 
-function semanticEvidence(
+export function evaluateProcurementSemanticEvidence(
   goal: string,
-  candidate: ProcurementCandidate
+  candidate: ProcurementCandidate,
+  additionalEvidence = ""
 ) {
   const goalTokens = semanticTokens(goal);
   if (goalTokens.length === 0) return null;
@@ -120,7 +121,8 @@ function semanticEvidence(
   const evidenceText = [
     candidate.name,
     candidate.description || "",
-    candidate.evidence ? JSON.stringify(candidate.evidence) : ""
+    candidate.evidence ? JSON.stringify(candidate.evidence) : "",
+    additionalEvidence
   ].join(" ");
   const evidenceTokens = new Set(semanticTokens(evidenceText));
   const matchedTokens = goalTokens.filter((token) => evidenceTokens.has(token));
@@ -241,7 +243,7 @@ export function evaluateProcurementCandidate(
     }
   }
 
-  const semanticMatch = semanticEvidence(goal, candidate);
+  const semanticMatch = evaluateProcurementSemanticEvidence(goal, candidate);
   if (semanticMatch && !semanticMatch.proven) {
     unknownConstraints.push("semantic_capability");
   }

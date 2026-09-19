@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   evaluateProcurementCandidate,
+  evaluateProcurementSemanticEvidence,
   rankProcurementCandidates,
   type ProcurementCandidate
 } from "../src/lib/procurement";
@@ -163,4 +164,28 @@ test("semantic capability evidence accepts a candidate whose metadata covers the
 
   assert.equal(evaluated.status, "eligible");
   assert.equal(evaluated.semanticMatch?.proven, true);
+});
+
+
+test("live MCP tool evidence can prove semantics that catalog metadata could not", () => {
+  const candidate = evaluateProcurementCandidate(
+    {
+      ...baseCandidate,
+      name: "Browser MCP",
+      description: "Browser tools",
+      protocol: "mcp",
+      priceUsd: null,
+      networks: []
+    },
+    { protocol: "mcp", requireHttps: false },
+    "persistent browser workspace with named tabs and human takeover"
+  );
+
+  assert.equal(candidate.semanticMatch?.proven, false);
+  const enriched = evaluateProcurementSemanticEvidence(
+    "persistent browser workspace with named tabs and human takeover",
+    candidate,
+    "persistent browser workspace named tabs human takeover"
+  );
+  assert.equal(enriched?.proven, true);
 });

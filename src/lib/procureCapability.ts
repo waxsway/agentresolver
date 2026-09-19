@@ -691,6 +691,27 @@ export type ProcurementOptions = {
   providerOrigins?: string[];
 };
 
+function verifierCanResolveUnknowns(
+  candidate: ReturnType<typeof rankProcurementCandidates>[number]
+) {
+  if (candidate.status !== "eligible_with_unknowns") return false;
+  const supported =
+    candidate.protocol === "mcp"
+      ? new Set([
+          "semantic_capability",
+          "input_contract",
+          "output_contract",
+          "side_effect"
+        ])
+      : candidate.protocol === "x402"
+        ? new Set(["price", "network"])
+        : new Set<string>();
+  return (
+    supported.size > 0 &&
+    candidate.unknownConstraints.every((unknown) => supported.has(unknown))
+  );
+}
+
 export async function procureCapability(
   goal: string,
   constraints: ProcurementConstraints,
@@ -753,6 +774,13 @@ export async function procureCapability(
     evaluated.find((candidate) => candidate.status === "eligible") || null;
   const verificationTarget =
     selectedRaw ||
+    evaluated.find(
+      (candidate) =>
+        candidate.status === "eligible_with_unknowns" &&
+        verifierCanResolveUnknowns(candidate)
+    ) ||
+    null;
+  const unresolvedTarget =
     evaluated.find((candidate) => candidate.status === "eligible_with_unknowns") ||
     null;
   const selected = selectedRaw
@@ -795,7 +823,9 @@ export async function procureCapability(
             recommended: false,
             reason: selected
               ? "The selected candidate satisfies every constraint AgentResolver can currently prove from available metadata."
-              : "No candidate survived the requested hard constraints."
+              : unresolvedTarget
+                ? "No candidate is selected because one or more required properties remain unproven, and the current live verifier cannot prove all of them."
+                : "No candidate survived the requested hard constraints."
           }
   };
 }

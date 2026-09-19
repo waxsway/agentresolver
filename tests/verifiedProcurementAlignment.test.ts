@@ -11,6 +11,10 @@ test("paid verified resolve uses the same procurement universe as free procureme
   assert.doesNotMatch(verified, /resolveGoal\(/);
   assert.match(verified, /probeX402Resource\(/);
   assert.match(verified, /probeMcpEndpoint\(/);
+  assert.match(verified, /contractProven/);
+  assert.match(verified, /remainingUnknownConstraints/);
+  assert.match(verified, /toolEvidence/);
+  assert.match(verified, /evaluateProcurementSemanticEvidence/);
   assert.match(verified, /MAX_LIVE_PROBES = 2/);
   assert.match(verified, /protocolsDiscoveryOnly: \["l402", "mpp"\]/);
   assert.match(verified, /targetPaymentSubmitted: false/);
@@ -29,4 +33,11 @@ test("verified resolve accepts procurement constraints and reports conversion te
   assert.match(route, /selectedProtocol:/);
   assert.match(route, /verifiedX402Count:/);
   assert.match(route, /recommendationType:/);
+});
+
+
+test("free procurement does not select unknown candidates or upsell unverifiable unknowns", () => {
+  assert.match(procurement, /candidate\.status === "eligible"/);
+  assert.match(procurement, /verifierCanResolveUnknowns/);
+  assert.match(procurement, /current live verifier cannot prove all of them/);
 });
