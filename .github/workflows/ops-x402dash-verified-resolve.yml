@@ -1,0 +1,41 @@
+name: One-shot x402dash Verified Resolve registration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: github.head_ref == 'ops/x402dash-verified-resolve-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Register live $0.02 GET Verified Resolve if absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://agentresolver.vercel.app/api/verified-resolve?goal=Find%20and%20verify%20a%20paid%20web%20search%20service&maxPriceUsd=0.05&protocol=x402&requireHttps=true'
+
+          existing_code="$(curl -sS --retry 2 --max-time 20 -o /tmp/existing.json -w '%{http_code}'             'https://api.x402dash.com/v1/endpoints?limit=100&q=agentresolver' || true)"
+          echo "X402DASH_QUERY_HTTP=$existing_code"
+          if [ "$existing_code" = "200" ] && jq -e --arg endpoint "$endpoint" '.. | strings | select(. == $endpoint)' /tmp/existing.json >/dev/null 2>&1; then
+            echo "X402DASH_VERIFIED_RESOLVE=already_registered"
+            exit 0
+          fi
+
+          jq -cn --arg url "$endpoint" '{
+            url:$url,
+            name:"AgentResolver Verified Resolve",
+            description:"Paid 0.02 USDC GET-first capability procurement plus bounded live verification across supported x402 and MCP candidates.",
+            category:"Developer Tools",
+            tags:["x402","capability-procurement","live-verification","mcp","agents"]
+          }' >/tmp/register.json
+
+          code="$(curl -sS --retry 2 --max-time 25 -o /tmp/response.json -w '%{http_code}'             -X POST 'https://api.x402dash.com/v1/register'             -H 'content-type: application/json'             --data-binary @/tmp/register.json || true)"
+          echo "X402DASH_VERIFIED_RESOLVE_HTTP=$code"
+          jq -c '{id,url:(.url // .endpoint // null),status,integration_readiness,error,message}' /tmp/response.json 2>/dev/null || true
+          case "$code" in 200|201|202|409) ;; *) exit 1;; esac
