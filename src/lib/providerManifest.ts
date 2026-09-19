@@ -70,7 +70,7 @@ function canonicalUrl(value: string) {
   return url.toString();
 }
 
-function parseManifest(
+export function parseDomainProviderManifest(
   manifestUrl: string,
   raw: unknown
 ): DomainProviderRoute[] {
@@ -188,7 +188,7 @@ export async function fetchDomainProviderManifest(
       maxBytes: 32_000
     });
     if (response.status !== 200) return [];
-    return parseManifest(manifestUrl, response.json);
+    return parseDomainProviderManifest(manifestUrl, response.json);
   } catch {
     return [];
   }
