@@ -327,10 +327,10 @@ function domainEnrollment(
   };
 }
 
-function attachProcurementAttribution(
-  candidate: ProcurementCandidate,
+function attachProcurementAttribution<T extends ProcurementCandidate>(
+  candidate: T,
   baseUrl: string
-): ProcurementCandidate {
+): T {
   const enrollment = domainEnrollment(candidate);
   if (!enrollment) return candidate;
 
@@ -355,7 +355,7 @@ function attachProcurementAttribution(
           `${baseUrl}/api/provider-attribution-verify`
       }
     }
-  };
+  } as T;
 }
 
 function normalizePartner(
