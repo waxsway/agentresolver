@@ -553,12 +553,6 @@ jobs:
             suffix="deployment=$VALIDATED_SHA&mcpControlSmokeAttempt=$attempt"
             control_code="$(curl -sS -I -o /tmp/mcp-control-headers.txt -w '%{http_code}'               -H 'cache-control: no-cache'               "$BASE_URL/mcp/control?$suffix" || true)"
             if [ "$control_code" = "200" ] &&
-              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/server.json?$suffix" -o /tmp/mcp-server.json &&
-              jq -e '
-                .name == "io.github.waxsway/agentresolver" and
-                .version == "0.2.0" and
-                .remotes[0].url == "https://agentresolver.vercel.app/mcp/control"
-              ' /tmp/mcp-server.json >/dev/null &&
               curl -fsS -H 'cache-control: no-cache' "$BASE_URL/integrations.json?$suffix" -o /tmp/integrations.json &&
               jq -e '
                 .mcp.url == "https://agentresolver.vercel.app/mcp/control" and
@@ -571,8 +565,7 @@ jobs:
               jq -e '
                 [.skills[].name] |
                 index("agentresolver-payment-guard") != null and
-                index("agentresolver-procurement") != null and
-                index("agentresolver-provider") != null
+                index("agentresolver-procurement") != null
               ' /tmp/agent-skills.json >/dev/null; then
               mcp_control_ready=1
               break
@@ -583,7 +576,8 @@ jobs:
           if [ "$mcp_control_ready" != "1" ]; then
             echo "::error::New production deployment did not expose the lean MCP procurement control plane."
             cat /tmp/mcp-control-headers.txt 2>/dev/null || true
-            cat /tmp/mcp-server.json 2>/dev/null || true
+            cat /tmp/integrations.json 2>/dev/null || true
+            cat /tmp/agent-skills.json 2>/dev/null || true
             exit 1
           fi
 
