@@ -269,28 +269,32 @@ function canonicalCandidateUrl(value: string | null) {
   }
 }
 
+const PROVIDER_RELEVANCE_STOP_WORDS = new Set([
+  "a", "an", "and", "api", "for", "from", "in", "into", "of", "on",
+  "service", "that", "the", "this", "to", "tool", "use", "with"
+]);
+
+function relevanceTokens(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(
+      (token) =>
+        token.length > 1 && !PROVIDER_RELEVANCE_STOP_WORDS.has(token)
+    );
+}
+
 function routeRelevance(goal: string, route: DomainProviderRoute) {
-  const wanted = new Set(
-    goal
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-  );
-  const haystack = [
+  const wanted = new Set(relevanceTokens(goal));
+  const haystack = relevanceTokens([
     route.capabilityId,
     route.name,
     route.description,
     route.providerName,
     ...route.tags
-  ]
-    .join(" ")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  ].join(" "));
 
   return haystack.reduce(
     (score, token) => score + (wanted.has(token) ? 1 : 0),
