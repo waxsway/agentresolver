@@ -28,6 +28,23 @@
       "url": "https://agentresolver.vercel.app/api/provider-launch-check",
       "priceUsd": 0.05,
       "admissionRequired": false
+    },
+    "liveVerification": {
+      "requiredBeforeAttributedProcurement": true,
+      "protocol": "x402-v2",
+      "challengeStatus": 402,
+      "challengeHeader": "PAYMENT-REQUIRED",
+      "exactMatchRequired": [
+        "scheme",
+        "network",
+        "asset",
+        "payTo",
+        "amountAtomic",
+        "resource"
+      ],
+      "unsignedProbeOnly": true,
+      "declaredPostRouteProbe": "empty-json-unpaid-post",
+      "failureMode": "fail-closed"
     }
   },
   "commercial": {
@@ -47,7 +64,7 @@
     }
   },
   "proofModel": {
-    "providerControl": "same-origin well-known manifest",
+    "providerControl": "same-origin well-known manifest plus live matching x402 challenge",
     "buyerSettlement": "independent Base USDC settlement verification",
     "providerFee": "independent Base USDC transfer verification",
     "attributionReplayResistance": "exact fee amount includes a deterministic attribution-bound atomic suffix",

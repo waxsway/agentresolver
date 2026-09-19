@@ -800,7 +800,7 @@
           "Provider Commerce"
         ],
         "summary": "Read the provider-network and self-enrollment contract",
-        "description": "Free machine-readable provider contract. Domain providers can self-enroll without an account or operator review by publishing /.well-known/agentresolver-provider.json on the same HTTPS origin as a catalog-discovered x402 route.",
+        "description": "Free machine-readable provider contract. Domain providers can self-enroll without an account or operator review by publishing /.well-known/agentresolver-provider.json on the same HTTPS origin as a catalog-discovered x402 route. Before attributed procurement, AgentResolver performs a bounded unsigned probe and requires the live x402 v2 402 challenge to match the manifest scheme, Base network, canonical Base USDC asset, payTo, amount and resource binding; mismatches fail closed.",
         "security": [],
         "responses": {
           "200": {

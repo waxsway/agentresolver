@@ -3,7 +3,7 @@ import { resolveProviderRoutes } from "@/lib/providerNetwork";
 import { discoverPayAiResources, type PayAiMatch } from "@/lib/payaiDiscovery";
 import { discover402IndexServices, type Index402Match } from "@/lib/index402Discovery";
 import {
-  discoverDomainProviderRoutes,
+  discoverVerifiedDomainProviderRoutes,
   quoteProviderSuccessFee,
   type DomainProviderRoute
 } from "@/lib/providerManifest";
@@ -276,7 +276,7 @@ async function enrichDomainProviderCandidates(
 
   if (externalResources.length === 0) return candidates;
 
-  const enrolled = await discoverDomainProviderRoutes(externalResources);
+  const enrolled = await discoverVerifiedDomainProviderRoutes(externalResources);
 
   return candidates.map((candidate) => {
     const key = canonicalCandidateUrl(candidate.endpoint);
@@ -314,7 +314,8 @@ async function enrichDomainProviderCandidates(
       evidence: {
         ...(candidate.evidence || {}),
         domainProviderEnrollment: {
-          verifiedBy: "same-origin-well-known-manifest",
+          verifiedBy: "same-origin-well-known-manifest+live-x402-challenge",
+          liveX402ChallengeVerified: true,
           manifestUrl: route.manifestUrl,
           origin: route.origin,
           providerId: route.providerId,
