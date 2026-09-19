@@ -48,6 +48,11 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.ok(preflight?.tags?.includes("endpoint safety"));
   assert.ok(preflight?.tags?.includes("USDC payment check"));
   assert.ok(preflight?.["x-agentresolver-product"]?.keywords?.includes("verify endpoint before paying"));
+  const procure = openapi.paths?.["/api/procure"]?.post;
+  assert.equal(procure?.operationId, "procureCapability");
+  assert.deepEqual(procure?.security, []);
+  assert.match(procure?.description || "", /non-custodial/i);
+  assert.match(procure?.description || "", /budget/i);
   assert.deepEqual(openapi.paths?.["/api/resolve"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/health"]?.get?.security, []);
 
@@ -65,6 +70,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
       "/api/payment-guard",
       "/api/provider-launch-check",
       "/api/prepayment-authorization-gate",
+      "/api/procure",
       "/api/resolve",
       "/api/usdc-payment-check",
       "/api/verified-resolve",
