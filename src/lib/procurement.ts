@@ -41,6 +41,13 @@ export type ProcurementEvaluation = ProcurementCandidate & {
     input: ReturnType<typeof evaluateToolContract> | null;
     output: ReturnType<typeof evaluateToolContract> | null;
   };
+  semanticMatch: {
+    goalTokens: string[];
+    matchedTokens: string[];
+    minimumMatches: number;
+    coverage: number;
+    proven: boolean;
+  } | null;
 };
 
 function normalizedNetworks(values: string[] | undefined): string[] {
@@ -62,9 +69,79 @@ function isHttps(value: string | null) {
   }
 }
 
+const SEMANTIC_STOP_WORDS = new Set([
+  "a", "an", "and", "api", "agent", "agents", "capability", "for", "from",
+  "in", "into", "mcp", "need", "needs", "of", "on", "over", "service",
+  "services", "support", "supports", "that", "the", "this", "to", "tool",
+  "tools", "use", "using", "with"
+]);
+
+function normalizeSemanticToken(token: string) {
+  let normalized = token.toLowerCase();
+  if (normalized.endsWith("ies") && normalized.length > 4) {
+    normalized = `${normalized.slice(0, -3)}y`;
+  } else if (normalized.endsWith("ing") && normalized.length > 5) {
+    normalized = normalized.slice(0, -3);
+  } else if (normalized.endsWith("ed") && normalized.length > 4) {
+    normalized = normalized.slice(0, -2);
+  } else if (normalized.endsWith("es") && normalized.length > 4) {
+    normalized = normalized.slice(0, -2);
+  } else if (normalized.endsWith("s") && normalized.length > 3) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
+function semanticTokens(value: string) {
+  return [
+    ...new Set(
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .map(normalizeSemanticToken)
+        .filter(
+          (token) =>
+            token.length > 2 &&
+            !SEMANTIC_STOP_WORDS.has(token)
+        )
+    )
+  ];
+}
+
+function semanticEvidence(
+  goal: string,
+  candidate: ProcurementCandidate
+) {
+  const goalTokens = semanticTokens(goal);
+  if (goalTokens.length === 0) return null;
+
+  const evidenceText = [
+    candidate.name,
+    candidate.description || "",
+    candidate.evidence ? JSON.stringify(candidate.evidence) : ""
+  ].join(" ");
+  const evidenceTokens = new Set(semanticTokens(evidenceText));
+  const matchedTokens = goalTokens.filter((token) => evidenceTokens.has(token));
+  const minimumMatches =
+    goalTokens.length <= 2
+      ? 1
+      : Math.max(2, Math.ceil(goalTokens.length * 0.35));
+
+  return {
+    goalTokens,
+    matchedTokens,
+    minimumMatches,
+    coverage: matchedTokens.length / goalTokens.length,
+    proven: matchedTokens.length >= minimumMatches
+  };
+}
+
 export function evaluateProcurementCandidate(
   candidate: ProcurementCandidate,
-  constraints: ProcurementConstraints
+  constraints: ProcurementConstraints,
+  goal = ""
 ): ProcurementEvaluation {
   const rejectionReasons: string[] = [];
   const unknownConstraints: string[] = [];
@@ -164,6 +241,11 @@ export function evaluateProcurementCandidate(
     }
   }
 
+  const semanticMatch = semanticEvidence(goal, candidate);
+  if (semanticMatch && !semanticMatch.proven) {
+    unknownConstraints.push("semantic_capability");
+  }
+
   const dedupedUnknowns = [...new Set(unknownConstraints)];
   const status: ProcurementEvaluation["status"] =
     rejectionReasons.length > 0
@@ -180,7 +262,8 @@ export function evaluateProcurementCandidate(
     contractChecks: {
       input: inputCheck,
       output: outputCheck
-    }
+    },
+    semanticMatch
   };
 }
 
@@ -193,12 +276,13 @@ const STATUS_ORDER: Record<ProcurementEvaluation["status"], number> = {
 export function rankProcurementCandidates(
   candidates: ProcurementCandidate[],
   constraints: ProcurementConstraints,
-  limit = 5
+  limit = 5,
+  goal = ""
 ): ProcurementEvaluation[] {
   const safeLimit = Math.max(1, Math.min(limit, 20));
 
   return candidates
-    .map((candidate) => evaluateProcurementCandidate(candidate, constraints))
+    .map((candidate) => evaluateProcurementCandidate(candidate, constraints, goal))
     .sort((a, b) => {
       const statusDelta = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
       if (statusDelta !== 0) return statusDelta;

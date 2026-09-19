@@ -746,10 +746,15 @@ export async function procureCapability(
   const evaluated = rankProcurementCandidates(
     candidates,
     constraints,
-    safeLimit
+    safeLimit,
+    goal
   );
   const selectedRaw =
-    evaluated.find((candidate) => candidate.status !== "rejected") || null;
+    evaluated.find((candidate) => candidate.status === "eligible") || null;
+  const verificationTarget =
+    selectedRaw ||
+    evaluated.find((candidate) => candidate.status === "eligible_with_unknowns") ||
+    null;
   const selected = selectedRaw
     ? attachProcurementAttribution(selectedRaw, baseUrl)
     : null;
@@ -764,11 +769,11 @@ export async function procureCapability(
     candidates: returnedCandidates,
     candidateCount: candidates.length,
     verification:
-      selected?.status === "eligible_with_unknowns"
+      !selected && verificationTarget?.status === "eligible_with_unknowns"
         ? {
             recommended: true,
             reason:
-              "The best candidate satisfies known hard constraints but one or more requested contract properties are not proven by catalog metadata.",
+              "No candidate is selected because the best surviving candidate still has unproven contract properties. Verify before execution.",
             paidAction: {
               method: "POST",
               url: `${baseUrl}/api/verified-resolve`,

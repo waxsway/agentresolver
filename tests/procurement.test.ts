@@ -125,3 +125,42 @@ test("ranking prefers proven candidates over unknown or rejected candidates", ()
   assert.equal(ranked[2]?.id, "expensive");
   assert.equal(ranked[2]?.status, "rejected");
 });
+
+
+test("semantic capability evidence fails closed for a broad directory match", () => {
+  const evaluated = evaluateProcurementCandidate(
+    {
+      ...baseCandidate,
+      name: "Anybrowse",
+      description: "URL-to-Markdown scraping",
+      protocol: "mcp",
+      priceUsd: null,
+      networks: [],
+      inputSchema: null,
+      outputSchema: null,
+      sideEffect: "unknown",
+      auth: "unknown"
+    },
+    { protocol: "mcp", requireHttps: false },
+    "persistent local browser workspace that preserves named tabs and site storage across client sessions, allows human takeover, and supports fresh post-action reads"
+  );
+
+  assert.equal(evaluated.status, "eligible_with_unknowns");
+  assert.ok(evaluated.unknownConstraints.includes("semantic_capability"));
+  assert.equal(evaluated.semanticMatch?.proven, false);
+});
+
+test("semantic capability evidence accepts a candidate whose metadata covers the requested job", () => {
+  const evaluated = evaluateProcurementCandidate(
+    {
+      ...baseCandidate,
+      name: "Public Search API",
+      description: "Search public data and return search results"
+    },
+    {},
+    "search public data"
+  );
+
+  assert.equal(evaluated.status, "eligible");
+  assert.equal(evaluated.semanticMatch?.proven, true);
+});
