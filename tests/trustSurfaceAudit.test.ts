@@ -19,3 +19,14 @@ test("trust audit uses protocol-valid PayAI discovery page size", () => {
   assert.match(workflow, /--data-urlencode 'limit=100'/);
   assert.doesNotMatch(workflow, /limit=1000/);
 });
+
+
+test("trust audit validates Bazaar metadata from PAYMENT-REQUIRED instead of the stripped JSON body", () => {
+  assert.match(workflow, /payment_required=.*payment-required:/);
+  assert.match(workflow, /base64\.urlsafe_b64decode/);
+  assert.match(workflow, /payload\.get\("extensions"\)/);
+  assert.doesNotMatch(
+    workflow,
+    /\.extensions\.bazaar\.schema\.properties\.output[^\n]*\/tmp\/preflight\.json/,
+  );
+});
