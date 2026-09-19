@@ -124,3 +124,10 @@ AgentResolver also operates an explicitly labeled provider sponsorship pilot. Or
 - Information: https://agentresolver.vercel.app/api/sponsorship
 - Inventory: https://agentresolver.vercel.app/.well-known/sponsorship.json
 - Provider page: https://agentresolver.vercel.app/providers
+
+
+FRAMEWORK FALLBACK RECIPES
+https://agentresolver.vercel.app/framework-integrations.json
+Default MCP: https://agentresolver.vercel.app/mcp/control
+Default free tools: procure, resolve
+Use native tools first; call procure when the required capability is missing. Paid verification always requires separate caller authorization.
