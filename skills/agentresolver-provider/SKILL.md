@@ -164,7 +164,7 @@ Provide:
 
 AgentResolver re-resolves the provider route and independently verifies the Base-USDC buyer settlement against the published payment identity.
 
-If the dedicated signer is active, missing, expired, tampered, or mismatched attribution receipts fail fee eligibility closed.
+If the dedicated signer is active, a missing, tampered, or mismatched attribution receipt fails fee eligibility closed. The receipt's `issuedAt`/`expiresAt` interval is the buyer-settlement authorization window: the verified buyer transaction must land inside that window, but the provider may submit proof later. A settlement outside the window, or one whose Base block timestamp cannot be verified, fails fee eligibility closed.
 
 ## 7. Settle the success fee
 
