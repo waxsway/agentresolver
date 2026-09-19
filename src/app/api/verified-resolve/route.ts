@@ -4,6 +4,7 @@ import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { verifiedResolve } from "@/lib/verifiedResolve";
+import { normalizeProviderSeedOrigins } from "@/lib/providerBootstrap";
 import type { ProcurementConstraints } from "@/lib/procurement";
 import { logX402Settlement } from "@/lib/telemetry";
 import { ATTRIBUTION_HEADER, attributionIdFromRequest, logAttributedSettlement } from "@/lib/transactionAttribution";
@@ -87,14 +88,50 @@ async function verifiedResolveHandler(req: NextRequest): Promise<NextResponse<un
   const body = (await req.json().catch(() => null)) as {
     goal?: unknown;
     url?: unknown;
+    providerOrigins?: unknown;
     constraints?: unknown;
   } | null;
   const goal = String(body?.goal || "").trim();
   const url = body?.url ? String(body.url).trim() : undefined;
+  let providerOrigins: string[] = [];
+  if (body?.providerOrigins !== undefined) {
+    if (
+      !Array.isArray(body.providerOrigins) ||
+      !body.providerOrigins.every((item) => typeof item === "string")
+    ) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PROVIDER_ORIGINS",
+          message: "providerOrigins must be an array of public HTTPS origins."
+        },
+        { status: 400 }
+      );
+    }
+    try {
+      providerOrigins = normalizeProviderSeedOrigins(
+        body.providerOrigins as string[]
+      );
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PROVIDER_ORIGINS",
+          message:
+            error instanceof Error
+              ? error.message
+              : "providerOrigins is invalid."
+        },
+        { status: 400 }
+      );
+    }
+  }
   const constraints = procurementConstraints(body?.constraints);
   if (!goal) return NextResponse.json({ error: "MISSING_GOAL", message: "Provide the capability you need verified." }, { status: 400 });
   if (goal.length > MAX_GOAL || (url && url.length > MAX_URL)) return NextResponse.json({ error: "INPUT_TOO_LONG", message: "Goal or target URL is too long." }, { status: 400 });
-  const report = await verifiedResolve(goal, { url, constraints });
+  const report = await verifiedResolve(goal, {
+    url,
+    constraints,
+    providerOrigins
+  });
   console.log(JSON.stringify({
     event: "paid_capability_completed",
     capabilityId: "verified-resolve",
@@ -103,6 +140,7 @@ async function verifiedResolveHandler(req: NextRequest): Promise<NextResponse<un
     selectedSource: report.procurement.selected?.source || null,
     selectedProtocol: report.procurement.selected?.protocol || null,
     selectedStatus: report.procurement.selected?.status || null,
+    providerSeedCount: providerOrigins.length,
     liveProbeCount: report.liveVerification.length,
     verifiedMcpCount: report.liveMcpVerification.filter((item) => item.mcpCompatible).length,
     verifiedX402Count: report.liveMarketplaceVerification.filter(
