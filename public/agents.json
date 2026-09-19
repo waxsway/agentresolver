@@ -3,12 +3,10 @@
   "name": "AgentResolver",
   "origin": "https://agentresolver.vercel.app",
   "description": "Repeat-use x402 verify-before-pay checks for autonomous agents, plus free missing-capability resolution and low-cost live verification.",
-  "protocols": [
-    "mcp",
-    "x402"
-  ],
+  "protocols": ["mcp", "x402"],
   "discovery": {
     "mcp": "https://agentresolver.vercel.app/mcp/control",
+    "mcpFullCompatibility": "https://agentresolver.vercel.app/mcp",
     "x402": "https://agentresolver.vercel.app/.well-known/x402",
     "openapi": "https://agentresolver.vercel.app/openapi.json",
     "llms": "https://agentresolver.vercel.app/llms.txt",
@@ -18,8 +16,7 @@
     "capabilities": "https://agentresolver.vercel.app/capabilities.json",
     "integrations": "https://agentresolver.vercel.app/integrations.json",
     "buyerSetup": "https://agentresolver.vercel.app/api/x402-client-setup",
-    "agentSkills": "https://agentresolver.vercel.app/.well-known/agent-skills/index.json",
-    "mcpFullCompatibility": "https://agentresolver.vercel.app/mcp"
+    "agentSkills": "https://agentresolver.vercel.app/.well-known/agent-skills/index.json"
   },
   "skills": [
     {
@@ -35,33 +32,14 @@
       "brandName": "AgentResolver Guard",
       "description": "Fail-closed verify-before-pay gate for autonomous x402 buyers. Inspect exact live payment terms before caller authorization.",
       "method": "GET",
-      "methods": [
-        "GET",
-        "POST"
-      ],
+      "methods": ["GET", "POST"],
       "preferredMethod": "GET",
       "endpoint": "https://agentresolver.vercel.app/api/payment-guard",
       "canonicalEndpoint": "https://agentresolver.vercel.app/api/x402-payment-preflight",
-      "requiredQuery": [
-        "url"
-      ],
-      "optionalQuery": [
-        "method",
-        "maxPriceUsd",
-        "expectedPayTo",
-        "expectedNetwork",
-        "allowUnpaidPostProbe"
-      ],
+      "requiredQuery": ["url"],
+      "optionalQuery": ["method", "maxPriceUsd", "expectedPayTo", "expectedNetwork", "allowUnpaidPostProbe"],
       "repeatUse": "before_each_autonomous_x402_spend",
-      "payment": {
-        "protocol": "x402",
-        "amount": "0.001",
-        "currency": "USDC",
-        "networks": [
-          "base",
-          "solana"
-        ]
-      },
+      "payment": {"protocol": "x402", "amount": "0.001", "currency": "USDC", "networks": ["base", "solana"]},
       "spendingAuthorized": false
     },
     {
@@ -78,21 +56,10 @@
       "id": "x402_ping",
       "description": "Cheapest end-to-end x402 wallet/facilitator/settlement/delivery compatibility canary.",
       "method": "GET",
-      "methods": [
-        "GET",
-        "POST"
-      ],
+      "methods": ["GET", "POST"],
       "preferredMethod": "GET",
       "endpoint": "https://agentresolver.vercel.app/api/x402-ping",
-      "payment": {
-        "protocol": "x402",
-        "amount": "0.001",
-        "currency": "USDC",
-        "networks": [
-          "base",
-          "solana"
-        ]
-      }
+      "payment": {"protocol": "x402", "amount": "0.001", "currency": "USDC", "networks": ["base", "solana"]}
     },
     {
       "id": "mcp_live_preflight",
@@ -100,30 +67,14 @@
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/mcp-probe",
       "recommendedWhen": "Free discovery found one concrete MCP endpoint and fresh runtime evidence matters.",
-      "payment": {
-        "protocol": "x402",
-        "amount": "0.001",
-        "currency": "USDC",
-        "networks": [
-          "base",
-          "solana"
-        ]
-      }
+      "payment": {"protocol": "x402", "amount": "0.001", "currency": "USDC", "networks": ["base", "solana"]}
     },
     {
       "id": "agent_readiness_audit",
       "description": "Audit a public website for AI-agent discoverability and machine-readable integration signals.",
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/agent-readiness",
-      "payment": {
-        "protocol": "x402",
-        "amount": "0.005",
-        "currency": "USDC",
-        "networks": [
-          "base",
-          "solana"
-        ]
-      }
+      "payment": {"protocol": "x402", "amount": "0.005", "currency": "USDC", "networks": ["base", "solana"]}
     },
     {
       "id": "verified_resolve",
@@ -131,15 +82,7 @@
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/verified-resolve",
       "recommendedWhen": "A caller needs more confidence than directory metadata alone before selecting an external MCP capability.",
-      "payment": {
-        "protocol": "x402",
-        "amount": "0.02",
-        "currency": "USDC",
-        "networks": [
-          "base",
-          "solana"
-        ]
-      }
+      "payment": {"protocol": "x402", "amount": "0.02", "currency": "USDC", "networks": ["base", "solana"]}
     },
     {
       "id": "batch_verified_resolve",
@@ -147,19 +90,8 @@
       "method": "POST",
       "endpoint": "https://agentresolver.vercel.app/api/batch-verified-resolve",
       "recommendedWhen": "An agent needs several external capabilities selected and live-verified in one procurement step.",
-      "limits": {
-        "maxGoals": 4,
-        "maxLiveMcpProbesPerGoal": 2
-      },
-      "payment": {
-        "protocol": "x402",
-        "amount": "0.05",
-        "currency": "USDC",
-        "networks": [
-          "base",
-          "solana"
-        ]
-      }
+      "limits": {"maxGoals": 4, "maxLiveMcpProbesPerGoal": 2},
+      "payment": {"protocol": "x402", "amount": "0.05", "currency": "USDC", "networks": ["base", "solana"]}
     }
   ],
   "policy": {
