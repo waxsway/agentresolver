@@ -45,6 +45,11 @@ const handler = createMcpHandler(() => {
           .max(20)
           .optional()
           .describe("Maximum number of ranked candidates to return. Defaults to 5."),
+        providerOrigins: z
+          .array(z.string().url())
+          .max(2)
+          .optional()
+          .describe("Optional provider HTTPS origins already known to the caller. AgentResolver checks only their fixed well-known provider manifest and matching live x402 routes; no arbitrary target is proxied."),
         constraints: z
           .object({
             maxPriceUsd: z
@@ -94,12 +99,13 @@ const handler = createMcpHandler(() => {
         openWorldHint: true
       }
     },
-    async ({ goal, limit, constraints }) => {
+    async ({ goal, limit, providerOrigins, constraints }) => {
       const result = await procureCapability(
         goal,
         (constraints || {}) as ProcurementConstraints,
         limit || 5,
-        CANONICAL
+        CANONICAL,
+        { providerOrigins }
       );
 
       logToolCall("procure", {
@@ -109,7 +115,8 @@ const handler = createMcpHandler(() => {
         candidateCount: result.candidateCount,
         returnedCount: result.candidates.length,
         selectedSource: result.selected?.source || null,
-        selectedStatus: result.selected?.status || null
+        selectedStatus: result.selected?.status || null,
+        providerSeedCount: providerOrigins?.length || 0
       });
 
       const output = {
@@ -119,6 +126,7 @@ const handler = createMcpHandler(() => {
         mode: "open_world_non_custodial_procurement",
         goal,
         constraints: constraints || {},
+        providerOrigins: providerOrigins || [],
         selected: result.selected,
         candidates: result.candidates,
         verification: result.verification,
