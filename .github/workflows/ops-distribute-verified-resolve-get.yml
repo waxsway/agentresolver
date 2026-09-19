@@ -1,0 +1,100 @@
+name: One-shot distribute GET Verified Resolve
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  distribute:
+    if: github.head_ref == 'ops/distribute-verified-resolve-get-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Register Verified Resolve on free machine marketplaces
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base_endpoint='https://agentresolver.vercel.app/api/verified-resolve'
+          concrete_url='https://agentresolver.vercel.app/api/verified-resolve?goal=Find%20and%20verify%20a%20paid%20web%20search%20service&maxPriceUsd=0.05&protocol=x402&requireHttps=true'
+          wallet='0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8'
+
+          echo "VERIFY_LIVE_CONTRACT"
+          code="$(curl -sS --retry 2 --max-time 20 -D /tmp/live-h -o /tmp/live-b -w '%{http_code}' "$concrete_url" || true)"
+          [ "$code" = "402" ]
+          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); gsub("\r",""); print; exit}' /tmp/live-h)"
+          [ -n "$payment_required" ]
+          printf '%s' "$payment_required" | base64 --decode >/tmp/live-challenge.json
+          jq -e '
+            .x402Version == 2 and
+            ([.accepts[] | select(.network == "eip155:8453" and .amount == "20000")] | length) >= 1 and
+            .extensions.bazaar.info.input.method == "GET"
+          ' /tmp/live-challenge.json >/dev/null
+          echo "VERIFIED_RESOLVE_LIVE_GET_402=true"
+
+          echo "X402_ARENA"
+          arena_code="$(curl -sS --retry 2 --max-time 20 -o /tmp/arena.json -w '%{http_code}' 'https://core.x402arena.gg/agents' || true)"
+          if [ "$arena_code" = "200" ] && jq -e --arg endpoint "$concrete_url" '.. | strings | select(. == $endpoint)' /tmp/arena.json >/dev/null 2>&1; then
+            echo "ARENA_VERIFIED_RESOLVE=already_registered"
+          else
+            jq -cn --arg endpoint "$concrete_url" --arg wallet "$wallet" '{
+              name:"agentresolver-verified-resolve",
+              endpoint:$endpoint,
+              niche:"developer-tools",
+              description:"Paid capability procurement plus bounded live verification across x402 and MCP candidates. GET-first machine purchase surface. 0.02 USDC.",
+              walletAddress:$wallet
+            }' >/tmp/arena-register.json
+            arena_register="$(curl -sS --retry 2 --max-time 25 -o /tmp/arena-response.json -w '%{http_code}'               -X POST 'https://core.x402arena.gg/register'               -H 'content-type: application/json'               --data-binary @/tmp/arena-register.json || true)"
+            echo "ARENA_REGISTER_HTTP=$arena_register"
+            jq -c '{endpoint:(.endpoint // .agent.endpoint // null),verified:(.verified // .agent.verified // null),status:(.status // .agent.status // null),error,message}' /tmp/arena-response.json 2>/dev/null || true
+            case "$arena_register" in 200|201|409) ;; *) exit 1;; esac
+          fi
+
+          echo "402_INDEX"
+          idx="$(curl -fsS --retry 2 --max-time 20 'https://402index.io/api/v1/services?q=AgentResolver&limit=100')"
+          if printf '%s' "$idx" | jq -e --arg url "$concrete_url" '.. | objects | select((.url // "") == $url)' >/dev/null; then
+            echo "INDEX_VERIFIED_RESOLVE=already_registered"
+          else
+            jq -cn --arg url "$concrete_url" '{
+              url:$url,
+              name:"AgentResolver Verified Resolve",
+              protocol:"x402",
+              http_method:"GET",
+              description:"Procure a missing capability and live-verify supported x402/MCP candidates before returning evidence-backed selection data.",
+              price_usd:0.02,
+              payment_asset:"USDC",
+              payment_network:"Base",
+              category:"developer-tools",
+              provider:"AgentResolver"
+            }' >/tmp/index-register.json
+            index_code="$(curl -sS --retry 2 --max-time 25 -o /tmp/index-response.json -w '%{http_code}'               -X POST 'https://402index.io/api/v1/register'               -H 'content-type: application/json'               --data-binary @/tmp/index-register.json || true)"
+            echo "INDEX_REGISTER_HTTP=$index_code"
+            jq -c '{id:(.service.id // .id // null),status:(.service.status // .status // null),url:(.service.url // .url // null),health_status:(.service.health_status // .health_status // null),error,message}' /tmp/index-response.json 2>/dev/null || true
+            case "$index_code" in 200|201) ;; *) exit 1;; esac
+          fi
+
+          echo "NOHUMANS"
+          discover="$(curl -fsS --retry 2 --max-time 20 'https://nohumans.directory/v1/discover?q=AgentResolver')"
+          if printf '%s' "$discover" | jq -e --arg endpoint "$base_endpoint" '.. | strings | select(. == $endpoint)' >/dev/null; then
+            echo "NOHUMANS_VERIFIED_RESOLVE=already_listed"
+          else
+            jq -cn --arg endpoint "$base_endpoint" --arg sample "$concrete_url" '{
+              name:"AgentResolver — Verified Resolve",
+              description:"Paid capability procurement plus bounded live verification for autonomous agents. GET-first x402 purchase surface; no API key.",
+              endpoint_url:$endpoint,
+              category:"infra.discovery",
+              price_amount:0.02,
+              chains:["base","solana"],
+              sample_query:$sample
+            }' >/tmp/nohumans-register.json
+            nh_code="$(curl -sS --retry 2 --max-time 20 -o /tmp/nohumans-response.json -w '%{http_code}'               -X POST 'https://nohumans.directory/v1/listings'               -H 'content-type: application/json'               --data-binary @/tmp/nohumans-register.json || true)"
+            echo "NOHUMANS_REGISTER_HTTP=$nh_code"
+            jq -c '{id:(.id // .listing.id // null),endpoint_url:(.endpoint_url // .listing.endpoint_url // null),status:(.status // .listing.status // null),error,message}' /tmp/nohumans-response.json 2>/dev/null || true
+            case "$nh_code" in 200|201|409) ;; *) exit 1;; esac
+          fi
+
+          echo "VERIFIED_RESOLVE_DISTRIBUTION_DONE=true"
