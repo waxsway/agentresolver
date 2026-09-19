@@ -4,13 +4,15 @@ Framework-neutral client for AgentResolver's non-custodial capability procuremen
 
 AgentResolver does **not** receive a wallet, private key, API key, or authority to spend. The client asks AgentResolver to find and evaluate machine services against the constraints your agent declares. If a paid verification step is useful, the response returns a quote/handoff; your application decides whether and how to authorize it.
 
-## Local install before registry publication
+## Before registry publication
+
+The publish-ready package source lives in `packages/agentresolver-client`. Build it directly from a checkout until an npm package is published:
 
 ```bash
-npm install github:waxsway/agentresolver
+git clone https://github.com/waxsway/agentresolver.git
+cd agentresolver/packages/agentresolver-client
+npm run build
 ```
-
-The publish-ready package source lives in `packages/agentresolver-client`.
 
 ## Use
 
