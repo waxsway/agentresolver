@@ -3,7 +3,7 @@
   "name": "io.github.waxsway/agentresolver",
   "title": "AgentResolver",
   "description": "Open-world capability procurement and verified provider routing for autonomous agents.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "repository": {
     "url": "https://github.com/waxsway/agentresolver",
     "source": "github"
