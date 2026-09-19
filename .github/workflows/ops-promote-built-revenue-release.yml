@@ -156,28 +156,44 @@ jobs:
             cat /tmp/providers.json
             false
           fi
-          echo "SMOKE_STAGE=provider-integration"
-          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json
-          jq -e '
-            .providerEnrollment.bootstrap.url == "https://agentresolver.vercel.app/api/provider-bootstrap" and
-            .providerEnrollment.bootstrap.immediateProcurement.requestField == "providerOrigins" and
-            .attribution.signedReceipt.dedicatedSecret == "AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET" and
-            .attribution.signedReceipt.settlementTimestampSource == "independently verified Base block timestamp" and
-            .commercial.successFeeBps == 200
-          ' /tmp/provider-integration.json >/dev/null
+          echo "SMOKE_STAGE=static-contracts"
+          static_ready=0
+          for attempt in {1..20}; do
+            static_suffix="promotionStatic=$GITHUB_RUN_ID-$attempt"
+            curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$static_suffix" -o /tmp/provider-integration.json || true
+            curl -fsS -H 'cache-control: no-cache' "$BASE_URL/openapi.json?$static_suffix" -o /tmp/openapi.json || true
+            curl -fsS -H 'cache-control: no-cache' "$BASE_URL/server.json?$static_suffix" -o /tmp/server.json || true
+            curl -fsS -H 'cache-control: no-cache' "$BASE_URL/integrations.json?$static_suffix" -o /tmp/integrations.json || true
+            curl -fsS -H 'cache-control: no-cache' "$BASE_URL/.well-known/agent-skills/index.json?$static_suffix" -o /tmp/skills.json || true
 
-          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/openapi.json?$suffix" -o /tmp/openapi.json
-          jq -e '
-            .paths["/api/provider-bootstrap"].post.operationId == "bootstrapProviderDiscovery" and
-            .paths["/api/verified-resolve"].get.operationId == "verifiedResolveGet"
-          ' /tmp/openapi.json >/dev/null
-
-          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/server.json?$suffix" -o /tmp/server.json
-          jq -e '.remotes[0].url == "https://agentresolver.vercel.app/mcp/control"' /tmp/server.json >/dev/null
-          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/integrations.json?$suffix" -o /tmp/integrations.json
-          jq -e '.mcp.url == "https://agentresolver.vercel.app/mcp/control" and .mcp.primaryTool == "procure"' /tmp/integrations.json >/dev/null
-          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/.well-known/agent-skills/index.json?$suffix" -o /tmp/skills.json
-          jq -e '[.skills[].name] | index("agentresolver-provider") != null and index("agentresolver-procurement") != null' /tmp/skills.json >/dev/null
+            if jq -e '
+                .providerEnrollment.bootstrap.url == "https://agentresolver.vercel.app/api/provider-bootstrap" and
+                .providerEnrollment.bootstrap.immediateProcurement.requestField == "providerOrigins" and
+                .attribution.signedReceipt.dedicatedSecret == "AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET" and
+                .attribution.signedReceipt.settlementTimestampSource == "independently verified Base block timestamp" and
+                .commercial.successFeeBps == 200
+              ' /tmp/provider-integration.json >/dev/null 2>&1 &&
+              jq -e '
+                .paths["/api/provider-bootstrap"].post.operationId == "bootstrapProviderDiscovery" and
+                .paths["/api/verified-resolve"].get.operationId == "verifiedResolveGet"
+              ' /tmp/openapi.json >/dev/null 2>&1 &&
+              jq -e '.remotes[0].url == "https://agentresolver.vercel.app/mcp/control"' /tmp/server.json >/dev/null 2>&1 &&
+              jq -e '.mcp.url == "https://agentresolver.vercel.app/mcp/control" and .mcp.primaryTool == "procure"' /tmp/integrations.json >/dev/null 2>&1 &&
+              jq -e '[.skills[].name] | index("agentresolver-provider") != null and index("agentresolver-procurement") != null' /tmp/skills.json >/dev/null 2>&1; then
+              static_ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$static_ready" != "1" ]; then
+            echo "::error::Promotion static contracts did not converge"
+            cat /tmp/provider-integration.json 2>/dev/null || true
+            cat /tmp/openapi.json 2>/dev/null || true
+            cat /tmp/server.json 2>/dev/null || true
+            cat /tmp/integrations.json 2>/dev/null || true
+            cat /tmp/skills.json 2>/dev/null || true
+            false
+          fi
 
           cdp_code="$(curl -sS -D /tmp/cdp-h -o /tmp/cdp-b -w '%{http_code}' \
             -H 'cache-control: no-cache' \
