@@ -66,6 +66,7 @@ test("one-shot release provisions the dedicated attribution signer before pullin
 
 test("release smoke requires current provider bootstrap, signed-attribution contract, and provider skill", () => {
   assert.match(workflow, /\/api\/provider-bootstrap/);
+  assert.match(workflow, /bootstrapProviderDiscovery/);
   assert.match(workflow, /AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET/);
   assert.match(workflow, /independently verified Base block timestamp/);
   assert.match(workflow, /providerOrigins/);
