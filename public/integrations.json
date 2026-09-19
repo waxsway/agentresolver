@@ -151,5 +151,26 @@
       "resource": "https://agentresolver.vercel.app/api/x402-payment-preflight",
       "registered": true
     }
+  },
+  "providerNetwork": {
+    "registry": "https://agentresolver.vercel.app/api/providers",
+    "execute": "https://agentresolver.vercel.app/api/execute",
+    "contract": "https://agentresolver.vercel.app/provider-integration.json",
+    "manifestPath": "/.well-known/agentresolver-provider.json",
+    "manifestExample": "https://agentresolver.vercel.app/provider-manifest.example.json",
+    "attributionHeader": "x-agentresolver-attribution-id",
+    "enrollment": "domain-controlled-well-known",
+    "accountRequired": false,
+    "reviewRequired": false,
+    "arbitraryProxying": false,
+    "callerSpendingAuthorized": false,
+    "providerFundedCommerce": {
+      "successFeeBps": 200,
+      "minimumSuccessFeeUsd": 0.001,
+      "buyerExtraFeeUsd": 0,
+      "conversionVerify": "https://agentresolver.vercel.app/api/provider-attribution-verify",
+      "feeQuote": "https://agentresolver.vercel.app/api/provider-success-fee-quote",
+      "feeVerify": "https://agentresolver.vercel.app/api/provider-success-fee-verify"
+    }
   }
 }
