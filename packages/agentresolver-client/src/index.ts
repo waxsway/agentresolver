@@ -12,6 +12,7 @@ export type ProcurementConstraints = {
 export type ProcurementRequest = {
   goal: string;
   limit?: number;
+  providerOrigins?: string[];
   constraints?: ProcurementConstraints;
 };
 
@@ -38,6 +39,7 @@ export type ProcurementResponse = {
   mode: "open_world_non_custodial_procurement";
   goal: string;
   constraints: ProcurementConstraints;
+  providerOrigins: string[];
   selected: ProcurementCandidate | null;
   candidates: ProcurementCandidate[];
   verification: {

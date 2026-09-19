@@ -37,7 +37,20 @@ Publishing the manifest is the provider's machine-readable opt-in to these terms
 
 ## 2. Be discoverable
 
-AgentResolver can recognize the manifest when the same provider route appears in a supported external capability catalog such as PayAI/Circle discovery.
+After publishing the manifest, call:
+
+```text
+POST https://agentresolver.vercel.app/api/provider-bootstrap
+Content-Type: application/json
+
+{"origin":"https://YOUR-DOMAIN"}
+```
+
+AgentResolver reads only the fixed well-known manifest, then live-verifies up to five listed same-origin x402 routes. A verified route can be used immediately in procurement by passing the returned origin in `providerOrigins`; no AgentResolver account, email, persistence, or operator review is required.
+
+The bootstrap response also prepares a direct caller-owned `POST https://402index.io/api/v1/register` action for each verified route. AgentResolver does **not** send that external registration. The provider or its agent sends it directly, and the external registry independently probes/reviews the route. Once accepted there, AgentResolver's existing 402 Index supply ingestion can discover the provider without the buyer already knowing its origin.
+
+AgentResolver can also recognize the manifest when the same provider route already appears in supported external capability catalogs such as PayAI, Circle discovery, or 402 Index.
 
 A compatible domain-enrolled candidate remains subject to the buyer's requested budget, network, protocol, and schema constraints. Provider-funded economics do not override hard buyer constraints.
 

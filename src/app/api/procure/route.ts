@@ -4,6 +4,7 @@ import type {
   ProcurementConstraints
 } from "@/lib/procurement";
 import { procureCapability } from "@/lib/procureCapability";
+import { normalizeProviderSeedOrigins } from "@/lib/providerBootstrap";
 import { classifyIntent } from "@/lib/telemetry";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
         query?: unknown;
         q?: unknown;
         limit?: unknown;
+        providerOrigins?: unknown;
         constraints?: {
           maxPriceUsd?: unknown;
           preferredNetworks?: unknown;
@@ -66,6 +68,38 @@ export async function POST(req: Request) {
   const limit = Number.isFinite(parsedLimit)
     ? Math.max(1, Math.min(Math.floor(parsedLimit), 20))
     : 5;
+
+  let providerOrigins: string[] = [];
+  if (body?.providerOrigins !== undefined) {
+    if (
+      !Array.isArray(body.providerOrigins) ||
+      !body.providerOrigins.every((value) => typeof value === "string")
+    ) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PROVIDER_ORIGINS",
+          message: "providerOrigins must be an array of public HTTPS origins."
+        },
+        { status: 400 }
+      );
+    }
+    try {
+      providerOrigins = normalizeProviderSeedOrigins(
+        body.providerOrigins as string[]
+      );
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PROVIDER_ORIGINS",
+          message:
+            error instanceof Error
+              ? error.message
+              : "providerOrigins is invalid."
+        },
+        { status: 400 }
+      );
+    }
+  }
 
   const raw = body?.constraints || {};
   const maxPriceUsd =
@@ -159,7 +193,13 @@ export async function POST(req: Request) {
     process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin
   ).replace(/\/$/, "");
 
-  const result = await procureCapability(goal, constraints, limit, baseUrl);
+  const result = await procureCapability(
+    goal,
+    constraints,
+    limit,
+    baseUrl,
+    { providerOrigins }
+  );
   const selected = result.selected;
   const traffic = classifyTraffic(req, {
     path: "/api/procure",
@@ -179,6 +219,7 @@ export async function POST(req: Request) {
       selectedProtocol: selected?.protocol || null,
       selectedPriceUsd: selected?.priceUsd ?? null,
       selectedStatus: selected?.status || null,
+      providerSeedCount: providerOrigins.length,
       unknownConstraintCount: selected?.unknownConstraints.length || 0,
       rejectedCount: result.candidates.filter(
         (candidate) => candidate.status === "rejected"
@@ -193,6 +234,7 @@ export async function POST(req: Request) {
       mode: "open_world_non_custodial_procurement",
       goal,
       constraints,
+      providerOrigins,
       selected,
       candidates: result.candidates,
       verification: result.verification,
@@ -228,8 +270,13 @@ export async function GET(req: Request) {
     ...url.searchParams.getAll("preferredNetwork")
   ].filter(Boolean);
 
+  const providerOrigins = url.searchParams
+    .getAll("providerOrigin")
+    .filter(Boolean);
+
   const body = {
     goal,
+    ...(providerOrigins.length > 0 ? { providerOrigins } : {}),
     ...(url.searchParams.get("limit")
       ? { limit: url.searchParams.get("limit") }
       : {}),

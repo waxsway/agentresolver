@@ -23,6 +23,10 @@ import { parseProviderLaunchCheckInput, runProviderLaunchCheck } from "@/lib/pro
 import { procureCapability } from "@/lib/procureCapability";
 import type { ProcurementConstraints } from "@/lib/procurement";
 import {
+  buildProviderBootstrap,
+  PROVIDER_BOOTSTRAP_MAX_ROUTES
+} from "@/lib/providerBootstrap";
+import {
   getActiveSponsor,
   logSponsorImpression,
   sponsorPublicPayload,
@@ -348,12 +352,51 @@ const handler = createMcpHandler(() => {
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
   });
 
+  server.registerTool("provider_bootstrap", {
+    title: "Bootstrap a domain-controlled provider",
+    description:
+      "Free zero-state provider onboarding. Reads the fixed AgentResolver well-known manifest on one HTTPS origin, live-verifies selected same-origin x402 payment identities, returns an immediate providerOrigins procurement seed, and prepares caller-owned durable 402 Index registration actions. AgentResolver does not persist provider state or send the external registration.",
+    inputSchema: z.object({
+      origin: z.string().url(),
+      routeIds: z
+        .array(z.string().min(1).max(100))
+        .max(PROVIDER_BOOTSTRAP_MAX_ROUTES)
+        .optional()
+    }),
+    annotations: {
+      title: "Bootstrap a domain-controlled provider",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true
+    }
+  }, async ({ origin, routeIds }) => {
+    const report = await buildProviderBootstrap({
+      origin,
+      ...(routeIds ? { routeIds } : {})
+    });
+    logToolCall("provider_bootstrap", {
+      providerId: report.provider.id,
+      checkedRouteCount: report.checkedRouteCount,
+      verifiedRouteCount: report.verifiedRoutes.length,
+      rejectedRouteCount: report.rejectedRoutes.length
+    });
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  });
+
   server.registerTool("procure", {
     title: "Procure a compatible capability",
     description: "Free open-world multi-protocol procurement. Declare the capability needed plus hard budget, network, protocol, schema, side-effect and auth constraints across x402, L402, MPP and MCP. AgentResolver rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a non-custodial execution/payment handoff without authorizing spend.",
     inputSchema: z.object({
       goal: z.string().min(1).max(1000),
       limit: z.number().int().min(1).max(20).optional(),
+      providerOrigins: z
+        .array(z.string().url())
+        .max(2)
+        .optional(),
       constraints: z.object({
         maxPriceUsd: z.number().min(0).max(1000).optional(),
         preferredNetworks: z.array(z.string().min(1).max(128)).max(8).optional(),
@@ -372,12 +415,13 @@ const handler = createMcpHandler(() => {
       idempotentHint: true,
       openWorldHint: true
     }
-  }, async ({ goal, limit, constraints }) => {
+  }, async ({ goal, limit, providerOrigins, constraints }) => {
     const result = await procureCapability(
       goal,
       (constraints || {}) as ProcurementConstraints,
       limit || 5,
-      CANONICAL
+      CANONICAL,
+      { providerOrigins }
     );
     logToolCall("procure", {
       goalHash: shortHash(goal),
@@ -387,7 +431,8 @@ const handler = createMcpHandler(() => {
       returnedCount: result.candidates.length,
       selectedSource: result.selected?.source || null,
       selectedStatus: result.selected?.status || null,
-      selectedPriceUsd: result.selected?.priceUsd ?? null
+      selectedPriceUsd: result.selected?.priceUsd ?? null,
+      providerSeedCount: providerOrigins?.length || 0
     });
     const output = {
       schemaVersion: 1,
@@ -395,6 +440,7 @@ const handler = createMcpHandler(() => {
       mode: "open_world_non_custodial_procurement",
       goal,
       constraints: constraints || {},
+      providerOrigins: providerOrigins || [],
       selected: result.selected,
       candidates: result.candidates,
       verification: result.verification,
@@ -863,6 +909,7 @@ const handler = createMcpHandler(() => {
     inputSchema: z.object({
       goal: z.string().min(1).max(1000),
       url: z.string().url().optional(),
+      providerOrigins: z.array(z.string().url()).max(2).optional(),
       constraints: z.object({
         maxPriceUsd: z.number().min(0).max(1000).optional(),
         preferredNetworks: z.array(z.string().min(1).max(128)).max(8).optional(),
@@ -874,9 +921,18 @@ const handler = createMcpHandler(() => {
         auth: z.enum(["none", "wallet", "api-key", "any"]).optional()
       }).optional()
     }), annotations: { title: verifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, createLazyPaidMcpTool<{ goal: string; url?: string; constraints?: ProcurementConstraints }>("verified-resolve", async ({ goal, url, constraints }) => {
-    logToolCall("verified_resolve", { goalHash: shortHash(goal), priceUsd: verifiedResolveProduct.priceUsd, mode: "direct_paid_mcp" });
-    const report = await verifiedResolve(goal, { url, constraints });
+  }, createLazyPaidMcpTool<{ goal: string; url?: string; providerOrigins?: string[]; constraints?: ProcurementConstraints }>("verified-resolve", async ({ goal, url, providerOrigins, constraints }) => {
+    logToolCall("verified_resolve", {
+      goalHash: shortHash(goal),
+      priceUsd: verifiedResolveProduct.priceUsd,
+      mode: "direct_paid_mcp",
+      providerSeedCount: providerOrigins?.length || 0
+    });
+    const report = await verifiedResolve(goal, {
+      url,
+      providerOrigins,
+      constraints
+    });
     console.log(JSON.stringify({
       event: "paid_capability_completed",
       capabilityId: "verified-resolve",

@@ -330,7 +330,7 @@
           "Paid Agent Capabilities"
         ],
         "summary": "Resolve a missing capability and live-verify top MCP candidates",
-        "description": "Price: $0.02 USDC on Base via x402. Resolves one capability, live-probes at most two top MCP candidates, and returns an evidence-backed recommendation.",
+        "description": "Price: $0.02 USDC on Base via x402. Resolves one capability, live-probes at most two top MCP candidates, and returns an evidence-backed recommendation. If free procurement used providerOrigins, pass the same origins here so paid verification checks the same supply universe.",
         "x-payment-info": {
           "price": {
             "mode": "fixed",
@@ -373,6 +373,17 @@
                     "type": "string",
                     "format": "uri",
                     "maxLength": 500
+                  },
+                  "providerOrigins": {
+                    "type": "array",
+                    "maxItems": 2,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "format": "uri",
+                      "pattern": "^https://[^/]+/?$"
+                    },
+                    "description": "Optional already-known provider origins to keep the paid verification universe aligned with the preceding free procurement call."
                   }
                 }
               },
@@ -542,7 +553,7 @@
           "Agent Capability Procurement"
         ],
         "summary": "Procure a compatible machine capability under hard constraints",
-        "description": "Free, read-only and non-custodial. Declare the capability needed plus budget/network/protocol/schema/side-effect/auth constraints. AgentResolver can procure across x402, L402, MPP, MCP and ordinary HTTPS capabilities, rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a direct execution/payment handoff. It never receives a private key or authorizes caller spend.",
+        "description": "Free, read-only and non-custodial. Declare the capability needed plus budget/network/protocol/schema/side-effect/auth constraints. AgentResolver can procure across x402, L402, MPP, MCP and ordinary HTTPS capabilities, rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a direct execution/payment handoff. It never receives a private key or authorizes caller spend. A caller may also seed at most two already-known provider origins; these are usable only after same-origin manifest and live x402 payment-identity verification.",
         "requestBody": {
           "required": true,
           "content": {
@@ -637,6 +648,17 @@
                     "minLength": 1,
                     "maxLength": 1000,
                     "description": "Alias for goal."
+                  },
+                  "providerOrigins": {
+                    "type": "array",
+                    "maxItems": 2,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "format": "uri",
+                      "pattern": "^https://[^/]+/?$"
+                    },
+                    "description": "Optional provider HTTPS origins already known to the caller. AgentResolver reads only the fixed /.well-known/agentresolver-provider.json manifest and live-verifies matching same-origin x402 routes before they can enter this procurement call."
                   }
                 }
               },
@@ -669,6 +691,7 @@
         "security": [],
         "x-agentresolver-supply-sources": [
           "AgentResolver owned capabilities",
+          "caller-seeded verified provider origins",
           "domain-enrolled providers",
           "402 Index",
           "PayAI",
@@ -780,6 +803,22 @@
               "type": "boolean",
               "default": true
             }
+          },
+          {
+            "name": "providerOrigin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "maxItems": 2,
+              "items": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "description": "Repeat up to twice to seed an already-known provider HTTPS origin. The fixed AgentResolver well-known manifest and listed route payment identity are live-verified before use."
           }
         ],
         "responses": {
@@ -1014,6 +1053,59 @@
           },
           "422": {
             "description": "Buyer settlement is verified but the exact provider fee transfer is not."
+          }
+        }
+      }
+    },
+    "/api/provider-bootstrap": {
+      "post": {
+        "operationId": "bootstrapProviderDiscovery",
+        "tags": [
+          "Provider Commerce"
+        ],
+        "summary": "Verify a provider origin and prepare immediate + durable discovery handoffs",
+        "description": "Free zero-state provider bootstrap. AgentResolver reads the fixed same-origin provider manifest, live-verifies up to five selected x402 routes, returns those routes for immediate providerOrigins-seeded procurement, and prepares caller-owned anonymous 402 Index registration actions for durable discovery. AgentResolver does not send the external registrations or persist provider state; the external registry may independently review registrations before listing them.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "origin"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "origin": {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^https://[^/]+/?$"
+                  },
+                  "routeIds": {
+                    "type": "array",
+                    "maxItems": 5,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "At least one provider route passed same-origin manifest and live x402 payment-identity verification; immediate procurement and caller-owned durable discovery handoffs returned."
+          },
+          "400": {
+            "description": "Invalid origin, manifest or route selection."
+          },
+          "422": {
+            "description": "Manifest parsed but no selected route passed live x402 payment-identity verification."
           }
         }
       }

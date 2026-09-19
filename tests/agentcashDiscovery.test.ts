@@ -57,6 +57,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.deepEqual(openapi.paths?.["/api/health"]?.get?.security, []);
   assert.deepEqual(openapi.paths?.["/api/providers"]?.get?.security, []);
   assert.deepEqual(openapi.paths?.["/api/provider-attribution-verify"]?.post?.security, []);
+  assert.deepEqual(openapi.paths?.["/api/provider-bootstrap"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/provider-success-fee-quote"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/provider-success-fee-verify"]?.post?.security, []);
 
@@ -76,6 +77,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
       "/api/prepayment-authorization-gate",
       "/api/procure",
       "/api/provider-attribution-verify",
+      "/api/provider-bootstrap",
       "/api/provider-success-fee-quote",
       "/api/provider-success-fee-verify",
       "/api/providers",

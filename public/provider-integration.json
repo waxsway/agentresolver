@@ -56,7 +56,25 @@
       "declaredPostRouteProbe": "empty-json-unpaid-post",
       "failureMode": "fail-closed"
     },
-    "schema": "https://agentresolver.vercel.app/provider-manifest.schema.json"
+    "schema": "https://agentresolver.vercel.app/provider-manifest.schema.json",
+    "bootstrap": {
+      "url": "https://agentresolver.vercel.app/api/provider-bootstrap",
+      "method": "POST",
+      "persistence": "none",
+      "maxRoutesPerCheck": 5,
+      "immediateProcurement": {
+        "requestField": "providerOrigins",
+        "maxOrigins": 2,
+        "availableBeforeExternalRegistryReview": true
+      },
+      "durableDiscovery": {
+        "registry": "402 Index",
+        "registrationSentByAgentResolver": false,
+        "callerExecutesRegistration": true,
+        "accountOrEmailRequiredByAgentResolver": false,
+        "externalRegistryReviewMayApply": true
+      }
+    }
   },
   "commercial": {
     "model": "provider-success-fee",
