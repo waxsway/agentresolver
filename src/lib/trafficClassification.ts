@@ -33,7 +33,10 @@ const DIRECTORY_UA = [
   "402index",
   "x402dash",
   "rokmcp",
-  "pulsefeed"
+  "pulsefeed",
+  "x402lens",
+  "402explorer",
+  "payai-bazaar"
 ];
 
 const LIVENESS_UA = [
@@ -42,6 +45,9 @@ const LIVENESS_UA = [
   "mcpbeat",
   "catalog-health",
   "mcp-checker",
+  "mcpcheckup",
+  "x402-radar-prober",
+  "agentprobe",
   "liveness",
   "health-check",
   "healthcheck",
