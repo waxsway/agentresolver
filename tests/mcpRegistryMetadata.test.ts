@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("MCP registry metadata leads with the paid Guard wedge", () => {
+test("MCP registry metadata leads with the procurement network", () => {
   const server = JSON.parse(readFileSync("server.json", "utf8"));
   assert.equal(server.name, "io.github.waxsway/agentresolver");
-  assert.equal(server.title, "AgentResolver Guard");
-  assert.equal(server.version, "0.1.4");
-  assert.match(server.description, /\$0\.001 USDC x402 verify-before-pay Guard/i);
-  assert.match(server.description, /free capability resolution/i);
+  assert.equal(server.title, "AgentResolver");
+  assert.equal(server.version, "0.2.0");
+  assert.match(server.description, /capability procurement/i);
+  assert.match(server.description, /provider routing/i);
   assert.equal(server.remotes?.[0]?.url, "https://agentresolver.vercel.app/mcp");
 });
 
