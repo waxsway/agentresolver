@@ -18,6 +18,12 @@ export type ProviderRoute = Readonly<{
     priceUsd: number;
     asset: "USDC";
     networks: string[];
+    paymentIdentity: Readonly<{
+      network: string;
+      asset: string;
+      payTo: string;
+      amountAtomic: string;
+    }> | null;
   }>;
   funding: Readonly<{
     model: "first-party-revenue" | "provider-success-fee";
@@ -41,6 +47,14 @@ type PartnerConfig = {
   network?: unknown;
   commissionUsd?: unknown;
   launchProof?: unknown;
+  paymentIdentity?: unknown;
+};
+
+type PaymentIdentityConfig = {
+  network?: unknown;
+  asset?: unknown;
+  payTo?: unknown;
+  amountAtomic?: unknown;
 };
 
 type LaunchProof = {
@@ -88,7 +102,8 @@ function firstPartyRoutes(): ProviderRoute[] {
         url: CANONICAL_ORIGIN + product.endpoint,
         priceUsd: product.priceUsd,
         asset: "USDC" as const,
-        networks: [BASE, SOLANA]
+        networks: [BASE, SOLANA],
+        paymentIdentity: null
       },
       funding: {
         model: "first-party-revenue" as const,
@@ -127,6 +142,17 @@ function validLaunchProof(value: unknown) {
   );
 }
 
+function parsePaymentIdentity(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const identity = value as PaymentIdentityConfig;
+  const network = text(identity.network, 120);
+  const asset = text(identity.asset, 128);
+  const payTo = text(identity.payTo, 128);
+  const amountAtomic = text(identity.amountAtomic, 78);
+  if (!network || !asset || !payTo || !/^[0-9]+$/.test(amountAtomic)) return null;
+  return { network, asset, payTo, amountAtomic };
+}
+
 function parsePartnerRoutes(parsed: unknown, requireLaunchProof = false): ProviderRoute[] {
   if (!Array.isArray(parsed)) return [];
 
@@ -145,6 +171,7 @@ function parsePartnerRoutes(parsed: unknown, requireLaunchProof = false): Provid
     const priceUsd = Number(config.priceUsd);
     const network = text(config.network, 120) || BASE;
     const commissionUsd = Number(config.commissionUsd);
+    const paymentIdentity = parsePaymentIdentity(config.paymentIdentity);
 
     if (
       !routeId ||
@@ -185,13 +212,16 @@ function parsePartnerRoutes(parsed: unknown, requireLaunchProof = false): Provid
         url: endpoint,
         priceUsd,
         asset: "USDC",
-        networks: [network]
+        networks: [network],
+        paymentIdentity
       },
       funding: {
         model: "provider-success-fee",
         feeUsd: 0.001,
         settlementEndpoint: PROVIDER_SETTLEMENT,
-        dueWhen: "after_provider_reports_the_attributed_request_as_fulfilled"
+        dueWhen: paymentIdentity
+          ? "after_agentresolver_verifies_the_underlying_buyer_settlement"
+          : "after_provider_reports_the_attributed_request_as_fulfilled"
       }
     });
   }
@@ -292,10 +322,10 @@ export function providerNetworkSnapshot(
       status: "pilot_open",
       feeModel: "provider_success_fee",
       feeUsd: 0.001,
-      trigger: "provider-reported fulfilled attribution",
+      trigger: "verified buyer settlement when provider payment identity is registered; legacy provider-reported fulfillment otherwise",
       settlement: baseUrl.replace(/\/$/, "") + "/api/provider-attribution-settle",
       proofScope:
-        "A successful x402 settlement proves the provider paid AgentResolver's attribution fee. It does not by itself prove the underlying buyer transaction or fulfillment."
+        "For routes with a registered Base-USDC payment identity, AgentResolver can independently verify the underlying buyer settlement before the provider pays the success fee. Attribution IDs remain provider-asserted until cryptographically signed handoff receipts are introduced."
     },
     routing: {
       resolve: baseUrl.replace(/\/$/, "") + "/api/resolve",
