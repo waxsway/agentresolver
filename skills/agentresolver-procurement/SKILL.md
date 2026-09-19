@@ -1,6 +1,6 @@
 ---
 name: agentresolver-procurement
-description: Find and select an external machine capability when the agent does not already have a suitable tool. Use for constrained API, MCP, or x402 procurement by goal, budget, network, protocol, schema, side-effect, or auth requirements while keeping wallet custody and spending authority with the caller.
+description: Find and select an external machine capability when the agent does not already have a suitable tool. Use for constrained API, MCP, x402, L402, or MPP procurement by goal, budget, network, protocol, schema, side-effect, or auth requirements while keeping wallet custody and spending authority with the caller.
 license: MIT
 ---
 
@@ -57,7 +57,7 @@ Procurement itself is free and does not authorize spending.
 4. If `selected` is null, do not invent a provider.
 5. Never use a candidate with `status === "rejected"`.
 6. Treat `eligible_with_unknowns` as unresolved evidence, not as verified compatibility.
-7. If live verification is worth paying for, the response may include a separate AgentResolver paid verification action. The caller must independently authorize that fee.
+7. If live verification is worth paying for, the response may include the $0.02 Verified Resolve action with the same hard constraints preserved. The caller must independently authorize that fee.
 8. Execute the selected provider directly using the caller-owned client, signer, auth material, and spend policy.
 
 ## Provider attribution handoff

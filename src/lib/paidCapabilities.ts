@@ -466,16 +466,29 @@ export const PAID_CAPABILITIES = {
     price: "$0.02",
     priceUsd: 0.02,
     atomicAmount: "20000",
-    description: "Resolve one missing capability and perform up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates before returning evidence-backed selection data.",
-    useWhen: "Discovery returns external candidates but stale, dead, MCP-incompatible, or non-payment-ready endpoints would make a blind selection costly.",
+    description: "Procure one missing capability across AgentResolver, domain-enrolled providers, 402 Index, PayAI, Circle and MCP, then perform up to two unpaid live verification probes against supported MCP/x402 candidates before returning evidence-backed selection data. L402 and MPP remain discovery-only until protocol-specific live verifiers exist.",
+    useWhen: "Free procurement returns external candidates but stale, dead, MCP-incompatible, payment-contract-drifted, or otherwise unverified endpoints would make a blind selection costly.",
     costClass: "bounded-network",
-    tags: ["capability", "discovery", "mcp", "http", "x402", "verification", "selection"],
-    inputSchema: { type: "object", required: ["goal"], additionalProperties: false, properties: { goal: { type: "string", minLength: 1, maxLength: 600 }, url: { type: "string", pattern: "^https://", maxLength: 500 } } },
-    example: { goal: "Find and verify an MCP server for web search" },
+    tags: ["capability", "procurement", "mcp", "x402", "l402", "mpp", "verification", "selection"],
+    inputSchema: {
+      type: "object",
+      required: ["goal"],
+      additionalProperties: false,
+      properties: {
+        goal: { type: "string", minLength: 1, maxLength: 600 },
+        url: { type: "string", pattern: "^https://", maxLength: 500 },
+        constraints: {
+          type: "object",
+          additionalProperties: true,
+          description: "Optional procurement constraints carried through from free /api/procure, including maxPriceUsd, preferredNetworks, protocol, JSON-schema requirements, sideEffect, auth and requireHttps."
+        }
+      }
+    },
+    example: { goal: "Find and verify a paid web search service", constraints: { maxPriceUsd: 0.05, protocol: "x402", preferredNetworks: ["eip155:8453"] } },
     quoteTool: {
       name: "verified_resolve",
       title: "Live verified resolve — $0.02",
-      description: "Paid $0.02 USDC on Base or Solana capability resolution plus up to two unpaid live verification probes across top MCP and x402/HTTP marketplace candidates. x402-aware MCP clients can authorize and settle inside this tool call."
+      description: "Paid $0.02 USDC on Base or Solana procurement plus up to two unpaid live verification probes across the same open-world candidate universe used by free procurement. Live verification currently covers MCP and x402; L402/MPP are labeled discovery-only. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
   "batch-verified-resolve": {

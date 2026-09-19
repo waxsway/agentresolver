@@ -16,7 +16,7 @@ export async function batchVerifiedResolve(items: BatchVerifiedResolveInput[]) {
   const results = await Promise.all(
     safeItems.map(async (item) => {
       const started = Date.now();
-      const report = await verifiedResolve(item.goal, item.url);
+      const report = await verifiedResolve(item.goal, { url: item.url });
       return {
         ...report,
         durationMs: Date.now() - started

@@ -31,7 +31,7 @@ const handler = createMcpHandler(() => {
     {
       title: "Procure a compatible capability",
       description:
-        "Find an external API, MCP server, x402 service, or registered provider that satisfies explicit hard constraints. Returns ranked candidates, deterministic rejection reasons, unknown-evidence flags, and a direct non-custodial execution/payment handoff. Free and never authorizes spend.",
+        "Find an external API, MCP server, x402/L402/MPP service, or registered provider that satisfies explicit hard constraints. Returns ranked candidates, deterministic rejection reasons, unknown-evidence flags, and a direct non-custodial execution/payment handoff. Free and never authorizes spend.",
       inputSchema: z.object({
         goal: z
           .string()
@@ -59,7 +59,7 @@ const handler = createMcpHandler(() => {
               .optional()
               .describe("Allowed or preferred payment networks, for example eip155:8453."),
             protocol: z
-              .enum(["x402", "mcp", "any"])
+              .enum(["x402", "l402", "mpp", "mcp", "any"])
               .optional()
               .describe("Required provider protocol. Use any when protocol is not a hard constraint."),
             requireHttps: z

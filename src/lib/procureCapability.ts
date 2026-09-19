@@ -463,7 +463,7 @@ export type ProcurementResult = {
       networks: [typeof BASE, typeof SOLANA];
       protocol: "x402";
       spendingAuthorizationRequired: true;
-      input: { goal: string };
+      input: { goal: string; constraints: ProcurementConstraints };
     };
   };
 };
@@ -546,7 +546,7 @@ export async function procureCapability(
               networks: [BASE, SOLANA],
               protocol: "x402",
               spendingAuthorizationRequired: true,
-              input: { goal }
+              input: { goal, constraints }
             }
           }
         : {

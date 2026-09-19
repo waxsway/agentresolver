@@ -6,7 +6,7 @@ AgentResolver Guard is the repeat-use pre-payment check for autonomous x402 buye
 
 1. About to pay an unfamiliar or changed x402 endpoint: call `payment_guard` or GET `/api/payment-guard`.
 2. Need the cheapest end-to-end x402 wallet/facilitator/settlement test: use `x402_ping` / `/api/x402-ping`.
-3. Unknown external capability: call `resolve` for free.
+3. Unknown external capability: call `procure` for free when budget/network/protocol/schema constraints matter; use `resolve` only for broad discovery.
 4. One known MCP endpoint needs current liveness/compatibility evidence: use `mcp_preflight`.
 5. Need an evidence-backed choice among candidates: use `verified_resolve`.
 6. Need 2–4 capability decisions together: use `batch_verified_resolve`.
@@ -66,7 +66,7 @@ Registry:
 
 Important tools:
 - `payment_guard` — $0.001 Guard check before x402 spend.
-- `resolve` — free discovery.
+- `procure` — free constrained open-world procurement across x402/L402/MPP/MCP.\n- `resolve` — free broad discovery.
 - `x402_ping` — $0.001 settlement canary.
 - `mcp_preflight` — $0.001 MCP live check.
 - `agent_readiness` — $0.005 site audit.
