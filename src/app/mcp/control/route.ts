@@ -4,21 +4,18 @@ import { resolveGoal } from "@/lib/resolver";
 import { resolveProviderRoutes } from "@/lib/providerNetwork";
 import { procureCapability } from "@/lib/procureCapability";
 import type { ProcurementConstraints } from "@/lib/procurement";
-import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/telemetry";
+import { classifyIntent, shortHash } from "@/lib/telemetry";
 
 const CANONICAL = "https://agentresolver.vercel.app";
 
-function logToolCall(tool: string, req: Request | null, extra: Record<string, unknown> = {}) {
+function logToolCall(tool: string, extra: Record<string, unknown> = {}) {
   console.log(JSON.stringify({
     event: "mcp_control_tool_call",
     tool,
     at: new Date().toISOString(),
-    ...(req ? { callerHash: callerHash(req), userAgent: safeUserAgent(req) } : {}),
     ...extra
   }));
 }
-
-let activeRequest: Request | null = null;
 
 const handler = createMcpHandler(() => {
   const server = new McpServer(
@@ -105,7 +102,7 @@ const handler = createMcpHandler(() => {
         CANONICAL
       );
 
-      logToolCall("procure", activeRequest, {
+      logToolCall("procure", {
         goalHash: shortHash(goal),
         goalLength: goal.length,
         intentTags: classifyIntent(goal),
@@ -189,7 +186,7 @@ const handler = createMcpHandler(() => {
         Promise.resolve(resolveProviderRoutes(goal, Math.min(safeLimit, 5)))
       ]);
 
-      logToolCall("resolve", activeRequest, {
+      logToolCall("resolve", {
         goalHash: shortHash(goal),
         goalLength: goal.length,
         intentTags: classifyIntent(goal),
@@ -232,12 +229,7 @@ const handler = createMcpHandler(() => {
 });
 
 export async function POST(req: Request) {
-  activeRequest = req;
-  try {
-    return await handler.fetch(req);
-  } finally {
-    activeRequest = null;
-  }
+  return handler.fetch(req);
 }
 
 export async function GET(req: Request) {
