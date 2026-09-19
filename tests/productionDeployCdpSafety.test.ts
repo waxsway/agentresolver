@@ -4,9 +4,9 @@ import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
 
-test("automatic production deploy is hard-disabled after the one-shot provider-network release", () => {
-  assert.match(workflow, /hard-disabled after the one-shot/);
-  assert.match(workflow, /false &&/);
+test("production deploy is one-shot re-armed for the lean MCP control-plane release", () => {
+  assert.match(workflow, /One-shot re-arm for the lean MCP control-plane release/);
+  assert.match(workflow, /true &&/);
   assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(workflow, /github\.event\.workflow_run\.head_branch == 'main'/);
   assert.match(workflow, /PROVIDER_NETWORK_PRODUCTION_SMOKE=true/);
@@ -14,6 +14,8 @@ test("automatic production deploy is hard-disabled after the one-shot provider-n
   assert.match(workflow, /\/api\/providers/);
   assert.match(workflow, /provider-success-fee-quote/);
   assert.match(workflow, /provider-success-fee-verify/);
+  assert.match(workflow, /MCP_CONTROL_PRODUCTION_SMOKE=true/);
+  assert.match(workflow, /\/mcp\/control/);
 });
 
 test("production deploy uses the proven prebuilt path and verifies the isolated CDP canary", () => {
@@ -25,20 +27,20 @@ test("production deploy uses the proven prebuilt path and verifies the isolated 
   assert.match(workflow, /CDP_PRODUCTION_SMOKE=true/);
 });
 
-test("failed production smoke restores the known-good procurement deployment without rebuilding", () => {
+test("failed production smoke restores the known-good provider-network deployment without rebuilding", () => {
   assert.match(workflow, /if: failure\(\) && steps\.production_deploy\.outcome != 'skipped'/);
-  assert.match(workflow, /HEALTHY_DEPLOYMENT_ID: dpl_7f6Up6NZNjjRWUeYFrf3u7sKA8UQ/);
-  assert.match(workflow, /HEALTHY_SHA: fe1f69b03fa03e845a516e745772383d46da71d2/);
+  assert.match(workflow, /HEALTHY_DEPLOYMENT_ID: dpl_Hh3SU83Ee4bS4a23eftmovdbDhks/);
+  assert.match(workflow, /HEALTHY_SHA: 2d3175cfc983ecf27503d28adba9db936c5b8e5a/);
   assert.match(workflow, /\/v2\/deployments\/\$HEALTHY_DEPLOYMENT_ID\/aliases\?teamId=\$VERCEL_ORG_ID/);
   assert.match(workflow, /ROLLBACK_RESTORED_KNOWN_GOOD_CDP=true/);
 });
 
-test("provider-network smoke reads the live provider contract and rollback preserves procurement", () => {
+test("provider-network smoke reads the live provider contract and rollback preserves provider network", () => {
   assert.match(workflow, /\.sellerMonetization\.successFeeBps == 200/);
   assert.match(workflow, /\.sellerMonetization\.minimumSuccessFeeUsd == 0\.001/);
   assert.match(workflow, /\.sellerMonetization\.buyerExtraFeeUsd == 0/);
   assert.match(workflow, /\.domainEnrollment\.status == "open"/);
   assert.match(workflow, /\.domainEnrollment\.operatorReviewRequired == false/);
-  assert.match(workflow, /HEALTHY_DEPLOYMENT_ID: dpl_7f6Up6NZNjjRWUeYFrf3u7sKA8UQ/);
-  assert.match(workflow, /HEALTHY_SHA: fe1f69b03fa03e845a516e745772383d46da71d2/);
+  assert.match(workflow, /HEALTHY_DEPLOYMENT_ID: dpl_Hh3SU83Ee4bS4a23eftmovdbDhks/);
+  assert.match(workflow, /HEALTHY_SHA: 2d3175cfc983ecf27503d28adba9db936c5b8e5a/);
 });
