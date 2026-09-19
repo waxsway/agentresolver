@@ -3,11 +3,16 @@ import {
   procureCapability,
   type ProcurementResult
 } from "@/lib/procureCapability";
-import type {
-  ProcurementConstraints,
-  ProcurementEvaluation
+import {
+  evaluateProcurementSemanticEvidence,
+  type ProcurementConstraints,
+  type ProcurementEvaluation
 } from "@/lib/procurement";
-import { probeMcpEndpoint } from "@/lib/mcpProbe";
+import { evaluateToolContract } from "@/lib/toolContract";
+import {
+  probeMcpEndpoint,
+  type McpToolEvidence
+} from "@/lib/mcpProbe";
 import {
   probeX402Resource,
   type MarketplaceProbeReport
@@ -26,6 +31,11 @@ type McpVerification = {
   latencyMs: number | null;
   toolCount: number | null;
   toolNames: string[];
+  toolEvidence: McpToolEvidence[];
+  semanticMatch: ReturnType<typeof evaluateProcurementSemanticEvidence>;
+  resolvedUnknownConstraints: string[];
+  remainingUnknownConstraints: string[];
+  contractProven: boolean;
   serverName: string | null;
   serverVersion: string | null;
   confidence: number;
@@ -166,12 +176,96 @@ function probePriority(
     .slice(0, MAX_LIVE_PROBES);
 }
 
+function liveToolMatchesContracts(
+  tool: McpToolEvidence,
+  constraints: ProcurementConstraints
+) {
+  const inputMatches =
+    !constraints.availableInputSchema ||
+    (tool.inputSchema !== null &&
+      evaluateToolContract(
+        constraints.availableInputSchema,
+        tool.inputSchema
+      ).verdict !== "incompatible");
+
+  const outputMatches =
+    !constraints.requiredOutputSchema ||
+    (tool.outputSchema !== null &&
+      evaluateToolContract(
+        tool.outputSchema,
+        constraints.requiredOutputSchema
+      ).verdict !== "incompatible");
+
+  const sideEffectMatches =
+    !constraints.sideEffect ||
+    constraints.sideEffect === "any" ||
+    (constraints.sideEffect === "read-only" &&
+      tool.annotations?.readOnlyHint === true) ||
+    (constraints.sideEffect === "state-changing" &&
+      tool.annotations?.readOnlyHint === false);
+
+  return { inputMatches, outputMatches, sideEffectMatches };
+}
+
 async function verifyMcpCandidate(
-  candidate: ProcurementEvaluation
+  candidate: ProcurementEvaluation,
+  goal: string,
+  constraints: ProcurementConstraints
 ): Promise<McpVerification> {
   const endpoint = candidate.endpoint as string;
   try {
     const report = await probeMcpEndpoint(endpoint);
+    const toolEvidence = report.tools.items.slice(0, 20);
+    const liveEvidenceText = toolEvidence
+      .map((tool) => `${tool.name} ${tool.description || ""}`)
+      .join(" ");
+    const semanticMatch = evaluateProcurementSemanticEvidence(
+      goal,
+      candidate,
+      liveEvidenceText
+    );
+
+    const remaining = new Set(candidate.unknownConstraints);
+    const resolved: string[] = [];
+
+    if (semanticMatch?.proven && remaining.delete("semantic_capability")) {
+      resolved.push("semantic_capability");
+    }
+
+    const matchingTools = toolEvidence.filter((tool) => {
+      const checks = liveToolMatchesContracts(tool, constraints);
+      return checks.inputMatches && checks.outputMatches && checks.sideEffectMatches;
+    });
+
+    if (
+      constraints.availableInputSchema &&
+      matchingTools.some((tool) => tool.inputSchema !== null) &&
+      remaining.delete("input_contract")
+    ) {
+      resolved.push("input_contract");
+    }
+    if (
+      constraints.requiredOutputSchema &&
+      matchingTools.some((tool) => tool.outputSchema !== null) &&
+      remaining.delete("output_contract")
+    ) {
+      resolved.push("output_contract");
+    }
+    if (
+      constraints.sideEffect &&
+      constraints.sideEffect !== "any" &&
+      matchingTools.some((tool) => tool.annotations?.readOnlyHint !== undefined) &&
+      remaining.delete("side_effect")
+    ) {
+      resolved.push("side_effect");
+    }
+
+    const remainingUnknownConstraints = [...remaining];
+    const contractProven =
+      report.mcpCompatible &&
+      Boolean(semanticMatch?.proven ?? true) &&
+      remainingUnknownConstraints.length === 0;
+
     return {
       candidateId: candidate.id,
       protocol: "mcp",
@@ -183,9 +277,14 @@ async function verifyMcpCandidate(
       latencyMs: report.initialize.latencyMs,
       toolCount: report.tools.count,
       toolNames: report.tools.names.slice(0, 20),
+      toolEvidence,
+      semanticMatch,
+      resolvedUnknownConstraints: resolved,
+      remainingUnknownConstraints,
+      contractProven,
       serverName: report.initialize.serverName,
       serverVersion: report.initialize.serverVersion,
-      confidence: report.mcpCompatible ? 1 : report.reachable ? 0.5 : 0
+      confidence: contractProven ? 1 : report.mcpCompatible ? 0.6 : report.reachable ? 0.3 : 0
     };
   } catch (error) {
     return {
@@ -199,6 +298,11 @@ async function verifyMcpCandidate(
       latencyMs: null,
       toolCount: null,
       toolNames: [],
+      toolEvidence: [],
+      semanticMatch: candidate.semanticMatch,
+      resolvedUnknownConstraints: [],
+      remainingUnknownConstraints: [...candidate.unknownConstraints],
+      contractProven: false,
       serverName: null,
       serverVersion: null,
       confidence: 0,
@@ -256,7 +360,7 @@ export async function verifiedResolve(
   const live = await Promise.all(
     toProbe.map((candidate) =>
       candidate.protocol === "mcp"
-        ? verifyMcpCandidate(candidate)
+        ? verifyMcpCandidate(candidate, procurementGoal, constraints)
         : verifyX402Candidate(candidate)
     )
   );
@@ -292,7 +396,10 @@ export async function verifiedResolve(
   const verifiedX402 = liveMarketplaceVerification.find(
     (item) => item.x402Compatible && item.contractMatchesCatalog
   );
-  const verifiedMcp = liveMcpVerification.find((item) => item.mcpCompatible);
+  const verifiedMcp = liveMcpVerification.find((item) => item.contractProven);
+  const unprovenLiveMcp = liveMcpVerification.find(
+    (item) => item.mcpCompatible && !item.contractProven
+  );
 
   const recommendation = selectedLive
     ? selectedLive.protocol === "x402"
@@ -312,21 +419,30 @@ export async function verifiedResolve(
             reason:
               "The selected x402 candidate did not produce a live payment challenge matching its procurement contract."
           }
-      : selectedLive.mcpCompatible
+      : selectedLive.contractProven
         ? {
             type: "verified-mcp-procurement" as const,
             candidateId: selectedLive.candidateId,
             endpoint: selectedLive.endpoint,
             reason:
-              "The selected procurement candidate completed a live MCP initialize + tools/list verification."
+              "The selected MCP candidate completed live protocol verification and the live tool metadata proved the requested contract."
           }
-        : {
-            type: "selected-candidate-verification-failed" as const,
-            candidateId: selectedLive.candidateId,
-            endpoint: selectedLive.endpoint,
-            reason:
-              "The selected MCP candidate did not complete live protocol verification."
-          }
+        : selectedLive.mcpCompatible
+          ? {
+              type: "mcp-live-contract-unproven" as const,
+              candidateId: selectedLive.candidateId,
+              endpoint: selectedLive.endpoint,
+              remainingUnknownConstraints: selectedLive.remainingUnknownConstraints,
+              reason:
+                "The MCP endpoint is live, but its tool metadata does not prove every requested contract property."
+            }
+          : {
+              type: "selected-candidate-verification-failed" as const,
+              candidateId: selectedLive.candidateId,
+              endpoint: selectedLive.endpoint,
+              reason:
+                "The selected MCP candidate did not complete live protocol verification."
+            }
     : procurement.selected?.protocol === "l402" ||
         procurement.selected?.protocol === "mpp"
       ? {
@@ -352,9 +468,19 @@ export async function verifiedResolve(
               candidateId: verifiedMcp.candidateId,
               endpoint: verifiedMcp.endpoint,
               reason:
-                "A top procured MCP candidate completed live initialize + tools/list verification."
+                "A top procured MCP candidate completed live protocol verification and its live tool metadata proved the requested contract."
             }
-          : procurement.selected
+          : unprovenLiveMcp
+            ? {
+                type: "mcp-live-contract-unproven" as const,
+                candidateId: unprovenLiveMcp.candidateId,
+                endpoint: unprovenLiveMcp.endpoint,
+                remainingUnknownConstraints:
+                  unprovenLiveMcp.remainingUnknownConstraints,
+                reason:
+                  "A top MCP candidate is live, but its tool metadata does not prove every requested contract property."
+              }
+            : procurement.selected
             ? {
                 type: "procurement-only" as const,
                 candidateId: procurement.selected.id,
@@ -382,7 +508,7 @@ export async function verifiedResolve(
       callerSpendingAuthorized: false,
       targetPaymentSubmitted: false,
       note:
-        "This operation performs at most two unpaid live probes against top procurement candidates. It never authorizes or submits a target payment. L402 and MPP candidates remain discovery/ranking-only until protocol-specific live verifiers are implemented."
+        "This operation performs at most two unpaid live probes against top procurement candidates. MCP verification retains bounded live tool names, descriptions, schemas, and annotations and does not upgrade a candidate unless remaining contract unknowns are proven. It never authorizes or submits a target payment. L402 and MPP candidates remain discovery/ranking-only until protocol-specific live verifiers are implemented."
     },
     liveVerification: live,
     liveMcpVerification,

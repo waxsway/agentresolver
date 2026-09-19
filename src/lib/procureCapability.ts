@@ -691,6 +691,27 @@ export type ProcurementOptions = {
   providerOrigins?: string[];
 };
 
+function verifierCanResolveUnknowns(
+  candidate: ReturnType<typeof rankProcurementCandidates>[number]
+) {
+  if (candidate.status !== "eligible_with_unknowns") return false;
+  const supported =
+    candidate.protocol === "mcp"
+      ? new Set([
+          "semantic_capability",
+          "input_contract",
+          "output_contract",
+          "side_effect"
+        ])
+      : candidate.protocol === "x402"
+        ? new Set(["price", "network"])
+        : new Set<string>();
+  return (
+    supported.size > 0 &&
+    candidate.unknownConstraints.every((unknown) => supported.has(unknown))
+  );
+}
+
 export async function procureCapability(
   goal: string,
   constraints: ProcurementConstraints,
@@ -746,10 +767,22 @@ export async function procureCapability(
   const evaluated = rankProcurementCandidates(
     candidates,
     constraints,
-    safeLimit
+    safeLimit,
+    goal
   );
   const selectedRaw =
-    evaluated.find((candidate) => candidate.status !== "rejected") || null;
+    evaluated.find((candidate) => candidate.status === "eligible") || null;
+  const verificationTarget =
+    selectedRaw ||
+    evaluated.find(
+      (candidate) =>
+        candidate.status === "eligible_with_unknowns" &&
+        verifierCanResolveUnknowns(candidate)
+    ) ||
+    null;
+  const unresolvedTarget =
+    evaluated.find((candidate) => candidate.status === "eligible_with_unknowns") ||
+    null;
   const selected = selectedRaw
     ? attachProcurementAttribution(selectedRaw, baseUrl)
     : null;
@@ -764,11 +797,11 @@ export async function procureCapability(
     candidates: returnedCandidates,
     candidateCount: candidates.length,
     verification:
-      selected?.status === "eligible_with_unknowns"
+      !selected && verificationTarget?.status === "eligible_with_unknowns"
         ? {
             recommended: true,
             reason:
-              "The best candidate satisfies known hard constraints but one or more requested contract properties are not proven by catalog metadata.",
+              "No candidate is selected because the best surviving candidate still has unproven contract properties. Verify before execution.",
             paidAction: {
               method: "POST",
               url: `${baseUrl}/api/verified-resolve`,
@@ -790,7 +823,9 @@ export async function procureCapability(
             recommended: false,
             reason: selected
               ? "The selected candidate satisfies every constraint AgentResolver can currently prove from available metadata."
-              : "No candidate survived the requested hard constraints."
+              : unresolvedTarget
+                ? "No candidate is selected because one or more required properties remain unproven, and the current live verifier cannot prove all of them."
+                : "No candidate survived the requested hard constraints."
           }
   };
 }
