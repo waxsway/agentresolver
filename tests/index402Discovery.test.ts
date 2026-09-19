@@ -56,10 +56,10 @@ test("402 Index normalizer represents x402, L402, and MPP without collapsing rai
 
 test("402 Index discovery requests only verified bounded results and forwards budget/protocol", async () => {
   const originalFetch = globalThis.fetch;
-  let requested: URL | null = null;
+  let requestedUrl = "";
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
-    requested = new URL(String(input));
+    requestedUrl = String(input);
     return new Response(JSON.stringify({
       services: [
         {
@@ -93,10 +93,11 @@ test("402 Index discovery requests only verified bounded results and forwards bu
 
     assert.equal(results.length, 1);
     assert.equal(results[0]?.resource, "https://verified.example/search");
-    assert.equal(requested?.searchParams.get("verified"), "true");
-    assert.equal(requested?.searchParams.get("max_price_usd"), "0.01");
-    assert.equal(requested?.searchParams.get("protocol"), "x402");
-    assert.equal(requested?.searchParams.get("limit"), "10");
+    const requested = new URL(requestedUrl);
+    assert.equal(requested.searchParams.get("verified"), "true");
+    assert.equal(requested.searchParams.get("max_price_usd"), "0.01");
+    assert.equal(requested.searchParams.get("protocol"), "x402");
+    assert.equal(requested.searchParams.get("limit"), "10");
   } finally {
     globalThis.fetch = originalFetch;
   }
