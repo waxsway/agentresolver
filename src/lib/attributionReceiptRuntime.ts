@@ -16,6 +16,10 @@ type ReceiptInput = Omit<
   "schemaVersion" | "issuedAt" | "expiresAt"
 >;
 
+type ReceiptExpectation = Omit<ReceiptInput, "inputFingerprint"> & {
+  inputFingerprint?: string | null;
+};
+
 function secretFromEnv(env: Env) {
   const value = env[ATTRIBUTION_SIGNING_SECRET_ENV]?.trim();
   return value && Buffer.byteLength(value, "utf8") >= 32 ? value : null;
@@ -38,7 +42,7 @@ export function issueAttributionReceipt(
 
 export function verifyAttributionReceipt(
   receipt: string,
-  expected: ReceiptInput,
+  expected: ReceiptExpectation,
   env: Env = process.env
 ) {
   const secret = secretFromEnv(env);
@@ -75,7 +79,8 @@ export function verifyAttributionReceipt(
     actual.execute.payTo?.toLowerCase() ===
       expected.execute.payTo?.toLowerCase() &&
     actual.execute.amountAtomic === expected.execute.amountAtomic &&
-    actual.inputFingerprint === expected.inputFingerprint;
+    (expected.inputFingerprint === undefined ||
+      actual.inputFingerprint === expected.inputFingerprint);
 
   return exact
     ? {
