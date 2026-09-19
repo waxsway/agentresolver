@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     : undefined;
 
   const protocol =
-    raw.protocol === "x402" || raw.protocol === "mcp" || raw.protocol === "any"
+    raw.protocol === "x402" || raw.protocol === "l402" || raw.protocol === "mpp" || raw.protocol === "mcp" || raw.protocol === "any"
       ? raw.protocol
       : undefined;
 
