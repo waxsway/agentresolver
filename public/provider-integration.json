@@ -1,60 +1,63 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "AgentResolver Provider Network",
-  "resolve": {
+  "procurement": {
     "method": "POST",
-    "url": "https://agentresolver.vercel.app/api/resolve"
-  },
-  "route": {
-    "method": "POST",
-    "url": "https://agentresolver.vercel.app/api/execute",
-    "bodyExample": {
-      "routeId": "agentresolver:x402-ping",
-      "input": {
-        "echo": "hello"
-      }
-    }
+    "url": "https://agentresolver.vercel.app/api/procure",
+    "priceUsd": 0,
+    "buyerAccountRequired": false
   },
   "attribution": {
     "header": "x-agentresolver-attribution-id",
     "format": "atr_<uuid-v4>",
+    "generatedBy": "AgentResolver procurement handoff",
     "rawGoalsStored": false,
     "rawIpStored": false
   },
-  "providerFundedPilot": {
-    "feeUsd": 0.001,
-    "asset": "USDC",
-    "protocol": "x402",
-    "settlement": "https://agentresolver.vercel.app/api/provider-attribution-settle",
-    "trigger": "provider-reported fulfilled attribution",
-    "proofScope": "provider-paid AgentResolver attribution fee; underlying buyer transaction is not independently proven by this receipt alone"
+  "providerEnrollment": {
+    "mode": "domain-controlled-well-known",
+    "manifestPath": "/.well-known/agentresolver-provider.json",
+    "reviewRequired": false,
+    "persistenceRequired": false,
+    "sameOriginRoutesOnly": true,
+    "supportedSettlementNetwork": "eip155:8453",
+    "supportedAsset": "Base USDC",
+    "example": "https://agentresolver.vercel.app/provider-manifest.example.json",
+    "docs": "https://agentresolver.vercel.app/provider-onboarding.md",
+    "optionalPaidLaunchCheck": {
+      "url": "https://agentresolver.vercel.app/api/provider-launch-check",
+      "priceUsd": 0.05,
+      "admissionRequired": false
+    }
+  },
+  "commercial": {
+    "model": "provider-success-fee",
+    "successFeeBps": 200,
+    "minimumSuccessFeeUsd": 0.001,
+    "buyerExtraFeeUsd": 0,
+    "conversionVerification": "https://agentresolver.vercel.app/api/provider-attribution-verify",
+    "feeQuote": "https://agentresolver.vercel.app/api/provider-success-fee-quote",
+    "feeVerification": "https://agentresolver.vercel.app/api/provider-success-fee-verify",
+    "feePayment": {
+      "network": "eip155:8453",
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+      "exactAmountFromQuote": true,
+      "attributionBoundAtomicSuffix": true
+    }
+  },
+  "proofModel": {
+    "providerControl": "same-origin well-known manifest",
+    "buyerSettlement": "independent Base USDC settlement verification",
+    "providerFee": "independent Base USDC transfer verification",
+    "attributionReplayResistance": "exact fee amount includes a deterministic attribution-bound atomic suffix",
+    "limitation": "The attribution ID is supplied in the AgentResolver procurement handoff but is not yet cryptographically signed by AgentResolver."
   },
   "safety": {
     "arbitraryProxying": false,
     "callerSpendingAuthorized": false,
     "walletKeysAccepted": false,
-    "paymentSignaturesForwarded": false
-  },
-  "providerOnboarding": {
-    "paidLaunchCheck": "https://agentresolver.vercel.app/api/provider-launch-check",
-    "priceUsd": 0.05,
-    "protocol": "x402",
-    "asset": "USDC",
-    "networks": [
-      "eip155:8453",
-      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
-    ],
-    "output": "technical verification report plus bounded registryEntry",
-    "registryPath": "config/provider-partners.json",
-    "reviewRequired": true,
-    "docs": "https://agentresolver.vercel.app/provider-onboarding.md",
-    "paymentEvidence": "retain PAYMENT-RESPONSE from the launch-check settlement",
-    "automatedLaunchProof": {
-      "network": "eip155:8453",
-      "amountAtomic": "50000",
-      "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
-      "txHashSource": "PAYMENT-RESPONSE from /api/provider-launch-check",
-      "verification": "GitHub provider-registry workflow independently checks the Base USDC transfer"
-    }
+    "paymentSignaturesForwarded": false,
+    "buyerFundsCustodied": false
   }
 }
