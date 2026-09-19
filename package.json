@@ -29,7 +29,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "sync:products": "tsx scripts/sync-paid-products.ts && tsx scripts/publish-x402-get-canary.ts && tsx scripts/apply-paid-get-discovery.ts && tsx scripts/apply-settlement-verify-get-discovery.ts && tsx scripts/apply-provider-launch-get-discovery.ts && tsx scripts/sync-agent-skills-discovery.ts && tsx scripts/compact-public-paid-discovery.ts",
+    "sync:products": "tsx scripts/sync-paid-products.ts && tsx scripts/publish-x402-get-canary.ts && tsx scripts/apply-paid-get-discovery.ts && tsx scripts/apply-settlement-verify-get-discovery.ts && tsx scripts/apply-verified-resolve-get-discovery.ts && tsx scripts/apply-provider-launch-get-discovery.ts && tsx scripts/sync-agent-skills-discovery.ts && tsx scripts/compact-public-paid-discovery.ts",
     "pretest": "npm run sync:products",
     "prebuild": "npm run sync:products"
   },

@@ -136,6 +136,33 @@ export function x402RuntimeDiscoveryInput(capabilityId: PaidCapabilityId) {
     } as const;
   }
 
+  if (capabilityId === "verified-resolve") {
+    return {
+      example: {
+        goal: "Find and verify a paid web search service",
+        maxPriceUsd: 0.05,
+        protocol: "x402",
+        requireHttps: true
+      },
+      schema: {
+        type: "object",
+        required: ["goal"],
+        additionalProperties: false,
+        properties: {
+          goal: { type: "string", minLength: 1, maxLength: 600, description: "Natural-language capability to procure and live-verify." },
+          url: { type: "string", pattern: "^https://", maxLength: 500, description: "Optional known candidate URL to include in verification." },
+          maxPriceUsd: { type: "number", minimum: 0, maximum: 1000, description: "Optional maximum candidate price in USD." },
+          protocol: { type: "string", enum: ["x402", "l402", "mpp", "mcp", "any"], description: "Optional procurement protocol constraint." },
+          preferredNetwork: { type: "string", maxLength: 128, description: "Optional single preferred network for GET compatibility." },
+          requireHttps: { type: "boolean", default: true, description: "Require HTTPS candidates; defaults true." },
+          sideEffect: { type: "string", enum: ["read-only", "state-changing", "any"] },
+          auth: { type: "string", enum: ["none", "wallet", "api-key", "any"] },
+          providerOrigin: { type: "string", pattern: "^https://[^/]+/?$", maxLength: 500, description: "Optional known provider origin to seed the same procurement universe." }
+        }
+      }
+    } as const;
+  }
+
   if (capabilityId === "hash-encode") {
     return {
       example: {
