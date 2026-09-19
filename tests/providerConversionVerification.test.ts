@@ -6,6 +6,7 @@ import {
   verifyProviderConversion
 } from "../src/lib/providerConversionVerification";
 import { BASE_USDC, type BaseRpc } from "../src/lib/x402SettlementVerify";
+import { createSignedAttributionReceipt } from "../src/lib/attributionReceipt";
 
 const ATTRIBUTION = "atr_123e4567-e89b-42d3-a456-426614174000";
 const TX = "0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72";
@@ -15,6 +16,8 @@ const SELECTOR = keccak256(stringToHex(
 )).slice(0, 10);
 const TRANSFER_TOPIC =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const SIGNING_SECRET =
+  "test-agentresolver-attribution-signing-secret-00000000000000000000";
 
 function topic(address: string) {
   return `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
@@ -116,4 +119,105 @@ test("provider conversion parser rejects malformed or incomplete proof", () => {
     providerId: "searchco",
     buyerTxHash: TX
   }));
+});
+
+
+function signedReceipt(overrides: Partial<{
+  routeId: string;
+  providerId: string;
+  capabilityId: string;
+  payTo: string;
+}> = {}) {
+  return createSignedAttributionReceipt({
+    attributionId: ATTRIBUTION,
+    routeId: overrides.routeId ?? "searchco:web-search",
+    providerId: overrides.providerId ?? "searchco",
+    capabilityId: overrides.capabilityId ?? "web-search",
+    execute: {
+      method: "POST",
+      url: "https://search.example/api",
+      priceUsd: 0.01,
+      network: "eip155:8453",
+      asset: BASE_USDC,
+      payTo: overrides.payTo ?? PAY_TO,
+      amountAtomic: "10000"
+    },
+    inputFingerprint: "signed-input-fingerprint"
+  }, SIGNING_SECRET, {
+    now: new Date()
+  }).receipt;
+}
+
+test("configured signing requires and verifies the exact AgentResolver handoff receipt", async () => {
+  const signedEnv = {
+    ...env,
+    AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET: SIGNING_SECRET
+  };
+
+  const report = await verifyProviderConversion({
+    attributionId: ATTRIBUTION,
+    routeId: "searchco:web-search",
+    providerId: "searchco",
+    buyerTxHash: TX,
+    attributionReceipt: signedReceipt()
+  }, {
+    env: signedEnv,
+    rpc: rpcFor(PAY_TO)
+  });
+
+  assert.equal(report.eligibleForFeeSettlement, true);
+  assert.equal(report.buyerSettlementVerified, true);
+  assert.equal(report.attributionVerified, true);
+  assert.equal(report.attribution.cryptographicallyVerified, true);
+  assert.equal(report.reason, "buyer_settlement_and_attribution_receipt_verified");
+});
+
+test("configured signing fails closed before chain lookup when receipt is missing", async () => {
+  const signedEnv = {
+    ...env,
+    AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET: SIGNING_SECRET
+  };
+  let rpcCalled = false;
+
+  const report = await verifyProviderConversion({
+    attributionId: ATTRIBUTION,
+    routeId: "searchco:web-search",
+    providerId: "searchco",
+    buyerTxHash: TX
+  }, {
+    env: signedEnv,
+    rpc: async () => {
+      rpcCalled = true;
+      throw new Error("rpc should not run");
+    }
+  });
+
+  assert.equal(report.eligibleForFeeSettlement, false);
+  assert.equal(report.reason, "attribution_receipt_required");
+  assert.equal(report.attributionVerified, false);
+  assert.equal(rpcCalled, false);
+});
+
+test("configured signing rejects a signed receipt for a different payment identity", async () => {
+  const signedEnv = {
+    ...env,
+    AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET: SIGNING_SECRET
+  };
+
+  const report = await verifyProviderConversion({
+    attributionId: ATTRIBUTION,
+    routeId: "searchco:web-search",
+    providerId: "searchco",
+    buyerTxHash: TX,
+    attributionReceipt: signedReceipt({
+      payTo: "0x3333333333333333333333333333333333333333"
+    })
+  }, {
+    env: signedEnv,
+    rpc: rpcFor(PAY_TO)
+  });
+
+  assert.equal(report.eligibleForFeeSettlement, false);
+  assert.equal(report.attributionVerified, false);
+  assert.equal(report.reason, "attribution_receipt_handoff_mismatch");
 });
