@@ -350,14 +350,14 @@ const handler = createMcpHandler(() => {
 
   server.registerTool("procure", {
     title: "Procure a compatible capability",
-    description: "Free open-world procurement. Declare the capability needed plus hard budget, network, protocol, schema, side-effect and auth constraints. AgentResolver rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a non-custodial execution/payment handoff without authorizing spend.",
+    description: "Free open-world multi-protocol procurement. Declare the capability needed plus hard budget, network, protocol, schema, side-effect and auth constraints across x402, L402, MPP and MCP. AgentResolver rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a non-custodial execution/payment handoff without authorizing spend.",
     inputSchema: z.object({
       goal: z.string().min(1).max(1000),
       limit: z.number().int().min(1).max(20).optional(),
       constraints: z.object({
         maxPriceUsd: z.number().min(0).max(1000).optional(),
         preferredNetworks: z.array(z.string().min(1).max(128)).max(8).optional(),
-        protocol: z.enum(["x402", "mcp", "any"]).optional(),
+        protocol: z.enum(["x402", "l402", "mpp", "mcp", "any"]).optional(),
         requireHttps: z.boolean().optional(),
         availableInputSchema: z.record(z.string(), z.unknown()).optional(),
         requiredOutputSchema: z.record(z.string(), z.unknown()).optional(),
