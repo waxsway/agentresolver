@@ -870,6 +870,7 @@ const handler = createMcpHandler(() => {
     inputSchema: z.object({
       goal: z.string().min(1).max(1000),
       url: z.string().url().optional(),
+      providerOrigins: z.array(z.string().url()).max(2).optional(),
       constraints: z.object({
         maxPriceUsd: z.number().min(0).max(1000).optional(),
         preferredNetworks: z.array(z.string().min(1).max(128)).max(8).optional(),
@@ -881,9 +882,18 @@ const handler = createMcpHandler(() => {
         auth: z.enum(["none", "wallet", "api-key", "any"]).optional()
       }).optional()
     }), annotations: { title: verifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, createLazyPaidMcpTool<{ goal: string; url?: string; constraints?: ProcurementConstraints }>("verified-resolve", async ({ goal, url, constraints }) => {
-    logToolCall("verified_resolve", { goalHash: shortHash(goal), priceUsd: verifiedResolveProduct.priceUsd, mode: "direct_paid_mcp" });
-    const report = await verifiedResolve(goal, { url, constraints });
+  }, createLazyPaidMcpTool<{ goal: string; url?: string; providerOrigins?: string[]; constraints?: ProcurementConstraints }>("verified-resolve", async ({ goal, url, providerOrigins, constraints }) => {
+    logToolCall("verified_resolve", {
+      goalHash: shortHash(goal),
+      priceUsd: verifiedResolveProduct.priceUsd,
+      mode: "direct_paid_mcp",
+      providerSeedCount: providerOrigins?.length || 0
+    });
+    const report = await verifiedResolve(goal, {
+      url,
+      providerOrigins,
+      constraints
+    });
     console.log(JSON.stringify({
       event: "paid_capability_completed",
       capabilityId: "verified-resolve",
