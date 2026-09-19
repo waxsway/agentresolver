@@ -8,6 +8,12 @@ import {
   getProviderRoute,
   type ProviderRoute
 } from "@/lib/providerNetwork";
+import {
+  fetchDomainProviderManifest,
+  quoteProviderSuccessFee,
+  type DomainProviderRoute
+} from "@/lib/providerManifest";
+import { validatePublicHttpsUrl } from "@/lib/publicHttpsJson";
 import { isAttributionId } from "@/lib/transactionAttribution";
 
 export type ProviderConversionVerifyInput = {
@@ -15,17 +21,61 @@ export type ProviderConversionVerifyInput = {
   routeId: string;
   providerId: string;
   buyerTxHash: string;
+  providerOrigin?: string;
 };
 
-function isBaseUsdcIdentity(route: ProviderRoute) {
+type ConversionRoute =
+  | { kind: "registered"; route: ProviderRoute }
+  | { kind: "domain-manifest"; route: DomainProviderRoute };
+
+function staticRouteIdentity(route: ProviderRoute) {
   const identity = route.execute.paymentIdentity;
-  return Boolean(
-    identity &&
-      identity.network === BASE_NETWORK &&
-      identity.asset.toLowerCase() === BASE_USDC.toLowerCase() &&
-      /^0x[0-9a-fA-F]{40}$/.test(identity.payTo) &&
-      /^[0-9]+$/.test(identity.amountAtomic)
-  );
+  if (
+    !identity ||
+    identity.network !== BASE_NETWORK ||
+    identity.asset.toLowerCase() !== BASE_USDC.toLowerCase() ||
+    !/^0x[0-9a-fA-F]{40}$/.test(identity.payTo) ||
+    !/^[0-9]+$/.test(identity.amountAtomic)
+  ) return null;
+
+  return {
+    network: BASE_NETWORK,
+    asset: BASE_USDC,
+    payTo: identity.payTo,
+    amountAtomic: identity.amountAtomic
+  } as const;
+}
+
+function routeIdentity(resolved: ConversionRoute) {
+  if (resolved.kind === "domain-manifest") {
+    return {
+      network: resolved.route.network,
+      asset: resolved.route.asset,
+      payTo: resolved.route.payTo,
+      amountAtomic: resolved.route.amountAtomic
+    } as const;
+  }
+  return staticRouteIdentity(resolved.route);
+}
+
+function routeProviderId(resolved: ConversionRoute) {
+  return resolved.route.providerId;
+}
+
+function routeId(resolved: ConversionRoute) {
+  return resolved.route.routeId;
+}
+
+function providerOrigin(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string") {
+    throw new Error("providerOrigin must be a public HTTPS origin.");
+  }
+  const url = validatePublicHttpsUrl(value.trim());
+  if (url.pathname !== "/" || url.search) {
+    throw new Error("providerOrigin must be an HTTPS origin without a path or query.");
+  }
+  return url.origin;
 }
 
 export function parseProviderConversionVerifyInput(
@@ -56,7 +106,34 @@ export function parseProviderConversionVerifyInput(
     throw new Error("buyerTxHash must be a Base transaction hash.");
   }
 
-  return { attributionId, routeId, providerId, buyerTxHash };
+  return {
+    attributionId,
+    routeId,
+    providerId,
+    buyerTxHash,
+    ...(body.providerOrigin !== undefined
+      ? { providerOrigin: providerOrigin(body.providerOrigin) }
+      : {})
+  };
+}
+
+async function resolveConversionRoute(
+  input: ProviderConversionVerifyInput,
+  env: Readonly<Record<string, string | undefined>>
+): Promise<ConversionRoute | null> {
+  const registered = getProviderRoute(input.routeId, env);
+  if (registered && registered.disclosure === "provider-partner") {
+    return { kind: "registered", route: registered };
+  }
+
+  if (!input.providerOrigin) return null;
+  const routes = await fetchDomainProviderManifest(input.providerOrigin);
+  const domain = routes.find(
+    (route) =>
+      route.routeId === input.routeId &&
+      route.providerId === input.providerId
+  );
+  return domain ? { kind: "domain-manifest", route: domain } : null;
 }
 
 export async function verifyProviderConversion(
@@ -66,36 +143,50 @@ export async function verifyProviderConversion(
     env?: Readonly<Record<string, string | undefined>>;
   } = {}
 ) {
-  const route = getProviderRoute(input.routeId, options.env ?? process.env);
-  if (!route || route.disclosure !== "provider-partner") {
-    throw new Error("routeId is not a registered provider-partner route.");
+  const resolved = await resolveConversionRoute(
+    input,
+    options.env ?? process.env
+  );
+
+  if (!resolved) {
+    throw new Error(
+      "routeId is not a registered provider route and no matching domain-controlled provider manifest was found."
+    );
   }
-  if (route.providerId !== input.providerId) {
-    throw new Error("providerId does not match the registered route.");
+
+  if (routeProviderId(resolved) !== input.providerId) {
+    throw new Error("providerId does not match the provider route.");
   }
-  if (route.funding.model !== "provider-success-fee") {
+
+  if (
+    resolved.kind === "registered" &&
+    resolved.route.funding.model !== "provider-success-fee"
+  ) {
     throw new Error("route is not enrolled in provider success-fee settlement.");
   }
-  if (!isBaseUsdcIdentity(route)) {
+
+  const identity = routeIdentity(resolved);
+  if (!identity) {
     return {
       eligibleForFeeSettlement: false,
       attributionId: input.attributionId,
-      routeId: route.routeId,
-      providerId: route.providerId,
+      routeId: routeId(resolved),
+      providerId: routeProviderId(resolved),
+      providerEnrollment: resolved.kind,
       buyerSettlementVerified: false,
       attributionVerified: false,
       reason: "provider_payment_identity_not_verifiable",
       settlement: null,
+      successFeeQuote: null,
       attribution: {
         asserted: true,
         cryptographicallyVerified: false,
         limitation:
-          "The supplied attribution ID is well-formed but AgentResolver does not yet persist or cryptographically sign provider handoff receipts, so this check does not prove that the verified buyer transaction originated from that handoff."
+          "The supplied attribution ID is well-formed but AgentResolver does not yet persist or cryptographically sign procurement handoff receipts, so this check does not independently prove that the buyer transaction originated from that handoff."
       }
     } as const;
   }
 
-  const identity = route.execute.paymentIdentity!;
   const settlement = await verifyX402Settlement(
     {
       txHash: input.buyerTxHash,
@@ -105,20 +196,36 @@ export async function verifyProviderConversion(
     options.rpc ? { rpc: options.rpc } : {}
   );
 
+  const successFeeQuote =
+    settlement.settled && resolved.kind === "domain-manifest"
+      ? quoteProviderSuccessFee(identity.amountAtomic)
+      : settlement.settled
+        ? {
+            grossAmountAtomic: identity.amountAtomic,
+            successFeeBps: null,
+            minimumFeeAtomic: "1000",
+            feeAmountAtomic: "1000",
+            grossUsd: Number(identity.amountAtomic) / 1_000_000,
+            feeUsd: 0.001
+          }
+        : null;
+
   return {
     eligibleForFeeSettlement: settlement.settled,
     attributionId: input.attributionId,
-    routeId: route.routeId,
-    providerId: route.providerId,
+    routeId: routeId(resolved),
+    providerId: routeProviderId(resolved),
+    providerEnrollment: resolved.kind,
     buyerSettlementVerified: settlement.settled,
     attributionVerified: false,
     reason: settlement.settled ? "buyer_settlement_verified" : settlement.verdict,
     settlement,
+    successFeeQuote,
     attribution: {
       asserted: true,
       cryptographicallyVerified: false,
       limitation:
-        "The Base USDC buyer settlement is independently verified against the registered provider payment identity. The supplied attribution ID is provider-asserted and is not yet independently bound to that buyer transaction."
+        "The Base USDC buyer settlement is independently verified against the provider payment identity. The supplied attribution ID remains provider-asserted until AgentResolver introduces cryptographically signed procurement handoff receipts."
     }
   } as const;
 }
