@@ -420,8 +420,8 @@ jobs:
               ' /tmp/providers.json >/dev/null &&
               curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json &&
               jq -e '
-                .domainEnrollment.status == "open" and
-                .domainEnrollment.operatorReviewRequired == false and
+                .providerEnrollment.mode == "domain-controlled-well-known" and
+                .providerEnrollment.reviewRequired == false and
                 .commercial.successFeeBps == 200 and
                 .commercial.minimumSuccessFeeUsd == 0.001 and
                 .commercial.buyerExtraFeeUsd == 0
