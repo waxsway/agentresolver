@@ -340,6 +340,7 @@ const x402Manifest = {
   })),
   freeDiscovery: {
     mcp: `${CANONICAL_ORIGIN}/mcp`,
+    procure: `${CANONICAL_ORIGIN}/api/procure`,
     resolve: `${CANONICAL_ORIGIN}/api/resolve`
   },
   instructions: "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint>; POST remains supported for body-bearing compatibility. Free procure is the preferred constrained capability-selection surface; free resolve remains available for broad discovery. A 402 is a quote, never spending authorization."
