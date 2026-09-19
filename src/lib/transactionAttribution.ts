@@ -4,6 +4,10 @@ import type { ProviderRoute } from "@/lib/providerNetwork";
 
 export const ATTRIBUTION_HEADER = "x-agentresolver-attribution-id";
 
+export function createAttributionId() {
+  return "atr_" + randomUUID();
+}
+
 export function isAttributionId(value: unknown): value is string {
   return typeof value === "string" &&
     /^atr_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -32,7 +36,7 @@ export function buildTransactionAttribution(input: {
 }) {
   const attributionId = isAttributionId(input.existingAttributionId)
     ? input.existingAttributionId
-    : "atr_" + randomUUID();
+    : createAttributionId();
 
   return {
     schemaVersion: 1,
