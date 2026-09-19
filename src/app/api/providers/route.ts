@@ -22,10 +22,12 @@ export function GET(req: Request) {
       example: baseUrl + "/provider-manifest.example.json",
       docs: baseUrl + "/provider-onboarding.md",
       sameOriginRoutesOnly: true,
+      liveX402ChallengeRequired: true,
+      unsignedEnrollmentProbeOnly: true,
       settlementNetwork: "eip155:8453",
       asset: "Base USDC",
       discoveryBehavior:
-        "When a catalog-discovered x402 resource has a valid same-origin AgentResolver provider manifest, procurement can attach provider commercial terms and an attribution handoff without adding the route to AgentResolver configuration."
+        "When a catalog-discovered x402 resource has a valid same-origin AgentResolver provider manifest and its live unsigned x402 v2 challenge exactly matches the manifest payment identity, procurement can attach provider commercial terms and an attribution handoff without adding the route to AgentResolver configuration."
     },
     integration: {
       contract: baseUrl + "/provider-integration.json",
