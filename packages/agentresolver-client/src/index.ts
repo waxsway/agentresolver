@@ -1,7 +1,7 @@
 export type ProcurementConstraints = {
   maxPriceUsd?: number;
   preferredNetworks?: string[];
-  protocol?: "x402" | "mcp" | "any";
+  protocol?: "x402" | "l402" | "mpp" | "mcp" | "any";
   requireHttps?: boolean;
   availableInputSchema?: Record<string, unknown>;
   requiredOutputSchema?: Record<string, unknown>;
@@ -22,7 +22,7 @@ export type ProcurementCandidate = {
   name: string;
   description: string | null;
   endpoint: string | null;
-  protocol: "x402" | "mcp" | "http";
+  protocol: "x402" | "l402" | "mpp" | "mcp" | "http";
   priceUsd: number | null;
   networks: string[];
   status: "eligible" | "eligible_with_unknowns" | "rejected";

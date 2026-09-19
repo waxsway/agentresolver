@@ -25,6 +25,9 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
     | {
         goal?: unknown;
+        task?: unknown;
+        query?: unknown;
+        q?: unknown;
         limit?: unknown;
         constraints?: {
           maxPriceUsd?: unknown;
@@ -39,7 +42,9 @@ export async function POST(req: Request) {
       }
     | null;
 
-  const goal = String(body?.goal || "").trim();
+  const goal = String(
+    body?.goal ?? body?.task ?? body?.query ?? body?.q ?? ""
+  ).trim();
   if (!goal) {
     return NextResponse.json(
       { error: "MISSING_GOAL", message: "Provide the capability the agent needs." },
@@ -87,7 +92,7 @@ export async function POST(req: Request) {
     : undefined;
 
   const protocol =
-    raw.protocol === "x402" || raw.protocol === "mcp" || raw.protocol === "any"
+    raw.protocol === "x402" || raw.protocol === "l402" || raw.protocol === "mpp" || raw.protocol === "mcp" || raw.protocol === "any"
       ? raw.protocol
       : undefined;
 
@@ -205,12 +210,53 @@ export async function POST(req: Request) {
   );
 }
 
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const goal =
+    url.searchParams.get("goal") ||
+    url.searchParams.get("task") ||
+    url.searchParams.get("query") ||
+    url.searchParams.get("q") ||
+    "";
+
+  const preferredNetworks = [
+    ...url.searchParams.getAll("network"),
+    ...url.searchParams.getAll("preferredNetwork")
+  ].filter(Boolean);
+
+  const body = {
+    goal,
+    ...(url.searchParams.get("limit")
+      ? { limit: url.searchParams.get("limit") }
+      : {}),
+    constraints: {
+      ...(url.searchParams.get("maxPriceUsd")
+        ? { maxPriceUsd: url.searchParams.get("maxPriceUsd") }
+        : {}),
+      ...(url.searchParams.get("protocol")
+        ? { protocol: url.searchParams.get("protocol") }
+        : {}),
+      ...(preferredNetworks.length > 0 ? { preferredNetworks } : {}),
+      requireHttps: url.searchParams.get("requireHttps") !== "false"
+    }
+  };
+
+  const headers = new Headers(req.headers);
+  headers.set("content-type", "application/json");
+
+  return POST(new Request(req.url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  }));
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "POST, OPTIONS",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
       "access-control-allow-headers": "content-type"
     }
   });

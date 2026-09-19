@@ -2,12 +2,12 @@ import { evaluateToolContract } from "@/lib/toolContract";
 
 export type JsonSchema = Record<string, unknown>;
 
-export type ProcurementProtocol = "x402" | "mcp" | "http";
+export type ProcurementProtocol = "x402" | "l402" | "mpp" | "mcp" | "http";
 
 export type ProcurementConstraints = {
   maxPriceUsd?: number;
   preferredNetworks?: string[];
-  protocol?: "x402" | "mcp" | "any";
+  protocol?: "x402" | "l402" | "mpp" | "mcp" | "any";
   requireHttps?: boolean;
   availableInputSchema?: JsonSchema;
   requiredOutputSchema?: JsonSchema;
@@ -81,7 +81,8 @@ export function evaluateProcurementCandidate(
   } else if (
     typeof constraints.maxPriceUsd === "number" &&
     candidate.priceUsd === null &&
-    candidate.protocol === "x402"
+    candidate.protocol !== "http" &&
+    candidate.protocol !== "mcp"
   ) {
     unknownConstraints.push("price");
   }
@@ -96,7 +97,11 @@ export function evaluateProcurementCandidate(
     );
   }
 
-  if (preferredNetworks.length > 0 && candidate.protocol === "x402") {
+  if (
+    preferredNetworks.length > 0 &&
+    candidate.protocol !== "http" &&
+    candidate.protocol !== "mcp"
+  ) {
     if (candidate.networks.length === 0) {
       unknownConstraints.push("network");
     } else if (!intersection(candidate.networks, preferredNetworks)) {

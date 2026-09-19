@@ -1,6 +1,7 @@
 import { resolveGoal } from "@/lib/resolver";
 import { resolveProviderRoutes } from "@/lib/providerNetwork";
 import { discoverPayAiResources, type PayAiMatch } from "@/lib/payaiDiscovery";
+import { discover402IndexServices, type Index402Match } from "@/lib/index402Discovery";
 import {
   discoverDomainProviderRoutes,
   quoteProviderSuccessFee,
@@ -193,6 +194,61 @@ function normalizePayAi(
       lastUpdated: match.lastUpdated
     }
   };
+}
+
+function normalize402Index(
+  match: Index402Match,
+  index: number
+): ProcurementCandidate {
+  return {
+    id: `402index:${match.sourceId}`,
+    source: match.source,
+    sourceRank: index + 1,
+    name: match.name,
+    description: match.description,
+    endpoint: match.resource,
+    protocol: match.protocol,
+    priceUsd: match.priceUsd,
+    networks: match.networks,
+    inputSchema: null,
+    outputSchema: null,
+    sideEffect: "unknown",
+    auth: match.protocol === "x402" ? "wallet" : "unknown",
+    execute: {
+      method: match.method,
+      url: match.resource,
+      protocol: match.protocol,
+      priceUsd: match.priceUsd,
+      paymentAsset: match.paymentAsset,
+      networks: match.networks,
+      spendingAuthorizationRequired: true
+    },
+    evidence: {
+      catalog: "402index",
+      category: match.category,
+      healthStatus: match.healthStatus,
+      reliabilityScore: match.reliabilityScore,
+      domainVerified: match.domainVerified,
+      paymentVerified: match.paymentVerified,
+      l402Format: match.l402Format,
+      lngetCompatible: match.lngetCompatible,
+      relatedProtocols: match.relatedProtocols,
+      lastChecked: match.lastChecked
+    }
+  };
+}
+
+function dedupeCandidates(candidates: ProcurementCandidate[]) {
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    const endpoint = canonicalCandidateUrl(candidate.endpoint);
+    const key = endpoint
+      ? `${candidate.protocol}:${endpoint}`
+      : candidate.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function canonicalCandidateUrl(value: string | null) {
@@ -421,23 +477,39 @@ export async function procureCapability(
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 20));
   const candidateLimit = Math.min(safeLimit * 2, 10);
 
-  const [resolution, partnerRoutes, payai] = await Promise.all([
+  const index402Protocol =
+    constraints.protocol === "x402" ||
+    constraints.protocol === "l402" ||
+    constraints.protocol === "mpp"
+      ? constraints.protocol
+      : "any";
+
+  const [resolution, partnerRoutes, payai, index402] = await Promise.all([
     resolveGoal(goal, undefined, candidateLimit),
     Promise.resolve(
       resolveProviderRoutes(goal, candidateLimit).filter(
         (route) => route.disclosure === "provider-partner"
       )
     ),
-    discoverPayAiResources(goal, candidateLimit)
+    constraints.protocol === "mcp"
+      ? Promise.resolve([])
+      : discoverPayAiResources(goal, candidateLimit),
+    constraints.protocol === "mcp"
+      ? Promise.resolve([])
+      : discover402IndexServices(goal, candidateLimit, {
+          maxPriceUsd: constraints.maxPriceUsd,
+          protocol: index402Protocol
+        })
   ]);
 
-  const rawCandidates: ProcurementCandidate[] = [
+  const rawCandidates = dedupeCandidates([
     ...resolution.owned.map((match) => normalizeOwned(match, baseUrl)),
     ...partnerRoutes.map(normalizePartner),
+    ...index402.map(normalize402Index),
     ...payai.map(normalizePayAi),
     ...resolution.marketplace.map(normalizeMarketplace),
     ...resolution.mcp.map(normalizeMcp)
-  ];
+  ]);
 
   const candidates = await enrichDomainProviderCandidates(rawCandidates);
   const evaluated = rankProcurementCandidates(
