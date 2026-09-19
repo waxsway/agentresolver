@@ -46,11 +46,12 @@ test("provider-network smoke reads the live provider contract and rollback prese
   assert.match(workflow, /HEALTHY_SHA: 2d3175cfc983ecf27503d28adba9db936c5b8e5a/);
 });
 
-test("one-shot release requires the lean MCP registry endpoint before success", () => {
+test("one-shot release requires the lean MCP integration contract before success", () => {
   assert.match(workflow, /MCP_CONTROL_PRODUCTION_SMOKE=true/);
   assert.match(workflow, /\/mcp\/control/);
-  assert.match(workflow, /\.version == "0\.2\.0"/);
-  assert.match(workflow, /\.remotes\[0\]\.url == "https:\/\/agentresolver\.vercel\.app\/mcp\/control"/);
+  assert.match(workflow, /\.mcp\.url == "https:\/\/agentresolver\.vercel\.app\/mcp\/control"/);
+  assert.match(workflow, /\.mcp\.fullCompatibilityUrl == "https:\/\/agentresolver\.vercel\.app\/mcp"/);
+  assert.doesNotMatch(workflow, /\$BASE_URL\/server\.json/);
 });
 
 
@@ -64,12 +65,12 @@ test("one-shot release provisions the dedicated attribution signer before pullin
   );
 });
 
-test("release smoke requires current provider bootstrap, signed-attribution contract, and provider skill", () => {
+test("release smoke requires current provider bootstrap and signed-attribution contract", () => {
   assert.match(workflow, /\/api\/provider-bootstrap/);
+  assert.match(workflow, /bootstrapProviderDiscovery/);
   assert.match(workflow, /AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET/);
   assert.match(workflow, /independently verified Base block timestamp/);
   assert.match(workflow, /providerOrigins/);
-  assert.match(workflow, /agentresolver-provider/);
   assert.match(workflow, /procureGetSmokeAttempt/);
 });
 
