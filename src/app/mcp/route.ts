@@ -860,17 +860,31 @@ const handler = createMcpHandler(() => {
 
   server.registerTool("verified_resolve", {
     title: verifiedResolveProduct.quoteTool.title, description: verifiedResolveProduct.quoteTool.description,
-    inputSchema: z.object({ goal: z.string().min(1).max(1000), url: z.string().url().optional() }), annotations: { title: verifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  }, createLazyPaidMcpTool<{ goal: string; url?: string }>("verified-resolve", async ({ goal, url }) => {
+    inputSchema: z.object({
+      goal: z.string().min(1).max(1000),
+      url: z.string().url().optional(),
+      constraints: z.object({
+        maxPriceUsd: z.number().min(0).max(1000).optional(),
+        preferredNetworks: z.array(z.string().min(1).max(128)).max(8).optional(),
+        protocol: z.enum(["x402", "l402", "mpp", "mcp", "any"]).optional(),
+        requireHttps: z.boolean().optional(),
+        availableInputSchema: z.record(z.string(), z.unknown()).optional(),
+        requiredOutputSchema: z.record(z.string(), z.unknown()).optional(),
+        sideEffect: z.enum(["read-only", "state-changing", "any"]).optional(),
+        auth: z.enum(["none", "wallet", "api-key", "any"]).optional()
+      }).optional()
+    }), annotations: { title: verifiedResolveProduct.quoteTool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  }, createLazyPaidMcpTool<{ goal: string; url?: string; constraints?: ProcurementConstraints }>("verified-resolve", async ({ goal, url, constraints }) => {
     logToolCall("verified_resolve", { goalHash: shortHash(goal), priceUsd: verifiedResolveProduct.priceUsd, mode: "direct_paid_mcp" });
-    const report = await verifiedResolve(goal, url);
+    const report = await verifiedResolve(goal, { url, constraints });
     console.log(JSON.stringify({
       event: "paid_capability_completed",
       capabilityId: "verified-resolve",
       surface: "mcp",
       at: new Date().toISOString(),
-      mcpProbeCount: report.liveVerification.length,
-      marketplaceProbeCount: report.liveMarketplaceVerification.length,
+      liveProbeCount: report.liveVerification.length,
+      verifiedMcpCount: report.liveMcpVerification.filter((item) => item.mcpCompatible).length,
+      verifiedX402Count: report.liveMarketplaceVerification.filter((item) => item.x402Compatible && item.contractMatchesCatalog).length,
       recommendationType: report.recommendation.type
     }));
     return {
