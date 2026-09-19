@@ -4,9 +4,9 @@ import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
 
-test("production deploy is one-shot re-armed specifically for the zero-account provider network release", () => {
-  assert.match(workflow, /One-shot re-arm for the zero-account provider-network release/);
-  assert.match(workflow, /true &&/);
+test("automatic production deploy is hard-disabled after the one-shot provider-network release", () => {
+  assert.match(workflow, /hard-disabled after the one-shot/);
+  assert.match(workflow, /false &&/);
   assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(workflow, /github\.event\.workflow_run\.head_branch == 'main'/);
   assert.match(workflow, /PROVIDER_NETWORK_PRODUCTION_SMOKE=true/);
