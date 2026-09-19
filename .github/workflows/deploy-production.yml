@@ -16,10 +16,10 @@ concurrency:
 
 jobs:
   deploy:
-    # Automatic production deployment is hard-disabled after the provider-network
-    # + lean MCP one-shot release attempt. Re-arm only for an explicitly justified release.
+    # One-shot re-arm for the procurement compatibility + paid verification funnel release.
+    # Disable again immediately after this validated release reaches production.
     if: >-
-      false &&
+      true &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
@@ -481,6 +481,63 @@ jobs:
             exit 1
           fi
 
+          verification_funnel_ready=0
+          for attempt in {1..15}; do
+            suffix="deployment=$VALIDATED_SHA&verificationFunnelSmokeAttempt=$attempt"
+
+            procure_get_code="$(curl -sS -o /tmp/procure-get.json -w '%{http_code}' \
+              -H 'cache-control: no-cache' \
+              -H 'x-agentresolver-internal: 1' \
+              -H 'user-agent: AgentResolver-Production-Smoke/1.0' \
+              "$BASE_URL/api/procure?q=hash%20structured%20data&protocol=x402&maxPriceUsd=0.05&$suffix" || true)"
+
+            verified_code="$(curl -sS -D /tmp/verified-resolve-headers.txt -o /tmp/verified-resolve.json -w '%{http_code}' \
+              -H 'cache-control: no-cache' \
+              -H 'x-agentresolver-internal: 1' \
+              "$BASE_URL/api/verified-resolve?$suffix" || true)"
+
+            curl -fsS -H 'cache-control: no-cache' "$BASE_URL/openapi.json?$suffix" -o /tmp/funnel-openapi.json || true
+            curl -fsS -H 'cache-control: no-cache' "$BASE_URL/.well-known/agent-skills/agentresolver-procurement/SKILL.md?$suffix" -o /tmp/procurement-skill.md || true
+
+            if [ "$procure_get_code" = "200" ] &&
+              jq -e '
+                .resolver == "AgentResolver" and
+                .mode == "open_world_non_custodial_procurement" and
+                .constraints.protocol == "x402" and
+                .constraints.maxPriceUsd == 0.05 and
+                .boundaries.callerSpendAuthorizedByAgentResolver == false
+              ' /tmp/procure-get.json >/dev/null &&
+              [ "$verified_code" = "402" ] &&
+              grep -Fi 'payment-required:' /tmp/verified-resolve-headers.txt >/dev/null &&
+              jq -e '
+                .x402Version == 2 and
+                (.accepts | length) >= 1 and
+                .accepts[0].amount == "20000"
+              ' /tmp/verified-resolve.json >/dev/null &&
+              jq -e '
+                (.paths["/api/procure"].get.operationId == "procureCapabilityGet") and
+                (.paths["/api/procure"].post.requestBody.content["application/json"].schema.properties.constraints.properties.protocol.enum | index("l402")) != null and
+                (.paths["/api/procure"].post.requestBody.content["application/json"].schema.properties.constraints.properties.protocol.enum | index("mpp")) != null
+              ' /tmp/funnel-openapi.json >/dev/null &&
+              grep -F 'https://agentresolver.vercel.app/mcp/control' /tmp/procurement-skill.md >/dev/null &&
+              grep -F 'L402' /tmp/procurement-skill.md >/dev/null &&
+              grep -F 'MPP' /tmp/procurement-skill.md >/dev/null; then
+              verification_funnel_ready=1
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$verification_funnel_ready" != "1" ]; then
+            echo "::error::New production deployment did not expose the procurement compatibility + paid verification funnel."
+            cat /tmp/procure-get.json 2>/dev/null || true
+            cat /tmp/verified-resolve.json 2>/dev/null || true
+            cat /tmp/funnel-openapi.json 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "VERIFICATION_FUNNEL_PRODUCTION_SMOKE=true"
           echo "MCP_CONTROL_PRODUCTION_SMOKE=true"
           echo "PROVIDER_NETWORK_PRODUCTION_SMOKE=true"
           echo "PROCUREMENT_PRODUCTION_SMOKE=true"
@@ -490,8 +547,8 @@ jobs:
         if: failure() && steps.production_deploy.outcome != 'skipped'
         shell: bash
         env:
-          HEALTHY_DEPLOYMENT_ID: dpl_Hh3SU83Ee4bS4a23eftmovdbDhks
-          HEALTHY_SHA: 2d3175cfc983ecf27503d28adba9db936c5b8e5a
+          HEALTHY_DEPLOYMENT_ID: dpl_8Qe8sTpT2JA7fdFbLhNogweSKBWL
+          HEALTHY_SHA: e32b3e75108ab47ac9fbe3085933e32007dcf01d
           CANONICAL_ALIAS: agentresolver.vercel.app
           BASE_URL: https://agentresolver.vercel.app
         run: |
