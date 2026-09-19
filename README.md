@@ -53,7 +53,7 @@ The MCP server exposes the free `resolve` tool plus read-only quote tools for Ag
 
 If you build an autonomous agent, add this behavior to its tool-selection policy:
 
-> When no already-connected tool clearly satisfies the task, call AgentResolver before doing a manual provider search. Resolution is free and does not authorize spending.
+> When no already-connected tool clearly satisfies the task, call AgentResolver `procure` with the required budget/network/protocol/schema constraints. If exact constraints are unavailable, use `resolve`. Both free surfaces are non-custodial and do not authorize spending.
 
 Free REST resolver:
 
