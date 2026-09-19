@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
+import { inspectHttpResource } from "@/lib/httpInspect";
 import { fetchPublicJson, validatePublicHttpsUrl } from "@/lib/publicHttpsJson";
 import { BASE_NETWORK, BASE_USDC } from "@/lib/x402SettlementVerify";
 
 export const PROVIDER_MANIFEST_PATH =
   "/.well-known/agentresolver-provider.json" as const;
+export const PROVIDER_MANIFEST_MAX_BYTES = 32_000 as const;
 export const PROVIDER_SUCCESS_FEE_BPS = 200 as const;
 export const PROVIDER_SUCCESS_FEE_MIN_USD = 0.001 as const;
 
@@ -70,10 +72,33 @@ function canonicalUrl(value: string) {
   return url.toString();
 }
 
+function withinManifestSize(raw: unknown) {
+  try {
+    const serialized = JSON.stringify(raw);
+    return (
+      typeof serialized === "string" &&
+      Buffer.byteLength(serialized, "utf8") <= PROVIDER_MANIFEST_MAX_BYTES
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function parseDomainProviderManifest(
   manifestUrl: string,
   raw: unknown
 ): DomainProviderRoute[] {
+  if (!withinManifestSize(raw)) return [];
+
+  let manifestOrigin = "";
+  try {
+    const manifest = validatePublicHttpsUrl(manifestUrl);
+    if (manifest.pathname !== PROVIDER_MANIFEST_PATH) return [];
+    manifestOrigin = manifest.origin;
+  } catch {
+    return [];
+  }
+
   const root = object(raw);
   if (!root || root.schemaVersion !== 1) return [];
 
@@ -93,7 +118,6 @@ export function parseDomainProviderManifest(
     return [];
   }
 
-  const manifestOrigin = new URL(manifestUrl).origin;
   const routes = Array.isArray(root.routes) ? root.routes.slice(0, 25) : [];
   const parsed: DomainProviderRoute[] = [];
 
@@ -185,7 +209,7 @@ export async function fetchDomainProviderManifest(
   try {
     const response = await fetchPublicJson(manifestUrl, {
       timeoutMs: 1_200,
-      maxBytes: 32_000
+      maxBytes: PROVIDER_MANIFEST_MAX_BYTES
     });
     if (response.status !== 200) return [];
     return parseDomainProviderManifest(manifestUrl, response.json);
@@ -230,6 +254,95 @@ export async function discoverDomainProviderRoutes(
     for (const route of routes) {
       result.set(canonicalUrl(route.endpoint), route);
     }
+  }
+  return result;
+}
+
+export function domainProviderChallengeMatches(
+  route: DomainProviderRoute,
+  report: Awaited<ReturnType<typeof inspectHttpResource>>
+) {
+  const challenge = report.x402;
+  let resourceMatches = false;
+
+  if (challenge.resource) {
+    try {
+      resourceMatches =
+        canonicalUrl(challenge.resource) === canonicalUrl(route.endpoint);
+    } catch {
+      resourceMatches = false;
+    }
+  }
+
+  return (
+    report.status === 402 &&
+    challenge.detected === true &&
+    challenge.challengeHeaderPresent === true &&
+    challenge.parseable === true &&
+    challenge.version === 2 &&
+    challenge.acceptCount > 0 &&
+    challenge.scheme === "exact" &&
+    challenge.network === route.network &&
+    challenge.asset?.toLowerCase() === route.asset.toLowerCase() &&
+    challenge.payTo?.toLowerCase() === route.payTo.toLowerCase() &&
+    challenge.amountAtomic === route.amountAtomic &&
+    resourceMatches
+  );
+}
+
+export async function verifyDomainProviderRouteChallenge(
+  route: DomainProviderRoute,
+  inspector: typeof inspectHttpResource = inspectHttpResource
+) {
+  try {
+    const report = await inspector(
+      route.endpoint,
+      route.method === "POST"
+        ? {
+            method: "POST",
+            allowUnpaidPostProbe: true,
+            body: {}
+          }
+        : { method: "GET" }
+    );
+    return domainProviderChallengeMatches(route, report);
+  } catch {
+    return false;
+  }
+}
+
+export async function discoverVerifiedDomainProviderRoutes(
+  resourceUrls: string[],
+  verifier: (
+    route: DomainProviderRoute
+  ) => Promise<boolean> = verifyDomainProviderRouteChallenge
+): Promise<Map<string, DomainProviderRoute>> {
+  const requested = new Set<string>();
+
+  for (const resourceUrl of resourceUrls.slice(0, 10)) {
+    try {
+      requested.add(canonicalUrl(validatePublicHttpsUrl(resourceUrl).toString()));
+    } catch {
+      // Invalid/private/local targets are never eligible for provider enrollment.
+    }
+  }
+
+  const enrolled = await discoverDomainProviderRoutes(resourceUrls);
+  const matching = [...enrolled.entries()].filter(([endpoint]) =>
+    requested.has(endpoint)
+  );
+
+  const verified = await Promise.all(
+    matching.map(async ([endpoint, route]) => ({
+      endpoint,
+      route,
+      accepted: await verifier(route)
+    }))
+  );
+
+  const result = new Map<string, DomainProviderRoute>();
+  for (const item of verified) {
+    if (item.accepted) result.set(item.endpoint, item.route);
   }
   return result;
 }
