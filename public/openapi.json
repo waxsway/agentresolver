@@ -542,7 +542,7 @@
           "Agent Capability Procurement"
         ],
         "summary": "Procure a compatible machine capability under hard constraints",
-        "description": "Free, read-only and non-custodial. Declare the capability needed plus budget/network/protocol/schema/side-effect/auth constraints. AgentResolver rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a direct execution/payment handoff. It never receives a private key or authorizes caller spend.",
+        "description": "Free, read-only and non-custodial. Declare the capability needed plus budget/network/protocol/schema/side-effect/auth constraints. AgentResolver can procure across x402, L402, MPP, MCP and ordinary HTTPS capabilities, rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a direct execution/payment handoff. It never receives a private key or authorizes caller spend.",
         "requestBody": {
           "required": true,
           "content": {
@@ -585,6 +585,8 @@
                         "type": "string",
                         "enum": [
                           "x402",
+                          "l402",
+                          "mpp",
                           "mcp",
                           "any"
                         ]
@@ -646,7 +648,15 @@
             "description": "Invalid procurement request or constraint schema."
           }
         },
-        "security": []
+        "security": [],
+        "x-agentresolver-supply-sources": [
+          "AgentResolver owned capabilities",
+          "domain-enrolled providers",
+          "402 Index",
+          "PayAI",
+          "Circle x402 discovery",
+          "MCP directories"
+        ]
       }
     },
     "/api/providers": {
