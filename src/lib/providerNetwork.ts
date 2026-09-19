@@ -1,4 +1,5 @@
 import { CANONICAL_ORIGIN, getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
+import { attributionSigningConfigured } from "@/lib/attributionReceiptRuntime";
 import providerPartnersJson from "../../config/provider-partners.json";
 
 export type ProviderRoute = Readonly<{
@@ -324,8 +325,16 @@ export function providerNetworkSnapshot(
       feeUsd: 0.001,
       trigger: "verified buyer settlement when provider payment identity is registered; legacy provider-reported fulfillment otherwise",
       settlement: baseUrl.replace(/\/$/, "") + "/api/provider-attribution-settle",
-      proofScope:
-        "For routes with a registered Base-USDC payment identity, AgentResolver can independently verify the underlying buyer settlement before the provider pays the success fee. Attribution IDs remain provider-asserted until cryptographically signed handoff receipts are introduced."
+      attributionProof: {
+        signingConfigured: attributionSigningConfigured(env),
+        signedReceiptHeader: "x-agentresolver-attribution-receipt",
+        signingScheme: "HMAC-SHA256",
+        receiptFormat: "ar1",
+        failClosedWhenConfigured: true
+      },
+      proofScope: attributionSigningConfigured(env)
+        ? "For routes with a registered Base-USDC payment identity, AgentResolver can independently verify the buyer settlement and require a matching signed procurement handoff receipt before the provider pays the success fee."
+        : "For routes with a registered Base-USDC payment identity, AgentResolver can independently verify the buyer settlement. Attribution remains explicitly legacy/provider-asserted until the dedicated attribution signing secret is configured."
     },
     routing: {
       resolve: baseUrl.replace(/\/$/, "") + "/api/resolve",

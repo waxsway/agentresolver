@@ -9,6 +9,10 @@ import {
   buildTransactionAttribution,
   isAttributionId
 } from "@/lib/transactionAttribution";
+import {
+  ATTRIBUTION_RECEIPT_HEADER,
+  issueAttributionReceipt
+} from "@/lib/attributionReceiptRuntime";
 import { callerHash, safeUserAgent } from "@/lib/telemetry";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +78,26 @@ export async function POST(req: Request) {
     routeInput: body.input,
     existingAttributionId
   });
+  const paymentIdentity = route.execute.paymentIdentity;
+  const signed =
+    route.funding.model === "provider-success-fee" && paymentIdentity
+      ? issueAttributionReceipt({
+          attributionId: attribution.attributionId,
+          routeId: route.routeId,
+          providerId: route.providerId,
+          capabilityId: route.capabilityId,
+          execute: {
+            method: route.execute.method,
+            url: route.execute.url,
+            priceUsd: route.execute.priceUsd,
+            network: paymentIdentity.network,
+            asset: paymentIdentity.asset,
+            payTo: paymentIdentity.payTo,
+            amountAtomic: paymentIdentity.amountAtomic
+          },
+          inputFingerprint: attribution.inputFingerprint
+        })
+      : null;
 
   console.log(JSON.stringify({
     event: "provider_route_handoff",
@@ -102,14 +126,23 @@ export async function POST(req: Request) {
       disclosure: route.disclosure,
       sponsored: route.sponsored
     },
-    attribution,
+    attribution: {
+      ...attribution,
+      receipt: signed?.receipt ?? null,
+      receiptHeader: ATTRIBUTION_RECEIPT_HEADER,
+      receiptExpiresAt: signed?.payload.expiresAt ?? null,
+      cryptographicallySigned: Boolean(signed)
+    },
     execute: {
       method: route.execute.method,
       url: route.execute.url,
       body: route.execute.method === "POST" ? body.input ?? {} : undefined,
       queryInput: route.execute.method === "GET" ? body.input ?? {} : undefined,
       headers: {
-        [ATTRIBUTION_HEADER]: attribution.attributionId
+        [ATTRIBUTION_HEADER]: attribution.attributionId,
+        ...(signed
+          ? { [ATTRIBUTION_RECEIPT_HEADER]: signed.receipt }
+          : {})
       },
       payment: {
         protocol: "x402",
@@ -130,13 +163,20 @@ export async function POST(req: Request) {
       callerMustIndependentlyAuthorizeTargetSpend: true
     },
     next:
-      "Call the returned registered endpoint directly under the caller's own trust and spending policy. Preserve x-agentresolver-attribution-id. If this provider route exposes a registered Base-USDC payment identity, the provider can later prove the buyer settlement to AgentResolver before paying the success fee."
+      signed
+        ? "Call the returned registered endpoint directly under the caller's own trust and spending policy. Preserve both AgentResolver attribution headers so the provider can later submit the signed handoff receipt with buyer settlement proof before paying the success fee."
+        : "Call the returned registered endpoint directly under the caller's own trust and spending policy. Preserve x-agentresolver-attribution-id. Cryptographic handoff proof is unavailable until the dedicated attribution signing secret is configured."
   }, {
     headers: {
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
-      "access-control-expose-headers": ATTRIBUTION_HEADER,
-      [ATTRIBUTION_HEADER]: attribution.attributionId
+      "access-control-expose-headers": signed
+        ? `${ATTRIBUTION_HEADER}, ${ATTRIBUTION_RECEIPT_HEADER}`
+        : ATTRIBUTION_HEADER,
+      [ATTRIBUTION_HEADER]: attribution.attributionId,
+      ...(signed
+        ? { [ATTRIBUTION_RECEIPT_HEADER]: signed.receipt }
+        : {})
     }
   });
 }

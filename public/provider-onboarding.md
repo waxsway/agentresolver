@@ -37,7 +37,7 @@ A compatible domain-enrolled candidate remains subject to the buyer's requested 
 
 Before AgentResolver attaches provider attribution or payment identity to procurement, the live route must return a parseable x402 v2 `PAYMENT-REQUIRED` challenge whose exact scheme, Base network, canonical Base USDC asset, payTo, amount, and resource binding match the well-known manifest. Missing, malformed, mismatched, non-402, cross-origin, private/local, or oversized enrollment evidence fails closed.
 
-When a domain-enrolled provider is selected, AgentResolver returns an `x-agentresolver-attribution-id` in the procurement handoff. The calling agent should send that exact header to the provider when it executes the selected route.
+When a domain-enrolled provider is selected, AgentResolver returns an `x-agentresolver-attribution-id` in the procurement handoff. When the dedicated attribution signer is active, the handoff also includes `x-agentresolver-attribution-receipt`, a short-lived HMAC-SHA256 `ar1` receipt binding that attribution ID to the exact provider, route, capability, endpoint, method, price, network, asset, payTo, and amount. The calling agent should send both returned attribution headers to the provider exactly as supplied.
 
 ## 3. Prove the routed buyer settlement
 
@@ -54,6 +54,7 @@ with:
 - `routeId`
 - `providerOrigin`
 - `buyerTxHash`
+- `attributionReceipt` when the signed receipt header was present in the original handoff
 
 AgentResolver re-fetches the provider's well-known manifest and independently verifies the Base-USDC buyer settlement against the payment identity published for that route.
 
@@ -94,4 +95,4 @@ It is **not required for admission** to domain-controlled provider routing.
 
 AgentResolver does not hold buyer wallet keys, authorize buyer spend, proxy arbitrary provider requests, or custody buyer funds.
 
-Current proof establishes domain control, the provider's published payment identity, the buyer's Base-USDC settlement, and the provider's success-fee transfer. The procurement attribution ID is not yet cryptographically signed by AgentResolver.
+Current proof establishes domain control, the provider's published payment identity, the buyer's Base-USDC settlement, and the provider's success-fee transfer. When `AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET` is configured, provider fee eligibility additionally requires a valid AgentResolver-issued signed handoff receipt and attribution is cryptographically bound to the exact route/payment terms. This signing secret must be dedicated to attribution receipts and must never reuse wallet, CDP, facilitator, or other payment credentials.

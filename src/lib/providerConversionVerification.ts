@@ -14,6 +14,11 @@ import {
   type DomainProviderRoute
 } from "@/lib/providerManifest";
 import { validatePublicHttpsUrl } from "@/lib/publicHttpsJson";
+import { MAX_ATTRIBUTION_RECEIPT_LENGTH } from "@/lib/attributionReceipt";
+import {
+  attributionSigningConfigured,
+  verifyAttributionReceipt
+} from "@/lib/attributionReceiptRuntime";
 import { isAttributionId } from "@/lib/transactionAttribution";
 
 export type ProviderConversionVerifyInput = {
@@ -22,6 +27,7 @@ export type ProviderConversionVerifyInput = {
   providerId: string;
   buyerTxHash: string;
   providerOrigin?: string;
+  attributionReceipt?: string;
 };
 
 export type ProviderConversionVerifyOptions = {
@@ -72,6 +78,26 @@ function routeId(resolved: ConversionRoute) {
   return resolved.route.routeId;
 }
 
+
+function routeCapabilityId(resolved: ConversionRoute) {
+  return resolved.route.capabilityId;
+}
+
+function routeExecution(resolved: ConversionRoute) {
+  if (resolved.kind === "domain-manifest") {
+    return {
+      method: resolved.route.method,
+      url: resolved.route.endpoint,
+      priceUsd: resolved.route.priceUsd
+    } as const;
+  }
+  return {
+    method: resolved.route.execute.method,
+    url: resolved.route.execute.url,
+    priceUsd: resolved.route.execute.priceUsd
+  } as const;
+}
+
 function providerOrigin(value: unknown): string | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "string") {
@@ -98,6 +124,10 @@ export function parseProviderConversionVerifyInput(
     typeof body.providerId === "string" ? body.providerId.trim() : "";
   const buyerTxHash =
     typeof body.buyerTxHash === "string" ? body.buyerTxHash.trim() : "";
+  const attributionReceipt =
+    typeof body.attributionReceipt === "string"
+      ? body.attributionReceipt.trim()
+      : "";
 
   if (!isAttributionId(attributionId)) {
     throw new Error("attributionId must be a valid AgentResolver attribution ID.");
@@ -111,12 +141,16 @@ export function parseProviderConversionVerifyInput(
   if (!/^0x[0-9a-fA-F]{64}$/.test(buyerTxHash)) {
     throw new Error("buyerTxHash must be a Base transaction hash.");
   }
+  if (attributionReceipt.length > MAX_ATTRIBUTION_RECEIPT_LENGTH) {
+    throw new Error("attributionReceipt exceeds the maximum supported size.");
+  }
 
   return {
     attributionId,
     routeId,
     providerId,
     buyerTxHash,
+    ...(attributionReceipt ? { attributionReceipt } : {}),
     ...(body.providerOrigin !== undefined
       ? { providerOrigin: providerOrigin(body.providerOrigin) }
       : {})
@@ -186,8 +220,59 @@ export async function verifyProviderConversion(
       attribution: {
         asserted: true,
         cryptographicallyVerified: false,
+        receiptRequired: attributionSigningConfigured(options.env ?? process.env),
         limitation:
-          "The supplied attribution ID is well-formed but AgentResolver does not yet persist or cryptographically sign procurement handoff receipts, so this check does not independently prove that the buyer transaction originated from that handoff."
+          "The provider payment identity is not verifiable, so AgentResolver cannot bind a buyer settlement or signed handoff receipt to this route."
+      }
+    } as const;
+  }
+
+  const env = options.env ?? process.env;
+  const signingConfigured = attributionSigningConfigured(env);
+  const execution = routeExecution(resolved);
+  const receiptVerification =
+    signingConfigured && input.attributionReceipt
+      ? verifyAttributionReceipt(
+          input.attributionReceipt,
+          {
+            attributionId: input.attributionId,
+            routeId: routeId(resolved),
+            providerId: routeProviderId(resolved),
+            capabilityId: routeCapabilityId(resolved),
+            execute: {
+              method: execution.method,
+              url: execution.url,
+              priceUsd: execution.priceUsd,
+              network: identity.network,
+              asset: identity.asset,
+              payTo: identity.payTo,
+              amountAtomic: identity.amountAtomic
+            }
+          },
+          env
+        )
+      : null;
+
+  if (signingConfigured && !receiptVerification?.valid) {
+    return {
+      eligibleForFeeSettlement: false,
+      attributionId: input.attributionId,
+      routeId: routeId(resolved),
+      providerId: routeProviderId(resolved),
+      providerEnrollment: resolved.kind,
+      buyerSettlementVerified: false,
+      attributionVerified: false,
+      reason: input.attributionReceipt
+        ? `attribution_receipt_${receiptVerification?.reason || "invalid"}`
+        : "attribution_receipt_required",
+      settlement: null,
+      successFeeQuote: null,
+      attribution: {
+        asserted: true,
+        cryptographicallyVerified: false,
+        receiptRequired: true,
+        limitation:
+          "A dedicated attribution signing secret is active, so provider fee eligibility requires the exact AgentResolver-issued signed handoff receipt."
       }
     } as const;
   }
@@ -222,15 +307,24 @@ export async function verifyProviderConversion(
     providerId: routeProviderId(resolved),
     providerEnrollment: resolved.kind,
     buyerSettlementVerified: settlement.settled,
-    attributionVerified: false,
-    reason: settlement.settled ? "buyer_settlement_verified" : settlement.verdict,
+    attributionVerified: Boolean(receiptVerification?.valid),
+    reason: settlement.settled
+      ? receiptVerification?.valid
+        ? "buyer_settlement_and_attribution_receipt_verified"
+        : "buyer_settlement_verified_legacy_attribution"
+      : settlement.verdict,
     settlement,
     successFeeQuote,
     attribution: {
       asserted: true,
-      cryptographicallyVerified: false,
-      limitation:
-        "The Base USDC buyer settlement is independently verified against the provider payment identity. The supplied attribution ID remains provider-asserted until AgentResolver introduces cryptographically signed procurement handoff receipts."
+      cryptographicallyVerified: Boolean(receiptVerification?.valid),
+      receiptRequired: signingConfigured,
+      receiptExpiresAt: receiptVerification?.valid
+        ? receiptVerification.payload.expiresAt
+        : null,
+      limitation: receiptVerification?.valid
+        ? "AgentResolver independently verified both the buyer settlement and the signed procurement handoff receipt against the exact provider route and payment identity."
+        : "The Base USDC buyer settlement is independently verified against the provider payment identity, but no dedicated signing secret is configured in this runtime so attribution remains explicitly legacy/provider-asserted."
     }
   } as const;
 }

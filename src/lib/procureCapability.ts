@@ -9,6 +9,10 @@ import {
 } from "@/lib/providerManifest";
 import { ATTRIBUTION_HEADER, createAttributionId } from "@/lib/transactionAttribution";
 import {
+  ATTRIBUTION_RECEIPT_HEADER,
+  issueAttributionReceipt
+} from "@/lib/attributionReceiptRuntime";
+import {
   PAID_CAPABILITIES,
   getPaidCapability,
   type PaidCapabilityId
@@ -391,15 +395,95 @@ function attachProcurementAttribution<T extends ProcurementCandidate>(
   const enrollment = domainEnrollment(candidate);
   if (!enrollment) return candidate;
 
+  const execute =
+    candidate.execute &&
+    typeof candidate.execute === "object" &&
+    !Array.isArray(candidate.execute)
+      ? candidate.execute as Record<string, unknown>
+      : null;
+  const paymentIdentity =
+    execute?.paymentIdentity &&
+    typeof execute.paymentIdentity === "object" &&
+    !Array.isArray(execute.paymentIdentity)
+      ? execute.paymentIdentity as Record<string, unknown>
+      : null;
+
   const attributionId = createAttributionId();
+  const method =
+    execute?.method === "GET" || execute?.method === "POST"
+      ? execute.method
+      : null;
+  const url = typeof execute?.url === "string" ? execute.url : null;
+  const priceUsd = Number(execute?.priceUsd);
+  const network =
+    typeof paymentIdentity?.network === "string"
+      ? paymentIdentity.network
+      : null;
+  const asset =
+    typeof paymentIdentity?.asset === "string"
+      ? paymentIdentity.asset
+      : null;
+  const payTo =
+    typeof paymentIdentity?.payTo === "string"
+      ? paymentIdentity.payTo
+      : null;
+  const amountAtomic =
+    typeof paymentIdentity?.amountAtomic === "string"
+      ? paymentIdentity.amountAtomic
+      : null;
+
+  const signed =
+    method &&
+    url &&
+    Number.isFinite(priceUsd) &&
+    network &&
+    asset &&
+    payTo &&
+    amountAtomic
+      ? issueAttributionReceipt({
+          attributionId,
+          routeId: enrollment.routeId,
+          providerId: enrollment.providerId,
+          capabilityId: enrollment.capabilityId,
+          execute: {
+            method,
+            url,
+            priceUsd,
+            network,
+            asset,
+            payTo,
+            amountAtomic
+          },
+          inputFingerprint: null
+        })
+      : null;
+
+  const headers =
+    execute?.headers &&
+    typeof execute.headers === "object" &&
+    !Array.isArray(execute.headers)
+      ? execute.headers as Record<string, unknown>
+      : {};
+
   return {
     ...candidate,
     execute: {
       ...(candidate.execute || {}),
+      headers: {
+        ...headers,
+        [ATTRIBUTION_HEADER]: attributionId,
+        ...(signed
+          ? { [ATTRIBUTION_RECEIPT_HEADER]: signed.receipt }
+          : {})
+      },
       attribution: {
         id: attributionId,
         header: ATTRIBUTION_HEADER,
         headerValue: attributionId,
+        receipt: signed?.receipt ?? null,
+        receiptHeader: ATTRIBUTION_RECEIPT_HEADER,
+        receiptExpiresAt: signed?.payload.expiresAt ?? null,
+        cryptographicallySigned: Boolean(signed),
         providerOrigin: enrollment.origin,
         providerId: enrollment.providerId,
         routeId: enrollment.routeId,
