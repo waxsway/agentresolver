@@ -17,7 +17,7 @@ test("paid verified resolve uses the same procurement universe as free procureme
 });
 
 test("free procurement preserves hard constraints in the paid verification handoff", () => {
-  assert.match(procurement, /input: \{ goal, constraints \}/);
+  assert.match(procurement, /input: \{[\s\S]*goal,[\s\S]*constraints,[\s\S]*providerOrigins/);
   assert.match(procurement, /\/api\/verified-resolve/);
   assert.match(procurement, /priceUsd: 0\.02/);
 });
