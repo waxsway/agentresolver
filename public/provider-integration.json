@@ -12,7 +12,17 @@
     "format": "atr_<uuid-v4>",
     "generatedBy": "AgentResolver procurement handoff",
     "rawGoalsStored": false,
-    "rawIpStored": false
+    "rawIpStored": false,
+    "receiptHeader": "x-agentresolver-attribution-receipt",
+    "signedReceipt": {
+      "format": "ar1.<base64url-payload>.<hmac-sha256-signature>",
+      "defaultTtlSeconds": 900,
+      "maximumTtlSeconds": 3600,
+      "dedicatedSecret": "AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET",
+      "walletOrPaymentSecretReuseAllowed": false,
+      "enforcedForFeeEligibilityWhenConfigured": true,
+      "legacyBehaviorWhenNotConfigured": "provider-asserted attribution remains explicitly unverified"
+    }
   },
   "providerEnrollment": {
     "mode": "domain-controlled-well-known",
@@ -68,7 +78,8 @@
     "buyerSettlement": "independent Base USDC settlement verification",
     "providerFee": "independent Base USDC transfer verification",
     "attributionReplayResistance": "exact fee amount includes a deterministic attribution-bound atomic suffix",
-    "limitation": "The attribution ID is supplied in the AgentResolver procurement handoff but is not yet cryptographically signed by AgentResolver."
+    "limitation": "A signed receipt proves AgentResolver issued the exact route/payment handoff and binds the attribution ID to it. It does not establish the eventual buyer's legal identity. Until the dedicated signing secret is configured in a runtime, attribution remains explicitly legacy/provider-asserted.",
+    "providerAttribution": "AgentResolver-issued signed handoff receipt when the dedicated attribution signing secret is configured"
   },
   "safety": {
     "arbitraryProxying": false,
