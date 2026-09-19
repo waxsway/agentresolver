@@ -10,7 +10,13 @@ Publish this JSON at:
 https://YOUR-DOMAIN/.well-known/agentresolver-provider.json
 ```
 
-Use the machine-readable example at:
+Validate locally against:
+
+```text
+https://agentresolver.vercel.app/provider-manifest.schema.json
+```
+
+Then use the machine-readable example at:
 
 ```text
 https://agentresolver.vercel.app/provider-manifest.example.json
