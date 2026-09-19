@@ -84,13 +84,41 @@ function procurementConstraints(value: unknown): ProcurementConstraints {
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
 let paidHandler: PaidHandler | null = null;
 
+function getCompatibilityInput(req: NextRequest) {
+  const params = req.nextUrl.searchParams;
+  const preferredNetwork = params.get("preferredNetwork")?.trim();
+  const providerOrigin = params.get("providerOrigin")?.trim();
+  const rawMaxPrice = params.get("maxPriceUsd");
+  const maxPriceUsd =
+    rawMaxPrice !== null && rawMaxPrice.trim() !== ""
+      ? Number(rawMaxPrice)
+      : undefined;
+  const requireHttps = params.get("requireHttps");
+
+  return {
+    goal: params.get("goal"),
+    url: params.get("url"),
+    providerOrigins: providerOrigin ? [providerOrigin] : undefined,
+    constraints: {
+      ...(Number.isFinite(maxPriceUsd) ? { maxPriceUsd } : {}),
+      ...(params.get("protocol") ? { protocol: params.get("protocol") } : {}),
+      ...(preferredNetwork ? { preferredNetworks: [preferredNetwork] } : {}),
+      ...(requireHttps !== null ? { requireHttps: requireHttps !== "false" } : {}),
+      ...(params.get("sideEffect") ? { sideEffect: params.get("sideEffect") } : {}),
+      ...(params.get("auth") ? { auth: params.get("auth") } : {})
+    }
+  };
+}
+
 async function verifiedResolveHandler(req: NextRequest): Promise<NextResponse<unknown>> {
-  const body = (await req.json().catch(() => null)) as {
-    goal?: unknown;
-    url?: unknown;
-    providerOrigins?: unknown;
-    constraints?: unknown;
-  } | null;
+  const body = req.method === "GET"
+    ? getCompatibilityInput(req)
+    : (await req.json().catch(() => null)) as {
+        goal?: unknown;
+        url?: unknown;
+        providerOrigins?: unknown;
+        constraints?: unknown;
+      } | null;
   const goal = String(body?.goal || "").trim();
   const url = body?.url ? String(body.url).trim() : undefined;
   let providerOrigins: string[] = [];
@@ -184,8 +212,11 @@ async function paidRequest(req: NextRequest) {
 
 export async function POST(req: NextRequest) { return paidRequest(req); }
 export async function GET(req: NextRequest) {
-  logLegacyPaidDiscovery(req, "verified-resolve", "/api/verified-resolve");
-  return x402DiscoveryChallenge("verified-resolve");
+  if (!req.nextUrl.searchParams.get("goal")?.trim()) {
+    logLegacyPaidDiscovery(req, "verified-resolve", "/api/verified-resolve");
+    return x402DiscoveryChallenge("verified-resolve");
+  }
+  return paidRequest(req);
 }
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, payment-signature, payment-required, payment-response, x-agentresolver-attribution-id" } });
