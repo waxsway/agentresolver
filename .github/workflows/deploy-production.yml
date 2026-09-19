@@ -528,7 +528,7 @@ jobs:
               curl -fsS -H 'cache-control: no-cache' "$BASE_URL/openapi.json?$suffix" -o /tmp/provider-openapi.json &&
               jq -e '
                 .paths["/api/providers"].get.operationId == "getProviderNetwork" and
-                .paths["/api/provider-bootstrap"].post.operationId == "bootstrapProvider" and
+                .paths["/api/provider-bootstrap"].post.operationId == "bootstrapProviderDiscovery" and
                 .paths["/api/provider-attribution-verify"].post.operationId == "verifyProviderConversion" and
                 .paths["/api/provider-success-fee-quote"].post.operationId == "quoteProviderSuccessFee" and
                 .paths["/api/provider-success-fee-verify"].post.operationId == "verifyProviderSuccessFee"
