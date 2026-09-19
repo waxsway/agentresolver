@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   parseDomainProviderManifest,
   quoteProviderSuccessFee,
+  verifyDomainProviderRouteChallenge,
+  PROVIDER_MANIFEST_MAX_BYTES,
   PROVIDER_SUCCESS_FEE_BPS
 } from "../src/lib/providerManifest";
 import { BASE_USDC } from "../src/lib/x402SettlementVerify";
@@ -93,4 +95,106 @@ test("attribution binding makes same-GMV fee proofs non-replayable across attrib
   assert.notEqual(first.feeAmountAtomic, second.feeAmountAtomic);
   assert.equal(first.attributionBound, true);
   assert.equal(second.attributionBound, true);
+});
+
+
+test("malformed and oversized provider manifests fail closed", () => {
+  assert.deepEqual(
+    parseDomainProviderManifest(manifestUrl, { schemaVersion: 1 }),
+    []
+  );
+
+  const oversized = validManifest();
+  oversized.routes[0]!.description = "x".repeat(PROVIDER_MANIFEST_MAX_BYTES);
+  assert.deepEqual(parseDomainProviderManifest(manifestUrl, oversized), []);
+});
+
+test("private or local manifest origins are rejected before enrollment", () => {
+  assert.deepEqual(
+    parseDomainProviderManifest(
+      "https://127.0.0.1/.well-known/agentresolver-provider.json",
+      validManifest()
+    ),
+    []
+  );
+  assert.deepEqual(
+    parseDomainProviderManifest(
+      "https://provider.internal/.well-known/agentresolver-provider.json",
+      validManifest()
+    ),
+    []
+  );
+});
+
+function validChallengeReport(route: ReturnType<typeof parseDomainProviderManifest>[number]) {
+  return {
+    status: 402,
+    x402: {
+      detected: true,
+      challengeHeaderPresent: true,
+      parseable: true,
+      version: 2,
+      acceptCount: 1,
+      scheme: "exact",
+      network: route.network,
+      asset: route.asset,
+      payTo: route.payTo,
+      resource: route.endpoint,
+      amountAtomic: route.amountAtomic
+    }
+  } as any;
+}
+
+test("domain enrollment requires a live x402 challenge matching the manifest payment identity", async () => {
+  const route = parseDomainProviderManifest(manifestUrl, validManifest())[0]!;
+  const verified = await verifyDomainProviderRouteChallenge(
+    route,
+    async () => validChallengeReport(route)
+  );
+  assert.equal(verified, true);
+});
+
+test("bad x402 challenge fails provider enrollment closed", async () => {
+  const route = parseDomainProviderManifest(manifestUrl, validManifest())[0]!;
+  const report = validChallengeReport(route);
+  report.status = 200;
+  report.x402.detected = false;
+
+  const verified = await verifyDomainProviderRouteChallenge(
+    route,
+    async () => report
+  );
+  assert.equal(verified, false);
+});
+
+test("live x402 payment identity mismatch fails provider enrollment closed", async () => {
+  const route = parseDomainProviderManifest(manifestUrl, validManifest())[0]!;
+  const report = validChallengeReport(route);
+  report.x402.payTo = "0x3333333333333333333333333333333333333333";
+
+  const verified = await verifyDomainProviderRouteChallenge(
+    route,
+    async () => report
+  );
+  assert.equal(verified, false);
+});
+
+test("manifest-declared POST route uses only the bounded empty unpaid challenge probe", async () => {
+  const manifest = validManifest();
+  manifest.routes[0]!.method = "POST";
+  const route = parseDomainProviderManifest(manifestUrl, manifest)[0]!;
+  let seenOptions: any = null;
+
+  const verified = await verifyDomainProviderRouteChallenge(
+    route,
+    async (_url, options) => {
+      seenOptions = options;
+      return validChallengeReport(route);
+    }
+  );
+
+  assert.equal(verified, true);
+  assert.equal(seenOptions?.method, "POST");
+  assert.equal(seenOptions?.allowUnpaidPostProbe, true);
+  assert.deepEqual(seenOptions?.body, {});
 });
