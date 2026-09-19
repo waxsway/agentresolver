@@ -27,13 +27,15 @@ The current commerce contract is:
 - extra fee charged to the buyer by AgentResolver: **$0**
 - provider account, email, API key, wallet key, or custody: **not required**
 
-Publishing the manifest is the provider's machine-readable opt-in to these terms.
+Publishing the manifest is the provider's machine-readable opt-in to these terms and to a bounded unsigned challenge probe used to verify the listed x402 payment identity. For a declared GET route AgentResolver sends one unpaid GET; for a declared POST route it may send one empty JSON POST. The route must return the x402 402 challenge before any business side effect. AgentResolver never sends a payment signature during enrollment.
 
 ## 2. Be discoverable
 
 AgentResolver can recognize the manifest when the same provider route appears in a supported external capability catalog such as PayAI/Circle discovery.
 
 A compatible domain-enrolled candidate remains subject to the buyer's requested budget, network, protocol, and schema constraints. Provider-funded economics do not override hard buyer constraints.
+
+Before AgentResolver attaches provider attribution or payment identity to procurement, the live route must return a parseable x402 v2 `PAYMENT-REQUIRED` challenge whose exact scheme, Base network, canonical Base USDC asset, payTo, amount, and resource binding match the well-known manifest. Missing, malformed, mismatched, non-402, cross-origin, private/local, or oversized enrollment evidence fails closed.
 
 When a domain-enrolled provider is selected, AgentResolver returns an `x-agentresolver-attribution-id` in the procurement handoff. The calling agent should send that exact header to the provider when it executes the selected route.
 
