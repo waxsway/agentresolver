@@ -52,21 +52,23 @@ if [ "${#secret}" -lt 64 ]; then
   exit 1
 fi
 
-(
+result_file="$tmp/vercel-env-add.out"
+if ! (
   cd "$tmp"
   printf '%s' "$secret" |
-    vercel env add "$KEY" "$TARGET" --sensitive --token="$VERCEL_TOKEN" --no-color >/tmp/agentresolver-vercel-env-add.out
-)
+    vercel env add "$KEY" "$TARGET" --sensitive --token="$VERCEL_TOKEN" --no-color >"$result_file" 2>&1
+); then
+  secret=""
+  unset secret
+  echo "Vercel CLI failed to provision the attribution signing secret; output suppressed."
+  exit 1
+fi
 
 secret=""
 unset secret
 
-if ! grep -Eqi 'added|created|success' /tmp/agentresolver-vercel-env-add.out; then
-  echo "Vercel CLI did not confirm attribution signer provisioning."
-  cat /tmp/agentresolver-vercel-env-add.out
-  rm -f /tmp/agentresolver-vercel-env-add.out
+if ! grep -Eqi 'added|created|success' "$result_file"; then
+  echo "Vercel CLI did not confirm attribution signer provisioning; output suppressed."
   exit 1
 fi
-
-rm -f /tmp/agentresolver-vercel-env-add.out
 echo "$KEY provisioned as a fresh sensitive $TARGET variable. Redeploy is required before runtime signing becomes active."
