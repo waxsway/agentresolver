@@ -4,7 +4,8 @@ import type {
   ProcurementConstraints
 } from "@/lib/procurement";
 import { procureCapability } from "@/lib/procureCapability";
-import { callerHash, classifyIntent, safeUserAgent } from "@/lib/telemetry";
+import { classifyIntent } from "@/lib/telemetry";
+import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 
 export const dynamic = "force-dynamic";
 
@@ -160,13 +161,16 @@ export async function POST(req: Request) {
 
   const result = await procureCapability(goal, constraints, limit, baseUrl);
   const selected = result.selected;
+  const traffic = classifyTraffic(req, {
+    path: "/api/procure",
+    hasUserIntent: true
+  });
 
   console.log(
     JSON.stringify({
       event: "procurement_call",
       at: new Date().toISOString(),
-      callerHash: callerHash(req),
-      userAgent: safeUserAgent(req),
+      ...trafficLogFields(req, traffic),
       intentTags: classifyIntent(goal),
       goalLength: goal.length,
       candidateCount: result.candidateCount,
