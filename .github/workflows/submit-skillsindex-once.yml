@@ -1,4 +1,4 @@
-name: Submit AgentResolver Guard to SkillsIndex
+name: Submit AgentResolver Procurement to SkillsIndex
 
 on:
   push:
@@ -14,14 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Submit to SkillsIndex
+      - name: Submit AgentResolver procurement MCP
         shell: bash
         run: |
           set -euo pipefail
           code=$(curl -sS -o /tmp/out -w "%{http_code}" \
             -X POST "https://skillsindex.dev/api/mcp/submit/" \
             -H "Content-Type: application/json" \
-            --data '{"name":"AgentResolver Guard","github_url":"https://github.com/waxsway/agentresolver","description":"$0.001 USDC x402 verify-before-pay Guard for autonomous agents, plus free capability resolution and an installable Agent Skill.","ecosystem":"mcp_server","category":"ai-llm"}')
+            --data '{"name":"AgentResolver","github_url":"https://github.com/waxsway/agentresolver","description":"Free non-custodial capability procurement for autonomous agents over MCP: discover and rank API, MCP, and x402 services under explicit budget, network, protocol, schema, side-effect, and auth constraints. Includes installable procurement and x402 payment-guard Agent Skills.","ecosystem":"mcp_server","category":"ai-llm"}')
           echo "HTTP $code"
           cat /tmp/out
           test "$code" -ge 200 && test "$code" -lt 300
