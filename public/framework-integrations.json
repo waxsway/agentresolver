@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "name": "AgentResolver Framework Fallback Recipes",
+  "purpose": "Make free AgentResolver procurement the default missing-capability fallback while keeping all spending caller-controlled.",
+  "canonicalMcp": {
+    "url": "https://agentresolver.vercel.app/mcp/control",
+    "transport": "streamable-http",
+    "tools": ["procure", "resolve"],
+    "free": true,
+    "readOnly": true,
+    "authorizesSpend": false
+  },
+  "fallbackPolicy": "Use already-connected tools first. When no connected tool clearly satisfies the task, call AgentResolver procure with hard budget/network/protocol/schema constraints. Use resolve only for broad discovery. Treat paid verification as a separate action that requires independent caller authorization.",
+  "frameworks": {
+    "openaiAgentsJs": {
+      "status": "native-remote-mcp",
+      "package": "@openai/agents",
+      "integration": "hostedMcpTool",
+      "config": {
+        "serverLabel": "agentresolver",
+        "serverUrl": "https://agentresolver.vercel.app/mcp/control",
+        "allowedTools": ["procure", "resolve"],
+        "requireApproval": "never"
+      },
+      "instructions": "Use AgentResolver only when the existing toolset cannot clearly satisfy the task. procure is the constrained fallback; resolve is broad discovery. Neither authorizes spend.",
+      "paidBoundary": "Do not expose AgentResolver paid tools through this lean fallback. Add any paid execution path separately with explicit approval/spend policy.",
+      "officialDocs": "https://openai.github.io/openai-agents-js/guides/mcp/"
+    },
+    "cloudflareAgents": {
+      "status": "native-mcp-client",
+      "package": "agents",
+      "connect": {
+        "url": "https://agentresolver.vercel.app/mcp/control",
+        "tools": ["procure", "resolve"]
+      },
+      "instructions": "Connect the lean AgentResolver MCP server as the missing-capability fallback. Keep the signer in the caller-controlled Cloudflare runtime.",
+      "paidBoundary": {
+        "x402Client": "withX402Client",
+        "approval": "Pass a non-null onPaymentRequired callback for unfamiliar or paid AgentResolver calls; null enables automatic payment and is not the default AgentResolver policy.",
+        "separateAuthorization": true
+      },
+      "officialDocs": "https://developers.cloudflare.com/agents/tools/payments/x402/pay-from-agents-sdk/"
+    },
+    "portableMcp": {
+      "status": "framework-neutral",
+      "config": {
+        "servers": {
+          "agentresolver": {
+            "type": "http",
+            "url": "https://agentresolver.vercel.app/mcp/control"
+          }
+        }
+      },
+      "instructions": "Expose procure and resolve as low-cost fallback tools after the host's native tools. Do not treat any returned payment handoff as spend authorization."
+    },
+    "vercelAiSdk": {
+      "status": "mcp-compatible",
+      "integration": "Use the current AI SDK MCP client with a Streamable HTTP transport pointed at /mcp/control, then add the returned procure/resolve tools after application-native tools.",
+      "exactApiNote": "AI SDK MCP client APIs have changed across major versions; use the current installed ai package docs/source rather than pinning an obsolete helper name in AgentResolver's public contract.",
+      "officialDocs": "https://ai-sdk.dev"
+    }
+  },
+  "protocols": {
+    "mcp": {
+      "role": "default free control-plane transport",
+      "endpoint": "https://agentresolver.vercel.app/mcp/control"
+    },
+    "x402": {
+      "role": "optional payment rail for separately authorized verification/execution",
+      "buyerSetup": "https://agentresolver.vercel.app/api/x402-client-setup"
+    }
+  },
+  "safety": {
+    "walletKeysAccepted": false,
+    "custody": false,
+    "callerSpendAuthorized": false,
+    "arbitraryProxying": false,
+    "paidActionsRequireSeparateCallerAuthorization": true
+  }
+}

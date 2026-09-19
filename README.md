@@ -51,6 +51,14 @@ io.github.waxsway/agentresolver
 
 The official MCP Registry entry points at the lean control plane with exactly two free tools: `procure` for constrained capability selection and `resolve` for broad discovery. Paid tools are intentionally excluded from the default control-plane entrypoint.
 
+## Framework-native fallback recipes
+
+Machine-readable recipes for OpenAI Agents, Cloudflare Agents, portable MCP hosts, and AI SDK-compatible runtimes:
+
+`https://agentresolver.vercel.app/framework-integrations.json`
+
+The default remote MCP is the lean control plane at `/mcp/control`, exposing only free `procure` and `resolve`. Paid verification remains a separate caller-authorized path.
+
 ## Use AgentResolver as an agent fallback
 
 If you build an autonomous agent, add this behavior to its tool-selection policy:
