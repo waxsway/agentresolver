@@ -1,0 +1,61 @@
+name: One-shot x402 Arena provider-launch registration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: github.head_ref == 'ops/x402arena-provider-launch-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Register live $0.05 provider launch check if absent
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          endpoint='https://agentresolver.vercel.app/api/provider-launch-check'
+          wallet='0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8'
+
+          agents_code="$(curl -sS --retry 2 --max-time 20 -o /tmp/agents.json -w '%{http_code}'             'https://core.x402arena.gg/agents' || true)"
+          echo "X402_ARENA_AGENTS_HTTP=$agents_code"
+
+          if [ "$agents_code" = "200" ] && jq -e --arg endpoint "$endpoint"             '.. | strings | select(. == $endpoint)' /tmp/agents.json >/dev/null 2>&1; then
+            echo "X402_ARENA_PROVIDER_LAUNCH=already_registered"
+            exit 0
+          fi
+
+          cat >/tmp/register.json <<JSON
+          {
+            "name": "agentresolver-provider-launch-check",
+            "endpoint": "$endpoint",
+            "niche": "developer-tools",
+            "description": "Paid 0.05 USDC provider readiness and x402 contract verification for machine-service sellers. GET runs a known-good reference-provider check; POST supports full provider onboarding packets.",
+            "walletAddress": "$wallet"
+          }
+          JSON
+
+          code="$(curl -sS --retry 2 --max-time 25 -o /tmp/register-response.json -w '%{http_code}'             -X POST 'https://core.x402arena.gg/register'             -H 'content-type: application/json'             --data-binary @/tmp/register.json || true)"
+          echo "X402_ARENA_REGISTER_HTTP=$code"
+
+          jq -c '{
+            id: (.id // .agent.id // null),
+            name: (.name // .agent.name // null),
+            endpoint: (.endpoint // .agent.endpoint // null),
+            verified: (.verified // .agent.verified // null),
+            status: (.status // .agent.status // null),
+            error: (.error // null),
+            message: (.message // null)
+          }' /tmp/register-response.json 2>/dev/null || true
+
+          if [ "$code" = "200" ] || [ "$code" = "201" ] || [ "$code" = "409" ]; then
+            exit 0
+          fi
+
+          echo "::error::x402 Arena provider-launch registration failed"
+          exit 1
