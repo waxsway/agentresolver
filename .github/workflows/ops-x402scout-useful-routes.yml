@@ -1,0 +1,79 @@
+name: One-shot x402Scout useful-route registration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: github.head_ref == 'ops/x402scout-useful-routes-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      SCOUT_API: https://x402-discovery-api.onrender.com
+      PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+    steps:
+      - name: Register missing useful routes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          catalog_status="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/catalog.json -w '%{http_code}' "$SCOUT_API/catalog" || printf '000')"
+          if [ "$catalog_status" != "200" ]; then
+            echo "::warning::x402Scout catalog unavailable (HTTP $catalog_status); no registration attempted."
+            exit 0
+          fi
+
+          register_one() {
+            local endpoint="$1"
+            local name="$2"
+            local description="$3"
+            local tags="$4"
+            local label="$5"
+
+            if jq -e --arg endpoint "$endpoint" '(.services // []) | any((.endpoint_url // .url // "") == $endpoint)' /tmp/catalog.json >/dev/null; then
+              echo "$label=already_present"
+              return 0
+            fi
+
+            payload="$(jq -nc               --arg name "$name"               --arg endpoint "$endpoint"               --arg description "$description"               --arg wallet "$PAYOUT_WALLET"               --argjson tags "$tags"               '{
+                name:$name,
+                endpoint_url:$endpoint,
+                description:$description,
+                price_per_call:0.001,
+                capability_tags:$tags,
+                provider_wallet:$wallet,
+                network:"base",
+                payment_token:"USDC",
+                pricing_model:"flat",
+                agent_callable:true,
+                auth_required:false
+              }')"
+
+            status="$(curl -sS --connect-timeout 10 --max-time 30               -o /tmp/register.json -w '%{http_code}'               -X POST "$SCOUT_API/register"               -H 'content-type: application/json'               --data "$payload" || printf '000')"
+
+            echo "$label=http_$status"
+            case "$status" in
+              200|201|409)
+                jq -c '{service_id:(.service_id // .id // null),status:(.status // null),name:(.name // null)}' /tmp/register.json 2>/dev/null || true
+                ;;
+              429|500|502|503|504|000)
+                echo "::warning::$label temporarily unavailable; no spend or identity used."
+                ;;
+              *)
+                echo "::error::$label unexpected HTTP $status; response body suppressed."
+                exit 1
+                ;;
+            esac
+          }
+
+          preflight='https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.001&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedNetwork=eip155%3A8453'
+          settlement='https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=0x439885dab80375051b5295df179b668a6a67490d20c3e1cb4725809f4ea4b5b8&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedAmountAtomic=1000'
+
+          register_one "$preflight"             'AgentResolver x402 Payment Preflight'             'Verify live x402 payTo, USDC amount, network, asset, scheme and resource binding before wallet signing.'             '["verification","payment","security","x402"]'             X402SCOUT_PREFLIGHT
+
+          register_one "$settlement"             'AgentResolver x402 Settlement Verification'             'Independently verify a completed Base USDC x402 settlement from its transaction hash, EIP-3009 shape, transfer logs and expected recipient/amount.'             '["verification","settlement","payment","x402"]'             X402SCOUT_SETTLEMENT
