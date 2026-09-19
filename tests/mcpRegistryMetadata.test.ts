@@ -9,7 +9,7 @@ test("MCP registry metadata leads with the procurement network", () => {
   assert.equal(server.version, "0.2.0");
   assert.match(server.description, /capability procurement/i);
   assert.match(server.description, /provider routing/i);
-  assert.equal(server.remotes?.[0]?.url, "https://agentresolver.vercel.app/mcp");
+  assert.equal(server.remotes?.[0]?.url, "https://agentresolver.vercel.app/mcp/control");
 });
 
 test("runtime MCP card and health surface match registry release version", () => {
