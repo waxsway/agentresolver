@@ -101,7 +101,7 @@ function httpsUrl(value: unknown) {
   }
 }
 
-function normalize(raw: Index402RawService): Index402Match | null {
+export function normalize402IndexService(raw: Index402RawService): Index402Match | null {
   const resource = httpsUrl(raw.url);
   const normalizedProtocol = protocol(raw.protocol);
   const name = typeof raw.name === "string" ? raw.name.trim().slice(0, 200) : "";
@@ -209,7 +209,7 @@ export async function discover402IndexServices(
     const services = Array.isArray(body.services) ? body.services : [];
 
     return services
-      .map((item) => normalize(item as Index402RawService))
+      .map((item) => normalize402IndexService(item as Index402RawService))
       .filter((item): item is Index402Match => Boolean(item))
       .sort((a, b) => {
         const domainDelta = Number(b.domainVerified) - Number(a.domainVerified);
