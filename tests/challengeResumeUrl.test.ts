@@ -50,6 +50,14 @@ test("live x402 challenge hands setup the exact GET purchase URL", async () => {
   ));
 
   assert.equal(response.status, 402);
+  assert.equal(
+    response.headers.get("x-agentresolver-free-procure"),
+    "https://agentresolver.vercel.app/api/procure"
+  );
+  assert.equal(
+    response.headers.get("x-agentresolver-control-mcp"),
+    "https://agentresolver.vercel.app/mcp/control"
+  );
   const setupHeader = response.headers.get("x-agentresolver-buyer-setup");
   assert.ok(setupHeader);
   const setupUrl = new URL(setupHeader);

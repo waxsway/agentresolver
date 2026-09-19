@@ -1,6 +1,8 @@
 export const X402_BUYER_SETUP_PATH = "/api/x402-client-setup" as const;
 export const X402_BUYER_SETUP_URL = `https://agentresolver.vercel.app${X402_BUYER_SETUP_PATH}` as const;
 export const X402_BUYER_SETUP_ERROR = `Payment required. x402 buyer setup: ${X402_BUYER_SETUP_URL}` as const;
+export const FREE_PROCURE_URL = "https://agentresolver.vercel.app/api/procure" as const;
+export const CONTROL_MCP_URL = "https://agentresolver.vercel.app/mcp/control" as const;
 
 export type X402ChallengeMethod = "GET" | "POST" | "HEAD";
 
@@ -260,6 +262,8 @@ export function x402BuyerSetup(context: X402BuyerSetupContext = {}) {
     },
     agentResolver: {
       mcp: "https://agentresolver.vercel.app/mcp",
+      controlMcp: CONTROL_MCP_URL,
+      freeProcure: FREE_PROCURE_URL,
       paidManifest: "https://agentresolver.vercel.app/.well-known/x402",
       buyerSetup: X402_BUYER_SETUP_URL,
       agentSkillsIndex: AGENT_SKILLS_INDEX_URL,
@@ -824,6 +828,27 @@ export function x402BuyerSetupCompact(context: X402BuyerSetupContext = {}) {
         }
       : null,
     fullSetupUrl: X402_BUYER_SETUP_URL,
+    freeProcurementFallback: {
+      useWhen: "The caller cannot or does not want to authorize this AgentResolver paid request.",
+      buyerAgentResolverFeeUsd: 0,
+      http: {
+        method: "POST" as const,
+        url: FREE_PROCURE_URL,
+        body: {
+          goal: "Describe the capability the agent needs.",
+          constraints: {
+            maxPriceUsd: "caller-defined",
+            protocol: "x402|l402|mpp|mcp|any"
+          }
+        }
+      },
+      mcp: {
+        url: CONTROL_MCP_URL,
+        tool: "procure" as const
+      },
+      boundary:
+        "Procurement is free and never authorizes provider spend. The caller executes any selected provider under its own trust and spend policy; eligible providers may owe AgentResolver a success fee after independently verified routed commerce."
+    },
     paymentGuard: "https://agentresolver.vercel.app/api/payment-guard",
     authorizationBoundary: {
       callerControlsSigner: true,
