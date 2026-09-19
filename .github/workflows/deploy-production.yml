@@ -412,16 +412,16 @@ jobs:
               jq -e '
                 .service == "AgentResolver Provider Network" and
                 .providerFunding.feeModel == "provider_success_fee" and
-                .providerFunding.successFeeBps == 200 and
-                .providerFunding.minimumSuccessFeeUsd == 0.001 and
-                .providerFunding.buyerExtraFeeUsd == 0 and
-                .providerEnrollment.mode == "domain-controlled-well-known" and
-                .providerEnrollment.reviewRequired == false
+                .sellerMonetization.successFeeBps == 200 and
+                .sellerMonetization.minimumSuccessFeeUsd == 0.001 and
+                .sellerMonetization.buyerExtraFeeUsd == 0 and
+                .domainEnrollment.status == "open" and
+                .domainEnrollment.operatorReviewRequired == false
               ' /tmp/providers.json >/dev/null &&
               curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json &&
               jq -e '
-                .providerEnrollment.mode == "domain-controlled-well-known" and
-                .providerEnrollment.reviewRequired == false and
+                .domainEnrollment.status == "open" and
+                .domainEnrollment.operatorReviewRequired == false and
                 .commercial.successFeeBps == 200 and
                 .commercial.minimumSuccessFeeUsd == 0.001 and
                 .commercial.buyerExtraFeeUsd == 0
@@ -463,8 +463,8 @@ jobs:
         if: failure() && steps.production_deploy.outcome != 'skipped'
         shell: bash
         env:
-          HEALTHY_DEPLOYMENT_ID: dpl_ErXGyYownF8254n14tDvwwFMiPEv
-          HEALTHY_SHA: c2a05df127548c4ecc87ba73467cef72b6e721c3
+          HEALTHY_DEPLOYMENT_ID: dpl_7f6Up6NZNjjRWUeYFrf3u7sKA8UQ
+          HEALTHY_SHA: fe1f69b03fa03e845a516e745772383d46da71d2
           CANONICAL_ALIAS: agentresolver.vercel.app
           BASE_URL: https://agentresolver.vercel.app
         run: |
@@ -490,7 +490,7 @@ jobs:
                 .x402Version == 2 and
                 (.accepts | length) == 1 and
                 .accepts[0].network == "eip155:8453" and
-                .accepts[0].amount == "1000"
+                .accepts[0].amount == "2000"
               ' /tmp/rollback-canary-b >/dev/null; then
               restored=1
               break
