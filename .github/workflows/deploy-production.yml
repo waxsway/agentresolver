@@ -16,10 +16,10 @@ concurrency:
 
 jobs:
   deploy:
-    # Automatic production deployment is hard-disabled after the one-shot
-    # zero-account provider-network release. Re-arm only for an explicitly justified runtime release.
+    # One-shot re-arm for the provider-network + lean MCP control-plane release.
+    # Hard-disable again immediately after validated production smoke.
     if: >-
-      false &&
+      true &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
@@ -455,6 +455,31 @@ jobs:
             exit 1
           fi
 
+          mcp_control_ready=0
+          for attempt in {1..15}; do
+            suffix="deployment=$VALIDATED_SHA&mcpControlSmokeAttempt=$attempt"
+            control_code="$(curl -sS -I -o /tmp/mcp-control-headers.txt -w '%{http_code}'               -H 'cache-control: no-cache'               "$BASE_URL/mcp/control?$suffix" || true)"
+            if [ "$control_code" = "200" ] &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/server.json?$suffix" -o /tmp/mcp-server.json &&
+              jq -e '
+                .name == "io.github.waxsway/agentresolver" and
+                .version == "0.2.0" and
+                .remotes[0].url == "https://agentresolver.vercel.app/mcp/control"
+              ' /tmp/mcp-server.json >/dev/null; then
+              mcp_control_ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$mcp_control_ready" != "1" ]; then
+            echo "::error::New production deployment did not expose the lean MCP procurement control plane."
+            cat /tmp/mcp-control-headers.txt 2>/dev/null || true
+            cat /tmp/mcp-server.json 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "MCP_CONTROL_PRODUCTION_SMOKE=true"
           echo "PROVIDER_NETWORK_PRODUCTION_SMOKE=true"
           echo "PROCUREMENT_PRODUCTION_SMOKE=true"
           echo "CDP_PRODUCTION_SMOKE=true"
@@ -463,8 +488,8 @@ jobs:
         if: failure() && steps.production_deploy.outcome != 'skipped'
         shell: bash
         env:
-          HEALTHY_DEPLOYMENT_ID: dpl_7f6Up6NZNjjRWUeYFrf3u7sKA8UQ
-          HEALTHY_SHA: fe1f69b03fa03e845a516e745772383d46da71d2
+          HEALTHY_DEPLOYMENT_ID: dpl_Hh3SU83Ee4bS4a23eftmovdbDhks
+          HEALTHY_SHA: 2d3175cfc983ecf27503d28adba9db936c5b8e5a
           CANONICAL_ALIAS: agentresolver.vercel.app
           BASE_URL: https://agentresolver.vercel.app
         run: |
