@@ -1,5 +1,6 @@
 import { resolveGoal } from "@/lib/resolver";
 import { resolveProviderRoutes } from "@/lib/providerNetwork";
+import { discoverPayAiResources, type PayAiMatch } from "@/lib/payaiDiscovery";
 import {
   PAID_CAPABILITIES,
   getPaidCapability,
@@ -148,6 +149,46 @@ function normalizeMcp(
   };
 }
 
+function normalizePayAi(
+  match: PayAiMatch,
+  index: number
+): ProcurementCandidate {
+  const networks = [
+    ...new Set(
+      match.accepts
+        .map((accept) => accept.network)
+        .filter((value): value is string => Boolean(value))
+    )
+  ];
+
+  return {
+    id: `payai:${match.resource}`,
+    source: match.source,
+    sourceRank: index + 1,
+    name: match.provider || match.resource,
+    description: match.description,
+    endpoint: match.resource,
+    protocol: "x402",
+    priceUsd: match.estimatedUsdPrice,
+    networks,
+    inputSchema: null,
+    outputSchema: null,
+    sideEffect: "unknown",
+    auth: "wallet",
+    execute: {
+      url: match.resource,
+      protocol: "x402",
+      priceUsd: match.estimatedUsdPrice,
+      accepts: match.accepts,
+      spendingAuthorizationRequired: true
+    },
+    evidence: {
+      catalog: "payai",
+      lastUpdated: match.lastUpdated
+    }
+  };
+}
+
 function normalizePartner(
   route: ReturnType<typeof resolveProviderRoutes>[number]
 ): ProcurementCandidate {
@@ -211,18 +252,20 @@ export async function procureCapability(
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 20));
   const candidateLimit = Math.min(safeLimit * 2, 10);
 
-  const [resolution, partnerRoutes] = await Promise.all([
+  const [resolution, partnerRoutes, payai] = await Promise.all([
     resolveGoal(goal, undefined, candidateLimit),
     Promise.resolve(
       resolveProviderRoutes(goal, candidateLimit).filter(
         (route) => route.disclosure === "provider-partner"
       )
-    )
+    ),
+    discoverPayAiResources(goal, candidateLimit)
   ]);
 
   const candidates: ProcurementCandidate[] = [
     ...resolution.owned.map((match) => normalizeOwned(match, baseUrl)),
     ...partnerRoutes.map(normalizePartner),
+    ...payai.map(normalizePayAi),
     ...resolution.marketplace.map(normalizeMarketplace),
     ...resolution.mcp.map(normalizeMcp)
   ];
