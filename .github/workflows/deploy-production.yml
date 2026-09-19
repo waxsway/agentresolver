@@ -16,10 +16,10 @@ concurrency:
 
 jobs:
   deploy:
-    # Automatic production deployment is hard-disabled after the one-shot
-    # procurement control-plane release. Re-arm only for an explicitly justified runtime release.
+    # One-shot re-arm for the zero-account provider-network release. Disable again
+    # immediately after the validated release reaches production.
     if: >-
-      false &&
+      true &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
@@ -405,6 +405,57 @@ jobs:
             exit 1
           fi
 
+          provider_ready=0
+          for attempt in {1..15}; do
+            suffix="deployment=$VALIDATED_SHA&providerSmokeAttempt=$attempt"
+            if curl -fsS -H 'cache-control: no-cache' "$BASE_URL/api/providers?$suffix" -o /tmp/providers.json &&
+              jq -e '
+                .service == "AgentResolver Provider Network" and
+                .providerFunding.feeModel == "provider_success_fee" and
+                .providerFunding.successFeeBps == 200 and
+                .providerFunding.minimumSuccessFeeUsd == 0.001 and
+                .providerFunding.buyerExtraFeeUsd == 0 and
+                .providerEnrollment.mode == "domain-controlled-well-known" and
+                .providerEnrollment.reviewRequired == false
+              ' /tmp/providers.json >/dev/null &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json &&
+              jq -e '
+                .providerEnrollment.mode == "domain-controlled-well-known" and
+                .providerEnrollment.reviewRequired == false and
+                .commercial.successFeeBps == 200 and
+                .commercial.minimumSuccessFeeUsd == 0.001 and
+                .commercial.buyerExtraFeeUsd == 0
+              ' /tmp/provider-integration.json >/dev/null &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-manifest.example.json?$suffix" -o /tmp/provider-example.json &&
+              jq -e '
+                .schemaVersion == 1 and
+                .provider.id and
+                (.routes | type) == "array" and
+                (.routes | length) >= 1
+              ' /tmp/provider-example.json >/dev/null &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/openapi.json?$suffix" -o /tmp/provider-openapi.json &&
+              jq -e '
+                .paths["/api/providers"].get.operationId == "getProviderNetwork" and
+                .paths["/api/provider-attribution-verify"].post.operationId == "verifyProviderConversion" and
+                .paths["/api/provider-success-fee-quote"].post.operationId == "quoteProviderSuccessFee" and
+                .paths["/api/provider-success-fee-verify"].post.operationId == "verifyProviderSuccessFee"
+              ' /tmp/provider-openapi.json >/dev/null; then
+              provider_ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$provider_ready" != "1" ]; then
+            echo "::error::New production deployment did not expose the zero-account provider network contract."
+            cat /tmp/providers.json 2>/dev/null || true
+            cat /tmp/provider-integration.json 2>/dev/null || true
+            cat /tmp/provider-example.json 2>/dev/null || true
+            cat /tmp/provider-openapi.json 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "PROVIDER_NETWORK_PRODUCTION_SMOKE=true"
           echo "PROCUREMENT_PRODUCTION_SMOKE=true"
           echo "CDP_PRODUCTION_SMOKE=true"
 
