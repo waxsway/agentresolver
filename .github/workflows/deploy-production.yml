@@ -16,10 +16,9 @@ concurrency:
 
 jobs:
   deploy:
-    # Automatic production deployment is hard-disabled after the provider-network
-    # + lean MCP one-shot release attempt. Re-arm only for an explicitly justified release.
+    # One-shot production release gate for the accumulated procurement/provider batch.
+    # This branch is safe to review: deployment cannot run until this release PR is merged to main.
     if: >-
-      false &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
@@ -407,6 +406,34 @@ jobs:
             exit 1
           fi
 
+          procure_get_ready=0
+          for attempt in {1..15}; do
+            suffix="deployment=$VALIDATED_SHA&procureGetSmokeAttempt=$attempt"
+            if curl -fsS -H 'cache-control: no-cache' \
+              -H 'x-agentresolver-internal: 1' \
+              -H 'user-agent: AgentResolver-Production-Smoke/1.0' \
+              "$BASE_URL/api/procure?goal=compute%20a%20SHA-256%20digest&limit=3&maxPriceUsd=0.01&requireHttps=true&$suffix" \
+              -o /tmp/procure-get.json &&
+              jq -e '
+                .resolver == "AgentResolver" and
+                .mode == "open_world_non_custodial_procurement" and
+                .goal == "compute a SHA-256 digest" and
+                .constraints.maxPriceUsd == 0.01 and
+                .boundaries.callerSpendAuthorizedByAgentResolver == false and
+                (.candidates | type) == "array"
+              ' /tmp/procure-get.json >/dev/null; then
+              procure_get_ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$procure_get_ready" != "1" ]; then
+            echo "::error::New production deployment did not preserve GET/query procurement compatibility."
+            cat /tmp/procure-get.json 2>/dev/null || true
+            exit 1
+          fi
+
           provider_ready=0
           for attempt in {1..15}; do
             suffix="deployment=$VALIDATED_SHA&providerSmokeAttempt=$attempt"
@@ -418,12 +445,19 @@ jobs:
                 .sellerMonetization.minimumSuccessFeeUsd == 0.001 and
                 .sellerMonetization.buyerExtraFeeUsd == 0 and
                 .domainEnrollment.status == "open" and
-                .domainEnrollment.operatorReviewRequired == false
+                .domainEnrollment.operatorReviewRequired == false and
+                .domainEnrollment.liveX402ChallengeRequired == true and
+                .domainEnrollment.unsignedEnrollmentProbeOnly == true
               ' /tmp/providers.json >/dev/null &&
               curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json &&
               jq -e '
                 .providerEnrollment.mode == "domain-controlled-well-known" and
                 .providerEnrollment.reviewRequired == false and
+                .providerEnrollment.liveVerification.requiredBeforeAttributedProcurement == true and
+                .providerEnrollment.liveVerification.protocol == "x402-v2" and
+                .providerEnrollment.liveVerification.challengeStatus == 402 and
+                .providerEnrollment.liveVerification.unsignedProbeOnly == true and
+                .providerEnrollment.liveVerification.failureMode == "fail-closed" and
                 .commercial.successFeeBps == 200 and
                 .commercial.minimumSuccessFeeUsd == 0.001 and
                 .commercial.buyerExtraFeeUsd == 0
@@ -467,7 +501,15 @@ jobs:
                 .name == "io.github.waxsway/agentresolver" and
                 .version == "0.2.0" and
                 .remotes[0].url == "https://agentresolver.vercel.app/mcp/control"
-              ' /tmp/mcp-server.json >/dev/null; then
+              ' /tmp/mcp-server.json >/dev/null &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/integrations.json?$suffix" -o /tmp/integrations.json &&
+              jq -e '
+                .mcp.url == "https://agentresolver.vercel.app/mcp/control" and
+                .mcp.fullCompatibilityUrl == "https://agentresolver.vercel.app/mcp" and
+                .mcp.primaryTool == "procure" and
+                .mcp.free == true and
+                .mcp.spendingAuthorized == false
+              ' /tmp/integrations.json >/dev/null; then
               mcp_control_ready=1
               break
             fi
@@ -490,8 +532,8 @@ jobs:
         if: failure() && steps.production_deploy.outcome != 'skipped'
         shell: bash
         env:
-          HEALTHY_DEPLOYMENT_ID: dpl_Hh3SU83Ee4bS4a23eftmovdbDhks
-          HEALTHY_SHA: 2d3175cfc983ecf27503d28adba9db936c5b8e5a
+          HEALTHY_DEPLOYMENT_ID: dpl_8Qe8sTpT2JA7fdFbLhNogweSKBWL
+          HEALTHY_SHA: e32b3e75108ab47ac9fbe3085933e32007dcf01d
           CANONICAL_ALIAS: agentresolver.vercel.app
           BASE_URL: https://agentresolver.vercel.app
         run: |
@@ -512,7 +554,8 @@ jobs:
             canary_code="$(curl -sS --max-time 15 -D /tmp/rollback-canary-h -o /tmp/rollback-canary-b -w '%{http_code}' "$BASE_URL/api/x402-cdp-canary?$suffix" || true)"
             canary_sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/rollback-canary-h)"
             ping_code="$(curl -sS --max-time 15 -o /tmp/rollback-ping-b -w '%{http_code}' "$BASE_URL/api/x402-ping?$suffix" || true)"
-            if [ "$canary_code" = "402" ] && [ "$canary_sha" = "$HEALTHY_SHA" ] && [ "$ping_code" = "402" ] &&
+            mcp_code="$(curl -sS --max-time 15 -I -o /tmp/rollback-mcp-h -w '%{http_code}' "$BASE_URL/mcp/control?$suffix" || true)"
+            if [ "$canary_code" = "402" ] && [ "$canary_sha" = "$HEALTHY_SHA" ] && [ "$ping_code" = "402" ] && [ "$mcp_code" = "200" ] &&
               jq -e '
                 .x402Version == 2 and
                 (.accepts | length) == 1 and
