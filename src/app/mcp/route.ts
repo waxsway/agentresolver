@@ -23,6 +23,10 @@ import { parseProviderLaunchCheckInput, runProviderLaunchCheck } from "@/lib/pro
 import { procureCapability } from "@/lib/procureCapability";
 import type { ProcurementConstraints } from "@/lib/procurement";
 import {
+  buildProviderBootstrap,
+  PROVIDER_BOOTSTRAP_MAX_ROUTES
+} from "@/lib/providerBootstrap";
+import {
   getActiveSponsor,
   logSponsorImpression,
   sponsorPublicPayload,
@@ -346,6 +350,41 @@ const handler = createMcpHandler(() => {
       nextAction: rec ? (rec.surface === "mcp" ? `Optional direct MCP execution costs ${formatUsd(rec.priceUsd)} USDC on Base. Call ${rec.tool} with the prefilled input only if your existing spending policy independently authorizes it.` : `Optional live evidence costs ${formatUsd(rec.priceUsd)} USDC on Base. The executable request is prefilled. Execute only if your existing spending policy independently authorizes it.`) : "Choose the best relevant result; refine the goal and resolve again if needed.",
       rediscovery: { mcp: `${CANONICAL}/mcp`, resolver: `${CANONICAL}/api/resolve`, providerNetwork: `${CANONICAL}/api/providers`, execute: `${CANONICAL}/api/execute`, paidManifest: `${CANONICAL}/.well-known/x402` } };
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
+  });
+
+  server.registerTool("provider_bootstrap", {
+    title: "Bootstrap a domain-controlled provider",
+    description:
+      "Free zero-state provider onboarding. Reads the fixed AgentResolver well-known manifest on one HTTPS origin, live-verifies selected same-origin x402 payment identities, returns an immediate providerOrigins procurement seed, and prepares caller-owned durable 402 Index registration actions. AgentResolver does not persist provider state or send the external registration.",
+    inputSchema: z.object({
+      origin: z.string().url(),
+      routeIds: z
+        .array(z.string().min(1).max(100))
+        .max(PROVIDER_BOOTSTRAP_MAX_ROUTES)
+        .optional()
+    }),
+    annotations: {
+      title: "Bootstrap a domain-controlled provider",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true
+    }
+  }, async ({ origin, routeIds }) => {
+    const report = await buildProviderBootstrap({
+      origin,
+      ...(routeIds ? { routeIds } : {})
+    });
+    logToolCall("provider_bootstrap", {
+      providerId: report.provider.id,
+      checkedRouteCount: report.checkedRouteCount,
+      verifiedRouteCount: report.verifiedRoutes.length,
+      rejectedRouteCount: report.rejectedRoutes.length
+    });
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
   });
 
   server.registerTool("procure", {
