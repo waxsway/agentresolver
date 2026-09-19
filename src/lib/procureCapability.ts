@@ -773,7 +773,13 @@ export async function procureCapability(
               networks: [BASE, SOLANA],
               protocol: "x402",
               spendingAuthorizationRequired: true,
-              input: { goal, constraints }
+              input: {
+                goal,
+                constraints,
+                ...(options.providerOrigins && options.providerOrigins.length > 0
+                  ? { providerOrigins: options.providerOrigins }
+                  : {})
+              }
             }
           }
         : {
