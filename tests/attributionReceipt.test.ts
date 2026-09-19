@@ -3,7 +3,8 @@ import test from "node:test";
 import {
   createSignedAttributionReceipt,
   MAX_ATTRIBUTION_RECEIPT_LENGTH,
-  verifySignedAttributionReceipt
+  verifySignedAttributionReceipt,
+  verifySignedAttributionReceiptHistorically
 } from "../src/lib/attributionReceipt";
 
 const SECRET =
@@ -83,6 +84,30 @@ test("receipts expire and cannot be replayed indefinitely", () => {
 
   assert.equal(verified.valid, false);
   assert.equal(verified.reason, "expired_receipt");
+});
+
+test("historical receipt authentication accepts an expired receipt without weakening live freshness", () => {
+  const signed = createSignedAttributionReceipt(BASE_INPUT, SECRET, {
+    now: new Date("2026-01-01T00:00:00.000Z"),
+    ttlSeconds: 120
+  });
+
+  const live = verifySignedAttributionReceipt(
+    signed.receipt,
+    SECRET,
+    { now: new Date("2026-01-01T00:03:00.000Z") }
+  );
+  assert.equal(live.valid, false);
+  assert.equal(live.reason, "expired_receipt");
+
+  const historical = verifySignedAttributionReceiptHistorically(
+    signed.receipt,
+    SECRET
+  );
+  assert.equal(historical.valid, true);
+  if (!historical.valid) throw new Error("expected historical receipt authenticity");
+  assert.equal(historical.payload.issuedAt, "2026-01-01T00:00:00.000Z");
+  assert.equal(historical.payload.expiresAt, "2026-01-01T00:02:00.000Z");
 });
 
 test("a different server secret cannot validate another issuer's receipt", () => {

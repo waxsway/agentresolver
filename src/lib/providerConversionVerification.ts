@@ -17,7 +17,7 @@ import { validatePublicHttpsUrl } from "@/lib/publicHttpsJson";
 import { MAX_ATTRIBUTION_RECEIPT_LENGTH } from "@/lib/attributionReceipt";
 import {
   attributionSigningConfigured,
-  verifyAttributionReceipt
+  verifyHistoricalAttributionReceipt
 } from "@/lib/attributionReceiptRuntime";
 import { isAttributionId } from "@/lib/transactionAttribution";
 
@@ -232,7 +232,7 @@ export async function verifyProviderConversion(
   const execution = routeExecution(resolved);
   const receiptVerification =
     signingConfigured && input.attributionReceipt
-      ? verifyAttributionReceipt(
+      ? verifyHistoricalAttributionReceipt(
           input.attributionReceipt,
           {
             attributionId: input.attributionId,
@@ -286,10 +286,40 @@ export async function verifyProviderConversion(
     options.rpc ? { rpc: options.rpc } : {}
   );
 
+  let settlementWindowStatus:
+    | "verified"
+    | "timestamp_unavailable"
+    | "before_window"
+    | "after_window"
+    | null = null;
+
+  if (signingConfigured && receiptVerification?.valid && settlement.settled) {
+    if (!settlement.blockTimestamp) {
+      settlementWindowStatus = "timestamp_unavailable";
+    } else {
+      const settlementMs = Date.parse(settlement.blockTimestamp);
+      const issuedMs = Date.parse(receiptVerification.payload.issuedAt);
+      const expiresMs = Date.parse(receiptVerification.payload.expiresAt);
+      if (!Number.isFinite(settlementMs)) {
+        settlementWindowStatus = "timestamp_unavailable";
+      } else if (settlementMs < issuedMs) {
+        settlementWindowStatus = "before_window";
+      } else if (settlementMs > expiresMs) {
+        settlementWindowStatus = "after_window";
+      } else {
+        settlementWindowStatus = "verified";
+      }
+    }
+  }
+
+  const eligibleForFeeSettlement =
+    settlement.settled &&
+    (!signingConfigured || settlementWindowStatus === "verified");
+
   const successFeeQuote =
-    settlement.settled && resolved.kind === "domain-manifest"
+    eligibleForFeeSettlement && resolved.kind === "domain-manifest"
       ? quoteProviderSuccessFee(identity.amountAtomic, input.attributionId)
-      : settlement.settled
+      : eligibleForFeeSettlement
         ? {
             grossAmountAtomic: identity.amountAtomic,
             successFeeBps: null,
@@ -300,30 +330,46 @@ export async function verifyProviderConversion(
           }
         : null;
 
+  const reason = !settlement.settled
+    ? settlement.verdict
+    : !signingConfigured
+      ? "buyer_settlement_verified_legacy_attribution"
+      : settlementWindowStatus === "verified"
+        ? "buyer_settlement_and_attribution_receipt_verified"
+        : settlementWindowStatus === "timestamp_unavailable"
+          ? "buyer_settlement_timestamp_unavailable"
+          : settlementWindowStatus === "before_window"
+            ? "buyer_settlement_before_attribution_window"
+            : "buyer_settlement_after_attribution_window";
+
   return {
-    eligibleForFeeSettlement: settlement.settled,
+    eligibleForFeeSettlement,
     attributionId: input.attributionId,
     routeId: routeId(resolved),
     providerId: routeProviderId(resolved),
     providerEnrollment: resolved.kind,
     buyerSettlementVerified: settlement.settled,
     attributionVerified: Boolean(receiptVerification?.valid),
-    reason: settlement.settled
-      ? receiptVerification?.valid
-        ? "buyer_settlement_and_attribution_receipt_verified"
-        : "buyer_settlement_verified_legacy_attribution"
-      : settlement.verdict,
+    reason,
     settlement,
     successFeeQuote,
     attribution: {
       asserted: true,
       cryptographicallyVerified: Boolean(receiptVerification?.valid),
       receiptRequired: signingConfigured,
+      receiptIssuedAt: receiptVerification?.valid
+        ? receiptVerification.payload.issuedAt
+        : null,
       receiptExpiresAt: receiptVerification?.valid
         ? receiptVerification.payload.expiresAt
         : null,
+      buyerSettlementAt: settlement.blockTimestamp,
+      settlementWithinReceiptWindow:
+        signingConfigured && settlement.settled
+          ? settlementWindowStatus === "verified"
+          : null,
       limitation: receiptVerification?.valid
-        ? "AgentResolver independently verified both the buyer settlement and the signed procurement handoff receipt against the exact provider route and payment identity."
+        ? "AgentResolver authenticated the signed procurement handoff independently of proof-submission time. Fee eligibility additionally requires the verified buyer settlement block timestamp to fall inside the receipt issuedAt/expiresAt window; proof may be submitted later."
         : "The Base USDC buyer settlement is independently verified against the provider payment identity, but no dedicated signing secret is configured in this runtime so attribution remains explicitly legacy/provider-asserted."
     }
   } as const;

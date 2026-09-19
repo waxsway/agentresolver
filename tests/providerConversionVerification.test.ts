@@ -18,6 +18,9 @@ const TRANSFER_TOPIC =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 const SIGNING_SECRET =
   "test-agentresolver-attribution-signing-secret-00000000000000000000";
+const RECEIPT_ISSUED_AT = new Date("2026-01-01T00:00:00.000Z");
+const RECEIPT_TTL_SECONDS = 120;
+const SETTLEMENT_INSIDE_WINDOW = "2026-01-01T00:01:00.000Z";
 
 function topic(address: string) {
   return `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
@@ -46,7 +49,10 @@ const env = {
   }])
 };
 
-function rpcFor(payTo: string): BaseRpc {
+function rpcFor(
+  payTo: string,
+  blockTimestamp: string | null = SETTLEMENT_INSIDE_WINDOW
+): BaseRpc {
   return async (method) => {
     if (method === "eth_getTransactionReceipt") {
       return {
@@ -70,6 +76,12 @@ function rpcFor(payTo: string): BaseRpc {
       };
     }
     if (method === "eth_blockNumber") return "0x65";
+    if (method === "eth_getBlockByNumber") {
+      if (!blockTimestamp) return null;
+      return {
+        timestamp: `0x${Math.floor(Date.parse(blockTimestamp) / 1000).toString(16)}`
+      };
+    }
     throw new Error(`unexpected RPC method ${method}`);
   };
 }
@@ -144,11 +156,12 @@ function signedReceipt(overrides: Partial<{
     },
     inputFingerprint: "signed-input-fingerprint"
   }, SIGNING_SECRET, {
-    now: new Date()
+    now: RECEIPT_ISSUED_AT,
+    ttlSeconds: RECEIPT_TTL_SECONDS
   }).receipt;
 }
 
-test("configured signing requires and verifies the exact AgentResolver handoff receipt", async () => {
+test("configured signing accepts later proof when buyer settlement occurred inside the signed handoff window", async () => {
   const signedEnv = {
     ...env,
     AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET: SIGNING_SECRET
@@ -170,6 +183,9 @@ test("configured signing requires and verifies the exact AgentResolver handoff r
   assert.equal(report.attributionVerified, true);
   assert.equal(report.attribution.cryptographicallyVerified, true);
   assert.equal(report.reason, "buyer_settlement_and_attribution_receipt_verified");
+  assert.equal(report.settlement?.blockTimestamp, SETTLEMENT_INSIDE_WINDOW);
+  assert.equal(report.attribution.settlementWithinReceiptWindow, true);
+  assert.equal(report.attribution.receiptExpiresAt, "2026-01-01T00:02:00.000Z");
 });
 
 test("configured signing fails closed before chain lookup when receipt is missing", async () => {
@@ -220,4 +236,77 @@ test("configured signing rejects a signed receipt for a different payment identi
   assert.equal(report.eligibleForFeeSettlement, false);
   assert.equal(report.attributionVerified, false);
   assert.equal(report.reason, "attribution_receipt_handoff_mismatch");
+});
+
+
+test("configured signing rejects a buyer settlement after the signed handoff window", async () => {
+  const signedEnv = {
+    ...env,
+    AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET: SIGNING_SECRET
+  };
+
+  const report = await verifyProviderConversion({
+    attributionId: ATTRIBUTION,
+    routeId: "searchco:web-search",
+    providerId: "searchco",
+    buyerTxHash: TX,
+    attributionReceipt: signedReceipt()
+  }, {
+    env: signedEnv,
+    rpc: rpcFor(PAY_TO, "2026-01-01T00:03:00.000Z")
+  });
+
+  assert.equal(report.buyerSettlementVerified, true);
+  assert.equal(report.attributionVerified, true);
+  assert.equal(report.eligibleForFeeSettlement, false);
+  assert.equal(report.successFeeQuote, null);
+  assert.equal(report.attribution.settlementWithinReceiptWindow, false);
+  assert.equal(report.reason, "buyer_settlement_after_attribution_window");
+});
+
+test("configured signing rejects a buyer settlement before the signed handoff window", async () => {
+  const signedEnv = {
+    ...env,
+    AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET: SIGNING_SECRET
+  };
+
+  const report = await verifyProviderConversion({
+    attributionId: ATTRIBUTION,
+    routeId: "searchco:web-search",
+    providerId: "searchco",
+    buyerTxHash: TX,
+    attributionReceipt: signedReceipt()
+  }, {
+    env: signedEnv,
+    rpc: rpcFor(PAY_TO, "2025-12-31T23:59:59.000Z")
+  });
+
+  assert.equal(report.buyerSettlementVerified, true);
+  assert.equal(report.attributionVerified, true);
+  assert.equal(report.eligibleForFeeSettlement, false);
+  assert.equal(report.reason, "buyer_settlement_before_attribution_window");
+});
+
+test("configured signing fails fee eligibility closed when settlement block time is unavailable", async () => {
+  const signedEnv = {
+    ...env,
+    AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET: SIGNING_SECRET
+  };
+
+  const report = await verifyProviderConversion({
+    attributionId: ATTRIBUTION,
+    routeId: "searchco:web-search",
+    providerId: "searchco",
+    buyerTxHash: TX,
+    attributionReceipt: signedReceipt()
+  }, {
+    env: signedEnv,
+    rpc: rpcFor(PAY_TO, null)
+  });
+
+  assert.equal(report.buyerSettlementVerified, true);
+  assert.equal(report.attributionVerified, true);
+  assert.equal(report.eligibleForFeeSettlement, false);
+  assert.equal(report.successFeeQuote, null);
+  assert.equal(report.reason, "buyer_settlement_timestamp_unavailable");
 });
