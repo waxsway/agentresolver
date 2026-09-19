@@ -106,13 +106,19 @@ export async function runProviderLaunchCheck(input: ProviderLaunchCheckInput) {
     })
   ]);
 
+  const paymentIdentityReady =
+    typeof paymentProbe.x402.asset === "string" &&
+    typeof paymentProbe.x402.payTo === "string" &&
+    typeof paymentProbe.x402.amountAtomic === "string";
+
   const x402Ready =
     paymentProbe.status === 402 &&
     paymentProbe.x402.detected &&
     paymentProbe.x402.parseable &&
     paymentProbe.x402.scheme === "exact" &&
     paymentProbe.x402.network === input.network &&
-    sameUsd(paymentProbe.x402.amountUsd, input.priceUsd);
+    sameUsd(paymentProbe.x402.amountUsd, input.priceUsd) &&
+    paymentIdentityReady;
 
   const eligible = x402Ready;
   const registryEntry = {
@@ -128,6 +134,12 @@ export async function runProviderLaunchCheck(input: ProviderLaunchCheckInput) {
     priceUsd: input.priceUsd,
     network: input.network,
     commissionUsd: 0.001,
+    paymentIdentity: x402Ready ? {
+      network: paymentProbe.x402.network as string,
+      asset: paymentProbe.x402.asset as string,
+      payTo: paymentProbe.x402.payTo as string,
+      amountAtomic: paymentProbe.x402.amountAtomic as string
+    } : null,
     launchProof: {
       network: "eip155:8453",
       amountAtomic: "50000",
@@ -174,7 +186,8 @@ export async function runProviderLaunchCheck(input: ProviderLaunchCheckInput) {
     commercialTerms: {
       organicRankingPaid: false,
       providerSuccessFeeUsd: 0.001,
-      successFeeTrigger: "provider-reported fulfilled attribution",
+      successFeeTrigger: "AgentResolver-verified underlying buyer settlement for routes with a registered Base-USDC payment identity",
+      verificationEndpoint: "https://agentresolver.vercel.app/api/provider-attribution-verify",
       settlementEndpoint: "https://agentresolver.vercel.app/api/provider-attribution-settle"
     },
     submission: {
@@ -185,7 +198,8 @@ export async function runProviderLaunchCheck(input: ProviderLaunchCheckInput) {
     },
     limitations: [
       "A passing launch check verifies current technical readiness and x402 payment metadata, not legal identity or future fulfillment.",
-      "Passing does not guarantee listing, ranking, traffic, conversions, or agent spending authorization."
+      "Passing does not guarantee listing, ranking, traffic, conversions, or agent spending authorization.",
+      "Buyer-settlement verification proves payment to the registered provider payment identity; until attribution receipts are cryptographically signed, the attribution ID itself remains provider-asserted."
     ]
   };
 }

@@ -33,13 +33,22 @@ test("provider success-fee config is bounded and requires the fixed pilot fee", 
     method: "POST",
     priceUsd: 0.01,
     network: "eip155:8453",
-    commissionUsd: 0.001
+    commissionUsd: 0.001,
+    paymentIdentity: {
+      network: "eip155:8453",
+      asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      payTo: "0x2222222222222222222222222222222222222222",
+      amountAtomic: "10000"
+    }
   }]);
   const routes = registeredProviderRoutes({ AGENTRESOLVER_PROVIDER_REGISTRY_JSON: valid });
   const partner = routes.find((route) => route.routeId === "searchco:web-search");
   assert.ok(partner);
   assert.equal(partner?.funding.model, "provider-success-fee");
   assert.equal(partner?.funding.feeUsd, 0.001);
+  assert.equal(partner?.execute.paymentIdentity?.network, "eip155:8453");
+  assert.equal(partner?.execute.paymentIdentity?.amountAtomic, "10000");
+  assert.match(partner?.funding.dueWhen || "", /verifies_the_underlying_buyer_settlement/);
 
   const matches = resolveProviderRoutes("search the web", 5, {
     AGENTRESOLVER_PROVIDER_REGISTRY_JSON: valid
