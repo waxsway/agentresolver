@@ -556,8 +556,8 @@ export const PAID_CAPABILITIES = {
     price: "$0.001",
     priceUsd: 0.001,
     atomicAmount: "1000",
-    description: "Provider-funded $0.001 USDC attribution-fee settlement for a fulfilled AgentResolver-routed request. Returns a machine-readable fee receipt after x402 settlement without claiming that AgentResolver independently verified the provider's underlying buyer transaction.",
-    useWhen: "A registered provider reports that an AgentResolver attribution was fulfilled or became a qualified lead and wants to settle the fixed provider-funded pilot fee with cryptographic payment evidence.",
+    description: "Provider-funded $0.001 USDC success-fee settlement. Fulfilled conversions require a Base transaction hash that AgentResolver independently verifies against the registered provider USDC payment identity before returning the paid fee receipt. Qualified leads remain explicitly separate and do not claim a buyer settlement.",
+    useWhen: "After /api/provider-attribution-verify confirms a routed buyer's Base USDC payment to the registered provider route, the provider settles the fixed success fee. Qualified-lead fees can be recorded separately without claiming a completed buyer transaction.",
     costClass: "deterministic",
     tags: ["provider attribution", "provider funded", "success fee", "agent routing", "x402", "settlement", "referral"],
     inputSchema: {
@@ -567,19 +567,23 @@ export const PAID_CAPABILITIES = {
       properties: {
         attributionId: { type: "string", pattern: "^atr_[0-9a-fA-F-]{36}$" },
         providerId: { type: "string", minLength: 1, maxLength: 80 },
+        routeId: { type: "string", minLength: 1, maxLength: 100 },
         outcome: { type: "string", enum: ["fulfilled", "qualified-lead"] },
+        buyerTxHash: { type: "string", pattern: "^0x[0-9a-fA-F]{64}$" },
         externalTransactionRef: { type: "string", maxLength: 256 }
       }
     },
     example: {
       attributionId: "atr_123e4567-e89b-42d3-a456-426614174000",
       providerId: "example-provider",
-      outcome: "fulfilled"
+      routeId: "example-provider:web-search",
+      outcome: "fulfilled",
+      buyerTxHash: "0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72"
     },
     quoteTool: {
       name: "provider_attribution_settle",
       title: "Provider attribution settlement — $0.001",
-      description: "Paid $0.001 USDC on Base or Solana provider-funded attribution-fee receipt for an AgentResolver-routed fulfilled request."
+      description: "Paid $0.001 USDC on Base or Solana provider-funded success-fee receipt. For fulfilled conversions, use the free provider-attribution-verify endpoint first; the paid receipt independently rechecks the registered Base USDC buyer settlement."
     }
   }
 } as const;
