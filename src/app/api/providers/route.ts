@@ -35,12 +35,16 @@ export function GET(req: Request) {
       attributionHeader: "x-agentresolver-attribution-id",
       attributionReceiptHeader: "x-agentresolver-attribution-receipt",
       procurement: baseUrl + "/api/procure",
+      providerBootstrap: baseUrl + "/api/provider-bootstrap",
       conversionVerification: baseUrl + "/api/provider-attribution-verify",
       successFeeQuote: baseUrl + "/api/provider-success-fee-quote",
       successFeeVerification: baseUrl + "/api/provider-success-fee-verify",
       paidLaunchCheck: baseUrl + "/api/provider-launch-check",
       paidLaunchCheckRequiredForEnrollment: false,
-      onboardingDocs: baseUrl + "/provider-onboarding.md"
+      onboardingDocs: baseUrl + "/provider-onboarding.md",
+      immediateSeedField: "providerOrigins",
+      durableDiscoveryBootstrap:
+        "Provider agents can call /api/provider-bootstrap for live verification and receive a caller-owned 402 Index registration handoff; AgentResolver does not send the registration or persist provider state."
     },
     sellerMonetization: {
       model: "provider-success-fee",
