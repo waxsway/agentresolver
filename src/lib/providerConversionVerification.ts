@@ -24,6 +24,12 @@ export type ProviderConversionVerifyInput = {
   providerOrigin?: string;
 };
 
+export type ProviderConversionVerifyOptions = {
+  rpc?: BaseRpc;
+  env?: Readonly<Record<string, string | undefined>>;
+  manifestFetcher?: (resourceUrl: string) => Promise<DomainProviderRoute[]>;
+};
+
 type ConversionRoute =
   | { kind: "registered"; route: ProviderRoute }
   | { kind: "domain-manifest"; route: DomainProviderRoute };
@@ -119,7 +125,8 @@ export function parseProviderConversionVerifyInput(
 
 async function resolveConversionRoute(
   input: ProviderConversionVerifyInput,
-  env: Readonly<Record<string, string | undefined>>
+  env: Readonly<Record<string, string | undefined>>,
+  manifestFetcher: (resourceUrl: string) => Promise<DomainProviderRoute[]>
 ): Promise<ConversionRoute | null> {
   const registered = getProviderRoute(input.routeId, env);
   if (registered && registered.disclosure === "provider-partner") {
@@ -127,7 +134,7 @@ async function resolveConversionRoute(
   }
 
   if (!input.providerOrigin) return null;
-  const routes = await fetchDomainProviderManifest(input.providerOrigin);
+  const routes = await manifestFetcher(input.providerOrigin);
   const domain = routes.find(
     (route) =>
       route.routeId === input.routeId &&
@@ -138,14 +145,12 @@ async function resolveConversionRoute(
 
 export async function verifyProviderConversion(
   input: ProviderConversionVerifyInput,
-  options: {
-    rpc?: BaseRpc;
-    env?: Readonly<Record<string, string | undefined>>;
-  } = {}
+  options: ProviderConversionVerifyOptions = {}
 ) {
   const resolved = await resolveConversionRoute(
     input,
-    options.env ?? process.env
+    options.env ?? process.env,
+    options.manifestFetcher ?? fetchDomainProviderManifest
   );
 
   if (!resolved) {
