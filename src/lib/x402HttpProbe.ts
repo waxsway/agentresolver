@@ -21,7 +21,7 @@ export type X402PaymentOptionSummary = {
 export type MarketplaceProbeReport = {
   provider: string | null;
   resource: string;
-  source: MarketplaceMatch["source"];
+  source: string;
   method: string;
   reachable: boolean;
   status: number | null;
@@ -197,10 +197,22 @@ export function parseX402PaymentOptions(
   return summaries(decodePaymentHeader(paymentRequiredHeader));
 }
 
-export async function probeMarketplaceResource(
-  item: MarketplaceMatch
+export type X402ProbeTarget = {
+  provider: string | null;
+  resource: string;
+  source: string;
+  method?: string | null;
+  input?: unknown;
+};
+
+export async function probeX402Resource(
+  item: X402ProbeTarget
 ): Promise<MarketplaceProbeReport> {
-  const method = marketplaceMethod(item.input);
+  const explicitMethod =
+    typeof item.method === "string" ? item.method.trim().toUpperCase() : "";
+  const method = ALLOWED_METHODS.has(explicitMethod)
+    ? explicitMethod
+    : marketplaceMethod(item.input);
   const started = Date.now();
 
   try {
@@ -346,4 +358,16 @@ export async function probeMarketplaceResource(
       error: error instanceof Error ? error.message : "Marketplace probe failed."
     };
   }
+}
+
+
+export async function probeMarketplaceResource(
+  item: MarketplaceMatch
+): Promise<MarketplaceProbeReport> {
+  return probeX402Resource({
+    provider: item.provider,
+    resource: item.resource,
+    source: item.source,
+    input: item.input
+  });
 }
