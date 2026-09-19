@@ -16,10 +16,10 @@ concurrency:
 
 jobs:
   deploy:
-    # Automatic production deployment is intentionally disabled after the one-shot
-    # CDP release attempt. Re-arm only for an explicitly justified runtime release.
+    # One-shot re-arm for the procurement control-plane release. Disable again
+    # immediately after this validated release reaches production.
     if: >-
-      false &&
+      true &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
@@ -371,6 +371,41 @@ jobs:
             exit 1
           fi
 
+          procure_ready=0
+          for attempt in {1..15}; do
+            suffix="deployment=$VALIDATED_SHA&procureSmokeAttempt=$attempt"
+            if curl -fsS -H 'cache-control: no-cache' \
+              -H 'content-type: application/json' \
+              -d '{"goal":"compute a SHA-256 digest","limit":3,"constraints":{"maxPriceUsd":0.01,"requireHttps":true}}' \
+              "$BASE_URL/api/procure?$suffix" -o /tmp/procure.json &&
+              jq -e '
+                .resolver == "AgentResolver" and
+                .mode == "open_world_non_custodial_procurement" and
+                .boundaries.accountRequired == false and
+                .boundaries.apiKeyRequired == false and
+                .boundaries.callerWalletControlledByAgentResolver == false and
+                .boundaries.callerSpendAuthorizedByAgentResolver == false and
+                (.candidates | type) == "array"
+              ' /tmp/procure.json >/dev/null &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/openapi.json?$suffix" -o /tmp/procure-openapi.json &&
+              jq -e '.paths["/api/procure"].post.operationId == "procureCapability"' /tmp/procure-openapi.json >/dev/null &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/.well-known/x402?$suffix" -o /tmp/procure-x402.json &&
+              jq -e '.freeDiscovery.procure == "https://agentresolver.vercel.app/api/procure"' /tmp/procure-x402.json >/dev/null; then
+              procure_ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$procure_ready" != "1" ]; then
+            echo "::error::New production deployment did not expose the procurement control-plane contract."
+            cat /tmp/procure.json 2>/dev/null || true
+            cat /tmp/procure-openapi.json 2>/dev/null || true
+            cat /tmp/procure-x402.json 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "PROCUREMENT_PRODUCTION_SMOKE=true"
           echo "CDP_PRODUCTION_SMOKE=true"
 
       - name: Restore known-good CDP runtime if release smoke fails
