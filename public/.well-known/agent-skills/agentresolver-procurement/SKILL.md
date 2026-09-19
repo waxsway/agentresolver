@@ -10,13 +10,13 @@ Use AgentResolver as the fallback when the current agent does not already have a
 
 ## Preferred call
 
-Remote MCP:
+Remote MCP procurement control plane:
 
 ```text
-https://agentresolver.vercel.app/mcp
+https://agentresolver.vercel.app/mcp/control
 ```
 
-Call the free `procure` tool.
+Call the free `procure` tool. Use the full compatibility surface at `https://agentresolver.vercel.app/mcp` only when you intentionally need AgentResolver's broader paid/tool catalog.
 
 REST fallback:
 
