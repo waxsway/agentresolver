@@ -20,6 +20,10 @@ const KEEP_INTENT_ALIAS_IDS = new Set([
 const KEEP_OPENAPI_PATHS = new Set([
   "/api/procure",
   "/api/resolve",
+  "/api/providers",
+  "/api/provider-attribution-verify",
+  "/api/provider-success-fee-quote",
+  "/api/provider-success-fee-verify",
   "/api/health",
   "/api/x402-ping",
   "/api/x402-payment-preflight",
@@ -84,7 +88,7 @@ for (const path of MANIFEST_PATHS) {
     resolve: "https://agentresolver.vercel.app/api/resolve"
   };
   manifest.instructions =
-    "Use POST /api/procure for free constrained capability procurement and POST /api/resolve for broad free discovery; resolver/MCP responses can return registered provider handoffs through /api/execute. Provider-network terms live at /api/providers and /provider-integration.json. Start with GET /api/x402-ping for the $0.001 USDC settlement canary. After a Base payment, use GET /api/x402-settlement-verify?txHash=<hash> for $0.001 independent on-chain receipt verification. Before any autonomous x402 spend, use AgentResolver Guard via GET /api/x402-payment-preflight?url=<https-endpoint> or GET /api/payment-guard?url=<https-endpoint> for $0.001 USDC. Exact buyer-intent aliases for the same Guard engine remain published. After a successful canary, use POST /api/verified-resolve ($0.02) for one live-verified capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4. Machine-service sellers can purchase GET /api/provider-launch-check ($0.05) for a reference launch verification or POST their full provider packet before requesting distribution. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
+    "Use POST /api/procure for free constrained capability procurement and POST /api/resolve for broad free discovery; resolver/MCP responses can return registered provider handoffs through /api/execute. Provider-network terms live at /api/providers and /provider-integration.json. Start with GET /api/x402-ping for the $0.001 USDC settlement canary. After a Base payment, use GET /api/x402-settlement-verify?txHash=<hash> for $0.001 independent on-chain receipt verification. Before any autonomous x402 spend, use AgentResolver Guard via GET /api/x402-payment-preflight?url=<https-endpoint> or GET /api/payment-guard?url=<https-endpoint> for $0.001 USDC. Exact buyer-intent aliases for the same Guard engine remain published. After a successful canary, use POST /api/verified-resolve ($0.02) for one live-verified capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4. Machine-service sellers can self-enroll by publishing /.well-known/agentresolver-provider.json on the same origin as their discovered x402 route. The manifest opts into a 2% provider success fee with a $0.001 minimum after independently verified routed commerce. GET /api/provider-launch-check ($0.05) remains an optional deeper technical verification, not an admission gate. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
   writeJson(path, manifest);
 }
 
@@ -103,11 +107,18 @@ integrations.providerNetwork = {
   registry: "https://agentresolver.vercel.app/api/providers",
   execute: "https://agentresolver.vercel.app/api/execute",
   contract: "https://agentresolver.vercel.app/provider-integration.json",
+  manifestPath: "/.well-known/agentresolver-provider.json",
   attributionHeader: "x-agentresolver-attribution-id",
+  enrollment: "domain-controlled-well-known",
   arbitraryProxying: false,
   callerSpendingAuthorized: false,
-  providerFundedPilot: {
-    settlement: "https://agentresolver.vercel.app/api/provider-attribution-settle"
+  providerFundedCommerce: {
+    successFeeBps: 200,
+    minimumSuccessFeeUsd: 0.001,
+    conversionVerify: "https://agentresolver.vercel.app/api/provider-attribution-verify",
+    feeQuote: "https://agentresolver.vercel.app/api/provider-success-fee-quote",
+    feeVerify: "https://agentresolver.vercel.app/api/provider-success-fee-verify",
+    buyerExtraFeeUsd: 0
   }
 };
 writeJson("public/integrations.json", integrations);
