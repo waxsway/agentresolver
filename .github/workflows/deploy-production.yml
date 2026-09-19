@@ -376,6 +376,8 @@ jobs:
             suffix="deployment=$VALIDATED_SHA&procureSmokeAttempt=$attempt"
             if curl -fsS -H 'cache-control: no-cache' \
               -H 'content-type: application/json' \
+              -H 'x-agentresolver-internal: 1' \
+              -H 'user-agent: AgentResolver-Production-Smoke/1.0' \
               -d '{"goal":"compute a SHA-256 digest","limit":3,"constraints":{"maxPriceUsd":0.01,"requireHttps":true}}' \
               "$BASE_URL/api/procure?$suffix" -o /tmp/procure.json &&
               jq -e '
