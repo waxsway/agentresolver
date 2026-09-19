@@ -25,10 +25,10 @@ test("production deploy uses the proven prebuilt path and verifies the isolated 
   assert.match(workflow, /CDP_PRODUCTION_SMOKE=true/);
 });
 
-test("failed production smoke restores the known-good CDP deployment without rebuilding", () => {
+test("failed production smoke restores the known-good procurement deployment without rebuilding", () => {
   assert.match(workflow, /if: failure\(\) && steps\.production_deploy\.outcome != 'skipped'/);
-  assert.match(workflow, /HEALTHY_DEPLOYMENT_ID: dpl_ErXGyYownF8254n14tDvwwFMiPEv/);
-  assert.match(workflow, /HEALTHY_SHA: c2a05df127548c4ecc87ba73467cef72b6e721c3/);
+  assert.match(workflow, /HEALTHY_DEPLOYMENT_ID: dpl_7f6Up6NZNjjRWUeYFrf3u7sKA8UQ/);
+  assert.match(workflow, /HEALTHY_SHA: fe1f69b03fa03e845a516e745772383d46da71d2/);
   assert.match(workflow, /\/v2\/deployments\/\$HEALTHY_DEPLOYMENT_ID\/aliases\?teamId=\$VERCEL_ORG_ID/);
   assert.match(workflow, /ROLLBACK_RESTORED_KNOWN_GOOD_CDP=true/);
 });
