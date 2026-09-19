@@ -23,6 +23,10 @@ const resolver = createAgentResolverClient();
 
 const procurement = await resolver.procure({
   goal: "search the public web and return structured results",
+  // Optional: seed up to two provider origins already known to your agent.
+  // AgentResolver reads only their fixed well-known provider manifest and
+  // live-verifies same-origin x402 routes before using them.
+  providerOrigins: ["https://provider.example"],
   constraints: {
     maxPriceUsd: 0.05,
     protocol: "x402",
@@ -54,4 +58,6 @@ Use AgentResolver when the agent does not already have a clearly suitable tool:
 5. If the returned paid verification action is useful, authorize it only under your own wallet/spend policy.
 6. Execute the selected provider directly.
 
-This preserves caller custody while giving the agent one open-world procurement surface across AgentResolver-owned capabilities, registered provider routes, x402 catalogs, and MCP discovery.
+This preserves caller custody while giving the agent one open-world procurement surface across AgentResolver-owned capabilities, verified provider origins, x402 catalogs, and MCP discovery.
+
+Provider operators can first call `POST /api/provider-bootstrap` with their HTTPS origin. AgentResolver verifies the fixed well-known manifest and live x402 payment identity, then returns the `providerOrigins` seed plus caller-owned durable discovery registration handoffs. AgentResolver does not persist the provider or send the external registration itself.
