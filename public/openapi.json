@@ -816,7 +816,7 @@
           "Provider Commerce"
         ],
         "summary": "Verify a routed buyer settlement before a provider success fee is due",
-        "description": "Free verification. Re-resolves a static provider route or same-origin provider manifest and independently verifies the submitted Base-USDC buyer settlement against the provider's published payment identity. A successful domain-provider result includes an attribution-bound 2% success-fee quote with a $0.001 minimum.",
+        "description": "Free verification. Re-resolves a static provider route or same-origin provider manifest and independently verifies the submitted Base-USDC buyer settlement against the provider's published payment identity. When AgentResolver's dedicated attribution signer is active, a matching signed handoff receipt is also required and cryptographically binds the attribution ID to the exact provider route/payment terms.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -854,6 +854,11 @@
                   "buyerTxHash": {
                     "type": "string",
                     "pattern": "^0x[0-9a-fA-F]{64}$"
+                  },
+                  "attributionReceipt": {
+                    "type": "string",
+                    "maxLength": 16384,
+                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active."
                   }
                 }
               }
@@ -918,6 +923,11 @@
                   "buyerTxHash": {
                     "type": "string",
                     "pattern": "^0x[0-9a-fA-F]{64}$"
+                  },
+                  "attributionReceipt": {
+                    "type": "string",
+                    "maxLength": 16384,
+                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active."
                   }
                 }
               }
@@ -984,6 +994,11 @@
                   "feeTxHash": {
                     "type": "string",
                     "pattern": "^0x[0-9a-fA-F]{64}$"
+                  },
+                  "attributionReceipt": {
+                    "type": "string",
+                    "maxLength": 16384,
+                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active."
                   }
                 }
               }
