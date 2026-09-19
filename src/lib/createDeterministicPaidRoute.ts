@@ -12,7 +12,7 @@ import { ATTRIBUTION_HEADER, attributionIdFromRequest, logAttributedSettlement }
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
-import { AGENT_SKILLS_INDEX_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeUrl, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
+import { AGENT_SKILLS_INDEX_URL, CONTROL_MCP_URL, FREE_PROCURE_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeUrl, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -227,6 +227,8 @@ function stampInfrastructureHeaders(
     ? x402BuyerSetupChallengeUrl(capabilityId, requestMethod, resumeUrl)
     : x402BuyerSetupChallengeUrl(capabilityId, requestMethod);
   response.headers.set("x-agentresolver-buyer-setup", buyerSetupUrl);
+  response.headers.set("x-agentresolver-free-procure", FREE_PROCURE_URL);
+  response.headers.set("x-agentresolver-control-mcp", CONTROL_MCP_URL);
   response.headers.set("x-agentresolver-agent-skills", AGENT_SKILLS_INDEX_URL);
   response.headers.set("x-agentresolver-payment-guard-skill", PAYMENT_GUARD_SKILL_URL);
   response.headers.set(
@@ -251,6 +253,8 @@ function stampInfrastructureHeaders(
       "x-agentresolver-request-id",
       "x-agentresolver-contract-version",
       "x-agentresolver-buyer-setup",
+      "x-agentresolver-free-procure",
+      "x-agentresolver-control-mcp",
       "x-agentresolver-agent-skills",
       "x-agentresolver-payment-guard-skill",
       "x-agentresolver-payment-guard",

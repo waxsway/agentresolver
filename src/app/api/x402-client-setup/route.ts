@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeX402ChallengeMethod, normalizeX402ChallengeResumeUrl, x402BuyerSetup, x402BuyerSetupCompact, type X402BuyerSetupContext } from "@/lib/x402BuyerSetup";
+import { CONTROL_MCP_URL, FREE_PROCURE_URL, normalizeX402ChallengeMethod, normalizeX402ChallengeResumeUrl, x402BuyerSetup, x402BuyerSetupCompact, type X402BuyerSetupContext } from "@/lib/x402BuyerSetup";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import { PAID_CAPABILITIES } from "@/lib/paidCapabilities";
 
@@ -49,7 +49,13 @@ export async function GET(req: Request) {
 
   const responseHeaders: Record<string, string> = {
     "cache-control": "public, max-age=300",
-    "access-control-allow-origin": "*"
+    "access-control-allow-origin": "*",
+    "x-agentresolver-free-procure": FREE_PROCURE_URL,
+    "x-agentresolver-control-mcp": CONTROL_MCP_URL,
+    "access-control-expose-headers": [
+      "x-agentresolver-free-procure",
+      "x-agentresolver-control-mcp"
+    ].join(", ")
   };
 
   if (capabilityId && capability) {
@@ -63,6 +69,8 @@ export async function GET(req: Request) {
     responseHeaders["x-agentresolver-retry-header"] = "PAYMENT-SIGNATURE";
     responseHeaders["x-agentresolver-setup-mode"] = "challenge_compact";
     responseHeaders["access-control-expose-headers"] = [
+      "x-agentresolver-free-procure",
+      "x-agentresolver-control-mcp",
       "x-agentresolver-resume-url",
       "x-agentresolver-resume-capability",
       "x-agentresolver-resume-method",

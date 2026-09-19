@@ -6,6 +6,8 @@ import { GET as getBuyerSetupRoute } from "../src/app/api/x402-client-setup/rout
 import { GET as getSha256Discovery } from "../src/app/api/sha256/route";
 import {
   AGENT_SKILLS_INDEX_URL,
+  CONTROL_MCP_URL,
+  FREE_PROCURE_URL,
   PAYMENT_GUARD_SKILL_URL,
   X402_BUYER_SETUP_URL,
   normalizeX402ChallengeMethod,
@@ -29,6 +31,8 @@ test("buyer setup is free, machine-readable and non-custodial", () => {
   assert.equal(setup.payment.paymentIsAuthorizedByAgentResolver, false);
   assert.equal(setup.agentResolver.agentSkillsIndex, AGENT_SKILLS_INDEX_URL);
   assert.equal(setup.agentResolver.paymentGuardSkill, PAYMENT_GUARD_SKILL_URL);
+  assert.equal(setup.agentResolver.freeProcure, FREE_PROCURE_URL);
+  assert.equal(setup.agentResolver.controlMcp, CONTROL_MCP_URL);
   assert.equal(
     setup.agentResolver.canonicalPreflight,
     "https://agentresolver.vercel.app/api/x402-payment-preflight"
@@ -266,6 +270,13 @@ test("challenge compact setup exposes one direct retry action without the full i
   assert.equal(setup.next?.clients.mcp.factory, "createx402MCPClient");
   assert.match(setup.next?.clients.walletMcp.install || "", /x402-trinity-mcp/);
   assert.equal(setup.fullSetupUrl, X402_BUYER_SETUP_URL);
+  assert.equal(setup.freeProcurementFallback.buyerAgentResolverFeeUsd, 0);
+  assert.equal(setup.freeProcurementFallback.http.url, FREE_PROCURE_URL);
+  assert.equal(setup.freeProcurementFallback.http.method, "POST");
+  assert.equal(setup.freeProcurementFallback.mcp.url, CONTROL_MCP_URL);
+  assert.equal(setup.freeProcurementFallback.mcp.tool, "procure");
+  assert.match(setup.freeProcurementFallback.boundary, /never authorizes provider spend/i);
+  assert.match(setup.freeProcurementFallback.boundary, /success fee/i);
   assert.equal(setup.authorizationBoundary.callerControlsSigner, true);
   assert.equal(setup.authorizationBoundary.agentResolverAuthorizesSpend, false);
   assert.ok(JSON.stringify(setup).length < 4000);
@@ -568,6 +579,10 @@ test("challenge-attributed setup response preserves exact resume method", async 
   assert.equal(response.headers.get("x-agentresolver-resume-method"), "POST");
   assert.equal(response.headers.get("x-agentresolver-retry-header"), "PAYMENT-SIGNATURE");
   assert.equal(response.headers.get("x-agentresolver-setup-mode"), "challenge_compact");
+  assert.equal(response.headers.get("x-agentresolver-free-procure"), FREE_PROCURE_URL);
+  assert.equal(response.headers.get("x-agentresolver-control-mcp"), CONTROL_MCP_URL);
+  assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-free-procure/);
+  assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-control-mcp/);
   assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-resume-method/);
   assert.match(response.headers.get("access-control-expose-headers") || "", /x-agentresolver-setup-mode/);
 

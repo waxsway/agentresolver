@@ -37,3 +37,12 @@ test("CORS exposes the standard buyer help Link", () => {
   assert.match(preflight, /access-control-expose-headers[^\n]*link/);
   assert.match(guard, /access-control-expose-headers[^\n]*link/);
 });
+
+
+test("paid HTTP challenges expose free procurement fallback headers", () => {
+  const route = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
+  assert.match(route, /x-agentresolver-free-procure/);
+  assert.match(route, /x-agentresolver-control-mcp/);
+  assert.match(route, /FREE_PROCURE_URL/);
+  assert.match(route, /CONTROL_MCP_URL/);
+});
