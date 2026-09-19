@@ -126,26 +126,37 @@ jobs:
             .extensions.bazaar.info.input.method == "GET"
           ' /tmp/vr-challenge.json >/dev/null
 
+          echo "SMOKE_STAGE=procure"
           curl -fsS -H 'cache-control: no-cache' \
+            -H 'x-agentresolver-internal: 1' \
+            -H 'user-agent: AgentResolver-Promotion-Smoke/1.0' \
             "$BASE_URL/api/procure?goal=compute%20a%20SHA-256%20digest&limit=3&maxPriceUsd=0.01&requireHttps=true&$suffix" \
             -o /tmp/procure.json
-          jq -e '
+          if ! jq -e '
             .resolver == "AgentResolver" and
             .mode == "open_world_non_custodial_procurement" and
             .boundaries.callerSpendAuthorizedByAgentResolver == false and
             (.candidates | type) == "array"
-          ' /tmp/procure.json >/dev/null
-
+          ' /tmp/procure.json >/dev/null; then
+            echo "::error::Promotion procurement smoke mismatch"
+            cat /tmp/procure.json
+            false
+          fi
+          echo "SMOKE_STAGE=providers"
           curl -fsS -H 'cache-control: no-cache' "$BASE_URL/api/providers?$suffix" -o /tmp/providers.json
-          jq -e '
+          if ! jq -e '
             .providerFunding.feeModel == "provider_success_fee" and
             .providerFunding.attributionProof.signingConfigured == true and
             .sellerMonetization.successFeeBps == 200 and
             .sellerMonetization.minimumSuccessFeeUsd == 0.001 and
             .sellerMonetization.buyerExtraFeeUsd == 0 and
             .domainEnrollment.liveX402ChallengeRequired == true
-          ' /tmp/providers.json >/dev/null
-
+          ' /tmp/providers.json >/dev/null; then
+            echo "::error::Promotion provider network smoke mismatch"
+            cat /tmp/providers.json
+            false
+          fi
+          echo "SMOKE_STAGE=provider-integration"
           curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json
           jq -e '
             .providerEnrollment.bootstrap.url == "https://agentresolver.vercel.app/api/provider-bootstrap" and
