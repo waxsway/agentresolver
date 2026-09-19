@@ -33,6 +33,7 @@ export function GET(req: Request) {
       contract: baseUrl + "/provider-integration.json",
       providerPage: baseUrl + "/providers",
       attributionHeader: "x-agentresolver-attribution-id",
+      attributionReceiptHeader: "x-agentresolver-attribution-receipt",
       procurement: baseUrl + "/api/procure",
       conversionVerification: baseUrl + "/api/provider-attribution-verify",
       successFeeQuote: baseUrl + "/api/provider-success-fee-quote",
