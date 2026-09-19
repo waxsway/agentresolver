@@ -16,10 +16,10 @@ concurrency:
 
 jobs:
   deploy:
-    # One-shot re-arm for the provider-network + lean MCP control-plane release.
-    # Hard-disable again immediately after validated production smoke.
+    # Automatic production deployment is hard-disabled after the provider-network
+    # + lean MCP one-shot release attempt. Re-arm only for an explicitly justified release.
     if: >-
-      true &&
+      false &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
