@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { fetchPublicJson, validatePublicHttpsUrl } from "@/lib/publicHttpsJson";
 import { BASE_NETWORK, BASE_USDC } from "@/lib/x402SettlementVerify";
 
@@ -233,7 +234,16 @@ export async function discoverDomainProviderRoutes(
   return result;
 }
 
-export function quoteProviderSuccessFee(amountAtomic: string) {
+function attributionBindingAtomic(attributionId: string | undefined) {
+  if (!attributionId) return 0n;
+  const digest = createHash("sha256").update(attributionId).digest();
+  return BigInt(digest.readUInt16BE(0) % 100);
+}
+
+export function quoteProviderSuccessFee(
+  amountAtomic: string,
+  attributionId?: string
+) {
   if (!/^[0-9]{1,78}$/.test(amountAtomic)) {
     throw new Error("amountAtomic must be a base-10 USDC atomic amount.");
   }
@@ -248,14 +258,19 @@ export function quoteProviderSuccessFee(amountAtomic: string) {
   const percentageAtomic =
     (gross * basisPoints + denominator - 1n) / denominator;
   const minimumAtomic = 1_000n;
-  const feeAtomic = percentageAtomic > minimumAtomic
+  const baseFeeAtomic = percentageAtomic > minimumAtomic
     ? percentageAtomic
     : minimumAtomic;
+  const bindingAtomic = attributionBindingAtomic(attributionId);
+  const feeAtomic = baseFeeAtomic + bindingAtomic;
 
   return {
     grossAmountAtomic: gross.toString(),
     successFeeBps: PROVIDER_SUCCESS_FEE_BPS,
     minimumFeeAtomic: minimumAtomic.toString(),
+    baseFeeAmountAtomic: baseFeeAtomic.toString(),
+    attributionBindingAtomic: bindingAtomic.toString(),
+    attributionBound: Boolean(attributionId),
     feeAmountAtomic: feeAtomic.toString(),
     grossUsd: Number(gross) / 1_000_000,
     feeUsd: Number(feeAtomic) / 1_000_000
