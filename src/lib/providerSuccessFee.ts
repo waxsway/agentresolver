@@ -57,6 +57,8 @@ export async function quoteVerifiedProviderSuccessFee(
     routeId: input.routeId,
     providerEnrollment: conversion.providerEnrollment,
     buyerSettlementVerified: true,
+    attributionVerified: conversion.attributionVerified,
+    attribution: conversion.attribution,
     buyerSettlement: conversion.settlement,
     commercial: {
       model:
@@ -112,6 +114,8 @@ export async function verifyProviderSuccessFee(
         ? "verified_provider_buyer_settlement_plus_attribution_bound_agentresolver_success_fee_transfer"
         : "buyer_settlement_verified_but_agentresolver_success_fee_not_verified",
     limitation:
-      "The buyer settlement and provider fee transfer are independently verified on Base. The attribution ID is bound into the exact fee amount, preventing simple same-amount fee-proof replay across different attributions. AgentResolver does not yet cryptographically prove that the original procurement response was received by the eventual buyer."
+      quote.attributionVerified
+        ? "The buyer settlement, AgentResolver-issued signed procurement handoff receipt, and provider success-fee transfer are independently verified. This proves AgentResolver issued the exact attributed route/payment handoff; it does not prove the eventual buyer's legal identity."
+        : "The buyer settlement and provider fee transfer are independently verified on Base. The attribution ID is bound into the exact fee amount, but this runtime has not cryptographically verified an AgentResolver-issued handoff receipt."
   } as const;
 }
