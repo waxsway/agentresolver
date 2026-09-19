@@ -1,0 +1,47 @@
+name: One-shot PayAI Bazaar visibility
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.head_ref == 'ops/payai-bazaar-visibility-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Inspect PayAI Bazaar catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://facilitator.payai.network/discovery/resources?payTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&limit=100'
+          code="$(curl -sS --retry 2 --max-time 20 -o /tmp/catalog.json -w '%{http_code}' "$url" || true)"
+          echo "PAYAI_DISCOVERY_HTTP=$code"
+          if [ "$code" != "200" ]; then
+            cat /tmp/catalog.json 2>/dev/null || true
+            exit 1
+          fi
+          jq -c '
+            {
+              x402Version,
+              count: ((.items // .resources // []) | length),
+              matches: [
+                (.items // .resources // [])[]
+                | select(((.resource // .url // "") | tostring | test("agentresolver\\.vercel\\.app"; "i")))
+                | {
+                    resource: (.resource // .url),
+                    type,
+                    x402Version,
+                    accepts,
+                    extensions,
+                    lastUpdated
+                  }
+              ]
+            }
+          ' /tmp/catalog.json
+          count="$(jq '[(.items // .resources // [])[] | select(((.resource // .url // "") | tostring | test("agentresolver\\.vercel\\.app"; "i")))] | length' /tmp/catalog.json)"
+          echo "AGENTRESOLVER_PAYAI_BAZAAR_MATCHES=$count"
