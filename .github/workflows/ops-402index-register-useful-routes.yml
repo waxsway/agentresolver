@@ -1,0 +1,83 @@
+name: One-shot 402 Index registration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: github.head_ref == 'ops/402index-register-useful-routes-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Register missing AgentResolver x402 routes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          existing="$(curl -fsS --retry 2 --max-time 20 'https://402index.io/api/v1/services?q=AgentResolver&limit=100')"
+
+          register_if_missing() {
+            local url="$1"
+            local payload="$2"
+            local label="$3"
+
+            if printf '%s' "$existing" | jq -e --arg url "$url" '.. | objects | select((.url // "") == $url)' >/dev/null; then
+              echo "$label=already_registered"
+              return 0
+            fi
+
+            code="$(curl -sS --retry 2 --max-time 25 -o /tmp/402index-response.json -w '%{http_code}'               -X POST 'https://402index.io/api/v1/register'               -H 'content-type: application/json'               --data-binary "$payload" || true)"
+
+            echo "$label=http_$code"
+            jq -c '{
+              id: (.service.id // .id // null),
+              status: (.service.status // .status // null),
+              url: (.service.url // .url // null),
+              health_status: (.service.health_status // .health_status // null),
+              error: (.error // null),
+              message: (.message // null),
+              suggestedProtocol: (.suggestedProtocol // null),
+              probe: (.probe // null)
+            }' /tmp/402index-response.json 2>/dev/null || true
+
+            case "$code" in
+              200|201) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          settlement_url='https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=0x439885dab80375051b5295df179b668a6a67490d20c3e1cb4725809f4ea4b5b8&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedAmountAtomic=1000'
+          settlement_payload="$(jq -cn --arg url "$settlement_url" '{
+            url: $url,
+            name: "AgentResolver x402 Settlement Verification",
+            protocol: "x402",
+            http_method: "GET",
+            description: "Independent Base USDC x402 settlement receipt verification from a transaction hash with EIP-3009, transfer, confirmation, payTo, and amount checks.",
+            price_usd: 0.001,
+            payment_asset: "USDC",
+            payment_network: "Base",
+            category: "payments",
+            provider: "AgentResolver"
+          }')"
+
+          preflight_url='https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.001&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedNetwork=eip155%3A8453'
+          preflight_payload="$(jq -cn --arg url "$preflight_url" '{
+            url: $url,
+            name: "AgentResolver x402 Payment Preflight",
+            protocol: "x402",
+            http_method: "GET",
+            description: "Verify live x402 payTo, USDC price, network, asset, scheme and resource binding before wallet signing.",
+            price_usd: 0.001,
+            payment_asset: "USDC",
+            payment_network: "Base",
+            category: "payments",
+            provider: "AgentResolver"
+          }')"
+
+          register_if_missing "$settlement_url" "$settlement_payload" AR_402INDEX_SETTLEMENT
+          register_if_missing "$preflight_url" "$preflight_payload" AR_402INDEX_PREFLIGHT
