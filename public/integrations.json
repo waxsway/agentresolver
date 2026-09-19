@@ -172,6 +172,14 @@
       "conversionVerify": "https://agentresolver.vercel.app/api/provider-attribution-verify",
       "feeQuote": "https://agentresolver.vercel.app/api/provider-success-fee-quote",
       "feeVerify": "https://agentresolver.vercel.app/api/provider-success-fee-verify"
+    },
+    "bootstrap": "https://agentresolver.vercel.app/api/provider-bootstrap",
+    "immediateSeedField": "providerOrigins",
+    "durableDiscovery": {
+      "registry": "402 Index",
+      "callerOwnedRegistration": true,
+      "AgentResolverSendsRegistration": false,
+      "externalReviewMayApply": true
     }
   },
   "frameworkFallbacks": {
