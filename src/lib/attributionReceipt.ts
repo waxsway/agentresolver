@@ -226,10 +226,10 @@ export function createSignedAttributionReceipt(
   } as const;
 }
 
-export function verifySignedAttributionReceipt(
+function verifySignedAttributionReceiptInternal(
   receipt: string,
   secret: string,
-  options: { now?: Date } = {}
+  options: { now?: Date; allowExpired?: boolean } = {}
 ): AttributionReceiptVerification {
   if (
     typeof receipt !== "string" ||
@@ -289,9 +289,27 @@ export function verifySignedAttributionReceipt(
   }
 
   const now = options.now ?? new Date();
-  if (Date.parse(payload.expiresAt) <= now.getTime()) {
+  if (!options.allowExpired && Date.parse(payload.expiresAt) <= now.getTime()) {
     return { valid: false, payload, reason: "expired_receipt" };
   }
 
   return { valid: true, payload, reason: "verified" };
+}
+
+
+export function verifySignedAttributionReceipt(
+  receipt: string,
+  secret: string,
+  options: { now?: Date } = {}
+): AttributionReceiptVerification {
+  return verifySignedAttributionReceiptInternal(receipt, secret, options);
+}
+
+export function verifySignedAttributionReceiptHistorically(
+  receipt: string,
+  secret: string
+): AttributionReceiptVerification {
+  return verifySignedAttributionReceiptInternal(receipt, secret, {
+    allowExpired: true
+  });
 }

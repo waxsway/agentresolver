@@ -81,6 +81,11 @@ test("settlement verifier confirms exact Base USDC EIP-3009 transfer expectation
       };
     }
     if (method === "eth_blockNumber") return "0x69";
+    if (method === "eth_getBlockByNumber") {
+      return {
+        timestamp: `0x${Math.floor(Date.parse("2026-01-01T00:01:00.000Z") / 1000).toString(16)}`
+      };
+    }
     throw new Error(`unexpected RPC method ${method}`);
   };
 
@@ -94,6 +99,7 @@ test("settlement verifier confirms exact Base USDC EIP-3009 transfer expectation
   assert.equal(result.settled, true);
   assert.equal(result.paymentShape, "eip3009-exact");
   assert.equal(result.confirmations, "6");
+  assert.equal(result.blockTimestamp, "2026-01-01T00:01:00.000Z");
   assert.equal(result.transferCount, 1);
   assert.equal(result.assertions.payToMatch, true);
   assert.equal(result.assertions.amountMatch, true);

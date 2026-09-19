@@ -41,6 +41,33 @@ function parseHex(value: unknown): bigint | null {
   }
 }
 
+function blockTimestampIso(value: unknown): string | null {
+  const seconds = parseHex(value);
+  if (seconds === null || seconds < 0n || seconds > 253402300799n) return null;
+  try {
+    return new Date(Number(seconds) * 1000).toISOString();
+  } catch {
+    return null;
+  }
+}
+
+async function blockTimestampForReceipt(
+  rpc: BaseRpc,
+  blockNumber: bigint | null
+): Promise<string | null> {
+  if (blockNumber === null) return null;
+  try {
+    const blockValue = await rpc("eth_getBlockByNumber", [
+      `0x${blockNumber.toString(16)}`,
+      false
+    ]);
+    const block = object(blockValue);
+    return block ? blockTimestampIso(block.timestamp) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function defaultBaseRpc(method: string, params: unknown[]) {
   const response = await fetch(BASE_RPC_URL, {
     method: "POST",
@@ -94,6 +121,7 @@ export async function verifyX402Settlement(
       settled: false,
       verdict: "not_found",
       paymentShape: "unknown",
+      blockTimestamp: null,
       confirmations: null,
       transfers: [],
       assertions: {
@@ -110,7 +138,10 @@ export async function verifyX402Settlement(
 
   const receiptSucceeded = receipt.status === "0x1";
   const blockNumber = parseHex(receipt.blockNumber);
-  const latestValue = await rpc("eth_blockNumber", []);
+  const [latestValue, blockTimestamp] = await Promise.all([
+    rpc("eth_blockNumber", []),
+    blockTimestampForReceipt(rpc, blockNumber)
+  ]);
   const latestBlock = parseHex(latestValue);
   const confirmations =
     blockNumber !== null && latestBlock !== null && latestBlock >= blockNumber
@@ -185,6 +216,7 @@ export async function verifyX402Settlement(
     paymentShape,
     receiptStatus: receiptSucceeded ? "success" : "reverted",
     blockNumber: blockNumber?.toString() ?? null,
+    blockTimestamp,
     confirmations,
     transactionTarget: txTo,
     functionSelector,
