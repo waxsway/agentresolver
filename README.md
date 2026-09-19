@@ -1,24 +1,12 @@
 # AgentResolver
 
-AgentResolver is an **open-world capability procurement and provider-routing layer for autonomous agents**. Procurement is free; optional verification is paid, and domain-enrolled providers fund verified routed commerce.
+AgentResolver is a **stable open-world fallback for autonomous agents**.
 
-When an agent needs an external tool, API, MCP server, x402 service, browser capability, data source, or machine service that is not already connected, it can ask AgentResolver what to use next. AgentResolver returns ranked compatible capabilities, registered provider routes, machine-ready discovery metadata, and a non-custodial handoff path with attribution.
+Keep the tools your agent already has. Add one lean AgentResolver control plane behind them. When the installed tool set cannot satisfy a task, AgentResolver can search external MCP/API/x402 supply and return bounded candidates, contract evidence, and a non-custodial handoff without taking execution or spending authority.
+
+The default MCP surface stays intentionally small: **two free tools — `procure` and `resolve` — instead of hundreds of pre-attached external tools.**
 
 **Production:** https://agentresolver.vercel.app
-
-Primary paid route:
-
-```text
-POST https://agentresolver.vercel.app/api/x402-payment-preflight
-$0.001 USDC · Base or Solana
-```
-
-AgentCash direct onboarding:
-
-```bash
-npx agentcash try https://agentresolver.vercel.app
-npx agentcash add https://agentresolver.vercel.app
-```
 
 ## Install as a persistent fallback
 
@@ -50,6 +38,18 @@ io.github.waxsway/agentresolver
 ```
 
 The official MCP Registry entry points at the lean control plane with exactly two free tools: `procure` for constrained capability selection and `resolve` for broad discovery. Paid tools are intentionally excluded from the default control-plane entrypoint.
+
+
+### Runtime policy
+
+Use native/installed tools first. Call AgentResolver only when no installed capability clearly fits.
+
+- `procure` — constrained external-capability selection.
+- `resolve` — broad discovery when exact constraints are not available.
+- paid verification — separate, explicit and caller-authorized when fresh live evidence is worth paying for.
+- third-party execution/payment — remains under the calling runtime's own policy.
+
+AgentResolver is not a wallet, payment signer, or arbitrary execution proxy.
 
 ## Framework-native fallback recipes
 
