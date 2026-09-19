@@ -1,0 +1,187 @@
+name: One-shot promote built revenue release
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    if: github.head_ref == 'ops/promote-built-revenue-release-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      DEPLOYMENT_ID: dpl_8ibJetsxepfrvCU8myKZcCoRwJKL
+      DEPLOYMENT_SHA: 5f06f08b3ad4f6b255da14b133b3fdab0f1db1e7
+      ROLLBACK_DEPLOYMENT_ID: dpl_Hh3SU83Ee4bS4a23eftmovdbDhks
+      ROLLBACK_SHA: 2d3175cfc983ecf27503d28adba9db936c5b8e5a
+      CANONICAL_ALIAS: agentresolver.vercel.app
+      BASE_URL: https://agentresolver.vercel.app
+    steps:
+      - name: Promote existing READY artifact and run corrected smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${VERCEL_TOKEN:-}" ] || { echo "::error::VERCEL_TOKEN missing"; exit 1; }
+
+          promoted=0
+
+          rollback() {
+            if [ "$promoted" != "1" ]; then
+              return
+            fi
+            echo "::warning::Corrected promotion smoke failed; restoring known-good deployment."
+            code="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/rollback.json -w '%{http_code}' \
+              -X POST "https://api.vercel.com/v2/deployments/$ROLLBACK_DEPLOYMENT_ID/aliases?teamId=$VERCEL_ORG_ID" \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data-binary "$(jq -nc --arg alias "$CANONICAL_ALIAS" '{alias:$alias,redirect:null}')")"
+            case "$code" in
+              200|201) ;;
+              *) echo "::error::Rollback alias failed HTTP $code"; cat /tmp/rollback.json; return 1 ;;
+            esac
+            for attempt in {1..20}; do
+              suffix="promotionRollback=$GITHUB_RUN_ID-$attempt"
+              code="$(curl -sS -D /tmp/rb-h -o /tmp/rb-b -w '%{http_code}' "$BASE_URL/api/x402-cdp-canary?$suffix" || true)"
+              sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/rb-h)"
+              if [ "$code" = "402" ] && [ "$sha" = "$ROLLBACK_SHA" ]; then
+                echo "PROMOTION_ROLLBACK_OK=true"
+                return
+              fi
+              sleep 2
+            done
+            echo "::error::Rollback alias did not converge"
+            return 1
+          }
+          trap rollback ERR
+
+          code="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/deployment.json -w '%{http_code}' \
+            "https://api.vercel.com/v13/deployments/$DEPLOYMENT_ID?teamId=$VERCEL_ORG_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN")"
+          [ "$code" = "200" ]
+          jq -e --arg sha "$DEPLOYMENT_SHA" '
+            .id == env.DEPLOYMENT_ID and
+            (.readyState == "READY" or .state == "READY") and
+            .target == "production" and
+            .meta.githubCommitSha == $sha
+          ' /tmp/deployment.json >/dev/null
+
+          code="$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/promote.json -w '%{http_code}' \
+            -X POST "https://api.vercel.com/v2/deployments/$DEPLOYMENT_ID/aliases?teamId=$VERCEL_ORG_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary "$(jq -nc --arg alias "$CANONICAL_ALIAS" '{alias:$alias,redirect:null}')")"
+          case "$code" in
+            200|201) ;;
+            *) echo "::error::Promotion alias failed HTTP $code"; cat /tmp/promote.json; exit 1 ;;
+          esac
+          promoted=1
+
+          live=0
+          for attempt in {1..30}; do
+            suffix="promotionSmoke=$GITHUB_RUN_ID-$attempt"
+            code="$(curl -sS -D /tmp/preflight-h -o /tmp/preflight-b -w '%{http_code}' \
+              -H 'cache-control: no-cache' \
+              -H 'x-agentresolver-internal: 1' \
+              "$BASE_URL/api/x402-payment-preflight?url=https%3A%2F%2Fexample.com%2Fpaid&method=GET&maxPriceUsd=0.01&$suffix" || true)"
+            sha="$(awk 'BEGIN{IGNORECASE=1} /^x-agentresolver-deployment:/ {gsub("\r",""); print $2; exit}' /tmp/preflight-h)"
+            if [ "$code" = "402" ] && [ "$sha" = "$DEPLOYMENT_SHA" ]; then
+              live=1
+              break
+            fi
+            sleep 2
+          done
+          [ "$live" = "1" ]
+
+          grep -Fi 'x-agentresolver-free-procure: https://agentresolver.vercel.app/api/procure' /tmp/preflight-h >/dev/null
+          grep -Fi 'x-agentresolver-control-mcp: https://agentresolver.vercel.app/mcp/control' /tmp/preflight-h >/dev/null
+
+          suffix="promotionSmoke=$GITHUB_RUN_ID"
+          curl -fsS -H 'cache-control: no-cache' \
+            "$BASE_URL/api/x402-client-setup?source=x402-challenge&capabilityId=x402-ping&method=GET&$suffix" \
+            -o /tmp/setup.json
+          jq -e '
+            .freeProcurementFallback.buyerAgentResolverFeeUsd == 0 and
+            .freeProcurementFallback.http.url == "https://agentresolver.vercel.app/api/procure" and
+            .freeProcurementFallback.mcp.url == "https://agentresolver.vercel.app/mcp/control"
+          ' /tmp/setup.json >/dev/null
+
+          vr_code="$(curl -sS -D /tmp/vr-h -o /tmp/vr-b -w '%{http_code}' \
+            -H 'cache-control: no-cache' \
+            -H 'x-agentresolver-internal: 1' \
+            "$BASE_URL/api/verified-resolve?goal=Find%20and%20verify%20a%20paid%20web%20search%20service&maxPriceUsd=0.05&protocol=x402&requireHttps=true&$suffix" || true)"
+          [ "$vr_code" = "402" ]
+          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); gsub("\r",""); print; exit}' /tmp/vr-h)"
+          [ -n "$payment_required" ]
+          printf '%s' "$payment_required" | base64 --decode > /tmp/vr-challenge.json
+          jq -e '
+            .x402Version == 2 and
+            ([.accepts[] | select(.network == "eip155:8453" and .amount == "20000")] | length) >= 1 and
+            .extensions.bazaar.info.input.method == "GET"
+          ' /tmp/vr-challenge.json >/dev/null
+
+          curl -fsS -H 'cache-control: no-cache' \
+            "$BASE_URL/api/procure?goal=compute%20a%20SHA-256%20digest&limit=3&maxPriceUsd=0.01&requireHttps=true&$suffix" \
+            -o /tmp/procure.json
+          jq -e '
+            .resolver == "AgentResolver" and
+            .mode == "open_world_non_custodial_procurement" and
+            .boundaries.callerSpendAuthorizedByAgentResolver == false and
+            (.candidates | type) == "array"
+          ' /tmp/procure.json >/dev/null
+
+          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/api/providers?$suffix" -o /tmp/providers.json
+          jq -e '
+            .providerFunding.feeModel == "provider_success_fee" and
+            .providerFunding.attributionProof.signingConfigured == true and
+            .sellerMonetization.successFeeBps == 200 and
+            .sellerMonetization.minimumSuccessFeeUsd == 0.001 and
+            .sellerMonetization.buyerExtraFeeUsd == 0 and
+            .domainEnrollment.liveX402ChallengeRequired == true
+          ' /tmp/providers.json >/dev/null
+
+          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json
+          jq -e '
+            .providerEnrollment.bootstrap.url == "https://agentresolver.vercel.app/api/provider-bootstrap" and
+            .providerEnrollment.bootstrap.immediateProcurement.requestField == "providerOrigins" and
+            .attribution.signedReceipt.dedicatedSecret == "AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET" and
+            .attribution.signedReceipt.settlementTimestampSource == "independently verified Base block timestamp" and
+            .commercial.successFeeBps == 200
+          ' /tmp/provider-integration.json >/dev/null
+
+          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/openapi.json?$suffix" -o /tmp/openapi.json
+          jq -e '
+            .paths["/api/provider-bootstrap"].post.operationId == "bootstrapProviderDiscovery" and
+            .paths["/api/verified-resolve"].get.operationId == "verifiedResolveGet"
+          ' /tmp/openapi.json >/dev/null
+
+          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/server.json?$suffix" -o /tmp/server.json
+          jq -e '.remotes[0].url == "https://agentresolver.vercel.app/mcp/control"' /tmp/server.json >/dev/null
+          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/integrations.json?$suffix" -o /tmp/integrations.json
+          jq -e '.mcp.url == "https://agentresolver.vercel.app/mcp/control" and .mcp.primaryTool == "procure"' /tmp/integrations.json >/dev/null
+          curl -fsS -H 'cache-control: no-cache' "$BASE_URL/.well-known/agent-skills/index.json?$suffix" -o /tmp/skills.json
+          jq -e '[.skills[].name] | index("agentresolver-provider") != null and index("agentresolver-procurement") != null' /tmp/skills.json >/dev/null
+
+          cdp_code="$(curl -sS -D /tmp/cdp-h -o /tmp/cdp-b -w '%{http_code}' \
+            -H 'cache-control: no-cache' \
+            -H 'x-agentresolver-internal: 1' \
+            "$BASE_URL/api/x402-cdp-canary?$suffix" || true)"
+          [ "$cdp_code" = "402" ]
+          jq -e '
+            .x402Version == 2 and
+            (.accepts | length) == 1 and
+            .accepts[0].network == "eip155:8453" and
+            .accepts[0].amount == "2000"
+          ' /tmp/cdp-b >/dev/null
+
+          trap - ERR
+          echo "PROMOTED_EXISTING_ARTIFACT=true"
+          echo "PROMOTED_DEPLOYMENT=$DEPLOYMENT_ID"
+          echo "PROMOTED_SHA=$DEPLOYMENT_SHA"
+          echo "CORRECTED_REVENUE_SMOKE=true"
