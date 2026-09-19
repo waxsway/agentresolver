@@ -4,14 +4,16 @@ import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
 
-test("automatic production deploy is hard-disabled after the one-shot procurement release", () => {
-  assert.match(workflow, /hard-disabled after the one-shot/);
-  assert.match(workflow, /false &&/);
+test("production deploy is one-shot re-armed specifically for the zero-account provider network release", () => {
+  assert.match(workflow, /One-shot re-arm for the zero-account provider-network release/);
+  assert.match(workflow, /true &&/);
   assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(workflow, /github\.event\.workflow_run\.head_branch == 'main'/);
+  assert.match(workflow, /PROVIDER_NETWORK_PRODUCTION_SMOKE=true/);
   assert.match(workflow, /PROCUREMENT_PRODUCTION_SMOKE=true/);
-  assert.match(workflow, /\/api\/procure/);
-  assert.match(workflow, /\.freeDiscovery\.procure/);
+  assert.match(workflow, /\/api\/providers/);
+  assert.match(workflow, /provider-success-fee-quote/);
+  assert.match(workflow, /provider-success-fee-verify/);
 });
 
 test("production deploy uses the proven prebuilt path and verifies the isolated CDP canary", () => {
