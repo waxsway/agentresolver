@@ -411,12 +411,16 @@ jobs:
             if curl -fsS -H 'cache-control: no-cache' "$BASE_URL/api/providers?$suffix" -o /tmp/providers.json &&
               jq -e '
                 .service == "AgentResolver Provider Network" and
-                .providerFunding.feeModel == "provider_success_fee" and
-                .providerFunding.successFeeBps == 200 and
-                .providerFunding.minimumSuccessFeeUsd == 0.001 and
-                .providerFunding.buyerExtraFeeUsd == 0 and
-                .providerEnrollment.mode == "domain-controlled-well-known" and
-                .providerEnrollment.reviewRequired == false
+                .domainEnrollment.status == "open" and
+                .domainEnrollment.accountRequired == false and
+                .domainEnrollment.emailRequired == false and
+                .domainEnrollment.operatorReviewRequired == false and
+                .domainEnrollment.manifestPath == "/.well-known/agentresolver-provider.json" and
+                .sellerMonetization.model == "provider-success-fee" and
+                .sellerMonetization.successFeeBps == 200 and
+                .sellerMonetization.minimumSuccessFeeUsd == 0.001 and
+                .sellerMonetization.buyerExtraFeeUsd == 0 and
+                .sellerMonetization.feePaidAfterVerifiedBuyerSettlement == true
               ' /tmp/providers.json >/dev/null &&
               curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json &&
               jq -e '
