@@ -355,15 +355,24 @@ function normalizeSeededDomainProvider(
   };
 }
 
-async function discoverSeededDomainProviderCandidates(
+export async function discoverSeededDomainProviderCandidates(
   goal: string,
-  providerOrigins: string[] | undefined
+  providerOrigins: string[] | undefined,
+  dependencies: {
+    manifestFetcher?: typeof fetchDomainProviderManifest;
+    routeVerifier?: typeof verifyDomainProviderRouteChallenge;
+  } = {}
 ) {
   const origins = normalizeProviderSeedOrigins(providerOrigins);
   if (origins.length === 0) return [];
 
+  const manifestFetcher =
+    dependencies.manifestFetcher ?? fetchDomainProviderManifest;
+  const routeVerifier =
+    dependencies.routeVerifier ?? verifyDomainProviderRouteChallenge;
+
   const manifests = await Promise.all(
-    origins.map((origin) => fetchDomainProviderManifest(origin))
+    origins.map((origin) => manifestFetcher(origin))
   );
 
   const relevant = manifests
@@ -376,7 +385,7 @@ async function discoverSeededDomainProviderCandidates(
   const verified = await Promise.all(
     relevant.map(async (item) => ({
       ...item,
-      verified: await verifyDomainProviderRouteChallenge(item.route)
+      verified: await routeVerifier(item.route)
     }))
   );
 
