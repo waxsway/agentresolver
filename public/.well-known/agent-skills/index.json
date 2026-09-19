@@ -11,9 +11,9 @@
     {
       "name": "agentresolver-procurement",
       "type": "skill-md",
-      "description": "Find and select an external machine capability when the agent does not already have a suitable tool. Use for constrained API, MCP, or x402 procurement by goal, budget, network, protocol, schema, side-effect, or auth requirements while keeping wallet custody and spending authority with the caller.",
+      "description": "Find and select an external machine capability when the agent does not already have a suitable tool. Use for constrained API, MCP, x402, L402, or MPP procurement by goal, budget, network, protocol, schema, side-effect, or auth requirements while keeping wallet custody and spending authority with the caller.",
       "url": "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-procurement/SKILL.md",
-      "digest": "sha256:61a99b24deea1b89d4dacb985133a42d93cd61f424209719c336e84154e55462"
+      "digest": "sha256:5b0cdece2eebd6d3b6bfb93e203d96b034d517281f5ce359d29fb14c8bc7bfc6"
     }
   ]
 }
