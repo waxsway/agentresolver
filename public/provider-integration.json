@@ -55,7 +55,8 @@
       "unsignedProbeOnly": true,
       "declaredPostRouteProbe": "empty-json-unpaid-post",
       "failureMode": "fail-closed"
-    }
+    },
+    "schema": "https://agentresolver.vercel.app/provider-manifest.schema.json"
   },
   "commercial": {
     "model": "provider-success-fee",
