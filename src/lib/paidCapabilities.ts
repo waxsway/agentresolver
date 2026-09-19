@@ -477,6 +477,13 @@ export const PAID_CAPABILITIES = {
       properties: {
         goal: { type: "string", minLength: 1, maxLength: 600 },
         url: { type: "string", pattern: "^https://", maxLength: 500 },
+        providerOrigins: {
+          type: "array",
+          maxItems: 2,
+          uniqueItems: true,
+          items: { type: "string", pattern: "^https://[^/]+/?$" },
+          description: "Optional already-known provider origins carried through from free procurement so paid verification checks the same supply universe."
+        },
         constraints: {
           type: "object",
           additionalProperties: true,
