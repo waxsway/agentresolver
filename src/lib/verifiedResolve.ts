@@ -48,6 +48,9 @@ type X402Verification = MarketplaceProbeReport & {
   expectedPriceUsd: number | null;
   expectedNetworks: string[];
   contractMatchesCatalog: boolean;
+  resolvedUnknownConstraints: string[];
+  remainingUnknownConstraints: string[];
+  contractProven: boolean;
 };
 
 type UnsupportedVerification = {
@@ -321,13 +324,43 @@ async function verifyX402Candidate(
     method: candidateMethod(candidate)
   });
 
+  const contractMatchesCatalog = x402ContractMatches(candidate, report);
+  const remaining = new Set(candidate.unknownConstraints);
+  const resolved: string[] = [];
+
+  if (
+    report.x402Compatible &&
+    report.paymentOptions.some((option) => Boolean(option.amount)) &&
+    remaining.delete("price")
+  ) {
+    resolved.push("price");
+  }
+
+  if (
+    report.x402Compatible &&
+    report.paymentOptions.some((option) => Boolean(option.network)) &&
+    remaining.delete("network")
+  ) {
+    resolved.push("network");
+  }
+
+  const remainingUnknownConstraints = [...remaining];
+  const contractProven =
+    report.x402Compatible &&
+    contractMatchesCatalog &&
+    remainingUnknownConstraints.length === 0 &&
+    Boolean(candidate.semanticMatch?.proven ?? true);
+
   return {
     ...report,
     candidateId: candidate.id,
     protocol: "x402",
     expectedPriceUsd: candidate.priceUsd,
     expectedNetworks: candidate.networks,
-    contractMatchesCatalog: x402ContractMatches(candidate, report)
+    contractMatchesCatalog,
+    resolvedUnknownConstraints: resolved,
+    remainingUnknownConstraints,
+    contractProven
   };
 }
 
@@ -394,7 +427,13 @@ export async function verifiedResolve(
   const selectedId = procurement.selected?.id;
   const selectedLive = live.find((item) => item.candidateId === selectedId);
   const verifiedX402 = liveMarketplaceVerification.find(
-    (item) => item.x402Compatible && item.contractMatchesCatalog
+    (item) => item.contractProven
+  );
+  const unprovenLiveX402 = liveMarketplaceVerification.find(
+    (item) =>
+      item.x402Compatible &&
+      item.contractMatchesCatalog &&
+      !item.contractProven
   );
   const verifiedMcp = liveMcpVerification.find((item) => item.contractProven);
   const unprovenLiveMcp = liveMcpVerification.find(
@@ -403,22 +442,33 @@ export async function verifiedResolve(
 
   const recommendation = selectedLive
     ? selectedLive.protocol === "x402"
-      ? selectedLive.x402Compatible && selectedLive.contractMatchesCatalog
+      ? selectedLive.contractProven
         ? {
             type: "verified-x402-procurement" as const,
             candidateId: selectedLive.candidateId,
             endpoint: selectedLive.resource,
             paymentOptions: selectedLive.paymentOptions,
             reason:
-              "The selected procurement candidate responded live with a parseable x402 challenge matching the catalog payment contract. No target payment was sent."
+              "The selected procurement candidate responded live with a parseable x402 challenge matching the payment contract, and no requested contract properties remain unknown. No target payment was sent."
           }
-        : {
-            type: "selected-candidate-verification-failed" as const,
-            candidateId: selectedLive.candidateId,
-            endpoint: selectedLive.resource,
-            reason:
-              "The selected x402 candidate did not produce a live payment challenge matching its procurement contract."
-          }
+        : selectedLive.x402Compatible && selectedLive.contractMatchesCatalog
+          ? {
+              type: "x402-live-contract-unproven" as const,
+              candidateId: selectedLive.candidateId,
+              endpoint: selectedLive.resource,
+              paymentOptions: selectedLive.paymentOptions,
+              remainingUnknownConstraints:
+                selectedLive.remainingUnknownConstraints,
+              reason:
+                "The x402 payment contract is live and consistent, but payment evidence cannot prove every requested capability property."
+            }
+          : {
+              type: "selected-candidate-verification-failed" as const,
+              candidateId: selectedLive.candidateId,
+              endpoint: selectedLive.resource,
+              reason:
+                "The selected x402 candidate did not produce a live payment challenge matching its procurement contract."
+            }
       : selectedLive.contractProven
         ? {
             type: "verified-mcp-procurement" as const,
@@ -462,7 +512,18 @@ export async function verifiedResolve(
             reason:
               "A top procured x402 candidate responded live with a payment challenge matching its catalog contract. No target payment was sent."
           }
-        : verifiedMcp
+        : unprovenLiveX402
+          ? {
+              type: "x402-live-contract-unproven" as const,
+              candidateId: unprovenLiveX402.candidateId,
+              endpoint: unprovenLiveX402.resource,
+              paymentOptions: unprovenLiveX402.paymentOptions,
+              remainingUnknownConstraints:
+                unprovenLiveX402.remainingUnknownConstraints,
+              reason:
+                "A top x402 candidate exposed a valid live payment contract, but payment evidence cannot prove every requested capability property."
+            }
+          : verifiedMcp
           ? {
               type: "verified-mcp-procurement" as const,
               candidateId: verifiedMcp.candidateId,
@@ -508,7 +569,7 @@ export async function verifiedResolve(
       callerSpendingAuthorized: false,
       targetPaymentSubmitted: false,
       note:
-        "This operation performs at most two unpaid live probes against top procurement candidates. MCP verification retains bounded live tool names, descriptions, schemas, and annotations and does not upgrade a candidate unless remaining contract unknowns are proven. It never authorizes or submits a target payment. L402 and MPP candidates remain discovery/ranking-only until protocol-specific live verifiers are implemented."
+        "This operation performs at most two unpaid live probes against top procurement candidates. MCP verification retains bounded live tool names, descriptions, schemas, and annotations. x402 verification observes payment mechanics only. Neither protocol upgrades a candidate unless every requested contract unknown is actually resolved by available evidence. It never authorizes or submits a target payment. L402 and MPP candidates remain discovery/ranking-only until protocol-specific live verifiers are implemented."
     },
     liveVerification: live,
     liveMcpVerification,
