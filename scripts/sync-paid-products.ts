@@ -342,7 +342,7 @@ const x402Manifest = {
     mcp: `${CANONICAL_ORIGIN}/mcp`,
     resolve: `${CANONICAL_ORIGIN}/api/resolve`
   },
-  instructions: "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint>; POST remains supported for body-bearing compatibility. Free resolve remains available for capability discovery. A 402 is a quote, never spending authorization."
+  instructions: "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint>; POST remains supported for body-bearing compatibility. Free procure is the preferred constrained capability-selection surface; free resolve remains available for broad discovery. A 402 is a quote, never spending authorization."
 };
 
 for (const path of X402_MANIFEST_PATHS) {
@@ -401,7 +401,7 @@ openapi.info = {
     url: "https://github.com/waxsway/agentresolver"
   },
   termsOfService: "https://agentresolver.vercel.app/legal",
-  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. Immediately before authorizing a separate x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint> as the canonical transaction-path verification gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. POST remains available for body-bearing compatibility. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
+  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. Immediately before authorizing a separate x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint> as the canonical transaction-path verification gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. POST remains available for body-bearing compatibility. The caller remains the only party that can authorize spend. Use POST /api/procure for free constrained capability procurement and POST /api/resolve for broad free discovery. Payment is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
