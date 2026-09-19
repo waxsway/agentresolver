@@ -619,6 +619,24 @@
                         ]
                       }
                     }
+                  },
+                  "task": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "Alias for goal."
+                  },
+                  "query": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "Alias for goal."
+                  },
+                  "q": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "Alias for goal."
                   }
                 }
               },
@@ -657,6 +675,122 @@
           "Circle x402 discovery",
           "MCP directories"
         ]
+      },
+      "get": {
+        "operationId": "procureCapabilityGet",
+        "tags": [
+          "Agent Capability Procurement"
+        ],
+        "summary": "Procure a compatible capability with URL query parameters",
+        "description": "Compatibility-first free procurement for agents and crawlers that cannot issue the JSON POST contract. Accepts goal, task, query, or q plus optional limit, maxPriceUsd, protocol, network/preferredNetwork, and requireHttps. Returns the same non-custodial procurement response as POST.",
+        "parameters": [
+          {
+            "name": "goal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          {
+            "name": "task",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 5
+            }
+          },
+          {
+            "name": "maxPriceUsd",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "protocol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "x402",
+                "l402",
+                "mpp",
+                "mcp",
+                "any"
+              ]
+            }
+          },
+          {
+            "name": "network",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preferredNetwork",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requireHttps",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked compatible candidates and non-custodial execution/payment handoff."
+          },
+          "400": {
+            "description": "No usable goal/query supplied or invalid constraint."
+          }
+        },
+        "security": []
       }
     },
     "/api/providers": {
