@@ -7,6 +7,7 @@ import { validatePublicHttpsUrl } from "@/lib/publicHttpsJson";
 
 const REGISTRY_URL = "https://402index.io/api/v1/register";
 const MAX_BOOTSTRAP_ROUTES = 5;
+const MAX_SEED_ORIGINS = 2;
 
 export type ProviderBootstrapInput = {
   origin: string;
@@ -18,7 +19,7 @@ export type ProviderBootstrapOptions = {
   routeVerifier?: (route: DomainProviderRoute) => Promise<boolean>;
 };
 
-function providerOrigin(value: string) {
+export function normalizeProviderOrigin(value: string) {
   const url = validatePublicHttpsUrl(value.trim());
   if (url.pathname !== "/" || url.search) {
     throw new Error("origin must be a public HTTPS origin without a path or query.");
@@ -59,7 +60,7 @@ export async function buildProviderBootstrap(
   input: ProviderBootstrapInput,
   options: ProviderBootstrapOptions = {}
 ) {
-  const origin = providerOrigin(input.origin);
+  const origin = normalizeProviderOrigin(input.origin);
   const wanted = requestedRouteIds(input.routeIds);
   const manifestFetcher =
     options.manifestFetcher ?? fetchDomainProviderManifest;
@@ -177,3 +178,19 @@ export async function buildProviderBootstrap(
 }
 
 export const PROVIDER_BOOTSTRAP_MAX_ROUTES = MAX_BOOTSTRAP_ROUTES;
+
+
+export function normalizeProviderSeedOrigins(values: string[] | undefined) {
+  if (!values) return [];
+  if (values.length > MAX_SEED_ORIGINS) {
+    throw new Error(`providerOrigins supports at most ${MAX_SEED_ORIGINS} origins.`);
+  }
+
+  const origins = [...new Set(values.map(normalizeProviderOrigin))];
+  if (origins.length !== values.length) {
+    throw new Error("providerOrigins must contain unique public HTTPS origins.");
+  }
+  return origins;
+}
+
+export const PROVIDER_SEED_MAX_ORIGINS = MAX_SEED_ORIGINS;
