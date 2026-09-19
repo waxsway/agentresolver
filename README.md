@@ -1,6 +1,6 @@
 # AgentResolver
 
-AgentResolver is a **$0.001 x402 verify-before-pay service for autonomous agents**, with a free fallback capability resolver.
+AgentResolver is an **open-world capability procurement and provider-routing layer for autonomous agents**. Procurement is free; optional verification is paid, and domain-enrolled providers fund verified routed commerce.
 
 When an agent needs an external tool, API, MCP server, x402 service, browser capability, data source, or machine service that is not already connected, it can ask AgentResolver what to use next. AgentResolver returns ranked compatible capabilities, registered provider routes, machine-ready discovery metadata, and a non-custodial handoff path with attribution.
 
@@ -22,11 +22,13 @@ npx agentcash add https://agentresolver.vercel.app
 
 ## Install as a persistent fallback
 
-Remote Streamable HTTP MCP endpoint:
+Remote Streamable HTTP MCP control-plane endpoint:
 
 ```text
-https://agentresolver.vercel.app/mcp
+https://agentresolver.vercel.app/mcp/control
 ```
+
+The full compatibility MCP surface remains available at `https://agentresolver.vercel.app/mcp`.
 
 Portable MCP configuration:
 
@@ -35,7 +37,7 @@ Portable MCP configuration:
   "servers": {
     "agentresolver": {
       "type": "http",
-      "url": "https://agentresolver.vercel.app/mcp"
+      "url": "https://agentresolver.vercel.app/mcp/control"
     }
   }
 }
@@ -47,7 +49,7 @@ Official MCP Registry name:
 io.github.waxsway/agentresolver
 ```
 
-The MCP server exposes the free `resolve` tool plus read-only quote tools for AgentResolver's paid capabilities. Quote tools return exact x402 purchase actions but never authorize or initiate spending.
+The official MCP Registry entry points at the lean control plane with exactly two free tools: `procure` for constrained capability selection and `resolve` for broad discovery. Paid tools are intentionally excluded from the default control-plane entrypoint.
 
 ## Use AgentResolver as an agent fallback
 
@@ -112,15 +114,23 @@ AgentResolver is framework-neutral. Any framework capable of connecting to a rem
 
 The useful integration pattern is not to replace an agent's existing tools. AgentResolver sits behind them as a **last-mile discovery fallback**: existing tool first, AgentResolver when the needed capability is missing.
 
-## Provider program
+## Provider network
 
-Organic inclusion remains free and relevance-based. AgentResolver also exposes a registered provider-routing network. The transaction router returns direct handoffs only for reviewed routes and creates an attribution ID; it never accepts an arbitrary execution URL, holds wallet keys, forwards payment signatures, or authorizes buyer spend.
+Providers can join AgentResolver distribution without an account, email form, API key, or manual review by publishing a same-origin `/.well-known/agentresolver-provider.json` manifest.
 
-Providers can first buy a $0.05 USDC machine-native launch check; technically ready sellers receive a bounded registry packet for reviewed activation. Provider partners can then opt into a fixed $0.001 USDC provider-funded success-fee pilot. After a provider reports an attributed request as fulfilled or a qualified lead, it can settle the fee through `/api/provider-attribution-settle`. That receipt proves the provider paid AgentResolver's attribution fee; it does not independently prove the underlying buyer transaction.
+The provider manifest may advertise only routes on the provider's own HTTPS origin. AgentResolver reconciles the live x402 payment identity and routes buyers directly to the provider; AgentResolver never holds buyer funds, wallet keys, or payment signatures and never authorizes buyer spend.
 
-Providers can separately apply for disclosed relevance-limited sponsorship. Sponsored treatment remains labeled and organic ranking remains independent.
+For domain-enrolled routes, the commercial model is a **2% provider-funded success fee on independently verified routed GMV, with a $0.001 minimum and $0 additional buyer fee**. A provider first proves the buyer-to-provider Base USDC settlement, receives the exact attribution-bound fee quote, then can prove the provider-to-AgentResolver fee transfer. Paid launch verification remains an optional readiness/trust check rather than an admission gate.
 
-Provider details and pilot terms: https://agentresolver.vercel.app/providers
+Machine contracts:
+- `GET /api/providers` — provider enrollment and commercial terms
+- `POST /api/provider-attribution-verify` — independently verify buyer settlement
+- `POST /api/provider-success-fee-quote` — exact provider success-fee quote
+- `POST /api/provider-success-fee-verify` — independently verify provider fee settlement
+- `/provider-integration.json` — full machine-readable contract
+- `/provider-manifest.example.json` — self-enrollment manifest example
+
+Provider details: https://agentresolver.vercel.app/providers
 
 ## Example
 
