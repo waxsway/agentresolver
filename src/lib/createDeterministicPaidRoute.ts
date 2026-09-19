@@ -77,6 +77,53 @@ function withRequestAwareChallengeHandoff(
   };
 }
 
+function withRequestAwareBazaarGetInput(
+  challenge: JsonObject,
+  capabilityId: PaidCapabilityId,
+  requestMethod?: string,
+  resumeUrl?: string | null
+): JsonObject {
+  if (
+    capabilityId !== "hash-encode" ||
+    requestMethod?.toUpperCase() !== "GET" ||
+    !resumeUrl
+  ) return challenge;
+
+  let queryParams: Record<string, string>;
+  try {
+    queryParams = Object.fromEntries(new URL(resumeUrl).searchParams.entries());
+  } catch {
+    return challenge;
+  }
+  if (!queryParams.operation || queryParams.input === undefined) return challenge;
+
+  const extensions = asJsonObject(challenge.extensions);
+  const bazaar = asJsonObject(extensions.bazaar);
+  const info = asJsonObject(bazaar.info);
+  const input = asJsonObject(info.input);
+  if (!Object.keys(bazaar).length || !Object.keys(info).length || !Object.keys(input).length) {
+    return challenge;
+  }
+
+  return {
+    ...challenge,
+    extensions: {
+      ...extensions,
+      bazaar: {
+        ...bazaar,
+        info: {
+          ...info,
+          input: {
+            ...input,
+            method: "GET",
+            queryParams
+          }
+        }
+      }
+    }
+  };
+}
+
 function encodePaymentRequiredHeader(challenge: JsonObject) {
   return Buffer.from(JSON.stringify(challenge), "utf8").toString("base64");
 }
@@ -119,20 +166,33 @@ async function mirrorPaymentChallengeBody(
       ? current as JsonObject
       : headerChallenge;
 
+  const requestAwareHeaderChallenge = withRequestAwareBazaarGetInput(
+    headerChallenge,
+    capabilityId,
+    requestMethod,
+    resumeUrl
+  );
+  const requestAwareBodyChallenge = withRequestAwareBazaarGetInput(
+    bodyChallenge,
+    capabilityId,
+    requestMethod,
+    resumeUrl
+  );
+
   const rewrittenHeaderChallenge =
     capabilityId === "x402-payment-preflight"
-      ? headerChallenge
+      ? requestAwareHeaderChallenge
       : withRequestAwareChallengeHandoff(
-          headerChallenge,
+          requestAwareHeaderChallenge,
           capabilityId,
           requestMethod,
           resumeUrl
         );
   const rewrittenBodyChallenge =
     capabilityId === "x402-payment-preflight"
-      ? bodyChallenge
+      ? requestAwareBodyChallenge
       : withRequestAwareChallengeHandoff(
-          bodyChallenge,
+          requestAwareBodyChallenge,
           capabilityId,
           requestMethod,
           resumeUrl

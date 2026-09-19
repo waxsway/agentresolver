@@ -66,3 +66,35 @@ test("hash-encode GET discovery excludes HMAC secrets", () => {
   assert.equal((operation?.enum as readonly string[] | undefined)?.includes("hmac-sha256"), false);
   assert.deepEqual(input?.example, { operation: "sha256", input: "agentresolver" });
 });
+
+
+test("hash-encode GET Bazaar metadata follows the actual concrete query", async () => {
+  const cases = [
+    ["sha512", "agentresolver"],
+    ["base64-encode", "hello"],
+    ["base64-decode", "aGVsbG8="],
+    ["jwt-decode", "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature"]
+  ] as const;
+
+  for (const [operation, input] of cases) {
+    const url = new URL("https://agentresolver.vercel.app/api/hash-encode");
+    url.searchParams.set("operation", operation);
+    url.searchParams.set("input", input);
+    const response = await withMockPayAiSupported(() =>
+      GET(new NextRequest(url, { method: "GET", headers: { "user-agent": "agentresolver-test" } }))
+    );
+    assert.equal(response.status, 402);
+
+    const body = await response.clone().json() as any;
+    assert.deepEqual(body.extensions?.bazaar?.info?.input?.queryParams, { operation, input });
+
+    const encoded = response.headers.get("payment-required");
+    assert.ok(encoded);
+    const headerChallenge = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as any;
+    assert.deepEqual(
+      headerChallenge.extensions?.bazaar?.info?.input?.queryParams,
+      { operation, input }
+    );
+    assert.equal(headerChallenge.resource?.url, url.toString());
+  }
+});

@@ -1,0 +1,168 @@
+name: Register NoHumans Hash Utility Variants
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Production"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: register-nohumans-hash-variants
+  cancel-in-progress: true
+
+jobs:
+  register:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Build concrete utility listing set
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >/tmp/routes.json
+          import json
+          from urllib.parse import urlencode
+
+          base="https://agentresolver.vercel.app/api/hash-encode"
+          variants=[
+            {
+              "slug":"sha512",
+              "name":"AgentResolver SHA-512 — GET Utility",
+              "description":"$0.001 GET-first deterministic SHA-512 hex digest for bounded UTF-8 text. No account or API key; pay per call over x402 USDC.",
+              "operation":"sha512","input":"agentresolver","encoding":"hex"
+            },
+            {
+              "slug":"base64-encode",
+              "name":"AgentResolver Base64 Encode — GET Utility",
+              "description":"$0.001 GET-first UTF-8 to Base64 encoding for autonomous agents. Deterministic, bounded, no account or API key.",
+              "operation":"base64-encode","input":"hello","encoding":"base64"
+            },
+            {
+              "slug":"base64-decode",
+              "name":"AgentResolver Base64 Decode — GET Utility",
+              "description":"$0.001 GET-first Base64 to UTF-8 decoding for autonomous agents. Deterministic, bounded, no account or API key.",
+              "operation":"base64-decode","input":"aGVsbG8=","encoding":"utf8"
+            },
+            {
+              "slug":"jwt-decode",
+              "name":"AgentResolver JWT Decode — GET Utility",
+              "description":"$0.001 GET-first non-verifying JWT header/payload decode for autonomous agents. Decodes only; it never claims signature verification.",
+              "operation":"jwt-decode",
+              "input":"eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjMifQ.signature",
+              "encoding":None
+            }
+          ]
+          for item in variants:
+              item["url"]=base+"?"+urlencode({"operation":item["operation"],"input":item["input"]})
+          print(json.dumps(variants,separators=(",",":")))
+          PY
+
+      - name: Verify exact 402 contracts and request-aware Bazaar metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -c '.[]' /tmp/routes.json | while IFS= read -r route; do
+            url="$(jq -r '.url' <<<"$route")"
+            operation="$(jq -r '.operation' <<<"$route")"
+            input="$(jq -r '.input' <<<"$route")"
+            body="$(mktemp)"
+            code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}' "$url")"
+            test "$code" = "402"
+            python3 - "$body" "$operation" "$input" "$url" <<'PY'
+          import json, sys
+          body=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          operation,input_value,url=sys.argv[2],sys.argv[3],sys.argv[4]
+          assert body.get("x402Version")==2
+          assert (body.get("resource") or {}).get("url")==url
+          query=((((body.get("extensions") or {}).get("bazaar") or {}).get("info") or {}).get("input") or {}).get("queryParams") or {}
+          assert query=={"operation":operation,"input":input_value}, (query, operation, input_value)
+          accepts=body.get("accepts") or []
+          assert any(
+              item.get("network")=="eip155:8453"
+              and str(item.get("amount"))=="1000"
+              and item.get("payTo")=="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          PY
+          done
+
+      - name: Submit missing concrete routes to NoHumans
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -c '.[]' /tmp/routes.json | while IFS= read -r route; do
+            slug="$(jq -r '.slug' <<<"$route")"
+            url="$(jq -r '.url' <<<"$route")"
+            name="$(jq -r '.name' <<<"$route")"
+            description="$(jq -r '.description' <<<"$route")"
+            encoding="$(jq -r '.encoding // empty' <<<"$route")"
+
+            resolve_body="$(mktemp)"
+            resolve_code="$(curl -sS --connect-timeout 5 --max-time 20               -o "$resolve_body" -w '%{http_code}'               -G 'https://api.nohumans.directory/v1/resolve'               --data-urlencode "url=$url" || printf '000')"
+            if [ "$resolve_code" = "200" ] && jq -e '.match == "active"' "$resolve_body" >/dev/null 2>&1; then
+              echo "NoHumans already has $slug: $(jq -r '.listing.id // .id // "unknown"' "$resolve_body")"
+              continue
+            fi
+
+            if [ "$slug" = "jwt-decode" ]; then
+              response_schema='{"type":"object","required":["operation","inputBytes","verified","note","header","payload","signature"],"additionalProperties":false,"properties":{"operation":{"const":"jwt-decode"},"inputBytes":{"type":"number"},"verified":{"const":false},"note":{"type":"string"},"header":{"type":"object"},"payload":{"type":"object"},"signature":{"type":"string"}}}'
+            else
+              response_schema="$(jq -cn --arg slug "$slug" --arg encoding "$encoding" '{type:"object",required:["operation","inputBytes","encoding","result"],additionalProperties:false,properties:{operation:{const:$slug},inputBytes:{type:"number"},encoding:{const:$encoding},result:{type:"string"}}}')"
+            fi
+
+            payload="$(jq -cn               --arg name "$name"               --arg description "$description"               --arg endpoint "$url"               --argjson response_schema "$response_schema"               '{
+                name:$name,
+                description:$description,
+                endpoint_url:$endpoint,
+                category:"data.other",
+                price_amount:0.001,
+                price_currency:"USDC",
+                chains:["base","solana"],
+                request_schema:{type:"object",additionalProperties:false,properties:{}},
+                response_schema:$response_schema
+              }')"
+
+            body="$(mktemp)"
+            code="$(curl -sS --connect-timeout 5 --max-time 20               -o "$body" -w '%{http_code}'               -X POST 'https://api.nohumans.directory/v1/listings'               -H 'content-type: application/json'               --data "$payload" || printf '000')"
+            case "$code" in
+              200|201)
+                id="$(jq -r '.id // empty' "$body")"
+                test -n "$id"
+                jq 'del(.claim_token,.edit_token,.owner_token,.token,.email)' "$body" 2>/dev/null || true
+                echo "Created NoHumans listing $slug: $id"
+                ;;
+              409)
+                echo "NoHumans already knows $slug; duplicate not created."
+                ;;
+              429|500|502|503|504|000)
+                echo "::notice::NoHumans temporarily unavailable for $slug (HTTP $code); no user funds were used."
+                ;;
+              *)
+                jq 'del(.claim_token,.edit_token,.owner_token,.token,.email)' "$body" 2>/dev/null || cat "$body"
+                echo "::error::Unexpected NoHumans response $code for $slug."
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Verify NoHumans resolves every utility variant
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -c '.[]' /tmp/routes.json | while IFS= read -r route; do
+            url="$(jq -r '.url' <<<"$route")"
+            slug="$(jq -r '.slug' <<<"$route")"
+            body="$(mktemp)"
+            code="$(curl -sS --connect-timeout 5 --max-time 20               -o "$body" -w '%{http_code}'               -G 'https://api.nohumans.directory/v1/resolve'               --data-urlencode "url=$url" || printf '000')"
+            if [ "$code" = "200" ] && jq -e '.match == "active"' "$body" >/dev/null 2>&1; then
+              echo "$slug active: $(jq -r '.listing.id // .id // "unknown"' "$body")"
+            else
+              echo "::notice::$slug was submitted but NoHumans resolve has not indexed it yet."
+            fi
+          done
