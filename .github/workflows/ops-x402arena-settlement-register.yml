@@ -1,0 +1,44 @@
+name: One-shot x402 Arena settlement verifier registration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: github.head_ref == 'ops/x402arena-settlement-register-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Register settlement verifier if absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://agentresolver.vercel.app/api/x402-settlement-verify?txHash=0x439885dab80375051b5295df179b668a6a67490d20c3e1cb4725809f4ea4b5b8&expectedPayTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&expectedAmountAtomic=1000'
+          wallet='0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8'
+
+          agents_code="$(curl -sS --retry 2 --max-time 20 -o /tmp/agents.json -w '%{http_code}' 'https://core.x402arena.gg/agents' || true)"
+          echo "X402_ARENA_AGENTS_HTTP=$agents_code"
+          if [ "$agents_code" = "200" ] && jq -e --arg endpoint "$endpoint" '.. | strings | select(. == $endpoint)' /tmp/agents.json >/dev/null 2>&1; then
+            echo "X402_ARENA_SETTLEMENT_VERIFY=already_registered"
+            exit 0
+          fi
+
+          cat >/tmp/register.json <<JSON
+          {
+            "name": "agentresolver-settlement-verify",
+            "endpoint": "$endpoint",
+            "niche": "developer-tools",
+            "description": "Independently verify a completed Base USDC x402 exact-scheme settlement from its transaction hash, including EIP-3009 payment shape, USDC transfer logs, confirmation depth, and expected payTo/amount assertions. 0.001 USDC.",
+            "walletAddress": "$wallet"
+          }
+          JSON
+
+          code="$(curl -sS --retry 2 --max-time 25 -o /tmp/response.json -w '%{http_code}'             -X POST 'https://core.x402arena.gg/register'             -H 'content-type: application/json'             --data-binary @/tmp/register.json || true)"
+          echo "X402_ARENA_REGISTER_HTTP=$code"
+          jq -c '{id:(.id // .agent.id // null), endpoint:(.endpoint // .agent.endpoint // null), verified:(.verified // .agent.verified // null), status:(.status // .agent.status // null), error, message}' /tmp/response.json 2>/dev/null || cat /tmp/response.json
+          case "$code" in 200|201|409) exit 0;; *) exit 1;; esac
