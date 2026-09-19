@@ -22,11 +22,13 @@ npx agentcash add https://agentresolver.vercel.app
 
 ## Install as a persistent fallback
 
-Remote Streamable HTTP MCP endpoint:
+Remote Streamable HTTP MCP control-plane endpoint:
 
 ```text
-https://agentresolver.vercel.app/mcp
+https://agentresolver.vercel.app/mcp/control
 ```
+
+The full compatibility MCP surface remains available at `https://agentresolver.vercel.app/mcp`.
 
 Portable MCP configuration:
 
@@ -35,7 +37,7 @@ Portable MCP configuration:
   "servers": {
     "agentresolver": {
       "type": "http",
-      "url": "https://agentresolver.vercel.app/mcp"
+      "url": "https://agentresolver.vercel.app/mcp/control"
     }
   }
 }
@@ -47,7 +49,7 @@ Official MCP Registry name:
 io.github.waxsway/agentresolver
 ```
 
-The MCP server exposes the free `resolve` tool plus read-only quote tools for AgentResolver's paid capabilities. Quote tools return exact x402 purchase actions but never authorize or initiate spending.
+The official MCP Registry entry points at the lean control plane with exactly two free tools: `procure` for constrained capability selection and `resolve` for broad discovery. Paid tools are intentionally excluded from the default control-plane entrypoint.
 
 ## Use AgentResolver as an agent fallback
 
