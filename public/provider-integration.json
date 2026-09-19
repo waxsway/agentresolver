@@ -21,6 +21,9 @@
       "dedicatedSecret": "AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET",
       "walletOrPaymentSecretReuseAllowed": false,
       "enforcedForFeeEligibilityWhenConfigured": true,
+      "settlementWindowSemantics": "buyer settlement must occur within receipt issuedAt/expiresAt; proof may be submitted later",
+      "settlementTimestampSource": "independently verified Base block timestamp",
+      "missingOrOutOfWindowSettlementTimestamp": "fee eligibility fails closed",
       "legacyBehaviorWhenNotConfigured": "provider-asserted attribution remains explicitly unverified"
     }
   },
@@ -94,10 +97,10 @@
   },
   "proofModel": {
     "providerControl": "same-origin well-known manifest plus live matching x402 challenge",
-    "buyerSettlement": "independent Base USDC settlement verification",
+    "buyerSettlement": "independent Base USDC settlement verification plus Base block timestamp when signed attribution is active",
     "providerFee": "independent Base USDC transfer verification",
     "attributionReplayResistance": "exact fee amount includes a deterministic attribution-bound atomic suffix",
-    "limitation": "A signed receipt proves AgentResolver issued the exact route/payment handoff and binds the attribution ID to it. It does not establish the eventual buyer's legal identity. Until the dedicated signing secret is configured in a runtime, attribution remains explicitly legacy/provider-asserted.",
+    "limitation": "A signed receipt proves AgentResolver issued the exact route/payment handoff and binds the attribution ID to it. Its validity window constrains when the buyer settlement may occur, not when proof must be submitted. It does not establish the eventual buyer's legal identity. Until the dedicated signing secret is configured in a runtime, attribution remains explicitly legacy/provider-asserted.",
     "providerAttribution": "AgentResolver-issued signed handoff receipt when the dedicated attribution signing secret is configured"
   },
   "safety": {

@@ -77,7 +77,9 @@ with:
 
 AgentResolver re-fetches the provider's well-known manifest and independently verifies the Base-USDC buyer settlement against the payment identity published for that route.
 
-A successful response includes an exact success-fee quote.
+When the dedicated attribution signer is active, the signed receipt is authenticated independently of when the provider submits proof. Its `issuedAt`/`expiresAt` interval limits when the buyer settlement itself may occur. AgentResolver therefore verifies the buyer transaction's Base block timestamp and requires it to fall inside that signed window; missing or out-of-window settlement time fails fee eligibility closed. Proof may be submitted after the receipt's wall-clock expiry.
+
+A successful eligible response includes an exact success-fee quote.
 
 ## 4. Settle the success fee
 
@@ -114,4 +116,4 @@ It is **not required for admission** to domain-controlled provider routing.
 
 AgentResolver does not hold buyer wallet keys, authorize buyer spend, proxy arbitrary provider requests, or custody buyer funds.
 
-Current proof establishes domain control, the provider's published payment identity, the buyer's Base-USDC settlement, and the provider's success-fee transfer. When `AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET` is configured, provider fee eligibility additionally requires a valid AgentResolver-issued signed handoff receipt and attribution is cryptographically bound to the exact route/payment terms. This signing secret must be dedicated to attribution receipts and must never reuse wallet, CDP, facilitator, or other payment credentials.
+Current proof establishes domain control, the provider's published payment identity, the buyer's Base-USDC settlement, and the provider's success-fee transfer. When `AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET` is configured, provider fee eligibility additionally requires a valid AgentResolver-issued signed handoff receipt, cryptographic binding to the exact route/payment terms, and an independently verified buyer-settlement block timestamp inside the receipt's signed validity window. The provider may submit that proof later; receipt expiry does not erase a settlement that occurred inside the window. This signing secret must be dedicated to attribution receipts and must never reuse wallet, CDP, facilitator, or other payment credentials.

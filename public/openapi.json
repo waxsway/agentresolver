@@ -855,7 +855,7 @@
           "Provider Commerce"
         ],
         "summary": "Verify a routed buyer settlement before a provider success fee is due",
-        "description": "Free verification. Re-resolves a static provider route or same-origin provider manifest and independently verifies the submitted Base-USDC buyer settlement against the provider's published payment identity. When AgentResolver's dedicated attribution signer is active, a matching signed handoff receipt is also required and cryptographically binds the attribution ID to the exact provider route/payment terms.",
+        "description": "Free verification. Re-resolves a static provider route or same-origin provider manifest and independently verifies the submitted Base-USDC buyer settlement against the provider's published payment identity. When AgentResolver's dedicated attribution signer is active, a matching signed handoff receipt is also required and cryptographically binds the attribution ID to the exact provider route/payment terms. Receipt expiry constrains when the buyer transaction may settle, not when proof is submitted: the verified Base block timestamp must fall within receipt issuedAt/expiresAt, otherwise fee eligibility fails closed.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -897,7 +897,7 @@
                   "attributionReceipt": {
                     "type": "string",
                     "maxLength": 16384,
-                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active."
+                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active. The buyer settlement must have a verifiable Base block timestamp within the receipt issuedAt/expiresAt window; proof may be submitted after that window."
                   }
                 }
               }
@@ -924,7 +924,7 @@
           "Provider Commerce"
         ],
         "summary": "Quote AgentResolver's provider-funded fee for verified routed commerce",
-        "description": "Free quote after independently verifying the buyer-to-provider Base-USDC settlement. Domain-enrolled providers owe 2% of verified routed GMV with a $0.001 minimum. The exact atomic amount includes a tiny deterministic attribution-bound suffix so same-sized fee proofs cannot be trivially replayed across attributions.",
+        "description": "Free quote after independently verifying the buyer-to-provider Base-USDC settlement. When signed attribution is active, the verified buyer settlement block timestamp must also fall inside the signed handoff receipt's issuedAt/expiresAt window; later proof submission is allowed. Domain-enrolled providers owe 2% of verified routed GMV with a $0.001 minimum. The exact atomic amount includes a tiny deterministic attribution-bound suffix so same-sized fee proofs cannot be trivially replayed across attributions.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -966,7 +966,7 @@
                   "attributionReceipt": {
                     "type": "string",
                     "maxLength": 16384,
-                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active."
+                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active. The buyer settlement must have a verifiable Base block timestamp within the receipt issuedAt/expiresAt window; proof may be submitted after that window."
                   }
                 }
               }
@@ -990,7 +990,7 @@
           "Provider Commerce"
         ],
         "summary": "Verify both routed commerce and the provider's success-fee transfer",
-        "description": "Free proof endpoint. Independently re-verifies the buyer-to-provider settlement and the provider-to-AgentResolver exact Base-USDC success-fee transfer. AgentResolver never custodies buyer funds and the buyer pays no extra AgentResolver fee.",
+        "description": "Free proof endpoint. Independently re-verifies the buyer-to-provider settlement and the provider-to-AgentResolver exact Base-USDC success-fee transfer. When signed attribution is active, the buyer settlement must have occurred within the receipt's issuedAt/expiresAt window even if proof is submitted later. AgentResolver never custodies buyer funds and the buyer pays no extra AgentResolver fee.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -1037,7 +1037,7 @@
                   "attributionReceipt": {
                     "type": "string",
                     "maxLength": 16384,
-                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active."
+                    "description": "AgentResolver-issued signed attribution receipt from the procurement/provider handoff. Required for provider fee eligibility whenever the dedicated attribution signing secret is active. The buyer settlement must have a verifiable Base block timestamp within the receipt issuedAt/expiresAt window; proof may be submitted after that window."
                   }
                 }
               }
