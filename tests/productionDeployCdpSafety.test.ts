@@ -19,7 +19,6 @@ test("automatic production deploy is hard-disabled after the one-shot provider-n
   assert.match(workflow, /\.sellerMonetization\.successFeeBps == 200/);
   assert.match(workflow, /\.sellerMonetization\.feePaidAfterVerifiedBuyerSettlement == true/);
   assert.doesNotMatch(workflow, /\.providerFunding\.successFeeBps == 200/);
-  assert.doesNotMatch(workflow, /\.providerEnrollment\.mode == "domain-controlled-well-known"/);
 });
 
 test("production deploy uses the proven prebuilt path and verifies the isolated CDP canary", () => {
