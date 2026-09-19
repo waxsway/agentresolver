@@ -16,10 +16,9 @@ concurrency:
 
 jobs:
   deploy:
-    # Automatic production deployment is hard-disabled after the provider-network
-    # + lean MCP one-shot release attempt. Re-arm only for an explicitly justified release.
+    # One-shot release gate. Non-release main CI runs stay no-op and spend no Vercel build CPU.
+    # A deploy is allowed only for the exact merged PR marked AGENTRESOLVER_PRODUCTION_RELEASE_ONCE.
     if: >-
-      false &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
@@ -51,7 +50,7 @@ jobs:
             echo "fresh=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Require pull-request release
+      - name: Require explicit one-shot release marker
         if: steps.initial_freshness.outputs.fresh == 'true'
         id: release_pr
         shell: bash
@@ -59,6 +58,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          echo "authorized=false" >> "$GITHUB_OUTPUT"
           api="https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$VALIDATED_SHA/pulls"
           prs="$(curl -fsSL \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -66,35 +66,40 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "$api")"
 
-          matching="$(jq --arg sha "$VALIDATED_SHA" '
-            [.[] | select(
-              .merged_at != null and
-              .base.ref == "main" and
-              .merge_commit_sha == $sha
-            )] | length
+          release_pr="$(jq --arg sha "$VALIDATED_SHA" '
+            [
+              .[] |
+              select(
+                .merged_at != null and
+                .base.ref == "main" and
+                .merge_commit_sha == $sha
+              )
+            ][0] // null
           ' <<< "$prs")"
 
-          if [ "$matching" -lt 1 ]; then
-            echo "Refusing production deploy: validated commit is not associated with a merged pull request into main."
-            jq '[.[] | {number, merged_at, base: .base.ref, merge_commit_sha}]' <<< "$prs" || true
-            exit 1
+          if [ "$release_pr" = "null" ]; then
+            echo "No merged PR is associated with validated main SHA; deploy remains suppressed."
+            exit 0
           fi
 
-          release_pr_number="$(jq --arg sha "$VALIDATED_SHA" -r '
-            .[] |
-            select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == $sha) |
-            .number
-          ' <<< "$prs" | head -n 1)"
-          release_pr_title="$(jq --arg sha "$VALIDATED_SHA" -r '
-            .[] |
-            select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == $sha) |
-            .title
-          ' <<< "$prs" | head -n 1)"
+          release_pr_number="$(jq -r '.number' <<< "$release_pr")"
+          release_pr_title="$(jq -r '.title // ""' <<< "$release_pr")"
+          release_pr_body="$(jq -r '.body // ""' <<< "$release_pr")"
+
+          if [[ "$release_pr_title" != "Release production:"* ]] ||
+            ! grep -Fq 'AGENTRESOLVER_PRODUCTION_RELEASE_ONCE' <<< "$release_pr_body"; then
+            echo "Merged PR #$release_pr_number is not an explicitly marked one-shot production release; no deploy."
+            exit 0
+          fi
+
+          echo "authorized=true" >> "$GITHUB_OUTPUT"
           echo "number=$release_pr_number" >> "$GITHUB_OUTPUT"
-          echo "Release authorized by merged PR #$release_pr_number: $release_pr_title"
+          echo "Release authorized by explicit marker on merged PR #$release_pr_number: $release_pr_title"
 
       - name: Detect application drift from production
-        if: steps.initial_freshness.outputs.fresh == 'true'
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.release_pr.outputs.authorized == 'true'
         id: application_changes
         shell: bash
         env:
@@ -214,6 +219,18 @@ jobs:
           mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
 
+      - name: Provision dedicated provider-attribution signer if absent
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.application_changes.outputs.deploy == 'true' &&
+          steps.prebuild_freshness.outputs.fresh == 'true'
+        env:
+          ALLOW_ATTRIBUTION_SECRET_PROVISION: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/provision-attribution-signing-secret.sh
+
       - name: Pull production configuration
         if: >-
           steps.initial_freshness.outputs.fresh == 'true' &&
@@ -293,7 +310,11 @@ jobs:
           grep -Fi 'x-agentresolver-history: https://agentresolver.vercel.app/.well-known/agentresolver-reputation.json' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'x-agentresolver-request-id:' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'payment-required:' /tmp/preflight-headers.txt >/dev/null
+          grep -Fi 'x-agentresolver-free-procure: https://agentresolver.vercel.app/api/procure' /tmp/preflight-headers.txt >/dev/null
+          grep -Fi 'x-agentresolver-control-mcp: https://agentresolver.vercel.app/mcp/control' /tmp/preflight-headers.txt >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-request-id' >/dev/null
+          grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-free-procure' >/dev/null
+          grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-control-mcp' >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-deployment' >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/preflight-headers.txt | grep -Fi 'x-agentresolver-history' >/dev/null
 
@@ -407,6 +428,62 @@ jobs:
             exit 1
           fi
 
+          procure_get_ready=0
+          for attempt in {1..15}; do
+            suffix="deployment=$VALIDATED_SHA&procureGetSmokeAttempt=$attempt"
+            if curl -fsS -H 'cache-control: no-cache' \
+              -H 'x-agentresolver-internal: 1' \
+              -H 'user-agent: AgentResolver-Production-Smoke/1.0' \
+              "$BASE_URL/api/procure?goal=compute%20a%20SHA-256%20digest&limit=3&maxPriceUsd=0.01&requireHttps=true&$suffix" \
+              -o /tmp/procure-get.json &&
+              jq -e '
+                .resolver == "AgentResolver" and
+                .mode == "open_world_non_custodial_procurement" and
+                .goal == "compute a SHA-256 digest" and
+                .constraints.maxPriceUsd == 0.01 and
+                .boundaries.callerSpendAuthorizedByAgentResolver == false and
+                (.candidates | type) == "array"
+              ' /tmp/procure-get.json >/dev/null; then
+              procure_get_ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$procure_get_ready" != "1" ]; then
+            echo "::error::New production deployment did not preserve GET/query procurement compatibility."
+            cat /tmp/procure-get.json 2>/dev/null || true
+            exit 1
+          fi
+
+          verified_resolve_get_ready=0
+          for attempt in {1..15}; do
+            suffix="deployment=$VALIDATED_SHA&verifiedResolveGetSmokeAttempt=$attempt"
+            code="$(curl -sS -D /tmp/verified-resolve-get-headers.txt -o /tmp/verified-resolve-get-body.json -w '%{http_code}'               -H 'cache-control: no-cache'               -H 'x-agentresolver-internal: 1'               "$BASE_URL/api/verified-resolve?goal=Find%20and%20verify%20a%20paid%20web%20search%20service&maxPriceUsd=0.05&protocol=x402&requireHttps=true&$suffix" || true)"
+            payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); gsub("\r",""); print; exit}' /tmp/verified-resolve-get-headers.txt)"
+            if [ "$code" = "402" ] && [ -n "$payment_required" ] &&
+              printf '%s' "$payment_required" | base64 --decode > /tmp/verified-resolve-get-challenge.json 2>/dev/null &&
+              jq -e '
+                .x402Version == 2 and
+                ([.accepts[] | select(.network == "eip155:8453" and .amount == "20000")] | length) >= 1 and
+                .extensions.bazaar.info.input.method == "GET" and
+                .extensions.bazaar.info.input.queryParams.goal == "Find and verify a paid web search service" and
+                .extensions.bazaar.info.input.queryParams.maxPriceUsd == 0.05 and
+                .extensions.bazaar.info.input.queryParams.protocol == "x402"
+              ' /tmp/verified-resolve-get-challenge.json >/dev/null; then
+              verified_resolve_get_ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$verified_resolve_get_ready" != "1" ]; then
+            echo "::error::New production deployment did not expose the $0.02 GET-first Verified Resolve purchase path."
+            cat /tmp/verified-resolve-get-body.json 2>/dev/null || true
+            cat /tmp/verified-resolve-get-challenge.json 2>/dev/null || true
+            exit 1
+          fi
+
           provider_ready=0
           for attempt in {1..15}; do
             suffix="deployment=$VALIDATED_SHA&providerSmokeAttempt=$attempt"
@@ -418,12 +495,25 @@ jobs:
                 .sellerMonetization.minimumSuccessFeeUsd == 0.001 and
                 .sellerMonetization.buyerExtraFeeUsd == 0 and
                 .domainEnrollment.status == "open" and
-                .domainEnrollment.operatorReviewRequired == false
+                .domainEnrollment.operatorReviewRequired == false and
+                .domainEnrollment.liveX402ChallengeRequired == true and
+                .domainEnrollment.unsignedEnrollmentProbeOnly == true
               ' /tmp/providers.json >/dev/null &&
               curl -fsS -H 'cache-control: no-cache' "$BASE_URL/provider-integration.json?$suffix" -o /tmp/provider-integration.json &&
               jq -e '
                 .providerEnrollment.mode == "domain-controlled-well-known" and
                 .providerEnrollment.reviewRequired == false and
+                .providerEnrollment.liveVerification.requiredBeforeAttributedProcurement == true and
+                .providerEnrollment.liveVerification.protocol == "x402-v2" and
+                .providerEnrollment.liveVerification.challengeStatus == 402 and
+                .providerEnrollment.liveVerification.unsignedProbeOnly == true and
+                .providerEnrollment.liveVerification.failureMode == "fail-closed" and
+                .providerEnrollment.bootstrap.url == "https://agentresolver.vercel.app/api/provider-bootstrap" and
+                .providerEnrollment.bootstrap.immediateProcurement.requestField == "providerOrigins" and
+                .providerEnrollment.bootstrap.durableDiscovery.registrationSentByAgentResolver == false and
+                .attribution.signedReceipt.dedicatedSecret == "AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET" and
+                .attribution.signedReceipt.enforcedForFeeEligibilityWhenConfigured == true and
+                .attribution.signedReceipt.settlementTimestampSource == "independently verified Base block timestamp" and
                 .commercial.successFeeBps == 200 and
                 .commercial.minimumSuccessFeeUsd == 0.001 and
                 .commercial.buyerExtraFeeUsd == 0
@@ -438,6 +528,7 @@ jobs:
               curl -fsS -H 'cache-control: no-cache' "$BASE_URL/openapi.json?$suffix" -o /tmp/provider-openapi.json &&
               jq -e '
                 .paths["/api/providers"].get.operationId == "getProviderNetwork" and
+                .paths["/api/provider-bootstrap"].post.operationId == "bootstrapProvider" and
                 .paths["/api/provider-attribution-verify"].post.operationId == "verifyProviderConversion" and
                 .paths["/api/provider-success-fee-quote"].post.operationId == "quoteProviderSuccessFee" and
                 .paths["/api/provider-success-fee-verify"].post.operationId == "verifyProviderSuccessFee"
@@ -467,7 +558,22 @@ jobs:
                 .name == "io.github.waxsway/agentresolver" and
                 .version == "0.2.0" and
                 .remotes[0].url == "https://agentresolver.vercel.app/mcp/control"
-              ' /tmp/mcp-server.json >/dev/null; then
+              ' /tmp/mcp-server.json >/dev/null &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/integrations.json?$suffix" -o /tmp/integrations.json &&
+              jq -e '
+                .mcp.url == "https://agentresolver.vercel.app/mcp/control" and
+                .mcp.fullCompatibilityUrl == "https://agentresolver.vercel.app/mcp" and
+                .mcp.primaryTool == "procure" and
+                .mcp.free == true and
+                .mcp.spendingAuthorized == false
+              ' /tmp/integrations.json >/dev/null &&
+              curl -fsS -H 'cache-control: no-cache' "$BASE_URL/.well-known/agent-skills/index.json?$suffix" -o /tmp/agent-skills.json &&
+              jq -e '
+                [.skills[].name] |
+                index("agentresolver-payment-guard") != null and
+                index("agentresolver-procurement") != null and
+                index("agentresolver-provider") != null
+              ' /tmp/agent-skills.json >/dev/null; then
               mcp_control_ready=1
               break
             fi
@@ -481,6 +587,8 @@ jobs:
             exit 1
           fi
 
+          echo "VERIFIED_RESOLVE_GET_PRODUCTION_SMOKE=true"
+          echo "UNSIGNED_402_PROCUREMENT_FALLBACK_SMOKE=true"
           echo "MCP_CONTROL_PRODUCTION_SMOKE=true"
           echo "PROVIDER_NETWORK_PRODUCTION_SMOKE=true"
           echo "PROCUREMENT_PRODUCTION_SMOKE=true"
@@ -531,6 +639,12 @@ jobs:
           fi
 
           echo "ROLLBACK_RESTORED_KNOWN_GOOD_CDP=true"
+
+      - name: Report non-release deploy suppression
+        if: >-
+          steps.initial_freshness.outputs.fresh == 'true' &&
+          steps.release_pr.outputs.authorized != 'true'
+        run: echo "No production deployment occurred because this main merge was not explicitly marked AGENTRESOLVER_PRODUCTION_RELEASE_ONCE."
 
       - name: Report stale deploy suppression
         if: >-

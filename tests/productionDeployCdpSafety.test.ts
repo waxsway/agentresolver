@@ -4,9 +4,12 @@ import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/deploy-production.yml", "utf8");
 
-test("automatic production deploy is hard-disabled after provider-network plus lean MCP release attempt", () => {
-  assert.match(workflow, /hard-disabled after the provider-network/);
-  assert.match(workflow, /false &&/);
+test("production deploy is an explicit one-shot release and ordinary main merges stay no-op", () => {
+  assert.doesNotMatch(workflow, /false &&/);
+  assert.match(workflow, /AGENTRESOLVER_PRODUCTION_RELEASE_ONCE/);
+  assert.match(workflow, /steps\.release_pr\.outputs\.authorized == 'true'/);
+  assert.match(workflow, /Merged PR .* is not an explicitly marked one-shot production release/);
+  assert.match(workflow, /Report non-release deploy suppression/);
   assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(workflow, /github\.event\.workflow_run\.head_branch == 'main'/);
   assert.match(workflow, /PROVIDER_NETWORK_PRODUCTION_SMOKE=true/);
@@ -48,4 +51,35 @@ test("one-shot release requires the lean MCP registry endpoint before success", 
   assert.match(workflow, /\/mcp\/control/);
   assert.match(workflow, /\.version == "0\.2\.0"/);
   assert.match(workflow, /\.remotes\[0\]\.url == "https:\/\/agentresolver\.vercel\.app\/mcp\/control"/);
+});
+
+
+test("one-shot release provisions the dedicated attribution signer before pulling production env", () => {
+  assert.match(workflow, /Provision dedicated provider-attribution signer if absent/);
+  assert.match(workflow, /ALLOW_ATTRIBUTION_SECRET_PROVISION: "1"/);
+  assert.match(workflow, /bash scripts\/provision-attribution-signing-secret\.sh/);
+  assert.ok(
+    workflow.indexOf("Provision dedicated provider-attribution signer if absent") <
+      workflow.indexOf("Pull production configuration")
+  );
+});
+
+test("release smoke requires current provider bootstrap, signed-attribution contract, and provider skill", () => {
+  assert.match(workflow, /\/api\/provider-bootstrap/);
+  assert.match(workflow, /AGENTRESOLVER_ATTRIBUTION_SIGNING_SECRET/);
+  assert.match(workflow, /independently verified Base block timestamp/);
+  assert.match(workflow, /providerOrigins/);
+  assert.match(workflow, /agentresolver-provider/);
+  assert.match(workflow, /procureGetSmokeAttempt/);
+});
+
+
+test("one-shot release requires the combined revenue-conversion paths from #605 and #606", () => {
+  assert.match(workflow, /VERIFIED_RESOLVE_GET_PRODUCTION_SMOKE=true/);
+  assert.match(workflow, /UNSIGNED_402_PROCUREMENT_FALLBACK_SMOKE=true/);
+  assert.match(workflow, /verifiedResolveGetSmokeAttempt/);
+  assert.match(workflow, /\.amount == "20000"/);
+  assert.match(workflow, /extensions\.bazaar\.info\.input\.method == "GET"/);
+  assert.match(workflow, /x-agentresolver-free-procure/);
+  assert.match(workflow, /x-agentresolver-control-mcp/);
 });
