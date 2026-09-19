@@ -3,7 +3,7 @@
   "info": {
     "title": "AgentResolver — X402 Settlement Canary & Payment Preflight",
     "version": "0.1.6",
-    "description": "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary. Before authorizing a target x402 purchase, POST /api/x402-payment-preflight checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision and reusable evidence fingerprints. Free capability resolution remains available as a secondary surface.",
+    "description": "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary. Before authorizing a target x402 purchase, POST /api/x402-payment-preflight checks endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision and reusable evidence fingerprints. Free capability resolution remains available as a secondary surface. Provider-side distribution is zero-account: a catalog-discovered x402 provider may publish a same-origin AgentResolver well-known manifest and opt into a 2% verified success fee with a $0.001 minimum; buyers pay no extra AgentResolver fee.",
     "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. Immediately before authorizing a separate x402 purchase, use POST /api/x402-payment-preflight as the canonical transaction-path gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. The caller remains the only party that can authorize spend. Use POST /api/resolve only for free capability discovery. Payment is always caller-authorized."
   },
   "servers": [
@@ -23,6 +23,10 @@
     {
       "name": "Paid Agent Capabilities",
       "description": "Optional AgentResolver-owned live evidence protected by an x402 payment challenge. The caller controls whether to spend."
+    },
+    {
+      "name": "Provider Commerce",
+      "description": "Zero-account same-origin provider enrollment and independently verified provider-funded success fees."
     }
   ],
   "paths": {
@@ -643,6 +647,216 @@
           }
         },
         "security": []
+      }
+    },
+    "/api/providers": {
+      "get": {
+        "operationId": "getProviderNetwork",
+        "tags": [
+          "Provider Commerce"
+        ],
+        "summary": "Read the provider-network and self-enrollment contract",
+        "description": "Free machine-readable provider contract. Domain providers can self-enroll without an account or operator review by publishing /.well-known/agentresolver-provider.json on the same HTTPS origin as a catalog-discovered x402 route.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Provider enrollment, attribution, fee, safety and verification contract."
+          }
+        }
+      }
+    },
+    "/api/provider-attribution-verify": {
+      "post": {
+        "operationId": "verifyProviderConversion",
+        "tags": [
+          "Provider Commerce"
+        ],
+        "summary": "Verify a routed buyer settlement before a provider success fee is due",
+        "description": "Free verification. Re-resolves a static provider route or same-origin provider manifest and independently verifies the submitted Base-USDC buyer settlement against the provider's published payment identity. A successful domain-provider result includes an attribution-bound 2% success-fee quote with a $0.001 minimum.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attributionId",
+                  "providerId",
+                  "routeId",
+                  "buyerTxHash"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "attributionId": {
+                    "type": "string",
+                    "pattern": "^atr_[0-9a-fA-F-]{36}$"
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "routeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "providerOrigin": {
+                    "type": "string",
+                    "pattern": "^https://[^/]+/?$",
+                    "description": "Required for zero-state domain-manifest providers; omit for statically registered legacy partners."
+                  },
+                  "buyerTxHash": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Buyer settlement verified and provider success-fee quote returned."
+          },
+          "400": {
+            "description": "Invalid or unknown provider proof."
+          },
+          "422": {
+            "description": "Buyer settlement did not satisfy the provider payment identity."
+          }
+        }
+      }
+    },
+    "/api/provider-success-fee-quote": {
+      "post": {
+        "operationId": "quoteProviderSuccessFee",
+        "tags": [
+          "Provider Commerce"
+        ],
+        "summary": "Quote AgentResolver's provider-funded fee for verified routed commerce",
+        "description": "Free quote after independently verifying the buyer-to-provider Base-USDC settlement. Domain-enrolled providers owe 2% of verified routed GMV with a $0.001 minimum. The exact atomic amount includes a tiny deterministic attribution-bound suffix so same-sized fee proofs cannot be trivially replayed across attributions.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attributionId",
+                  "providerId",
+                  "routeId",
+                  "buyerTxHash"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "attributionId": {
+                    "type": "string",
+                    "pattern": "^atr_[0-9a-fA-F-]{36}$"
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "routeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "providerOrigin": {
+                    "type": "string",
+                    "pattern": "^https://[^/]+/?$",
+                    "description": "Required for zero-state domain-manifest providers; omit for statically registered legacy partners."
+                  },
+                  "buyerTxHash": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Exact Base-USDC fee amount and AgentResolver payTo returned."
+          },
+          "400": {
+            "description": "Underlying buyer settlement is invalid or not verified."
+          }
+        }
+      }
+    },
+    "/api/provider-success-fee-verify": {
+      "post": {
+        "operationId": "verifyProviderSuccessFee",
+        "tags": [
+          "Provider Commerce"
+        ],
+        "summary": "Verify both routed commerce and the provider's success-fee transfer",
+        "description": "Free proof endpoint. Independently re-verifies the buyer-to-provider settlement and the provider-to-AgentResolver exact Base-USDC success-fee transfer. AgentResolver never custodies buyer funds and the buyer pays no extra AgentResolver fee.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attributionId",
+                  "providerId",
+                  "routeId",
+                  "buyerTxHash",
+                  "feeTxHash"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "attributionId": {
+                    "type": "string",
+                    "pattern": "^atr_[0-9a-fA-F-]{36}$"
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "routeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "providerOrigin": {
+                    "type": "string",
+                    "pattern": "^https://[^/]+/?$",
+                    "description": "Required for zero-state domain-manifest providers; omit for statically registered legacy partners."
+                  },
+                  "buyerTxHash": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{64}$"
+                  },
+                  "feeTxHash": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Buyer settlement and provider success-fee transfer independently verified."
+          },
+          "400": {
+            "description": "Invalid provider or fee proof."
+          },
+          "422": {
+            "description": "Buyer settlement is verified but the exact provider fee transfer is not."
+          }
+        }
       }
     }
   }

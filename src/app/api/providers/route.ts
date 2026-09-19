@@ -1,48 +1,65 @@
 import { NextResponse } from "next/server";
 import { providerNetworkSnapshot } from "@/lib/providerNetwork";
+import {
+  PROVIDER_MANIFEST_PATH,
+  PROVIDER_SUCCESS_FEE_BPS,
+  PROVIDER_SUCCESS_FEE_MIN_USD
+} from "@/lib/providerManifest";
 
 export const dynamic = "force-dynamic";
 
 export function GET(req: Request) {
-  const baseUrl = new URL(req.url).origin;
+  const baseUrl = new URL(req.url).origin.replace(/\/$/, "");
+
   return NextResponse.json({
     ...providerNetworkSnapshot(baseUrl),
+    domainEnrollment: {
+      status: "open",
+      accountRequired: false,
+      emailRequired: false,
+      operatorReviewRequired: false,
+      manifestPath: PROVIDER_MANIFEST_PATH,
+      example: baseUrl + "/provider-manifest.example.json",
+      docs: baseUrl + "/provider-onboarding.md",
+      sameOriginRoutesOnly: true,
+      settlementNetwork: "eip155:8453",
+      asset: "Base USDC",
+      discoveryBehavior:
+        "When a catalog-discovered x402 resource has a valid same-origin AgentResolver provider manifest, procurement can attach provider commercial terms and an attribution handoff without adding the route to AgentResolver configuration."
+    },
     integration: {
       contract: baseUrl + "/provider-integration.json",
       providerPage: baseUrl + "/providers",
-      registryConfiguration:
-        "Partner routes are operator-reviewed and loaded from bounded machine-readable configuration. No caller can supply an arbitrary execution URL to /api/execute.",
       attributionHeader: "x-agentresolver-attribution-id",
+      procurement: baseUrl + "/api/procure",
+      conversionVerification: baseUrl + "/api/provider-attribution-verify",
+      successFeeQuote: baseUrl + "/api/provider-success-fee-quote",
+      successFeeVerification: baseUrl + "/api/provider-success-fee-verify",
       paidLaunchCheck: baseUrl + "/api/provider-launch-check",
-      onboardingDocs: baseUrl + "/provider-onboarding.md",
-      registryPath: "config/provider-partners.json",
-      launchProof: {
-        network: "eip155:8453",
-        amountAtomic: "50000",
-        payTo: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
-        verification: "provider-registry CI independently verifies the Base USDC transfer before operator review"
-      }
+      paidLaunchCheckRequiredForEnrollment: false,
+      onboardingDocs: baseUrl + "/provider-onboarding.md"
     },
     sellerMonetization: {
-      launchCheckPriceUsd: 0.05,
-      launchCheck: baseUrl + "/api/provider-launch-check",
-      successFeeUsd: 0.001,
-      successFeeSettlement: baseUrl + "/api/provider-attribution-settle",
-      activationRequiresReview: true
+      model: "provider-success-fee",
+      successFeeBps: PROVIDER_SUCCESS_FEE_BPS,
+      minimumSuccessFeeUsd: PROVIDER_SUCCESS_FEE_MIN_USD,
+      buyerExtraFeeUsd: 0,
+      feePaidAfterVerifiedBuyerSettlement: true,
+      feeProofReplayResistance:
+        "The exact fee quote contains an attribution-bound atomic-unit suffix.",
+      legacyFixedFeeSettlement: baseUrl + "/api/provider-attribution-settle"
     },
     analytics: {
       storage: "privacy_safe_structured_runtime_events",
       events: [
-        "provider_demand_signal",
-        "provider_route_handoff",
-        "attributed_paid_response",
-        "provider_attribution_fee_fulfilled"
+        "procurement_call",
+        "provider_conversion_verification",
+        "provider_success_fee_quote",
+        "provider_success_fee_verification"
       ],
       rawGoalsStored: false,
       rawIpStored: false,
-      selfServeHistoricalDashboard: false,
-      note:
-        "Historical provider reporting is computed from runtime telemetry. Durable customer-facing analytics storage is intentionally not introduced until a storage service is explicitly approved."
+      selfServeHistoricalDashboard: false
     }
   }, {
     headers: {

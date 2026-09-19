@@ -1,31 +1,95 @@
 # AgentResolver provider onboarding
 
-AgentResolver provider onboarding is machine-native and fail-closed.
+AgentResolver provider enrollment is machine-native, zero-account, and domain-controlled.
 
-## Paid launch check
+## 1. Publish one well-known manifest
 
-Buy `POST /api/provider-launch-check` for **$0.05 USDC** through x402 on Base or Solana.
+Publish this JSON at:
 
-The paid result checks current technical readiness and the provider's x402 contract, then returns a bounded `registryEntry` when the provider is technically ready for review.
+```text
+https://YOUR-DOMAIN/.well-known/agentresolver-provider.json
+```
 
-Required fields include provider/capability identifiers, origin, endpoint, price, and network. POST-only providers must also expose a safe GET `probeUrl` representing the same x402 payment contract; AgentResolver never performs an unsolicited unpaid POST during onboarding.
+Use the machine-readable example at:
 
-## Registry submission
+```text
+https://agentresolver.vercel.app/provider-manifest.example.json
+```
 
-Add the returned `registryEntry` to `config/provider-partners.json` in a pull request to `waxsway/agentresolver`.
+The manifest can enroll only paid routes on the **same HTTPS origin**. That prevents one domain from claiming another provider's endpoint.
 
-Retain the launch check's x402 `PAYMENT-RESPONSE` as settlement evidence.
+The current commerce contract is:
 
-Paying for the launch check does not buy ranking, guarantee activation, or verify legal identity. Provider activation remains reviewed.
+- settlement network: Base (`eip155:8453`)
+- asset: canonical Base USDC
+- provider success fee: **2% of verified routed GMV**
+- minimum success fee: **$0.001 USDC**
+- extra fee charged to the buyer by AgentResolver: **$0**
+- provider account, email, API key, wallet key, or custody: **not required**
 
-## Routed demand
+Publishing the manifest is the provider's machine-readable opt-in to these terms.
 
-Approved routes are exposed through `/api/providers`, free `/api/resolve`, and MCP resolution. `/api/execute` creates an attribution ID and returns a direct provider handoff. AgentResolver never holds buyer wallet keys or authorizes target spend.
+## 2. Be discoverable
 
-## Provider-funded attribution
+AgentResolver can recognize the manifest when the same provider route appears in a supported external capability catalog such as PayAI/Circle discovery.
 
-The current pilot success fee is **$0.001 USDC** after a provider reports an attributed request as fulfilled or a qualified lead.
+A compatible domain-enrolled candidate remains subject to the buyer's requested budget, network, protocol, and schema constraints. Provider-funded economics do not override hard buyer constraints.
 
-Settle through `POST /api/provider-attribution-settle`.
+When a domain-enrolled provider is selected, AgentResolver returns an `x-agentresolver-attribution-id` in the procurement handoff. The calling agent should send that exact header to the provider when it executes the selected route.
 
-A successful fee settlement proves that the provider paid AgentResolver's attribution fee. It does not independently prove the underlying buyer transaction or fulfillment.
+## 3. Prove the routed buyer settlement
+
+After a routed sale, call:
+
+```text
+POST /api/provider-attribution-verify
+```
+
+with:
+
+- `attributionId`
+- `providerId`
+- `routeId`
+- `providerOrigin`
+- `buyerTxHash`
+
+AgentResolver re-fetches the provider's well-known manifest and independently verifies the Base-USDC buyer settlement against the payment identity published for that route.
+
+A successful response includes an exact success-fee quote.
+
+## 4. Settle the success fee
+
+You may separately request the quote at:
+
+```text
+POST /api/provider-success-fee-quote
+```
+
+The quote returns the exact Base-USDC amount and AgentResolver payTo address.
+
+The amount is the greater of 2% of routed GMV or $0.001, plus a tiny deterministic atomic-unit suffix derived from the attribution ID. That suffix binds the fee proof to one attribution so the same same-sized fee transfer cannot be replayed across multiple routed conversions.
+
+After sending the exact Base-USDC fee transfer, prove it at:
+
+```text
+POST /api/provider-success-fee-verify
+```
+
+using the same conversion fields plus `feeTxHash`.
+
+AgentResolver independently verifies both:
+
+1. buyer → provider Base-USDC settlement; and
+2. provider → AgentResolver exact success-fee transfer.
+
+## Optional paid launch check
+
+`/api/provider-launch-check` remains available for a deeper $0.05 x402 technical readiness/payment-contract audit.
+
+It is **not required for admission** to domain-controlled provider routing.
+
+## Boundaries
+
+AgentResolver does not hold buyer wallet keys, authorize buyer spend, proxy arbitrary provider requests, or custody buyer funds.
+
+Current proof establishes domain control, the provider's published payment identity, the buyer's Base-USDC settlement, and the provider's success-fee transfer. The procurement attribution ID is not yet cryptographically signed by AgentResolver.

@@ -7,6 +7,12 @@ const canonical = readFileSync("skills/agentresolver-payment-guard/SKILL.md");
 const published = readFileSync(
   "public/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md"
 );
+const procurementCanonical = readFileSync(
+  "skills/agentresolver-procurement/SKILL.md"
+);
+const procurementPublished = readFileSync(
+  "public/.well-known/agent-skills/agentresolver-procurement/SKILL.md"
+);
 const index = JSON.parse(
   readFileSync("public/.well-known/agent-skills/index.json", "utf8")
 );
@@ -17,8 +23,10 @@ test("well-known Agent Skills discovery mirrors the canonical Guard skill", () =
     index.$schema,
     "https://schemas.agentskills.io/discovery/0.2.0/schema.json"
   );
-  assert.equal(index.skills.length, 1);
+  assert.equal(index.skills.length, 2);
   assert.equal(index.skills[0].name, "agentresolver-payment-guard");
+  assert.equal(index.skills[1].name, "agentresolver-procurement");
+  assert.deepEqual(procurementPublished, procurementCanonical);
   assert.equal(index.skills[0].type, "skill-md");
   assert.equal(
     index.skills[0].url,
@@ -26,10 +34,15 @@ test("well-known Agent Skills discovery mirrors the canonical Guard skill", () =
   );
 });
 
-test("well-known Agent Skills digest binds the exact published bytes", () => {
-  const digest = createHash("sha256").update(published).digest("hex");
+test("well-known Agent Skills digests bind the exact published bytes", () => {
+  const guardDigest = createHash("sha256").update(published).digest("hex");
+  const procurementDigest = createHash("sha256")
+    .update(procurementPublished)
+    .digest("hex");
   assert.match(index.skills[0].digest, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(index.skills[0].digest, `sha256:${digest}`);
+  assert.equal(index.skills[0].digest, `sha256:${guardDigest}`);
+  assert.match(index.skills[1].digest, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(index.skills[1].digest, `sha256:${procurementDigest}`);
 });
 
 test("well-known Agent Skills are browser-readable and cacheable", () => {
@@ -55,4 +68,14 @@ test("agent discovery announcements agree with the well-known skill URL", () => 
   assert.equal(agentsJson.skills?.[0]?.url, skillUrl);
   assert.ok(config.includes('rel=\\\"agent-skills\\\"'));
   assert.ok(config.includes("https://agentresolver.vercel.app/.well-known/agent-skills/index.json"));
+});
+
+test("procurement skill is a free non-custodial fallback contract", () => {
+  const text = procurementPublished.toString("utf8");
+  assert.match(text, /name: agentresolver-procurement/);
+  assert.match(text, /POST https:\/\/agentresolver\.vercel\.app\/api\/procure/);
+  assert.match(text, /Procurement itself is free/i);
+  assert.match(text, /x-agentresolver-attribution-id/);
+  assert.match(text, /2% provider-funded success fee/i);
+  assert.match(text, /never[\s\S]*private key/i);
 });

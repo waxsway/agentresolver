@@ -201,3 +201,106 @@ export async function verifyX402Settlement(
       "Verifies a Base USDC EIP-3009 settlement and optional transfer expectations at observation time. It does not establish provider identity, legitimacy, or fulfillment quality."
   } as const;
 }
+
+
+export type BaseUsdcTransferVerifyInput = {
+  txHash: string;
+  expectedPayTo: string;
+  expectedAmountAtomic: string;
+};
+
+export async function verifyBaseUsdcTransfer(
+  input: BaseUsdcTransferVerifyInput,
+  options: { rpc?: BaseRpc } = {}
+) {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(input.txHash)) {
+    throw new Error("txHash must be a 32-byte 0x-prefixed Base transaction hash.");
+  }
+  if (!/^0x[0-9a-fA-F]{40}$/.test(input.expectedPayTo)) {
+    throw new Error("expectedPayTo must be a 20-byte 0x-prefixed EVM address.");
+  }
+  if (!/^[0-9]{1,78}$/.test(input.expectedAmountAtomic)) {
+    throw new Error("expectedAmountAtomic must be a base-10 integer string.");
+  }
+
+  const rpc = options.rpc ?? defaultBaseRpc;
+  const receiptValue = await rpc("eth_getTransactionReceipt", [input.txHash]);
+  const receipt = object(receiptValue);
+
+  if (!receipt) {
+    return {
+      network: BASE_NETWORK,
+      asset: BASE_USDC,
+      txHash: input.txHash.toLowerCase(),
+      found: false,
+      settled: false,
+      verdict: "not_found",
+      confirmations: null,
+      transfers: [],
+      assertions: {
+        expectedPayTo: input.expectedPayTo.toLowerCase(),
+        expectedAmountAtomic: input.expectedAmountAtomic,
+        exactTransferMatch: false
+      },
+      limitation:
+        "No final Base receipt was available at verification time. Retry later if the transaction is still pending."
+    } as const;
+  }
+
+  const receiptSucceeded = receipt.status === "0x1";
+  const blockNumber = parseHex(receipt.blockNumber);
+  const latestValue = await rpc("eth_blockNumber", []);
+  const latestBlock = parseHex(latestValue);
+  const confirmations =
+    blockNumber !== null && latestBlock !== null && latestBlock >= blockNumber
+      ? (latestBlock - blockNumber + 1n).toString()
+      : null;
+
+  const logs = Array.isArray(receipt.logs) ? receipt.logs : [];
+  const transfers = logs.flatMap((value) => {
+    const log = object(value);
+    if (!log || typeof log.address !== "string") return [];
+    if (normalizeAddress(log.address) !== normalizeAddress(BASE_USDC)) return [];
+    const topics = Array.isArray(log.topics) ? log.topics : [];
+    if (String(topics[0] ?? "").toLowerCase() !== TRANSFER_TOPIC) return [];
+    const from = topicAddress(topics[1]);
+    const to = topicAddress(topics[2]);
+    const amount = parseHex(log.data);
+    if (!from || !to || amount === null) return [];
+    return [{ from, to, amountAtomic: amount.toString() }];
+  });
+
+  const expectedPayTo = input.expectedPayTo.toLowerCase();
+  const exactTransferMatch = transfers.some(
+    (transfer) =>
+      transfer.to === expectedPayTo &&
+      transfer.amountAtomic === input.expectedAmountAtomic
+  );
+
+  const verdict =
+    !receiptSucceeded
+      ? "reverted"
+      : exactTransferMatch
+        ? "verified"
+        : "expectation_mismatch";
+
+  return {
+    network: BASE_NETWORK,
+    asset: BASE_USDC,
+    txHash: input.txHash.toLowerCase(),
+    found: true,
+    settled: verdict === "verified",
+    verdict,
+    receiptStatus: receiptSucceeded ? "success" : "reverted",
+    blockNumber: blockNumber?.toString() ?? null,
+    confirmations,
+    transfers,
+    assertions: {
+      expectedPayTo,
+      expectedAmountAtomic: input.expectedAmountAtomic,
+      exactTransferMatch
+    },
+    limitation:
+      "Verifies a canonical Base USDC Transfer event to the expected recipient and amount. It does not establish the sender's legal identity or prove a business obligation beyond the submitted fee contract."
+  } as const;
+}

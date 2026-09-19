@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "provider": {
+    "id": "example-provider",
+    "name": "Example Provider"
+  },
+  "commercial": {
+    "successFeeBps": 200,
+    "minimumSuccessFeeUsd": 0.001
+  },
+  "routes": [
+    {
+      "routeId": "example-provider:web-search",
+      "capabilityId": "web-search",
+      "name": "Web Search",
+      "description": "Search public web data.",
+      "tags": [
+        "search",
+        "web"
+      ],
+      "endpoint": "https://provider.example/api/search",
+      "method": "GET",
+      "priceUsd": 0.01,
+      "payment": {
+        "network": "eip155:8453",
+        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "payTo": "0x1111111111111111111111111111111111111111",
+        "amountAtomic": "10000"
+      }
+    }
+  ]
+}

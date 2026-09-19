@@ -6,7 +6,14 @@
       "type": "skill-md",
       "description": "Verify live x402 payment terms before an autonomous agent authorizes USDC spend. Use immediately before paying an unfamiliar or changed x402 endpoint, or when price, payTo, network, asset, scheme, or resource binding must be checked fail-closed.",
       "url": "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md",
-      "digest": "sha256:6176fd13cd951b2685f8d3d79cd4785a21c57182fb67df724103cdf0a4b1f327"
+      "digest": "sha256:e189daa78a38e5e84a36cb6b3b91a16342ca97e802194d596fad70fa7b2c7b62"
+    },
+    {
+      "name": "agentresolver-procurement",
+      "type": "skill-md",
+      "description": "Find and select an external machine capability when the agent does not already have a suitable tool. Use for constrained API, MCP, or x402 procurement by goal, budget, network, protocol, schema, side-effect, or auth requirements while keeping wallet custody and spending authority with the caller.",
+      "url": "https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-procurement/SKILL.md",
+      "digest": "sha256:61a99b24deea1b89d4dacb985133a42d93cd61f424209719c336e84154e55462"
     }
   ]
 }

@@ -2,6 +2,12 @@ import { resolveGoal } from "@/lib/resolver";
 import { resolveProviderRoutes } from "@/lib/providerNetwork";
 import { discoverPayAiResources, type PayAiMatch } from "@/lib/payaiDiscovery";
 import {
+  discoverDomainProviderRoutes,
+  quoteProviderSuccessFee,
+  type DomainProviderRoute
+} from "@/lib/providerManifest";
+import { ATTRIBUTION_HEADER, createAttributionId } from "@/lib/transactionAttribution";
+import {
   PAID_CAPABILITIES,
   getPaidCapability,
   type PaidCapabilityId
@@ -189,6 +195,169 @@ function normalizePayAi(
   };
 }
 
+function canonicalCandidateUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+async function enrichDomainProviderCandidates(
+  candidates: ProcurementCandidate[]
+) {
+  const externalResources = candidates
+    .filter(
+      (candidate) =>
+        candidate.protocol === "x402" &&
+        candidate.source !== "agentresolver-owned" &&
+        Boolean(candidate.endpoint)
+    )
+    .map((candidate) => candidate.endpoint as string);
+
+  if (externalResources.length === 0) return candidates;
+
+  const enrolled = await discoverDomainProviderRoutes(externalResources);
+
+  return candidates.map((candidate) => {
+    const key = canonicalCandidateUrl(candidate.endpoint);
+    const route = key ? enrolled.get(key) : null;
+    if (!route) return candidate;
+
+    const successFee = quoteProviderSuccessFee(route.amountAtomic);
+    return {
+      ...candidate,
+      name: route.name,
+      description: route.description,
+      priceUsd: route.priceUsd,
+      networks: [route.network],
+      execute: {
+        ...(candidate.execute || {}),
+        method: route.method,
+        url: route.endpoint,
+        protocol: "x402",
+        priceUsd: route.priceUsd,
+        paymentIdentity: {
+          network: route.network,
+          asset: route.asset,
+          payTo: route.payTo,
+          amountAtomic: route.amountAtomic
+        },
+        providerCommercialTerms: {
+          model: "provider-success-fee",
+          successFeeBps: route.successFeeBps,
+          minimumSuccessFeeUsd: route.minimumSuccessFeeUsd,
+          quotedFeeUsd: successFee.feeUsd,
+          buyerPaysAgentResolverExtraFee: false
+        },
+        spendingAuthorizationRequired: true
+      },
+      evidence: {
+        ...(candidate.evidence || {}),
+        domainProviderEnrollment: {
+          verifiedBy: "same-origin-well-known-manifest",
+          manifestUrl: route.manifestUrl,
+          origin: route.origin,
+          providerId: route.providerId,
+          providerName: route.providerName,
+          routeId: route.routeId,
+          capabilityId: route.capabilityId,
+          successFeeBps: route.successFeeBps,
+          minimumSuccessFeeUsd: route.minimumSuccessFeeUsd
+        }
+      }
+    } satisfies ProcurementCandidate;
+  });
+}
+
+function domainEnrollment(
+  candidate: ProcurementCandidate
+): {
+  manifestUrl: string;
+  origin: string;
+  providerId: string;
+  routeId: string;
+  capabilityId: string;
+  successFeeBps: number;
+  minimumSuccessFeeUsd: number;
+} | null {
+  const evidence =
+    candidate.evidence &&
+    typeof candidate.evidence === "object" &&
+    !Array.isArray(candidate.evidence)
+      ? candidate.evidence as Record<string, unknown>
+      : null;
+  const enrollment =
+    evidence?.domainProviderEnrollment &&
+    typeof evidence.domainProviderEnrollment === "object" &&
+    !Array.isArray(evidence.domainProviderEnrollment)
+      ? evidence.domainProviderEnrollment as Record<string, unknown>
+      : null;
+  if (!enrollment) return null;
+
+  const manifestUrl = String(enrollment.manifestUrl || "");
+  const origin = String(enrollment.origin || "");
+  const providerId = String(enrollment.providerId || "");
+  const routeId = String(enrollment.routeId || "");
+  const capabilityId = String(enrollment.capabilityId || "");
+  const successFeeBps = Number(enrollment.successFeeBps);
+  const minimumSuccessFeeUsd = Number(enrollment.minimumSuccessFeeUsd);
+
+  if (
+    !manifestUrl ||
+    !origin ||
+    !providerId ||
+    !routeId ||
+    !capabilityId ||
+    !Number.isFinite(successFeeBps) ||
+    !Number.isFinite(minimumSuccessFeeUsd)
+  ) return null;
+
+  return {
+    manifestUrl,
+    origin,
+    providerId,
+    routeId,
+    capabilityId,
+    successFeeBps,
+    minimumSuccessFeeUsd
+  };
+}
+
+function attachProcurementAttribution<T extends ProcurementCandidate>(
+  candidate: T,
+  baseUrl: string
+): T {
+  const enrollment = domainEnrollment(candidate);
+  if (!enrollment) return candidate;
+
+  const attributionId = createAttributionId();
+  return {
+    ...candidate,
+    execute: {
+      ...(candidate.execute || {}),
+      attribution: {
+        id: attributionId,
+        header: ATTRIBUTION_HEADER,
+        headerValue: attributionId,
+        providerOrigin: enrollment.origin,
+        providerId: enrollment.providerId,
+        routeId: enrollment.routeId,
+        capabilityId: enrollment.capabilityId,
+        commercialModel: "provider-success-fee",
+        successFeeBps: enrollment.successFeeBps,
+        minimumSuccessFeeUsd: enrollment.minimumSuccessFeeUsd,
+        buyerPaysAgentResolverExtraFee: false,
+        conversionVerificationUrl:
+          `${baseUrl}/api/provider-attribution-verify`
+      }
+    }
+  } as T;
+}
+
 function normalizePartner(
   route: ReturnType<typeof resolveProviderRoutes>[number]
 ): ProcurementCandidate {
@@ -262,7 +431,7 @@ export async function procureCapability(
     discoverPayAiResources(goal, candidateLimit)
   ]);
 
-  const candidates: ProcurementCandidate[] = [
+  const rawCandidates: ProcurementCandidate[] = [
     ...resolution.owned.map((match) => normalizeOwned(match, baseUrl)),
     ...partnerRoutes.map(normalizePartner),
     ...payai.map(normalizePayAi),
@@ -270,17 +439,26 @@ export async function procureCapability(
     ...resolution.mcp.map(normalizeMcp)
   ];
 
+  const candidates = await enrichDomainProviderCandidates(rawCandidates);
   const evaluated = rankProcurementCandidates(
     candidates,
     constraints,
     safeLimit
   );
-  const selected =
+  const selectedRaw =
     evaluated.find((candidate) => candidate.status !== "rejected") || null;
+  const selected = selectedRaw
+    ? attachProcurementAttribution(selectedRaw, baseUrl)
+    : null;
+  const returnedCandidates = selected
+    ? evaluated.map((candidate) =>
+        candidate.id === selected.id ? selected : candidate
+      )
+    : evaluated;
 
   return {
     selected,
-    candidates: evaluated,
+    candidates: returnedCandidates,
     candidateCount: candidates.length,
     verification:
       selected?.status === "eligible_with_unknowns"
