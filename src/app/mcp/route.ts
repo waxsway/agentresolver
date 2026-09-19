@@ -354,6 +354,10 @@ const handler = createMcpHandler(() => {
     inputSchema: z.object({
       goal: z.string().min(1).max(1000),
       limit: z.number().int().min(1).max(20).optional(),
+      providerOrigins: z
+        .array(z.string().url())
+        .max(2)
+        .optional(),
       constraints: z.object({
         maxPriceUsd: z.number().min(0).max(1000).optional(),
         preferredNetworks: z.array(z.string().min(1).max(128)).max(8).optional(),
@@ -372,12 +376,13 @@ const handler = createMcpHandler(() => {
       idempotentHint: true,
       openWorldHint: true
     }
-  }, async ({ goal, limit, constraints }) => {
+  }, async ({ goal, limit, providerOrigins, constraints }) => {
     const result = await procureCapability(
       goal,
       (constraints || {}) as ProcurementConstraints,
       limit || 5,
-      CANONICAL
+      CANONICAL,
+      { providerOrigins }
     );
     logToolCall("procure", {
       goalHash: shortHash(goal),
@@ -387,7 +392,8 @@ const handler = createMcpHandler(() => {
       returnedCount: result.candidates.length,
       selectedSource: result.selected?.source || null,
       selectedStatus: result.selected?.status || null,
-      selectedPriceUsd: result.selected?.priceUsd ?? null
+      selectedPriceUsd: result.selected?.priceUsd ?? null,
+      providerSeedCount: providerOrigins?.length || 0
     });
     const output = {
       schemaVersion: 1,
@@ -395,6 +401,7 @@ const handler = createMcpHandler(() => {
       mode: "open_world_non_custodial_procurement",
       goal,
       constraints: constraints || {},
+      providerOrigins: providerOrigins || [],
       selected: result.selected,
       candidates: result.candidates,
       verification: result.verification,
