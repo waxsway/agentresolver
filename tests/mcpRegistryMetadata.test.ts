@@ -6,7 +6,7 @@ test("MCP registry metadata leads with the procurement network", () => {
   const server = JSON.parse(readFileSync("server.json", "utf8"));
   assert.equal(server.name, "io.github.waxsway/agentresolver");
   assert.equal(server.title, "AgentResolver");
-  assert.equal(server.version, "0.2.0");
+  assert.equal(server.version, "0.2.1");
   assert.match(server.description, /capability procurement/i);
   assert.match(server.description, /provider routing/i);
   assert.equal(server.remotes?.[0]?.url, "https://agentresolver.vercel.app/mcp/control");
