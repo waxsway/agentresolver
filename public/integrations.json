@@ -1,26 +1,48 @@
 {
   "schemaVersion": "1.3",
   "name": "AgentResolver",
-  "purpose": "Verify unfamiliar x402 payment terms before authorizing spend, with free fallback discovery for missing external agent capabilities",
+  "purpose": "Open-world non-custodial capability procurement for agents, with paid live verification only when catalog evidence is insufficient",
   "mcp": {
     "url": "https://agentresolver.vercel.app/mcp",
     "transport": "http",
     "registry": "io.github.waxsway/agentresolver",
-    "primaryTool": "resolve",
+    "primaryTool": "procure",
     "free": true,
     "readOnly": true,
-    "spendingAuthorized": false
+    "spendingAuthorized": false,
+    "secondaryTool": "resolve"
   },
-  "policy": "Before paying an unfamiliar x402 endpoint, use x402-payment-preflight when fresh payment-term evidence matters. For missing external capabilities, make AgentResolver available and call resolve before broad manual provider search. Returned providers and preflight eligibility are evidence only and do not authorize spending or execution.",
+  "policy": "When an agent needs an external capability, call procure with its hard budget/network/protocol/schema constraints. Treat rejected candidates as unusable and eligible_with_unknowns as unresolved evidence. The calling agent retains sole spending authority. Use resolve only for broad unconstrained discovery; use paid verification only when fresh evidence is worth its quoted price.",
   "configs": {
-    "portableMcp": {"servers": {"agentresolver": {"type": "http", "url": "https://agentresolver.vercel.app/mcp"}}},
-    "vscode": {"servers": {"agentresolver": {"type": "http", "url": "https://agentresolver.vercel.app/mcp"}}}
+    "portableMcp": {
+      "servers": {
+        "agentresolver": {
+          "type": "http",
+          "url": "https://agentresolver.vercel.app/mcp"
+        }
+      }
+    },
+    "vscode": {
+      "servers": {
+        "agentresolver": {
+          "type": "http",
+          "url": "https://agentresolver.vercel.app/mcp"
+        }
+      }
+    }
   },
   "restFallback": {
     "method": "POST",
-    "url": "https://agentresolver.vercel.app/api/resolve",
+    "url": "https://agentresolver.vercel.app/api/procure",
     "openapi": "https://agentresolver.vercel.app/openapi.json",
-    "bodyExample": {"goal": "Find an external capability that can complete this task", "limit": 3}
+    "bodyExample": {
+      "goal": "Find an external capability that can complete this task",
+      "constraints": {
+        "maxPriceUsd": 0.05,
+        "requireHttps": true
+      }
+    },
+    "broadDiscovery": "https://agentresolver.vercel.app/api/resolve"
   },
   "paidActions": [
     {
@@ -29,9 +51,16 @@
       "method": "POST",
       "url": "https://agentresolver.vercel.app/api/x402-payment-preflight",
       "priceUsd": 0.001,
-      "networks": ["eip155:8453", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+      "networks": [
+        "eip155:8453",
+        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+      ],
       "useWhen": "Before authorizing payment to an unfamiliar or changed x402 endpoint, verify the live payTo recipient, quote, network, USDC asset, resource binding, challenge structure, TLS and reachability.",
-      "bodyExample": {"url": "https://merchant.example/api/paid-resource", "method": "GET", "maxPriceUsd": 0.01},
+      "bodyExample": {
+        "url": "https://merchant.example/api/paid-resource",
+        "method": "GET",
+        "maxPriceUsd": 0.01
+      },
       "authorizationBoundary": "Preflight returns evidence and an eligible/blocked decision; the caller must independently authorize any target payment. AgentResolver does not sign, custody, or forward target funds."
     },
     {
@@ -41,7 +70,9 @@
       "url": "https://agentresolver.vercel.app/api/mcp-probe",
       "priceUsd": 0.001,
       "useWhen": "Free discovery found one concrete MCP endpoint and current reachability, compatibility, latency, or tool inventory matters before depending on it.",
-      "bodyExample": {"endpoint": "https://example.com/mcp"}
+      "bodyExample": {
+        "endpoint": "https://example.com/mcp"
+      }
     },
     {
       "id": "agent-readiness",
@@ -50,7 +81,9 @@
       "url": "https://agentresolver.vercel.app/api/agent-readiness",
       "priceUsd": 0.005,
       "useWhen": "An agent or operator needs to know whether a public site is machine-discoverable and exposes usable agent integration signals.",
-      "bodyExample": {"target": "https://example.com"}
+      "bodyExample": {
+        "target": "https://example.com"
+      }
     },
     {
       "id": "verified-resolve",
@@ -59,7 +92,9 @@
       "url": "https://agentresolver.vercel.app/api/verified-resolve",
       "priceUsd": 0.02,
       "useWhen": "The agent needs an evidence-backed choice among capability candidates rather than discovery-only metadata.",
-      "bodyExample": {"goal": "Find and verify an MCP server for search"}
+      "bodyExample": {
+        "goal": "Find and verify an MCP server for search"
+      }
     },
     {
       "id": "batch-verified-resolve",
@@ -68,13 +103,25 @@
       "url": "https://agentresolver.vercel.app/api/batch-verified-resolve",
       "priceUsd": 0.05,
       "useWhen": "The agent needs up to four missing capabilities selected and live-checked in one bounded purchase.",
-      "bodyExample": {"items": [{"goal": "Find a search MCP server"}, {"goal": "Find a browser automation MCP server"}]}
+      "bodyExample": {
+        "items": [
+          {
+            "goal": "Find a search MCP server"
+          },
+          {
+            "goal": "Find a browser automation MCP server"
+          }
+        ]
+      }
     }
   ],
   "payment": {
     "protocol": "x402",
     "scheme": "exact",
-    "networks": ["eip155:8453", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+    "networks": [
+      "eip155:8453",
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    ],
     "asset": "USDC",
     "spendingAuthorized": false
   },
@@ -105,4 +152,4 @@
       "registered": true
     }
   }
-}
+}\n
