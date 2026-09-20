@@ -384,13 +384,77 @@
                       "pattern": "^https://[^/]+/?$"
                     },
                     "description": "Optional already-known provider origins to keep the paid verification universe aligned with the preceding free procurement call."
+                  },
+                  "constraints": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "maxPriceUsd": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000
+                      },
+                      "preferredNetworks": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "protocol": {
+                        "type": "string",
+                        "enum": [
+                          "x402",
+                          "l402",
+                          "mpp",
+                          "mcp",
+                          "any"
+                        ]
+                      },
+                      "requireHttps": {
+                        "type": "boolean",
+                        "default": true
+                      },
+                      "availableInputSchema": {
+                        "type": "object"
+                      },
+                      "requiredOutputSchema": {
+                        "type": "object"
+                      },
+                      "sideEffect": {
+                        "type": "string",
+                        "enum": [
+                          "read-only",
+                          "state-changing",
+                          "any"
+                        ]
+                      },
+                      "auth": {
+                        "type": "string",
+                        "enum": [
+                          "none",
+                          "wallet",
+                          "api-key",
+                          "any"
+                        ]
+                      }
+                    },
+                    "description": "Optional procurement constraints carried through from free /api/procure."
                   }
                 }
               },
               "examples": {
                 "searchTool": {
                   "value": {
-                    "goal": "Find and verify an MCP server for web search"
+                    "goal": "Find and verify a paid web search service",
+                    "constraints": {
+                      "maxPriceUsd": 0.05,
+                      "protocol": "x402",
+                      "preferredNetworks": [
+                        "eip155:8453"
+                      ],
+                      "requireHttps": true
+                    }
                   }
                 }
               }
