@@ -59,6 +59,36 @@ Machine-readable recipes for OpenAI Agents, Cloudflare Agents, portable MCP host
 
 The default remote MCP is the lean control plane at `/mcp/control`, exposing only free `procure` and `resolve`. Paid verification remains a separate caller-authorized path.
 
+
+## Amazon Bedrock AgentCore Payments / x402 v2
+
+AgentResolver exposes live x402 v2 merchant endpoints that can be used by wallet-capable agents and payment middleware, including Amazon Bedrock AgentCore Payments integrations.
+
+Protocol contract:
+
+- challenge: `PAYMENT-REQUIRED`
+- paid retry: `PAYMENT-SIGNATURE`
+- settlement response: `PAYMENT-RESPONSE`
+- Base mainnet and Solana are supported where advertised by the capability
+- AgentResolver never requests or receives the caller's private key
+
+Useful live endpoints:
+
+- `https://agentresolver.vercel.app/api/x402-ping` — minimal settlement canary
+- `https://agentresolver.vercel.app/api/x402-payment-preflight` — verify an x402 endpoint before authorizing spend
+- `https://agentresolver.vercel.app/api/verified-resolve` — paid capability procurement plus bounded live verification
+- `https://agentresolver.vercel.app/api/batch-verified-resolve` — bounded multi-capability verification
+
+Machine-readable paid catalog:
+
+`https://agentresolver.vercel.app/.well-known/x402`
+
+AgentCore / AWS Marketplace early-access discussion:
+
+`https://github.com/waxsway/agentresolver/issues/616`
+
+AgentResolver supplies evidence and payment-contract verification; the calling agent or organization keeps execution and spending authority.
+
 ## Use AgentResolver as an agent fallback
 
 If you build an autonomous agent, add this behavior to its tool-selection policy:
