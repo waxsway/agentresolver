@@ -273,7 +273,7 @@ export function createDeterministicPaidRoute(
     throw new Error("Paid route endpoint override must start with /api/.");
   }
   const wireMetadata = x402WireResourceMetadata(product);
-  let paidHandlerPromise: Promise<PaidHandler> | null = null;
+  const paidHandlerPromises = new Map<string, Promise<PaidHandler>>();
 
   async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
     try {
@@ -306,7 +306,7 @@ export function createDeterministicPaidRoute(
     }
   }
 
-  async function buildPaidHandler(): Promise<PaidHandler> {
+  async function buildPaidHandler(requestMethod: string): Promise<PaidHandler> {
     const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
     const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
     const facilitatorUrl = (process.env.AGENTRESOLVER_X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
@@ -448,11 +448,14 @@ export function createDeterministicPaidRoute(
 
     const discoveryOutput = x402RuntimeDiscoveryOutput(capabilityId);
     const bazaarProviderMetadata = x402BazaarProviderMetadata(capabilityId);
-    const runtimeGetInput = options.paidGet
+    const normalizedMethod = requestMethod.toUpperCase();
+    const queryMethod =
+      options.paidGet && (normalizedMethod === "GET" || normalizedMethod === "HEAD");
+    const runtimeGetInput = queryMethod
       ? x402RuntimeDiscoveryInput(capabilityId)
       : null;
 
-    const discoveryExtension = options.paidGet
+    const discoveryExtension = queryMethod
       ? runtimeGetInput
         ? declareDiscoveryExtension({
             input: runtimeGetInput.example,
@@ -497,8 +500,13 @@ export function createDeterministicPaidRoute(
     }, server) as PaidHandler;
   }
 
-  function getPaidHandler(): Promise<PaidHandler> {
-    if (!paidHandlerPromise) paidHandlerPromise = buildPaidHandler();
+  function getPaidHandler(requestMethod: string): Promise<PaidHandler> {
+    const normalizedMethod = requestMethod.toUpperCase();
+    let paidHandlerPromise = paidHandlerPromises.get(normalizedMethod);
+    if (!paidHandlerPromise) {
+      paidHandlerPromise = buildPaidHandler(normalizedMethod);
+      paidHandlerPromises.set(normalizedMethod, paidHandlerPromise);
+    }
     return paidHandlerPromise;
   }
 
@@ -515,7 +523,7 @@ export function createDeterministicPaidRoute(
     const paymentRailEnv = telemetryEnvForRoute(options);
     logPaidCapabilityAttempt(req, capabilityId, traffic, requestId, paymentRailEnv);
     try {
-      const paidHandler = await getPaidHandler();
+      const paidHandler = await getPaidHandler(req.method);
       const paymentRequest = normalizeX402PaymentRequest(req);
       const response = stampInfrastructureHeaders(
         await paidHandler(paymentRequest),
