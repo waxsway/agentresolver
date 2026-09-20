@@ -452,22 +452,21 @@ export function createDeterministicPaidRoute(
       ? x402RuntimeDiscoveryInput(capabilityId)
       : null;
 
-    const discoveryExtension = options.paidGet
-      ? runtimeGetInput
-        ? declareDiscoveryExtension({
-            input: runtimeGetInput.example,
-            inputSchema: runtimeGetInput.schema,
-            output: discoveryOutput
-          })
-        : declareDiscoveryExtension({
-            output: discoveryOutput
-          })
+    const getDiscoveryExtension = runtimeGetInput
+      ? declareDiscoveryExtension({
+          input: runtimeGetInput.example,
+          inputSchema: runtimeGetInput.schema,
+          output: discoveryOutput
+        })
       : declareDiscoveryExtension({
-          input: product.example,
-          inputSchema: product.inputSchema,
-          bodyType: "json",
           output: discoveryOutput
         });
+    const postDiscoveryExtension = declareDiscoveryExtension({
+      input: product.example,
+      inputSchema: product.inputSchema,
+      bodyType: "json",
+      output: discoveryOutput
+    });
 
     const routePrice = options.priceOverride?.trim() || product.price;
     const accepts = [
@@ -485,16 +484,26 @@ export function createDeterministicPaidRoute(
       }] : [])
     ];
 
-    return withX402<unknown>(handler, {
-      [endpoint]: {
-        accepts,
-        description: wireMetadata.description,
-        mimeType: "application/json",
-        serviceName: bazaarProviderMetadata.serviceName,
-        tags: [...bazaarProviderMetadata.tags],
-        extensions: discoveryExtension
-      }
-    }, server) as PaidHandler;
+    const routeConfig = (extensions: ReturnType<typeof declareDiscoveryExtension>) => ({
+      accepts,
+      description: wireMetadata.description,
+      mimeType: "application/json" as const,
+      serviceName: bazaarProviderMetadata.serviceName,
+      tags: [...bazaarProviderMetadata.tags],
+      extensions
+    });
+
+    const routes = options.paidGet
+      ? {
+          [`GET ${endpoint}`]: routeConfig(getDiscoveryExtension),
+          [`HEAD ${endpoint}`]: routeConfig(getDiscoveryExtension),
+          [`POST ${endpoint}`]: routeConfig(postDiscoveryExtension)
+        }
+      : {
+          [endpoint]: routeConfig(postDiscoveryExtension)
+        };
+
+    return withX402<unknown>(handler, routes, server) as PaidHandler;
   }
 
   function getPaidHandler(): Promise<PaidHandler> {

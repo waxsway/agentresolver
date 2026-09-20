@@ -191,11 +191,28 @@ function getPaidHandler(): PaidHandler {
     .register(X402_NETWORK, new ExactEvmScheme())
     .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
     .registerExtension(bazaarResourceServerExtension);
-  paidHandler = withX402<unknown>(verifiedResolveHandler, { "/api/verified-resolve": { accepts: [
-        { scheme: "exact", price: X402_PRICING.verifiedResolve, network: X402_NETWORK, payTo: payTo as `0x${string}` },
-        { scheme: "exact", price: X402_PRICING.verifiedResolve, network: X402_SOLANA_NETWORK, payTo: solanaPayTo }
-      ], description: "Procure a missing capability across AgentResolver, provider manifests, 402 Index, PayAI, Circle and MCP, then perform at most two unpaid live verification probes for supported MCP/x402 candidates before returning an evidence-backed recommendation. L402/MPP remain discovery-only until protocol-specific verifiers exist.", mimeType: "application/json",
-      extensions: paidRouteBazaarExtension("verified-resolve") } }, resourceServer) as PaidHandler;
+
+  const common = {
+    accepts: [
+      { scheme: "exact" as const, price: X402_PRICING.verifiedResolve, network: X402_NETWORK, payTo: payTo as `0x${string}` },
+      { scheme: "exact" as const, price: X402_PRICING.verifiedResolve, network: X402_SOLANA_NETWORK, payTo: solanaPayTo }
+    ],
+    description: "Procure a missing capability across AgentResolver, provider manifests, 402 Index, PayAI, Circle and MCP, then perform at most two unpaid live verification probes for supported MCP/x402 candidates before returning an evidence-backed recommendation. L402/MPP remain discovery-only until protocol-specific verifiers exist.",
+    mimeType: "application/json" as const,
+    serviceName: "AgentResolver",
+    tags: ["x402", "verification", "procurement", "agent-tools"]
+  };
+
+  paidHandler = withX402<unknown>(verifiedResolveHandler, {
+    "GET /api/verified-resolve": {
+      ...common,
+      extensions: paidRouteBazaarExtension("verified-resolve", "GET")
+    },
+    "POST /api/verified-resolve": {
+      ...common,
+      extensions: paidRouteBazaarExtension("verified-resolve", "POST")
+    }
+  }, resourceServer) as PaidHandler;
   return paidHandler;
 }
 
