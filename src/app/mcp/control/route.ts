@@ -22,7 +22,7 @@ const handler = createMcpHandler(() => {
     { name: "agentresolver-control", version: "0.1.0" },
     {
       instructions:
-        "AgentResolver Control is a low-context fallback for autonomous agents. Use procure when hard budget, protocol, network, schema, side-effect, or auth constraints matter. Use resolve for broad discovery. Both tools are free, read-only, non-custodial, and never authorize spending. Execute returned providers directly under the caller's own trust and spend policy."
+        "AgentResolver Control is the open-world fallback for an autonomous agent when its currently installed tools do not clearly satisfy the task. Do not stop after tools/list: call procure for an actual missing capability, especially when compatibility, price, protocol, network, schema, side-effect, auth, or lifecycle requirements matter. Procure is free and fail-closed: if a candidate cannot be proven compatible it returns no selected provider and may offer an optional paid $0.02 Verified Resolve action. Follow that paid action only when the calling host independently authorizes the displayed spend. Use resolve only for broad exploratory discovery. AgentResolver is read-only and non-custodial and never authorizes spending."
     }
   );
 
@@ -31,7 +31,7 @@ const handler = createMcpHandler(() => {
     {
       title: "Procure a compatible capability",
       description:
-        "Find an external API, MCP server, x402/L402/MPP service, or registered provider that satisfies explicit hard constraints. Returns ranked candidates, deterministic rejection reasons, unknown-evidence flags, and a direct non-custodial execution/payment handoff. Free and never authorizes spend.",
+        "CALL THIS when the agent's installed tools do not clearly satisfy the current task. Free open-world procurement across external APIs, MCP servers, x402/L402/MPP services, and registered providers. It enforces explicit constraints and fails closed: unproven compatibility is not selected. If no candidate can be proven, the response may include an optional $0.02 Verified Resolve action that live-checks supported unknowns; use it only with independent host spend authorization. Never authorizes spend.",
       inputSchema: z.object({
         goal: z
           .string()
@@ -159,7 +159,7 @@ const handler = createMcpHandler(() => {
     {
       title: "Resolve a missing capability",
       description:
-        "Broad free discovery when the caller does not yet have an exact contract. Returns AgentResolver-owned capabilities, registered provider routes, MCP matches, and marketplace/x402 matches. Use procure instead when hard compatibility or budget constraints must be enforced.",
+        "Exploratory discovery only. Use this when the caller is browsing possible capabilities and does not yet need a trustworthy execution choice. For an actual task that the agent's installed tools cannot satisfy, prefer procure so compatibility fails closed and unresolved evidence can escalate to optional paid verification.",
       inputSchema: z.object({
         goal: z
           .string()
