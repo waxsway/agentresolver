@@ -46,6 +46,9 @@ export type ProcurementEvaluation = ProcurementCandidate & {
     matchedTokens: string[];
     minimumMatches: number;
     coverage: number;
+    requiredQualifierGroups: string[];
+    matchedQualifierGroups: string[];
+    qualifierCoverage: number;
     proven: boolean;
   } | null;
 };
@@ -75,6 +78,64 @@ const SEMANTIC_STOP_WORDS = new Set([
   "services", "support", "supports", "that", "the", "this", "to", "tool",
   "tools", "use", "using", "with"
 ]);
+
+const SEMANTIC_QUALIFIER_GROUPS = [
+  {
+    id: "persistence",
+    trigger: ["persistent", "persist", "stateful"],
+    evidence: ["persistent", "persist", "stateful"]
+  },
+  {
+    id: "local_execution",
+    trigger: ["local"],
+    evidence: ["local", "localhost", "desktop", "ondevice"]
+  },
+  {
+    id: "remote_execution",
+    trigger: ["remote"],
+    evidence: ["remote", "host", "cloud"]
+  },
+  {
+    id: "workspace_continuity",
+    trigger: ["workspace", "session", "tab"],
+    evidence: ["workspace", "session", "tab"]
+  },
+  {
+    id: "human_control",
+    trigger: ["human", "takeover", "handoff", "interactive"],
+    evidence: ["human", "takeover", "handoff", "interactive", "manual"]
+  },
+  {
+    id: "freshness",
+    trigger: ["fresh", "current", "realtime", "live"],
+    evidence: ["fresh", "current", "realtime", "live"]
+  },
+  {
+    id: "read_capability",
+    trigger: ["read", "readonly"],
+    evidence: ["read", "readonly", "fetch", "get", "query"]
+  },
+  {
+    id: "write_capability",
+    trigger: ["write"],
+    evidence: ["write", "update", "updat", "create", "creat", "mutate"]
+  },
+  {
+    id: "streaming",
+    trigger: ["stream"],
+    evidence: ["stream", "realtime"]
+  },
+  {
+    id: "batch",
+    trigger: ["batch"],
+    evidence: ["batch", "bulk"]
+  },
+  {
+    id: "stateless",
+    trigger: ["stateless"],
+    evidence: ["stateless"]
+  }
+];
 
 function normalizeSemanticToken(token: string) {
   let normalized = token.toLowerCase();
@@ -131,12 +192,33 @@ export function evaluateProcurementSemanticEvidence(
       ? 1
       : Math.max(2, Math.ceil(goalTokens.length * 0.35));
 
+  const goalTokenSet = new Set(goalTokens);
+  const requiredQualifierGroups = SEMANTIC_QUALIFIER_GROUPS
+    .filter((group) => group.trigger.some((token) => goalTokenSet.has(token)))
+    .map((group) => group.id);
+  const matchedQualifierGroups = SEMANTIC_QUALIFIER_GROUPS
+    .filter(
+      (group) =>
+        requiredQualifierGroups.includes(group.id) &&
+        group.evidence.some((token) => evidenceTokens.has(token))
+    )
+    .map((group) => group.id);
+  const qualifierCoverage =
+    requiredQualifierGroups.length === 0
+      ? 1
+      : matchedQualifierGroups.length / requiredQualifierGroups.length;
+
   return {
     goalTokens,
     matchedTokens,
     minimumMatches,
     coverage: matchedTokens.length / goalTokens.length,
-    proven: matchedTokens.length >= minimumMatches
+    requiredQualifierGroups,
+    matchedQualifierGroups,
+    qualifierCoverage,
+    proven:
+      matchedTokens.length >= minimumMatches &&
+      matchedQualifierGroups.length === requiredQualifierGroups.length
   };
 }
 
