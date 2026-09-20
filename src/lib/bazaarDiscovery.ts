@@ -9,12 +9,18 @@ const GENERIC_OUTPUT_SCHEMA = {
 
 export { bazaarResourceServerExtension };
 
-export function paidRouteBazaarExtension(capabilityId: PaidCapabilityId) {
+export function paidRouteBazaarExtension(
+  capabilityId: PaidCapabilityId,
+  requestMethod = "POST"
+) {
   const product = getPaidCapability(capabilityId);
-  const getInput =
-    capabilityId === "verified-resolve"
-      ? x402RuntimeDiscoveryInput(capabilityId)
-      : null;
+  const normalizedMethod = requestMethod.toUpperCase();
+  const queryMethod =
+    capabilityId === "verified-resolve" &&
+    (normalizedMethod === "GET" || normalizedMethod === "HEAD");
+  const getInput = queryMethod
+    ? x402RuntimeDiscoveryInput(capabilityId)
+    : null;
 
   return {
     ...declareDiscoveryExtension({
