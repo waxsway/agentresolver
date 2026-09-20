@@ -46,6 +46,10 @@ export type ProcurementEvaluation = ProcurementCandidate & {
     matchedTokens: string[];
     minimumMatches: number;
     coverage: number;
+    requiredQualifierTokens: string[];
+    matchedQualifierTokens: string[];
+    qualifierMinimumMatches: number;
+    qualifierCoverage: number;
     proven: boolean;
   } | null;
 };
@@ -74,6 +78,31 @@ const SEMANTIC_STOP_WORDS = new Set([
   "in", "into", "mcp", "need", "needs", "of", "on", "over", "service",
   "services", "support", "supports", "that", "the", "this", "to", "tool",
   "tools", "use", "using", "with"
+]);
+
+const SEMANTIC_QUALIFIER_TOKENS = new Set([
+  "persistent",
+  "persist",
+  "local",
+  "remote",
+  "workspace",
+  "session",
+  "tab",
+  "human",
+  "takeover",
+  "handoff",
+  "fresh",
+  "current",
+  "realtime",
+  "live",
+  "stateful",
+  "stateless",
+  "interactive",
+  "read",
+  "write",
+  "readonly",
+  "stream",
+  "batch"
 ]);
 
 function normalizeSemanticToken(token: string) {
@@ -131,12 +160,35 @@ export function evaluateProcurementSemanticEvidence(
       ? 1
       : Math.max(2, Math.ceil(goalTokens.length * 0.35));
 
+  const requiredQualifierTokens = goalTokens.filter((token) =>
+    SEMANTIC_QUALIFIER_TOKENS.has(token)
+  );
+  const matchedQualifierTokens = requiredQualifierTokens.filter((token) =>
+    evidenceTokens.has(token)
+  );
+  const qualifierMinimumMatches =
+    requiredQualifierTokens.length === 0
+      ? 0
+      : requiredQualifierTokens.length === 1
+        ? 1
+        : Math.ceil(requiredQualifierTokens.length * 0.7);
+  const qualifierCoverage =
+    requiredQualifierTokens.length === 0
+      ? 1
+      : matchedQualifierTokens.length / requiredQualifierTokens.length;
+
   return {
     goalTokens,
     matchedTokens,
     minimumMatches,
     coverage: matchedTokens.length / goalTokens.length,
-    proven: matchedTokens.length >= minimumMatches
+    requiredQualifierTokens,
+    matchedQualifierTokens,
+    qualifierMinimumMatches,
+    qualifierCoverage,
+    proven:
+      matchedTokens.length >= minimumMatches &&
+      matchedQualifierTokens.length >= qualifierMinimumMatches
   };
 }
 
