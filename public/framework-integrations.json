@@ -5,7 +5,10 @@
   "canonicalMcp": {
     "url": "https://agentresolver.vercel.app/mcp/control",
     "transport": "streamable-http",
-    "tools": ["procure", "resolve"],
+    "tools": [
+      "procure",
+      "resolve"
+    ],
     "free": true,
     "readOnly": true,
     "authorizesSpend": false
@@ -19,7 +22,10 @@
       "config": {
         "serverLabel": "agentresolver",
         "serverUrl": "https://agentresolver.vercel.app/mcp/control",
-        "allowedTools": ["procure", "resolve"],
+        "allowedTools": [
+          "procure",
+          "resolve"
+        ],
         "requireApproval": "never"
       },
       "instructions": "Use AgentResolver only when the existing toolset cannot clearly satisfy the task. procure is the constrained fallback; resolve is broad discovery. Neither authorizes spend.",
@@ -31,7 +37,10 @@
       "package": "agents",
       "connect": {
         "url": "https://agentresolver.vercel.app/mcp/control",
-        "tools": ["procure", "resolve"]
+        "tools": [
+          "procure",
+          "resolve"
+        ]
       },
       "instructions": "Connect the lean AgentResolver MCP server as the missing-capability fallback. Keep the signer in the caller-controlled Cloudflare runtime.",
       "paidBoundary": {
@@ -76,5 +85,41 @@
     "callerSpendAuthorized": false,
     "arbitraryProxying": false,
     "paidActionsRequireSeparateCallerAuthorization": true
+  },
+  "paymentClients": {
+    "x402AgentWallet": {
+      "status": "composable-paid-preflight",
+      "package": "@nirholas/x402-agent-wallet",
+      "relationship": "independent interoperability recipe; no affiliation or partnership",
+      "localRole": "Enforce caller-owned budget, merchant, network, rail and approval policy before signing.",
+      "agentResolverRole": "Optionally buy a $0.001 AgentResolver Payment Preflight before target spend to independently verify live target x402 payment terms.",
+      "flow": [
+        "local wallet policy",
+        "pay AgentResolver Payment Preflight",
+        "require prepaymentDecision.eligibleForCallerAuthorization === true",
+        "use the wallet's existing payFetch for the target"
+      ],
+      "preflight": {
+        "endpoint": "https://agentresolver.vercel.app/api/x402-payment-preflight",
+        "priceUsd": 0.001,
+        "verifies": [
+          "reachability",
+          "x402 version and scheme",
+          "quoted amount",
+          "payTo",
+          "network",
+          "asset",
+          "resource binding"
+        ],
+        "callerAssertions": [
+          "maxPriceUsd",
+          "expectedPayTo",
+          "expectedNetwork"
+        ],
+        "postProbeSafety": "Unpaid POST probing remains opt-in because an unprotected POST may have side effects."
+      },
+      "authorizationBoundary": "AgentResolver returns evidence and an eligible/blocked recommendation only. The wallet remains the final spending/signing authority.",
+      "recipe": "https://github.com/waxsway/agentresolver/issues/636"
+    }
   }
 }
