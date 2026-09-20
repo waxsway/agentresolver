@@ -12,7 +12,7 @@ test("production smoke enforces the focused public revenue catalog", () => {
   assert.match(smoke, /index\("verified-resolve"\) != null/);
   assert.match(smoke, /index\("batch-verified-resolve"\) != null/);
   assert.match(smoke, /index\("provider-launch-check"\) != null/);
-  assert.match(smoke, /index\("hash-encode"\) == null/);
+  assert.match(smoke, /index\("hash-encode"\) != null/);
   assert.match(smoke, /index\("mcp-probe"\) == null/);
 });
 
