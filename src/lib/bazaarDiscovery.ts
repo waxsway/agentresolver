@@ -1,6 +1,6 @@
 import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { getPaidCapability, type PaidCapabilityId } from "@/lib/paidCapabilities";
-import { x402RuntimeDiscoveryInput } from "@/lib/x402RuntimeDiscovery";
+import { verifiedResolveGetDiscoveryInput } from "@/lib/x402RuntimeDiscovery";
 
 const GENERIC_OUTPUT_SCHEMA = {
   type: "object",
@@ -19,7 +19,7 @@ export function paidRouteBazaarExtension(
     capabilityId === "verified-resolve" &&
     (normalizedMethod === "GET" || normalizedMethod === "HEAD");
   const getInput = queryMethod
-    ? x402RuntimeDiscoveryInput(capabilityId)
+    ? verifiedResolveGetDiscoveryInput()
     : null;
 
   return {
