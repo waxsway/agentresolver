@@ -201,10 +201,32 @@ export async function POST(req: Request) {
     { providerOrigins }
   );
   const selected = result.selected;
+  const topCandidate = result.candidates[0] || null;
   const traffic = classifyTraffic(req, {
     path: "/api/procure",
     hasUserIntent: true
   });
+
+  if (result.verification.paidAction) {
+    console.log(
+      JSON.stringify({
+        event: "procurement_verification_offer",
+        at: new Date().toISOString(),
+        ...trafficLogFields(req, traffic),
+        intentTags: classifyIntent(goal),
+        candidateCount: result.candidateCount,
+        topCandidateSource: topCandidate?.source || null,
+        topCandidateProtocol: topCandidate?.protocol || null,
+        topCandidateStatus: topCandidate?.status || null,
+        topUnknownConstraints: topCandidate?.unknownConstraints || [],
+        priceUsd: result.verification.paidAction.priceUsd,
+        paidCapabilityId: "verified-resolve",
+        paidProtocol: result.verification.paidAction.protocol,
+        spendingAuthorizationRequired:
+          result.verification.paidAction.spendingAuthorizationRequired
+      })
+    );
+  }
 
   console.log(
     JSON.stringify({
@@ -221,6 +243,13 @@ export async function POST(req: Request) {
       selectedStatus: selected?.status || null,
       providerSeedCount: providerOrigins.length,
       unknownConstraintCount: selected?.unknownConstraints.length || 0,
+      topCandidateSource: topCandidate?.source || null,
+      topCandidateProtocol: topCandidate?.protocol || null,
+      topCandidateStatus: topCandidate?.status || null,
+      topUnknownConstraintCount: topCandidate?.unknownConstraints.length || 0,
+      verificationRecommended: result.verification.recommended,
+      paidVerificationOffered: Boolean(result.verification.paidAction),
+      paidVerificationPriceUsd: result.verification.paidAction?.priceUsd ?? null,
       rejectedCount: result.candidates.filter(
         (candidate) => candidate.status === "rejected"
       ).length
