@@ -33,6 +33,31 @@ test("traffic classifier separates internal, probes, discovery, intent, and paym
   }), { mcpMethod: "tools/list" });
   assert.equal(liveness.trafficClass, "liveness_crawler");
 
+
+  const payAiBazaar = classifyTraffic(new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "user-agent": "PayAI-Bazaar/1.0 (+https://docs.payai.network/x402/facilitators/bazaar)" }
+  }));
+  assert.equal(payAiBazaar.trafficClass, "directory_probe");
+  assert.equal(payAiBazaar.sponsorEligible, false);
+
+  const explorer = classifyTraffic(new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "user-agent": "402explorer/0.1 (+https://discover.paygent.net/about)" }
+  }));
+  assert.equal(explorer.trafficClass, "directory_probe");
+  assert.equal(explorer.sponsorEligible, false);
+
+  const radar = classifyTraffic(new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "user-agent": "x402-radar-prober/1.0" }
+  }));
+  assert.equal(radar.trafficClass, "liveness_crawler");
+  assert.equal(radar.sponsorEligible, false);
+
+  const mcpCheckup = classifyTraffic(new Request("https://agentresolver.vercel.app/mcp", {
+    headers: { "user-agent": "MCPCheckup-Probe/1.0" }
+  }), { mcpMethod: "tools/call", tool: "__nonexistent_probe__" });
+  assert.equal(mcpCheckup.trafficClass, "liveness_crawler");
+  assert.equal(mcpCheckup.sponsorEligible, false);
+
   const discovery = classifyTraffic(new Request("https://agentresolver.vercel.app/.well-known/x402", {
     headers: { "user-agent": "generic-agent/1.0" }
   }));
