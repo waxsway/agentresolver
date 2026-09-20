@@ -63,6 +63,11 @@ const failing = [
     description: "URL-to-Markdown scraping"
   },
   {
+    goal: "persistent local browser workspace with named tabs and human takeover",
+    name: "Persistent Browser Workspace",
+    description: "Persistent browser workspace for browser automation"
+  },
+  {
     goal: "send transactional email to customer",
     name: "SMS Gateway",
     description: "Send SMS text messages to phone numbers"
@@ -119,4 +124,25 @@ test("semantic evidence fails closed on representative category lookalikes", () 
     );
     assert.ok(result.unknownConstraints.includes("semantic_capability"));
   }
+});
+
+test("semantic evidence requires high-signal lifecycle qualifiers, not only broad token coverage", () => {
+  const result = evaluateProcurementCandidate(
+    {
+      ...base,
+      name: "Persistent Browser Workspace",
+      description: "Persistent browser workspace for browser automation"
+    },
+    { protocol: "mcp", requireHttps: true },
+    "persistent local browser workspace with named tabs and human takeover"
+  );
+
+  assert.equal(result.semanticMatch?.matchedTokens.length, 3);
+  assert.ok((result.semanticMatch?.requiredQualifierTokens.length ?? 0) >= 5);
+  assert.ok(
+    (result.semanticMatch?.matchedQualifierTokens.length ?? 0) <
+      (result.semanticMatch?.qualifierMinimumMatches ?? 0)
+  );
+  assert.equal(result.semanticMatch?.proven, false);
+  assert.ok(result.unknownConstraints.includes("semantic_capability"));
 });
