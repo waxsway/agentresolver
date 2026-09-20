@@ -456,6 +456,38 @@ jobs:
             exit 1
           fi
 
+          semantic_fail_closed_ready=0
+          for attempt in {1..15}; do
+            suffix="deployment=$VALIDATED_SHA&semanticFailClosedSmokeAttempt=$attempt"
+            if curl -fsS -H 'cache-control: no-cache' \
+              -H 'x-agentresolver-internal: 1' \
+              -H 'user-agent: AgentResolver-Production-Smoke/1.0' \
+              "$BASE_URL/api/procure?goal=persistent%20local%20browser%20workspace%20with%20named%20tabs%20and%20human%20takeover&limit=5&protocol=mcp&requireHttps=false&$suffix" \
+              -o /tmp/procure-semantic.json &&
+              jq -e '
+                .resolver == "AgentResolver" and
+                .mode == "open_world_non_custodial_procurement" and
+                (
+                  .selected == null or
+                  (
+                    .selected.semanticMatch.proven == true and
+                    (.selected.semanticMatch.requiredQualifierGroups | length) ==
+                    (.selected.semanticMatch.matchedQualifierGroups | length)
+                  )
+                )
+              ' /tmp/procure-semantic.json >/dev/null; then
+              semantic_fail_closed_ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$semantic_fail_closed_ready" != "1" ]; then
+            echo "::error::New production deployment can select an MCP candidate without proving the requested semantic qualifiers."
+            cat /tmp/procure-semantic.json 2>/dev/null || true
+            exit 1
+          fi
+
           verified_resolve_get_ready=0
           for attempt in {1..15}; do
             suffix="deployment=$VALIDATED_SHA&verifiedResolveGetSmokeAttempt=$attempt"
@@ -581,6 +613,7 @@ jobs:
             exit 1
           fi
 
+          echo "SEMANTIC_FAIL_CLOSED_PRODUCTION_SMOKE=true"
           echo "VERIFIED_RESOLVE_GET_PRODUCTION_SMOKE=true"
           echo "UNSIGNED_402_PROCUREMENT_FALLBACK_SMOKE=true"
           echo "MCP_CONTROL_PRODUCTION_SMOKE=true"

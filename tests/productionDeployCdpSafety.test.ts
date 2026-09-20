@@ -84,3 +84,13 @@ test("one-shot release requires the combined revenue-conversion paths from #605 
   assert.match(workflow, /x-agentresolver-free-procure/);
   assert.match(workflow, /x-agentresolver-control-mcp/);
 });
+
+test("one-shot release refuses semantically unproven procurement selections", () => {
+  assert.match(workflow, /semanticFailClosedSmokeAttempt/);
+  assert.match(workflow, /persistent%20local%20browser%20workspace%20with%20named%20tabs%20and%20human%20takeover/);
+  assert.match(workflow, /\.selected == null or/);
+  assert.match(workflow, /\.selected\.semanticMatch\.proven == true/);
+  assert.match(workflow, /requiredQualifierGroups/);
+  assert.match(workflow, /matchedQualifierGroups/);
+  assert.match(workflow, /SEMANTIC_FAIL_CLOSED_PRODUCTION_SMOKE=true/);
+});
