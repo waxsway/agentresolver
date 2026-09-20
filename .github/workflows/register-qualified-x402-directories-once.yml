@@ -1,0 +1,42 @@
+name: One-off qualified x402 directory registration
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    if: github.head_ref == 'distribution/register-qualified-x402-directories-20260920'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Register AgentResolver on true402
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload='{"url":"https://agentresolver.vercel.app","manifest":{"x402":"1.0","name":"AgentResolver Verified Resolve","description":"Provider-neutral fail-closed verification for unfamiliar MCP and x402 capabilities before agent execution or payment.","capabilities":["ai-agents","mcp","capability-verification","x402","trust"],"pricing":{"currency":"USDC","base":"0.02","unit":"request"},"payment":{"address":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","chain":"base","facilitator":"https://facilitator.payai.network"},"endpoint":"https://agentresolver.vercel.app/api/verified-resolve"}}'
+          status="$(curl -sS -o /tmp/true402.json -w '%{http_code}' -X POST 'https://true402.dev/api/v1/services' -H 'content-type: application/json' --data "$payload")"
+          echo "true402_http_status=$status"
+          cat /tmp/true402.json
+          echo
+          case "$status" in
+            200|201|202|409) ;;
+            *) exit 1 ;;
+          esac
+
+      - name: Register AgentResolver Verified Resolve on 402 Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload='{"url":"https://agentresolver.vercel.app/api/verified-resolve","name":"AgentResolver Verified Resolve","protocol":"x402","http_method":"POST","probe_body":"{\"goal\":\"Verify a public MCP capability before agent execution\",\"constraints\":{\"protocol\":\"mcp\"}}","description":"Provider-neutral open-world capability procurement plus fail-closed live compatibility evidence before an autonomous agent trusts, executes, or pays an unfamiliar MCP/x402 capability.","price_usd":0.02,"payment_asset":"USDC","payment_network":"Base","category":"ai/agent-infrastructure","provider":"AgentResolver"}'
+          status="$(curl -sS -o /tmp/402index.json -w '%{http_code}' -X POST 'https://402index.io/api/v1/register' -H 'content-type: application/json' --data "$payload")"
+          echo "402index_http_status=$status"
+          cat /tmp/402index.json
+          echo
+          case "$status" in
+            200|201|202|409) ;;
+            *) exit 1 ;;
+          esac
