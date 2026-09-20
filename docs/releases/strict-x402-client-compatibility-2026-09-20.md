@@ -15,3 +15,8 @@ External evidence before release:
 - repeated signed x402-settlement-verify retries from the same payer were rejected.
 
 One guarded Vercel production build only. No self-payment.
+
+
+Release trigger:
+- production release PR must contain `AGENTRESOLVER_PRODUCTION_RELEASE_ONCE`;
+- application fix included in main history: `f7ed22f7632ac634279bbd73cf7adb97d9baf0fe`.
