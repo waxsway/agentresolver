@@ -154,7 +154,7 @@ test("semantic qualifier groups accept equivalent evidence wording", () => {
   const result = evaluateProcurementCandidate(
     {
       ...base,
-      name: "Interactive Browser Session",
+      name: "Interactive Browser Workspace",
       description: "Hosted stateful browser session with manual handoff and current page reads"
     },
     { protocol: "mcp", requireHttps: true },
