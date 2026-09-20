@@ -93,7 +93,7 @@ const SEMANTIC_QUALIFIER_GROUPS = [
   {
     id: "remote_execution",
     trigger: ["remote"],
-    evidence: ["remote", "hosted", "cloud"]
+    evidence: ["remote", "host", "cloud"]
   },
   {
     id: "workspace_continuity",
@@ -118,7 +118,7 @@ const SEMANTIC_QUALIFIER_GROUPS = [
   {
     id: "write_capability",
     trigger: ["write"],
-    evidence: ["write", "update", "create", "mutate"]
+    evidence: ["write", "update", "updat", "create", "creat", "mutate"]
   },
   {
     id: "streaming",
