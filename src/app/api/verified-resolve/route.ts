@@ -82,7 +82,7 @@ function procurementConstraints(value: unknown): ProcurementConstraints {
   };
 }
 type PaidHandler = (request: NextRequest) => Promise<NextResponse<unknown>>;
-let paidHandler: PaidHandler | null = null;
+const paidHandlers = new Map<string, PaidHandler>();
 
 function getCompatibilityInput(req: NextRequest) {
   const params = req.nextUrl.searchParams;
@@ -179,8 +179,11 @@ async function verifiedResolveHandler(req: NextRequest): Promise<NextResponse<un
   return NextResponse.json(report, { headers: { "cache-control": "no-store", "access-control-allow-origin": "*" } });
 }
 
-function getPaidHandler(): PaidHandler {
-  if (paidHandler) return paidHandler;
+function getPaidHandler(requestMethod: string): PaidHandler {
+  const normalizedMethod = requestMethod.toUpperCase();
+  const existing = paidHandlers.get(normalizedMethod);
+  if (existing) return existing;
+
   const payTo = (process.env.AGENTRESOLVER_PAY_TO || X402_PAY_TO).trim();
   const solanaPayTo = (process.env.AGENTRESOLVER_SOLANA_PAY_TO || X402_SOLANA_PAY_TO).trim();
   const facilitatorUrl = (process.env.X402_FACILITATOR_URL || X402_FACILITATOR_URL).trim();
@@ -191,11 +194,14 @@ function getPaidHandler(): PaidHandler {
     .register(X402_NETWORK, new ExactEvmScheme())
     .register(X402_SOLANA_NETWORK, new ExactSvmScheme())
     .registerExtension(bazaarResourceServerExtension);
-  paidHandler = withX402<unknown>(verifiedResolveHandler, { "/api/verified-resolve": { accepts: [
+  const paidHandler = withX402<unknown>(verifiedResolveHandler, { "/api/verified-resolve": { accepts: [
         { scheme: "exact", price: X402_PRICING.verifiedResolve, network: X402_NETWORK, payTo: payTo as `0x${string}` },
         { scheme: "exact", price: X402_PRICING.verifiedResolve, network: X402_SOLANA_NETWORK, payTo: solanaPayTo }
       ], description: "Procure a missing capability across AgentResolver, provider manifests, 402 Index, PayAI, Circle and MCP, then perform at most two unpaid live verification probes for supported MCP/x402 candidates before returning an evidence-backed recommendation. L402/MPP remain discovery-only until protocol-specific verifiers exist.", mimeType: "application/json",
-      extensions: paidRouteBazaarExtension("verified-resolve") } }, resourceServer) as PaidHandler;
+      serviceName: "AgentResolver",
+      tags: ["x402", "verification", "procurement", "agent-tools"],
+      extensions: paidRouteBazaarExtension("verified-resolve", normalizedMethod) } }, resourceServer) as PaidHandler;
+  paidHandlers.set(normalizedMethod, paidHandler);
   return paidHandler;
 }
 
@@ -203,7 +209,7 @@ async function paidRequest(req: NextRequest) {
   const attributionId = attributionIdFromRequest(req);
   logLegacyPaidAttempt(req, "verified-resolve", "/api/verified-resolve");
   if (process.env.VERIFIED_RESOLVE_ENABLED === "false") return NextResponse.json({ error: "CAPABILITY_NOT_LIVE", capabilityId: "verified-resolve", message: "Verified Resolve is temporarily disabled." }, { status: 503 });
-  try { const response = await getPaidHandler()(req); logX402Settlement(response, "verified-resolve"); logAttributedSettlement(response, "verified-resolve", attributionId); if (attributionId) { response.headers.set(ATTRIBUTION_HEADER, attributionId); response.headers.append("access-control-expose-headers", ATTRIBUTION_HEADER); } return response; }
+  try { const response = await getPaidHandler(req.method)(req); logX402Settlement(response, "verified-resolve"); logAttributedSettlement(response, "verified-resolve", attributionId); if (attributionId) { response.headers.set(ATTRIBUTION_HEADER, attributionId); response.headers.append("access-control-expose-headers", ATTRIBUTION_HEADER); } return response; }
   catch (error) {
     console.error(JSON.stringify({ event: "paid_capability_configuration_error", capabilityId: "verified-resolve", at: new Date().toISOString(), message: error instanceof Error ? error.message : "Unknown error" }));
     return NextResponse.json({ error: "PAYMENTS_NOT_CONFIGURED", message: "Paid execution is temporarily unavailable." }, { status: 503 });
