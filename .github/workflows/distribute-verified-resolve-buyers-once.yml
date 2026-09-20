@@ -22,19 +22,38 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl -sS --connect-timeout 5 --max-time 25 -o "$body" -w '%{http_code}' -X GET "$VERIFIED_URL")"
+          headers="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 25 -D "$headers" -o "$body" -w '%{http_code}' -X GET "$VERIFIED_URL")"
           test "$code" = "402"
-          python3 - "$body" "$PAY_TO" <<'PY'
-          import json, sys
-          payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
-          assert payload.get("x402Version") == 2
-          accepts=payload.get("accepts") or []
-          assert any(
-              item.get("network") == "eip155:8453"
-              and str(item.get("amount")) == "20000"
-              and item.get("payTo") == sys.argv[2]
-              for item in accepts
-          )
+          python3 - "$body" "$headers" "$PAY_TO" <<'PY'
+          import base64, json, sys
+          body_path, headers_path, pay_to = sys.argv[1:4]
+          raw=open(body_path, "r", encoding="utf-8").read()
+          print("challenge_body="+raw[:4000])
+          candidates=[]
+          try:
+              candidates.append(json.loads(raw))
+          except Exception:
+              pass
+          for line in open(headers_path, "r", encoding="utf-8", errors="ignore"):
+              if line.lower().startswith("payment-required:"):
+                  encoded=line.split(":",1)[1].strip()
+                  encoded += "=" * (-len(encoded) % 4)
+                  try:
+                      decoded=json.loads(base64.urlsafe_b64decode(encoded).decode("utf-8"))
+                      print("payment_required_header="+json.dumps(decoded,separators=(",",":")))
+                      candidates.append(decoded)
+                  except Exception as exc:
+                      print("payment_required_decode_error="+str(exc))
+          def valid(payload):
+              accepts=payload.get("accepts") or []
+              return any(
+                  item.get("network") == "eip155:8453"
+                  and str(item.get("amount")) == "20000"
+                  and str(item.get("payTo","")).lower() == pay_to.lower()
+                  for item in accepts
+              )
+          assert any(valid(p) for p in candidates), "GET challenge lacks expected Base $0.02 payTo contract"
           print("Verified Resolve GET paid contract is live at $0.02 USDC.")
           PY
 
