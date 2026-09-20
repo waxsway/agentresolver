@@ -138,11 +138,36 @@ test("semantic evidence requires high-signal lifecycle qualifiers, not only broa
   );
 
   assert.equal(result.semanticMatch?.matchedTokens.length, 3);
-  assert.ok((result.semanticMatch?.requiredQualifierTokens.length ?? 0) >= 5);
-  assert.ok(
-    (result.semanticMatch?.matchedQualifierTokens.length ?? 0) <
-      (result.semanticMatch?.qualifierMinimumMatches ?? 0)
+  assert.deepEqual(
+    result.semanticMatch?.requiredQualifierGroups,
+    ["persistence", "local_execution", "workspace_continuity", "human_control"]
+  );
+  assert.deepEqual(
+    result.semanticMatch?.matchedQualifierGroups,
+    ["persistence", "workspace_continuity"]
   );
   assert.equal(result.semanticMatch?.proven, false);
   assert.ok(result.unknownConstraints.includes("semantic_capability"));
+});
+
+test("semantic qualifier groups accept equivalent evidence wording", () => {
+  const result = evaluateProcurementCandidate(
+    {
+      ...base,
+      name: "Interactive Browser Session",
+      description: "Hosted stateful browser session with manual handoff and current page reads"
+    },
+    { protocol: "mcp", requireHttps: true },
+    "persistent remote browser workspace with human takeover and fresh reads"
+  );
+
+  assert.deepEqual(
+    result.semanticMatch?.requiredQualifierGroups,
+    ["persistence", "remote_execution", "workspace_continuity", "human_control", "freshness", "read_capability"]
+  );
+  assert.deepEqual(
+    result.semanticMatch?.matchedQualifierGroups,
+    ["persistence", "remote_execution", "workspace_continuity", "human_control", "freshness", "read_capability"]
+  );
+  assert.equal(result.semanticMatch?.proven, true);
 });
