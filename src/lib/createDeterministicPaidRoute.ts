@@ -12,7 +12,7 @@ import { ATTRIBUTION_HEADER, attributionIdFromRequest, logAttributedSettlement }
 import { x402DiscoveryChallenge } from "@/lib/x402DiscoveryChallenge";
 import { x402WireResourceMetadata } from "@/lib/x402WireResourceMetadata";
 import { x402RuntimeDiscoveryInput, x402RuntimeDiscoveryOutput } from "@/lib/x402RuntimeDiscovery";
-import { AGENT_SKILLS_INDEX_URL, CONTROL_MCP_URL, FREE_PROCURE_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeUrl, x402ChallengeHeaderHandoff } from "@/lib/x402BuyerSetup";
+import { AGENT_SKILLS_INDEX_URL, CONTROL_MCP_URL, FREE_PROCURE_URL, PAYMENT_GUARD_SKILL_URL, normalizeX402ChallengeResumeUrl, stripAgentResolverInfrastructureQueryParams, x402BuyerSetupChallengeUrl } from "@/lib/x402BuyerSetup";
 import { X402_FACILITATOR_URL, X402_NETWORK, X402_PAY_TO, X402_SOLANA_NETWORK, X402_SOLANA_PAY_TO } from "@/lib/x402Config";
 import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 import {
@@ -56,102 +56,28 @@ function decodePaymentRequiredHeader(value: string | null): JsonObject | null {
   }
 }
 
-function asJsonObject(value: unknown): JsonObject {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
-    : {};
-}
-
-function withRequestAwareChallengeHandoff(
-  challenge: JsonObject,
-  capabilityId: PaidCapabilityId,
-  requestMethod?: string,
-  resumeUrl?: string | null
-): JsonObject {
-  return {
-    ...challenge,
-    extensions: {
-      ...asJsonObject(challenge.extensions),
-      agentresolver: x402ChallengeHeaderHandoff(capabilityId, requestMethod, resumeUrl)
-    }
-  };
-}
-
-function encodePaymentRequiredHeader(challenge: JsonObject) {
-  return Buffer.from(JSON.stringify(challenge), "utf8").toString("base64");
-}
-
 async function mirrorPaymentChallengeBody(
   response: NextResponse<unknown>,
-  capabilityId: PaidCapabilityId,
-  requestMethod?: string,
-  resumeUrl?: string | null,
-  attributionId?: string | null
+  capabilityId: PaidCapabilityId
 ) {
   if (response.status !== 402) return response;
   const headerChallenge = decodePaymentRequiredHeader(response.headers.get("payment-required"));
   if (!headerChallenge) return response;
 
-  let current: unknown = null;
-  try {
-    current = await response.clone().json();
-  } catch {
-    current = null;
-  }
-
-  if (capabilityId === "x402-ping") {
-    const headers = new Headers(response.headers);
-    headers.set("content-type", "application/json; charset=utf-8");
-    headers.set("cache-control", "no-store");
-    return new NextResponse(JSON.stringify(headerChallenge), {
-      status: 402,
-      statusText: response.statusText,
-      headers
-    });
-  }
-
-  const bodyChallenge =
-    current &&
-    typeof current === "object" &&
-    !Array.isArray(current) &&
-    "x402Version" in current &&
-    "accepts" in current
-      ? current as JsonObject
-      : headerChallenge;
-
-  const rewrittenHeaderChallenge =
-    capabilityId === "x402-payment-preflight"
-      ? headerChallenge
-      : withRequestAwareChallengeHandoff(
-          headerChallenge,
-          capabilityId,
-          requestMethod,
-          resumeUrl
-        );
-  const rewrittenBodyChallenge =
-    capabilityId === "x402-payment-preflight"
-      ? bodyChallenge
-      : withRequestAwareChallengeHandoff(
-          bodyChallenge,
-          capabilityId,
-          requestMethod,
-          resumeUrl
-        );
+  const headers = new Headers(response.headers);
+  headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("cache-control", "no-store");
 
   const responseBody =
     capabilityId === "x402-payment-preflight"
       ? {
-          x402Version: rewrittenHeaderChallenge.x402Version,
-          error: rewrittenHeaderChallenge.error,
-          resource: rewrittenHeaderChallenge.resource,
-          accepts: rewrittenHeaderChallenge.accepts
+          x402Version: headerChallenge.x402Version,
+          error: headerChallenge.error,
+          resource: headerChallenge.resource,
+          accepts: headerChallenge.accepts
         }
-      : rewrittenBodyChallenge;
+      : headerChallenge;
 
-  const headers = new Headers(response.headers);
-  headers.set("content-type", "application/json; charset=utf-8");
-  headers.set("cache-control", "no-store");
-  headers.set("payment-required", encodePaymentRequiredHeader(rewrittenHeaderChallenge));
   return new NextResponse(JSON.stringify(responseBody), {
     status: 402,
     statusText: response.statusText,
@@ -566,13 +492,7 @@ export function createDeterministicPaidRoute(
         mimeType: "application/json",
         serviceName: bazaarProviderMetadata.serviceName,
         tags: [...bazaarProviderMetadata.tags],
-        extensions:
-          capabilityId === "x402-ping" || capabilityId === "x402-payment-preflight"
-            ? discoveryExtension
-            : {
-                ...discoveryExtension,
-                agentresolver: x402ChallengeHeaderHandoff(capabilityId)
-              }
+        extensions: discoveryExtension
       }
     }, server) as PaidHandler;
   }
@@ -606,13 +526,7 @@ export function createDeterministicPaidRoute(
         attributionId
       );
       await logPaidRetryRejection(req, response, capabilityId, requestId, paymentRailEnv);
-      const compatibleResponse = resumeUrl
-        ? await mirrorPaymentChallengeBody(response, capabilityId, req.method, resumeUrl)
-        : await mirrorPaymentChallengeBody(
-            response,
-            capabilityId,
-            req.method
-          );
+      const compatibleResponse = await mirrorPaymentChallengeBody(response, capabilityId);
       if (
         compatibleResponse.status === 402 &&
         req.method.toUpperCase() === "GET" &&
