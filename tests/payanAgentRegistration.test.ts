@@ -28,16 +28,16 @@ test("PayanAgent lane marks its AgentResolver self-probe internal", () => {
   assert.match(workflow, /x-agentresolver-internal: 1/);
 });
 
-test("PayanAgent outages defer safely to the hourly zero-spend schedule without deploy fan-out", () => {
-  assert.match(workflow, /schedule:/);
-  assert.match(workflow, /cron: "41 \* \* \* \*"/);
+test("PayanAgent lane is manual-only after successful ingestion and remains outage-safe", () => {
   assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /schedule:/);
+  assert.doesNotMatch(workflow, /cron:/);
   assert.doesNotMatch(workflow, /workflow_run:/);
   assert.doesNotMatch(workflow, /workflows: \["Deploy Production"\]/);
   assert.match(workflow, /429\|500\|502\|503\|504\|000/);
   assert.match(workflow, /already_listed=unavailable/);
   assert.match(workflow, /registered=false/);
-  assert.match(workflow, /hourly zero-spend retry will try again/);
+  assert.match(workflow, /manual zero-spend retry can be run explicitly/);
   assert.match(workflow, /no payment was attempted/);
   assert.match(workflow, /steps\.existing\.outputs\.already_listed == 'false'/);
   assert.match(workflow, /steps\.provider\.outputs\.registered == 'true'/);
