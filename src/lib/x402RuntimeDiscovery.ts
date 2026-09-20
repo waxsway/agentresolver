@@ -140,9 +140,13 @@ export function x402RuntimeDiscoveryInput(capabilityId: PaidCapabilityId) {
     return {
       example: {
         goal: "Find and verify a paid web search service",
-        maxPriceUsd: 0.05,
-        protocol: "x402",
-        requireHttps: true
+        providerOrigins: ["https://provider.example"],
+        constraints: {
+          maxPriceUsd: 0.05,
+          protocol: "x402",
+          preferredNetworks: ["eip155:8453"],
+          requireHttps: true
+        }
       },
       schema: {
         type: "object",
@@ -151,13 +155,27 @@ export function x402RuntimeDiscoveryInput(capabilityId: PaidCapabilityId) {
         properties: {
           goal: { type: "string", minLength: 1, maxLength: 600, description: "Natural-language capability to procure and live-verify." },
           url: { type: "string", pattern: "^https://", maxLength: 500, description: "Optional known candidate URL to include in verification." },
-          maxPriceUsd: { type: "number", minimum: 0, maximum: 1000, description: "Optional maximum candidate price in USD." },
-          protocol: { type: "string", enum: ["x402", "l402", "mpp", "mcp", "any"], description: "Optional procurement protocol constraint." },
-          preferredNetwork: { type: "string", maxLength: 128, description: "Optional single preferred network for GET compatibility." },
-          requireHttps: { type: "boolean", default: true, description: "Require HTTPS candidates; defaults true." },
-          sideEffect: { type: "string", enum: ["read-only", "state-changing", "any"] },
-          auth: { type: "string", enum: ["none", "wallet", "api-key", "any"] },
-          providerOrigin: { type: "string", pattern: "^https://[^/]+/?$", maxLength: 500, description: "Optional known provider origin to seed the same procurement universe." }
+          providerOrigins: {
+            type: "array",
+            maxItems: 2,
+            uniqueItems: true,
+            items: { type: "string", pattern: "^https://[^/]+/?$", maxLength: 500 },
+            description: "Optional already-known provider HTTPS origins carried through from free procurement."
+          },
+          constraints: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              maxPriceUsd: { type: "number", minimum: 0, maximum: 1000 },
+              preferredNetworks: { type: "array", maxItems: 8, items: { type: "string", maxLength: 128 } },
+              protocol: { type: "string", enum: ["x402", "l402", "mpp", "mcp", "any"] },
+              requireHttps: { type: "boolean", default: true },
+              availableInputSchema: { type: "object" },
+              requiredOutputSchema: { type: "object" },
+              sideEffect: { type: "string", enum: ["read-only", "state-changing", "any"] },
+              auth: { type: "string", enum: ["none", "wallet", "api-key", "any"] }
+            }
+          }
         }
       }
     } as const;
