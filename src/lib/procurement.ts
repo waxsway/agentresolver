@@ -135,7 +135,7 @@ const SEMANTIC_QUALIFIER_GROUPS = [
     trigger: ["stateless"],
     evidence: ["stateless"]
   }
-] as const;
+];
 
 function normalizeSemanticToken(token: string) {
   let normalized = token.toLowerCase();
