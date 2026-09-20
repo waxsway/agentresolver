@@ -80,7 +80,7 @@ jobs:
             ($ids | index("verified-resolve") != null) and
             ($ids | index("batch-verified-resolve") != null) and
             ($ids | index("provider-launch-check") != null) and
-            ($ids | index("hash-encode") == null) and
+            ($ids | index("hash-encode") != null) and
             ($ids | index("mcp-probe") == null)
           ' /tmp/capabilities.json >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/x402-catalog.json" | grep -F 'batch-verified-resolve' >/dev/null
@@ -93,7 +93,7 @@ jobs:
             ($ids | index("verified-resolve") != null) and
             ($ids | index("batch-verified-resolve") != null) and
             ($ids | index("provider-launch-check") != null) and
-            ($ids | index("hash-encode") == null) and
+            ($ids | index("hash-encode") != null) and
             ($ids | index("mcp-probe") == null)
           ' /tmp/x402-manifest.json >/dev/null
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$BASE_URL/.well-known/ai-plugin.json" | grep -F 'missing' >/dev/null
