@@ -200,7 +200,7 @@ async function logMcpRequest(req: Request) {
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
-    instructions: "AgentResolver is a machine-first capability discovery and live-evidence service. Use `procure` when an external capability must satisfy concrete budget/network/protocol/schema constraints; use `resolve` for broad free discovery. Providers can call `sponsorship_info` to inspect the labeled sponsorship pilot; sponsorship never changes organic ranking. Priced AgentResolver tools are directly payable over x402 inside MCP: an x402-aware client can receive a local payment challenge, apply its own spending policy, and retry the same tools/call with payment. Unpaid tool calls never execute paid capability work. Never spend unless the calling host independently authorizes the displayed USDC/Base price."
+    instructions: "AgentResolver is an open-world capability procurement and verification service. When the agent's installed tools do not clearly satisfy the task, do not stop after tools/list: call `procure` first. Procure is free and fail-closed; it will not select an external capability whose required evidence is unknown. If procurement cannot prove a candidate and live verification would resolve the uncertainty, use `verified_resolve` as the paid $0.02 next step only when the calling host independently authorizes that spend. Use `resolve` only for broad exploratory discovery. Providers can call `sponsorship_info`; sponsorship never changes organic ranking. Priced tools are payable over x402 inside MCP, unpaid calls never execute paid work, and AgentResolver never authorizes spending."
   });
 
   server.registerTool("sponsorship_info", {
@@ -225,7 +225,7 @@ const handler = createMcpHandler(() => {
   });
 
   server.registerTool("resolve", {
-    title: "Resolve a missing capability", description: "Free default discovery. Find ranked tools, APIs, MCP servers and machine services, with a prefilled paid live-evidence action when useful.",
+    title: "Explore possible capabilities", description: "Free exploratory discovery. Use only when browsing possible tools/APIs/MCP services without needing a trustworthy execution choice yet. For an actual missing capability, prefer procure so required evidence fails closed and unresolved candidates can escalate to verification.",
     inputSchema: z.object({ goal: z.string().min(1), url: z.string().url().optional(), limit: z.number().int().min(1).max(10).optional() }),
     annotations: { title: "Resolve a missing capability", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   }, async ({ goal, url, limit }) => {
@@ -389,7 +389,7 @@ const handler = createMcpHandler(() => {
 
   server.registerTool("procure", {
     title: "Procure a compatible capability",
-    description: "Free open-world multi-protocol procurement. Declare the capability needed plus hard budget, network, protocol, schema, side-effect and auth constraints across x402, L402, MPP and MCP. AgentResolver rejects incompatible candidates, surfaces unknown evidence explicitly, and returns a non-custodial execution/payment handoff without authorizing spend.",
+    description: "CALL THIS when the agent's installed tools do not clearly satisfy the current task. Free open-world procurement across APIs, MCP, x402, L402 and MPP. Required compatibility evidence fails closed: AgentResolver returns no selected provider rather than guessing. When supported unknowns remain, the response can recommend the paid $0.02 verified_resolve step. Never authorizes spend.",
     inputSchema: z.object({
       goal: z.string().min(1).max(1000),
       limit: z.number().int().min(1).max(20).optional(),
@@ -905,7 +905,7 @@ const handler = createMcpHandler(() => {
   }));
 
   server.registerTool("verified_resolve", {
-    title: verifiedResolveProduct.quoteTool.title, description: verifiedResolveProduct.quoteTool.description,
+    title: "Verify an unresolved external capability — $0.02", description: "PAID $0.02 USDC verification step. Use after procure returns no proven selection / eligible_with_unknowns, or immediately before trusting an unfamiliar external candidate when live evidence is required. Re-checks supported endpoint, MCP, x402 and contract evidence and returns a fail-closed recommendation. Call only when the host independently authorizes the displayed spend.",
     inputSchema: z.object({
       goal: z.string().min(1).max(1000),
       url: z.string().url().optional(),
