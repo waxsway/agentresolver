@@ -1,0 +1,64 @@
+name: One-off live buyer-discovery diagnostics
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'ops/live-discovery-diagnostics-20260920'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: NoHumans listing status
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== listing ==="
+          curl -fsS 'https://nohumans.directory/v1/listings/e2dc72da-6c4' | jq '{id,name,status,score,probe_count,consecutive_failures,last_probed_at,paid_verification,has_sample,observed,request_schema,response_schema}'
+          echo "=== history ==="
+          curl -fsS 'https://nohumans.directory/v1/listings/e2dc72da-6c4/history' | jq '.'
+
+      - name: PayAI Bazaar visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://facilitator.payai.network/discovery/resources?payTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&limit=1000' -o /tmp/payai.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/payai.json'))
+          items=data.get('items') or data.get('resources') or data.get('results') or []
+          hits=[x for x in items if 'agentresolver.vercel.app/api/verified-resolve' in json.dumps(x)]
+          print(json.dumps({"total_returned":len(items),"verified_resolve_hits":hits},indent=2)[:20000])
+          PY
+
+      - name: x402 Arena exact registration record
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://core.x402arena.gg/operator/agents' -o /tmp/arena.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/arena.json'))
+          seq=data if isinstance(data,list) else data.get('agents') or data.get('results') or data.get('data') or []
+          hits=[x for x in seq if 'agentresolver' in json.dumps(x).lower()]
+          print(json.dumps({"agentresolver_records":hits},indent=2)[:20000])
+          PY
+
+      - name: Market402 live opt-in record
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://market402.com/optin.json' -o /tmp/market.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/market.json'))
+          print(json.dumps({
+            "contains_verified_resolve": "agentresolver.vercel.app/api/verified-resolve" in json.dumps(data),
+            "matching_fragments": [x for x in (data if isinstance(data,list) else data.get('resources',[]) or data.get('items',[])) if 'agentresolver.vercel.app/api/verified-resolve' in json.dumps(x)]
+          },indent=2)[:20000])
+          PY
