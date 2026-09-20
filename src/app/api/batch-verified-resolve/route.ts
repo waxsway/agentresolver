@@ -46,6 +46,8 @@ function getPaidHandler(): PaidHandler {
         { scheme: "exact", price: X402_PRICING.batchVerifiedResolve, network: X402_NETWORK, payTo: payTo as `0x${string}` },
         { scheme: "exact", price: X402_PRICING.batchVerifiedResolve, network: X402_SOLANA_NETWORK, payTo: solanaPayTo }
       ], description: "Resolve and live-verify up to four capability requests in one paid batch, with up to two unpaid live probes across MCP and x402/HTTP marketplace candidates per request.", mimeType: "application/json",
+      serviceName: "AgentResolver",
+      tags: ["x402", "verification", "batch", "agent-tools"],
       extensions: paidRouteBazaarExtension("batch-verified-resolve") } }, resourceServer) as PaidHandler;
   return paidHandler;
 }
