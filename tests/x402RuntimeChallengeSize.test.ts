@@ -108,6 +108,85 @@ test("preflight POST Bazaar discovery is body-shaped and spec-valid", async () =
   assert.equal(validateDiscoveryExtensionSpec(bazaar).valid, true);
 });
 
+test("Verified Resolve GET and POST expose valid method-shaped Bazaar metadata", async () => {
+  const { GET, POST } = await import("../src/app/api/verified-resolve/route");
+
+  const getResponse = await GET(new NextRequest(
+    "https://agentresolver.vercel.app/api/verified-resolve?goal=Find%20a%20paid%20search%20service&maxPriceUsd=0.05&protocol=x402",
+    { method: "GET", headers: { "user-agent": "agentresolver-test" } }
+  ));
+  assert.equal(getResponse.status, 402);
+  const getPaymentRequired = getResponse.headers.get("payment-required");
+  assert.ok(getPaymentRequired);
+  const getDecoded = JSON.parse(
+    Buffer.from(getPaymentRequired, "base64").toString("utf8")
+  ) as any;
+  const getBazaar = getDecoded.extensions?.bazaar;
+  assert.ok(getBazaar);
+  assert.equal(getBazaar.info?.input?.method, "GET");
+  assert.ok(getBazaar.info?.input?.queryParams?.goal);
+  assert.equal(getBazaar.info?.input?.bodyType, undefined);
+  assert.equal(validateDiscoveryExtensionSpec(getBazaar).valid, true);
+  assert.equal(getDecoded.resource?.serviceName, "AgentResolver");
+  assert.ok(getDecoded.resource?.tags?.includes("verification"));
+
+  const postResponse = await POST(new NextRequest(
+    "https://agentresolver.vercel.app/api/verified-resolve",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "agentresolver-test"
+      },
+      body: JSON.stringify({
+        goal: "Find a paid search service",
+        constraints: { maxPriceUsd: 0.05, protocol: "x402" }
+      })
+    }
+  ));
+  assert.equal(postResponse.status, 402);
+  const postPaymentRequired = postResponse.headers.get("payment-required");
+  assert.ok(postPaymentRequired);
+  const postDecoded = JSON.parse(
+    Buffer.from(postPaymentRequired, "base64").toString("utf8")
+  ) as any;
+  const postBazaar = postDecoded.extensions?.bazaar;
+  assert.ok(postBazaar);
+  assert.equal(postBazaar.info?.input?.method, "POST");
+  assert.equal(postBazaar.info?.input?.bodyType, "json");
+  assert.ok(postBazaar.info?.input?.body?.goal);
+  assert.equal(postBazaar.info?.input?.queryParams, undefined);
+  assert.equal(validateDiscoveryExtensionSpec(postBazaar).valid, true);
+  assert.equal(postDecoded.resource?.serviceName, "AgentResolver");
+  assert.ok(postDecoded.resource?.tags?.includes("verification"));
+});
+
+test("Batch Verified Resolve POST publishes searchable Bazaar service metadata", async () => {
+  const { POST } = await import("../src/app/api/batch-verified-resolve/route");
+  const response = await POST(new NextRequest(
+    "https://agentresolver.vercel.app/api/batch-verified-resolve",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "agentresolver-test"
+      },
+      body: JSON.stringify({
+        items: [{ goal: "Find a paid search service" }]
+      })
+    }
+  ));
+  assert.equal(response.status, 402);
+  const paymentRequired = response.headers.get("payment-required");
+  assert.ok(paymentRequired);
+  const decoded = JSON.parse(
+    Buffer.from(paymentRequired, "base64").toString("utf8")
+  ) as any;
+  assert.equal(decoded.resource?.serviceName, "AgentResolver");
+  assert.ok(decoded.resource?.tags?.includes("batch"));
+  assert.equal(validateDiscoveryExtensionSpec(decoded.extensions?.bazaar).valid, true);
+});
+
 test("runtime discovery keeps preflight decision metadata compact", () => {
   const output = x402RuntimeDiscoveryOutput("x402-payment-preflight") as {
     example: {
