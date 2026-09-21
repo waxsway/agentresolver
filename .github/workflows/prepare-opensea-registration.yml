@@ -1,0 +1,97 @@
+name: Prepare OpenSea Registration Transaction
+
+on:
+  push:
+    branches:
+      - opensea-erc8257-guard
+    paths:
+      - ".github/workflows/prepare-opensea-registration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install repository dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Encode and simulate ToolRegistry registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createPublicClient, encodeFunctionData, formatEther, http, parseAbi, zeroAddress } from 'viem';
+          import { base } from 'viem/chains';
+
+          const registry = '0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1';
+          const signer = '0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8';
+          const metadataURI = 'https://agentresolver.vercel.app/.well-known/ai-tool/agentresolver-guard.json';
+          const manifestHash = '0x4fa70b3fa04430074c5c53de8d4ae4aee8bcedf4fe5d0b41f7bc7adba0204b9c';
+          const abi = parseAbi(['function registerTool(string metadataURI, bytes32 manifestHash, address accessPredicate) returns (uint256 toolId)']);
+          const data = encodeFunctionData({
+            abi,
+            functionName: 'registerTool',
+            args: [metadataURI, manifestHash, zeroAddress],
+          });
+
+          const client = createPublicClient({ chain: base, transport: http('https://mainnet.base.org') });
+          let gas = null;
+          let gasPrice = null;
+          let estimatedFeeWei = null;
+          let signerBalanceWei = null;
+          let simulation = 'not-run';
+          try {
+            const sim = await client.simulateContract({
+              account: signer,
+              address: registry,
+              abi,
+              functionName: 'registerTool',
+              args: [metadataURI, manifestHash, zeroAddress],
+            });
+            simulation = sim.result !== undefined ? 'success' : 'success';
+          } catch (error) {
+            simulation = `failed:${error?.shortMessage ?? error?.message ?? String(error)}`;
+          }
+          try {
+            gas = await client.estimateContractGas({
+              account: signer,
+              address: registry,
+              abi,
+              functionName: 'registerTool',
+              args: [metadataURI, manifestHash, zeroAddress],
+            });
+            gasPrice = await client.getGasPrice();
+            estimatedFeeWei = gas * gasPrice;
+          } catch {}
+          try { signerBalanceWei = await client.getBalance({ address: signer }); } catch {}
+
+          const result = {
+            chainId: 8453,
+            to: registry,
+            from: signer,
+            valueWei: '0',
+            metadataURI,
+            manifestHash,
+            accessPredicate: zeroAddress,
+            calldata: data,
+            calldataBytes: (data.length - 2) / 2,
+            simulation,
+            gas: gas?.toString() ?? null,
+            gasPriceWei: gasPrice?.toString() ?? null,
+            estimatedFeeWei: estimatedFeeWei?.toString() ?? null,
+            estimatedFeeEth: estimatedFeeWei !== null ? formatEther(estimatedFeeWei) : null,
+            signerBalanceWei: signerBalanceWei?.toString() ?? null,
+            signerBalanceEth: signerBalanceWei !== null ? formatEther(signerBalanceWei) : null,
+          };
+          console.log('OPEN_SEA_REGISTRATION=' + JSON.stringify(result));
+NODE
