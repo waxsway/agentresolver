@@ -531,6 +531,85 @@ jobs:
           PY
           done
 
+      - name: Compare Agent402 lexical match scores
+        id: match_scores
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.parse, urllib.request
+
+          q="verify x402 payment before paying"
+          url="https://agent402.tools/api/route?"+urllib.parse.urlencode({"q":q,"include":"external"})
+          req=urllib.request.Request(url,headers={"User-Agent":"agentresolver-discovery-audit/1.0 (+https://github.com/waxsway/agentresolver)"})
+          with urllib.request.urlopen(req,timeout=60) as resp:
+              payload=json.loads(resp.read().decode("utf-8","replace"))
+          results=payload.get("results") or []
+          top=results[0] if results else {}
+          agent=None
+          for item in results:
+              blob=json.dumps(item,separators=(",",":"),sort_keys=True).lower()
+              if "agentresolver.vercel.app" in blob or '"sellername":"agentresolver"' in blob:
+                  agent=item
+                  break
+
+          def score(item):
+              if not isinstance(item,dict):
+                  return None
+              for key in ("score","matchScore","match_score","rankScore","rank_score","relevance","relevanceScore"):
+                  value=item.get(key)
+                  if isinstance(value,(int,float)):
+                      return value
+              for key,value in item.items():
+                  if "score" in str(key).lower() and isinstance(value,(int,float)):
+                      return value
+              return None
+
+          top_score=score(top)
+          ar_score=score(agent)
+          print(json.dumps({"top":top,"topScore":top_score,"agentresolver":agent,"agentresolverScore":ar_score},separators=(",",":"),sort_keys=True))
+
+          def code(v):
+              if v is None: return "unknown"
+              return re.sub(r'[^0-9.-]+','',str(v))[:12] or "unknown"
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as out:
+              out.write(f"top={code(top_score)}\n")
+              out.write(f"agentresolver={code(ar_score)}\n")
+          PY
+
+      - name: Publish lexical score comparison
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          TOP_SCORE: ${{ steps.match_scores.outputs.top }}
+          AR_SCORE: ${{ steps.match_scores.outputs.agentresolver }}
+        shell: bash
+        run: |
+          CONTEXT="distribution/agent402-match-top-${TOP_SCORE:-unknown}-agentresolver-${AR_SCORE:-unknown}"
+          export CONTEXT
+          python - <<'PY'
+          import json,os,urllib.request
+          payload={
+            "state":"success",
+            "context":os.environ["CONTEXT"][:100],
+            "description":"Agent402 lexical match-score comparison for payment-verification intent",
+            "target_url":"https://agent402.tools/guides/smart-order-router"
+          }
+          req=urllib.request.Request(
+            f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+            data=json.dumps(payload).encode(),
+            headers={
+              "Authorization":f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept":"application/vnd.github+json",
+              "Content-Type":"application/json",
+              "X-GitHub-Api-Version":"2022-11-28"
+            },
+            method="POST"
+          )
+          with urllib.request.urlopen(req,timeout=30) as resp:
+              print(resp.status)
+          PY
+
       - name: Publish external-route quote status
         if: always()
         shell: bash
