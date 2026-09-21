@@ -24,7 +24,7 @@ jobs:
       VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       LISTING_ID: 628b5619-143
-      SAMPLE_QUERY: https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
+      SAMPLE_QUERY: https://agentresolver.vercel.app/api/x402-client-setup?source=x402-challenge&capabilityId=x402-payment-preflight&method=GET
     steps:
       - name: Load existing NoHumans owner token from Vercel
         id: token
@@ -221,10 +221,13 @@ jobs:
         run: |
           if [ "$VERIFIED" = "true" ]; then
             STATE=success
-            DESC="NoHumans Guard sample/schema metadata verified"
+            DESC="NoHumans Guard free preview and schemas verified"
+          elif [ "$TOKEN_AVAILABLE" != "true" ]; then
+            STATE=error
+            DESC="NoHumans Guard metadata deferred: owner token unavailable"
           else
             STATE=failure
-            DESC="NoHumans Guard optimization not applied: ${PATCH_RESULT:-token_${TOKEN_AVAILABLE:-unknown}}"
+            DESC="NoHumans Guard metadata update failed: ${PATCH_RESULT:-unknown}"
           fi
           export STATE DESC
           python3 - <<'PY'
@@ -256,6 +259,6 @@ jobs:
         shell: bash
         run: rm -f /tmp/nohumans-owner-token
 
-      - name: Fail if Guard metadata was not verified
-        if: always() && steps.verify.outputs.verified != 'true'
+      - name: Fail only if an available owner token could not update Guard
+        if: always() && steps.token.outputs.available == 'true' && steps.verify.outputs.verified != 'true'
         run: exit 1
