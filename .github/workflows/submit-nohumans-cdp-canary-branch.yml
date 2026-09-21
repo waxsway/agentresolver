@@ -1,0 +1,72 @@
+name: Submit NoHumans CDP Canary Once
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Verify CDP canary challenge and submit anonymously if absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESOURCE='https://agentresolver.vercel.app/api/x402-cdp-canary?echo=nohumans'
+          PAYTO='0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8'
+
+          challenge="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$challenge" -w '%{http_code}' "$RESOURCE" || printf '000')"
+          echo "challenge_http=$code"
+          test "$code" = "402"
+
+          python3 - "$challenge" "$PAYTO" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding="utf-8"))
+          payto=sys.argv[2].lower()
+          accepts=d.get("accepts") or []
+          assert d.get("x402Version")==2
+          assert any(
+              a.get("network")=="eip155:8453"
+              and str(a.get("amount"))=="2000"
+              and str(a.get("payTo","")).lower()==payto
+              for a in accepts
+          )
+          PY
+
+          discover="$(mktemp)"
+          dcode="$(curl -sS --connect-timeout 5 --max-time 25 -o "$discover" -w '%{http_code}'             --get 'https://nohumans.directory/v1/discover'             --data-urlencode 'q=AgentResolver CDP Settlement Canary' || printf '000')"
+          echo "discover_http=$dcode"
+          if [ "$dcode" = "200" ] && grep -Fq 'x402-cdp-canary' "$discover"; then
+            echo "already_listed=true"
+            exit 0
+          fi
+
+          payload="$(jq -cn --arg endpoint "$RESOURCE" '{
+            name:"AgentResolver CDP Settlement Canary",
+            description:"Low-cost $0.002 Base x402 settlement canary using Coinbase CDP. A successful paid delivery independently proves challenge, CDP settlement, and response delivery end to end.",
+            endpoint_url:$endpoint,
+            category:"tools.verification",
+            price_amount:0.002,
+            price_currency:"USDC",
+            chains:["base"],
+            sample_query:$endpoint
+          }')"
+
+          body="$(mktemp)"
+          scode="$(curl -sS --connect-timeout 5 --max-time 30 -o "$body" -w '%{http_code}'             -X POST 'https://nohumans.directory/v1/listings'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          echo "submit_http=$scode"
+          python3 - "$body" <<'PY'
+          import json,sys
+          try: d=json.load(open(sys.argv[1],encoding="utf-8"))
+          except Exception:
+              print("{}"); raise SystemExit
+          if isinstance(d,dict) and "claim_token" in d: d["claim_token"]="[REDACTED]"
+          if isinstance(d,dict) and isinstance(d.get("data"),dict) and "claim_token" in d["data"]:
+              d["data"]["claim_token"]="[REDACTED]"
+          print(json.dumps(d,separators=(",",":")))
+          PY
+          case "$scode" in 200|201|202|409) ;; *) exit 1;; esac
