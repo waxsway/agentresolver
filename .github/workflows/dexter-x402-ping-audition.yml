@@ -1,27 +1,80 @@
-# trigger one-shot paid verifier audition
 name: Dexter x402 Ping Audition
 
 on:
   push:
+    branches: [main]
     paths:
-      - ".github/workflows/dexter-x402-ping-audition.yml"
+      - .github/workflows/dexter-x402-ping-audition.yml
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   audition:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 8
     steps:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - name: Run one-route Dexter audition
+        id: audition
+        shell: bash
         run: |
-          set -o pipefail
-          npx --yes @dexterai/opendexter@1.23.3 audition https://agentresolver.vercel.app/api/x402-ping --json | tee dexter-audition.json
-      - name: Show result
+          set +e
+          npx --yes @dexterai/opendexter@1.23.3 audition https://agentresolver.vercel.app/api/x402-ping --json > dexter-audition.json 2>&1
+          RC=$?
+          cat dexter-audition.json
+          echo "exit_code=$RC" >> "$GITHUB_OUTPUT"
+          if [ "$RC" -eq 0 ]; then
+            echo "success=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "success=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish auditable commit status
         if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          AUDITION_SUCCESS: ${{ steps.audition.outputs.success }}
+          AUDITION_EXIT: ${{ steps.audition.outputs.exit_code }}
         run: |
-          test -f dexter-audition.json && cat dexter-audition.json || true
+          if [ "$AUDITION_SUCCESS" = "true" ]; then
+            STATE=success
+            DESC="Dexter paid x402-ping audition passed"
+          else
+            STATE=failure
+            DESC="Dexter audition failed exit ${AUDITION_EXIT:-unknown}"
+          fi
+          export STATE DESC
+          python - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
+          payload = {
+              "state": os.environ["STATE"],
+              "context": "distribution/dexter-paid-audition",
+              "description": os.environ["DESC"][:140],
+              "target_url": "https://x402gle.com/agent"
+          }
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28"
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              print(resp.status, resp.read().decode("utf-8", "replace")[:500])
+          PY
+
+      - name: Fail job after publishing status
+        if: steps.audition.outputs.success != 'true'
+        run: exit 1
