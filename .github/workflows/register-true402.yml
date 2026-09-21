@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          catalog_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-services.json             -w '%{http_code}'             "$TRUE402_API/v1/services" || printf '000')"
+          catalog_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-services.json             -w '%{http_code}'             --get "$TRUE402_API/v1/services"             --data-urlencode 'q=agentresolver'             --data-urlencode 'limit=100' || printf '000')"
 
           case "$catalog_status" in
             200) ;;
@@ -92,9 +92,17 @@ jobs:
               ;;
           esac
 
-          verify_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-services-after.json             -w '%{http_code}'             "$TRUE402_API/v1/services" || printf '000')"
-          if [ "$verify_status" = "200" ] && grep -Fq 'agentresolver.vercel.app' /tmp/true402-services-after.json; then
-            echo "AgentResolver is visible in true402."
-          else
-            echo "::notice::true402 accepted or already knew the listing, but public catalog visibility is not confirmed yet."
+          service_id="$(jq -r '.id // .data.id // empty' /tmp/true402-register.json)"
+          if [ -z "$service_id" ]; then
+            echo "true402 registration response omitted service id." >&2
+            exit 1
           fi
+          verify_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-service-after.json             -w '%{http_code}'             "$TRUE402_API/v1/services/$service_id" || printf '000')"
+          test "$verify_status" = "200"
+          jq -e --arg id "$service_id" '
+            .id == $id and
+            .url == "https://agentresolver.vercel.app" and
+            .manifest.name == "agentresolver-settlement-ping" and
+            .manifest.endpoint == "https://agentresolver.vercel.app/api/x402-ping"
+          ' /tmp/true402-service-after.json >/dev/null
+          echo "AgentResolver exact true402 service is registered and retrievable."
