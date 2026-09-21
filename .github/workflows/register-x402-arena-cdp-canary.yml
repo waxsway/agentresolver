@@ -1,0 +1,80 @@
+name: Register AgentResolver CDP Canary with Arena
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/register-x402-arena-cdp-canary.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  register:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Register CDP settlement canary
+        id: arena
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, urllib.error, urllib.request
+          payload={
+            "name":"agentresolver-cdp-settlement-canary",
+            "endpoint":"https://agentresolver.vercel.app/api/x402-cdp-canary",
+            "niche":"developer-tools",
+            "description":"$0.002 Base USDC x402 settlement canary using Coinbase CDP. Successful paid delivery proves wallet, facilitator, settlement, Bazaar-bearing discovery metadata, and response fulfillment end to end.",
+            "walletAddress":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+            "method":"GET",
+            "resourceType":"http",
+            "inputSchema":{
+              "type":"object",
+              "properties":{"echo":{"type":"string","maxLength":256}},
+              "additionalProperties":False
+            },
+            "outputSchema":{
+              "type":"object",
+              "properties":{"pong":{"type":"boolean"},"settledDelivery":{"type":"boolean"}},
+              "required":["pong","settledDelivery"]
+            }
+          }
+          req=urllib.request.Request(
+            "https://core.x402arena.gg/register",
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type":"application/json","User-Agent":"agentresolver-free-distribution/1.0 (+https://github.com/waxsway/agentresolver)"},
+            method="POST"
+          )
+          status=0; body=""
+          try:
+            with urllib.request.urlopen(req,timeout=60) as resp:
+              status=resp.status; body=resp.read().decode("utf-8","replace")
+          except urllib.error.HTTPError as exc:
+            status=exc.code; body=exc.read().decode("utf-8","replace")
+          print(json.dumps({"provider":"x402 Arena","status":status,"body":body[:1200].replace("\n"," ")}))
+          ok=200 <= status < 300 or status==409
+          with open(os.environ["GITHUB_OUTPUT"],"a") as out:
+            out.write(f"http_status={status}\n")
+            out.write(f"success={'true' if ok else 'false'}\n")
+          if not ok: raise SystemExit(1)
+          PY
+
+      - name: Publish status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          STATUS: ${{ steps.arena.outputs.http_status }}
+          SUCCESS: ${{ steps.arena.outputs.success }}
+        shell: bash
+        run: |
+          if [ "$SUCCESS" = "true" ]; then STATE=success; else STATE=failure; fi
+          export STATE
+          python - <<'PY'
+          import json,os,urllib.request
+          payload={"state":os.environ["STATE"],"context":"distribution/x402-arena-cdp-canary","description":f"Arena CDP canary registration HTTP {os.environ.get('STATUS','0')}","target_url":"https://x402arena.gg/"}
+          req=urllib.request.Request(f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",data=json.dumps(payload).encode(),headers={"Authorization":f"Bearer {os.environ['GH_TOKEN']}","Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},method="POST")
+          with urllib.request.urlopen(req,timeout=30) as resp: print(resp.status)
+          PY
