@@ -13,7 +13,7 @@ permissions:
 jobs:
   register:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 6
     env:
       ORIGIN: https://agentresolver.vercel.app
       ORBIT: https://api.orbitx402.com
@@ -38,17 +38,6 @@ jobs:
           echo "detail_http=$code"
           if [ "$code" = "200" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            python3 - "$body" <<'PY'
-          import json,sys
-          d=json.load(open(sys.argv[1],encoding='utf-8'))
-          def safe(v,depth=0):
-              if depth>3:return None
-              if isinstance(v,dict):
-                  return {k:safe(x,depth+1) for k,x in v.items() if k.lower() not in {'apikey','api_key','token','secret','password'}}
-              if isinstance(v,list):return [safe(x,depth+1) for x in v[:20]]
-              return v
-          print(json.dumps(safe(d),separators=(',',':'))[:5000])
-          PY
             exit 0
           fi
           echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -70,7 +59,7 @@ jobs:
           set -euo pipefail
           body="$(mktemp)"
           payload="$(jq -nc             --arg url "$ORIGIN"             --arg title "AgentResolver"             --arg description "Non-custodial x402 payment preflight, Guard, settlement verification, and agent procurement infrastructure."             '{url:$url,title:$title,description:$description}')"
-          code="$(curl -sS --connect-timeout 10 --max-time 45             -o "$body" -w '%{http_code}'             -X POST "$ORBIT/api/servers/register"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          code="$(curl -sS --connect-timeout 10 --max-time 90             -o "$body" -w '%{http_code}'             -X POST "$ORBIT/api/servers/register"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
           echo "register_http=$code"
           python3 - "$body" <<'PY'
           import json,sys
@@ -97,6 +86,45 @@ jobs:
               ;;
           esac
 
+      - name: Refresh existing Orbit resources
+        if: steps.existing.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -nc --arg url "$ORIGIN" '{url:$url}')"
+          code="$(curl -sS --connect-timeout 10 --max-time 240             -o "$body" -w '%{http_code}'             -X POST "$ORBIT/api/servers/probe"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          echo "probe_http=$code"
+          if [ "$code" = "200" ]; then
+            python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          eps=d.get('endpoints',[]) if isinstance(d,dict) else []
+          blob=json.dumps(eps,separators=(',',':')).lower()
+          print(json.dumps({
+              'success':d.get('success'),
+              'resource_count':d.get('resources'),
+              'agentresolver_present':'agentresolver.vercel.app' in blob,
+              'cdp_guard_present':'cdp-payment-guard' in blob,
+              'preflight_present':'x402-payment-preflight' in blob,
+              'ping_present':'x402-ping' in blob
+          },separators=(',',':')))
+          PY
+            exit 0
+          fi
+          case "$code" in
+            429|500|502|503|504|000)
+              echo "::notice::Orbit probe temporarily unavailable (HTTP $code); no identity, payment, or credential action occurred."
+              exit 0
+              ;;
+            *)
+              head -c 2000 "$body" || true
+              echo
+              echo "::warning::Unexpected Orbit probe HTTP $code."
+              exit 1
+              ;;
+          esac
+
       - name: Verify Orbit visibility
         shell: bash
         run: |
@@ -109,15 +137,40 @@ jobs:
             python3 - "$body" <<'PY'
           import json,sys
           d=json.load(open(sys.argv[1],encoding='utf-8'))
-          blob=json.dumps(d,separators=(',',':'))
+          blob=json.dumps(d,separators=(',',':')).lower()
           print(json.dumps({
-              'agentresolver_present':'agentresolver.vercel.app' in blob.lower(),
-              'cdp_guard_present':'cdp-payment-guard' in blob.lower(),
-              'preflight_present':'x402-payment-preflight' in blob.lower(),
-              'ping_present':'x402-ping' in blob.lower()
+              'resource_count':(d.get('server') or {}).get('resourceCount'),
+              'last_probed_at':(d.get('server') or {}).get('lastProbedAt'),
+              'agentresolver_present':'agentresolver.vercel.app' in blob,
+              'cdp_guard_present':'cdp-payment-guard' in blob,
+              'preflight_present':'x402-payment-preflight' in blob,
+              'ping_present':'x402-ping' in blob
+          },separators=(',',':')))
+          PY
+          fi
+
+      - name: Verify buyer-intent search
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 45             -o "$body" -w '%{http_code}'             -G "$ORBIT/api/x402-discovery"             --data-urlencode 'limit=100'             --data-urlencode 'offset=0'             --data-urlencode 'query=AgentResolver verify x402 payment before paying' || printf '000')"
+          echo "search_http=$code"
+          if [ "$code" = "200" ]; then
+            python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          rows=d.get('items',[]) if isinstance(d,dict) else []
+          hits=[r for r in rows if 'agentresolver' in json.dumps(r).lower()]
+          blob=json.dumps(hits,separators=(',',':')).lower()
+          print(json.dumps({
+              'agentresolver_count':len(hits),
+              'cdp_guard_present':'cdp-payment-guard' in blob,
+              'preflight_present':'x402-payment-preflight' in blob,
+              'ping_present':'x402-ping' in blob
           },separators=(',',':')))
           PY
           fi
 
       - name: Boundary
-        run: echo "Anonymous/free Orbit registration only. No user funds, credentials, outreach, or Vercel deploy."
+        run: echo "Anonymous/free Orbit registration and resource refresh only. No user funds, credentials, outreach, or Vercel deploy."
