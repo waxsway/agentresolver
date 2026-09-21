@@ -1,0 +1,22 @@
+name: Audit true402 Guard Search
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Search true402 for AgentResolver Guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          for q in 'AgentResolver Guard' 'payment preflight' 'verify x402 payment before paying'; do
+            echo "=== $q ==="
+            curl -sS --get --connect-timeout 5 --max-time 20               'https://true402.dev/api/v1/services'               --data-urlencode "q=$q"               --data-urlencode 'limit=20' | head -c 6000
+            echo
+          done
