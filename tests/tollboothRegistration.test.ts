@@ -9,27 +9,32 @@ const workflow = readFileSync(
 
 test("Tollbooth registration lane is zero-spend and anonymous", () => {
   assert.match(workflow, /https:\/\/www\.trytollbooth\.com/);
-  assert.match(workflow, /https:\/\/agentresolver\.vercel\.app\/api\/x402-ping/);
+  assert.match(workflow, /https:\/\/agentresolver\.vercel\.app\/api\/cdp-payment-guard/);
   assert.match(workflow, /0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8/);
-  assert.match(workflow, /priceUsdc: 0\.001/);
+  assert.match(workflow, /priceUsdc: 0\.002/);
   assert.doesNotMatch(workflow, /PAYMENT-SIGNATURE|X-PAYMENT|PRIVATE_KEY|SEED|MNEMONIC/i);
   assert.doesNotMatch(workflow, /email|contactEmail|ownerEmail/i);
 });
 
-test("Tollbooth self-validation is truthful and internal", () => {
-  assert.match(workflow, /x-agentresolver-internal: 1/);
+test("Tollbooth self-validation matches the external CDP Guard contract", () => {
+  assert.match(workflow, /Validate live Coinbase-CDP Guard challenge/);
   assert.match(workflow, /\.x402Version == 2/);
   assert.match(workflow, /\.network == "eip155:8453"/);
-  assert.match(workflow, /\.amount == "1000"/);
+  assert.match(workflow, /\.amount == "2000"/);
   assert.match(workflow, /\.scheme == "exact"/);
+  assert.doesNotMatch(workflow, /x-agentresolver-internal: 1/);
 });
 
-test("Tollbooth registration uses the input-free canary and public Base payout", () => {
-  assert.match(workflow, /ENDPOINT_URL: https:\/\/agentresolver\.vercel\.app\/api\/x402-ping/);
+test("Tollbooth registration uses the live CDP Guard and public Base payout", () => {
+  assert.match(
+    workflow,
+    /ENDPOINT_URL: "https:\/\/agentresolver\.vercel\.app\/api\/cdp-payment-guard\?url=/
+  );
+  assert.match(workflow, /method=GET"/);
   assert.match(workflow, /PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"/);
   assert.match(workflow, /chain: "base"/);
   assert.match(workflow, /category: "developer-tools"/);
-  assert.doesNotMatch(workflow, /ENDPOINT_URL: .*payment-guard/);
+  assert.match(workflow, /AgentResolver CDP Payment Guard/);
 });
 
 test("Tollbooth lane is idempotent, bounded, and outage-safe", () => {
