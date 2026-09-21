@@ -1,0 +1,18 @@
+name: Audit NoHumans Guard Current State
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Read Guard listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --connect-timeout 5 --max-time 20             'https://nohumans.directory/v1/listings/628b5619-143' |           python3 -c 'import json,sys; d=json.load(sys.stdin); keys=["id","name","endpoint_url","status","score","probe_count","last_probed_at","paid_verified","paid_verification","paid_verification_latest","request_schema","sample_query","method_note","evidence_tier","distinct_payers","onchain_unique_payers_30d"]; print(json.dumps({k:d.get(k) for k in keys},separators=(",",":"),sort_keys=True))'
