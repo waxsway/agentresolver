@@ -51,6 +51,32 @@ Use native/installed tools first. Call AgentResolver only when no installed capa
 
 AgentResolver is not a wallet, payment signer, or arbitrary execution proxy.
 
+## Install the payment guard skill
+
+For agent runtimes that support Agent Skills, install the repeat-use x402 safety procedure directly:
+
+```bash
+npx skills add waxsway/agentresolver --skill agentresolver-payment-guard
+```
+
+The skill tells a wallet-capable agent to run AgentResolver Guard **before each unfamiliar or changed autonomous x402 spend**:
+
+```text
+target 402
+  -> $0.001 AgentResolver Guard
+  -> verify live amount / asset / network / payTo / scheme / resource binding
+  -> caller policy decides
+  -> caller-owned wallet may sign target
+```
+
+Direct skill source:
+
+`https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md`
+
+AgentResolver never receives the target-payment private key and never authorizes the target spend. The Guard fee and the target payment remain separate caller-authorized decisions.
+
+[![skills.sh](https://skills.sh/b/waxsway/agentresolver)](https://skills.sh/waxsway/agentresolver)
+
 ## Framework-native fallback recipes
 
 Machine-readable recipes for OpenAI Agents, Cloudflare Agents, portable MCP hosts, and AI SDK-compatible runtimes:
