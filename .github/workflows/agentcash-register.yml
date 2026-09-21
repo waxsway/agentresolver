@@ -1,4 +1,5 @@
 name: Register AgentResolver with AgentCash
+# Current-state refresh after exact-intent Guard/Preflight release.
 
 on:
   workflow_dispatch:
@@ -89,6 +90,7 @@ jobs:
             "payment authorization"
             "agent wallet firewall"
             "verify x402 payment before signing"
+            "verify x402 payment before paying"
             "provider launch check"
             "sell API to agents"
             "x402 provider onboarding"
