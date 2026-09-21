@@ -89,6 +89,24 @@ jobs:
                   "tags": ["x402", "settlement", "verification", "agent-payments"],
               },
               {
+                  "slug": "guard",
+                  "target": "https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453",
+                  "name": "Verify x402 Payment Before Paying",
+                  "description": "Fail-closed $0.001 x402 payment preflight for autonomous wallets before signing a target payment. Verifies amount, asset, network, payTo, scheme and resource binding.",
+                  "method": "GET",
+                  "price": 0.001,
+                  "tags": ["x402", "payment-guard", "preflight", "wallet-safety", "verification"],
+              },
+              {
+                  "slug": "cdp-canary",
+                  "target": "https://agentresolver.vercel.app/api/x402-cdp-canary?echo=paywitness",
+                  "name": "AgentResolver CDP Settlement Canary",
+                  "description": "Low-cost $0.002 Base x402 canary using Coinbase CDP settlement. A successful purchase independently proves challenge, settlement and paid delivery end to end.",
+                  "method": "GET",
+                  "price": 0.002,
+                  "tags": ["x402", "coinbase-cdp", "settlement", "verification", "agent-payments"],
+              },
+              {
                   "slug": "provider-launch",
                   "target": "https://agentresolver.vercel.app/api/provider-launch-check",
                   "name": "AgentResolver Provider Launch Check",
@@ -166,7 +184,7 @@ jobs:
             echo "::notice::Skipping Paywitness self-list because its OpenAPI was unavailable."
             exit 0
           fi
-          for payload_file in /tmp/paywitness-list-ping.json /tmp/paywitness-list-provider-launch.json; do
+          for payload_file in /tmp/paywitness-list-ping.json /tmp/paywitness-list-guard.json /tmp/paywitness-list-cdp-canary.json /tmp/paywitness-list-provider-launch.json; do
             body="$(mktemp)"
             code="$(curl -sS -o "$body" -w '%{http_code}'               -X POST 'https://paywitness.ai/list'               -H 'content-type: application/json'               --data-binary @"$payload_file" || printf '000')"
             cat "$body" 2>/dev/null || true
