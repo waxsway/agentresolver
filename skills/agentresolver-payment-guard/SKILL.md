@@ -100,6 +100,73 @@ npx skills add AxLabs/simple-agent-wallet --skill saw -g -y
 
 This is interoperability guidance only; AgentResolver is not affiliated with AxLabs.
 
+## @nirholas/x402-agent-wallet — budget + Guard composition
+
+`@nirholas/x402-agent-wallet` already enforces caller-owned budgets, merchant caps, rail policy, and approval thresholds before it signs an x402 payment. Compose AgentResolver Guard as a **separate paid merchant check** before the target call; do not replace the wallet's local policy.
+
+The wallet's `payFetch` should evaluate **both** spends independently:
+
+1. the separate **$0.001 AgentResolver Guard fee**;
+2. the original target payment, only after Guard returns `eligible`.
+
+A minimal GET-first wrapper:
+
+```ts
+import { wrapPayerFetch } from "@nirholas/x402-agent-wallet";
+
+const payFetch = wrapPayerFetch(fetch, {
+  signer,
+  policy: {
+    dailyBudgetUsd: 1,
+    perRequestMaxUsd: 0.05,
+    // If you use an allowlist, include both the target merchant and AgentResolver.
+    allowedMerchants: ["agentresolver.vercel.app", "api.example.com"],
+    allowedNetworks: ["base", "solana"],
+    allowedRails: ["evm", "solana"],
+  },
+});
+
+type GuardOptions = {
+  maxPriceUsd: number;
+  expectedPayTo?: string;
+  expectedNetwork?: string;
+};
+
+async function guardedPayGet(target: string, options: GuardOptions) {
+  const guard = new URL("https://agentresolver.vercel.app/api/payment-guard");
+  guard.searchParams.set("url", target);
+  guard.searchParams.set("method", "GET");
+  guard.searchParams.set("maxPriceUsd", String(options.maxPriceUsd));
+  if (options.expectedPayTo) guard.searchParams.set("expectedPayTo", options.expectedPayTo);
+  if (options.expectedNetwork) guard.searchParams.set("expectedNetwork", options.expectedNetwork);
+
+  // Payment #1: the wallet applies its own policy before signing the $0.001 Guard fee.
+  const guardResponse = await payFetch(guard.toString(), { method: "GET" });
+  if (!guardResponse.ok) throw new Error(`AgentResolver Guard failed: ${guardResponse.status}`);
+
+  const result = await guardResponse.json();
+  if (result?.prepaymentDecision?.decision !== "eligible") {
+    throw new Error(
+      `Target blocked by AgentResolver Guard: ${JSON.stringify(result?.prepaymentDecision?.reasons ?? [])}`
+    );
+  }
+
+  // Payment #2: a fresh, independent wallet-policy decision for the target.
+  // Guard eligibility never bypasses local budgets, allowlists, rail caps, or approvals.
+  return payFetch(target, { method: "GET" });
+}
+```
+
+Important:
+
+- Keep AgentResolver in the wallet's merchant allowlist only if the caller intentionally permits the separate Guard fee.
+- Keep the target merchant independently subject to the wallet's normal budget, rail, approval, and merchant policy.
+- Do not use Guard eligibility as an approval override.
+- The helper above is GET-first. For POST targets, do not perform an unpaid POST probe unless the caller knows it is side-effect safe and explicitly enables `allowUnpaidPostProbe`.
+- A Guard failure, malformed response, unavailable response, or non-`eligible` decision must fail closed before the target is paid.
+
+This is interoperability guidance only; AgentResolver is not affiliated with nirholas or `@nirholas/x402-agent-wallet`.
+
 ## MCP wallet-capable clients — fail-closed pre-sign gate
 
 For `@x402/mcp`, use `onPaymentRequested` before the wallet creates a payment. The host must supply its own `hostAllowsGuardSpend(context)` policy check. Return `false` on every mismatch.
