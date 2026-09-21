@@ -28,7 +28,6 @@ const KEEP_OPENAPI_PATHS = new Set([
   "/api/health",
   "/api/x402-ping",
   "/api/x402-payment-preflight",
-  "/api/payment-guard",
   "/api/x402-settlement-verify",
   "/api/payment-guard",
   "/api/verified-resolve",
@@ -44,6 +43,7 @@ const KEEP_OPENAPI_PATHS = new Set([
 const KEEP_RESOURCE_PATHS = new Set([
   "/api/x402-ping",
   "/api/x402-payment-preflight",
+  "/api/payment-guard",
   "/api/x402-settlement-verify",
   "/api/verified-resolve",
   "/api/batch-verified-resolve",
