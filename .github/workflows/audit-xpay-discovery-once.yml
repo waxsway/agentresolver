@@ -1,0 +1,99 @@
+name: Audit Xpay Discovery Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-xpay-discovery-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query OrbitX402
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 45             -o "$body" -w '%{http_code}'             -G 'https://api.orbitx402.com/api/x402-discovery'             --data-urlencode 'limit=100'             --data-urlencode 'offset=0'             --data-urlencode 'query=AgentResolver verify x402 payment before paying' || printf '000')"
+          echo "orbit_http=$code"
+          if [ "$code" = "200" ]; then
+            python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          rows=d.get('items',[]) if isinstance(d,dict) else []
+          hits=[r for r in rows if 'agentresolver' in json.dumps(r).lower()]
+          print(json.dumps({
+            'source':'orbitx402',
+            'count':len(hits),
+            'resources':[{
+              'resource':h.get('resource'),
+              'method':h.get('method'),
+              'metadata':h.get('metadata'),
+              'accepts':h.get('accepts')
+            } for h in hits[:10]]
+          },separators=(',',':')))
+          PY
+          else
+            head -c 1000 "$body" || true
+            echo
+          fi
+
+      - name: Query PayAI fallback catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          found='[]'
+          for off in 0 1000 2000; do
+            body="$(mktemp)"
+            code="$(curl -sS --connect-timeout 10 --max-time 30               -o "$body" -w '%{http_code}'               -G 'https://facilitator.payai.network/discovery/resources'               --data-urlencode 'limit=1000'               --data-urlencode "offset=$off" || printf '000')"
+            echo "payai_http_$off=$code"
+            [ "$code" = "200" ] || continue
+            page_hits="$(python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          rows=d.get('items',[]) if isinstance(d,dict) else []
+          hits=[r for r in rows if 'agentresolver' in json.dumps(r).lower()]
+          print(json.dumps(hits,separators=(',',':')))
+          PY
+          )"
+            found="$(jq -cn --argjson a "$found" --argjson b "$page_hits" '$a + $b')"
+          done
+          echo "$found" | jq -c '{source:"payai",count:length,resources:[.[]|{resource,method,metadata,accepts}][:10]}'
+
+      - name: Query Agentic Market
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 30             -o "$body" -w '%{http_code}'             -G 'https://api.agentic.market/v1/services/search'             --data-urlencode 'q=AgentResolver verify x402 payment before paying' || printf '000')"
+          echo "agentic_market_http=$code"
+          if [ "$code" = "200" ]; then
+            python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          rows=d.get('services',[]) if isinstance(d,dict) else []
+          hits=[r for r in rows if 'agentresolver' in json.dumps(r).lower()]
+          print(json.dumps({
+            'source':'agenticmarket',
+            'count':len(hits),
+            'services':[{
+              'id':h.get('id'),
+              'name':h.get('name'),
+              'provider':h.get('provider'),
+              'endpoints':h.get('endpoints')
+            } for h in hits[:10]]
+          },separators=(',',':')))
+          PY
+          else
+            head -c 1000 "$body" || true
+            echo
+          fi
+
+      - name: Boundary
+        run: echo "Read-only discovery audit. No payment, registration, credentials, or Vercel deployment."
