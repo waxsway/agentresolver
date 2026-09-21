@@ -1,0 +1,64 @@
+name: Submit NoHumans Verified Resolve Once
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Verify live paid GET contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          SAMPLE='https://agentresolver.vercel.app/api/verified-resolve?goal=verify%20this%20x402%20endpoint%20before%20use&url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&protocol=x402&maxPriceUsd=0.01&preferredNetwork=eip155%3A8453'
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}' "$SAMPLE" || printf '000')"
+          echo "challenge_http=$code"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json,sys
+          p=json.load(open(sys.argv[1]))
+          assert p.get("x402Version")==2
+          accepts=p.get("accepts") or []
+          assert any(
+            x.get("network")=="eip155:8453"
+            and str(x.get("amount"))=="20000"
+            and x.get("payTo")=="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            for x in accepts
+          )
+          PY
+
+      - name: Submit distinct Verified Resolve listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          SAMPLE='https://agentresolver.vercel.app/api/verified-resolve?goal=verify%20this%20x402%20endpoint%20before%20use&url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&protocol=x402&maxPriceUsd=0.01&preferredNetwork=eip155%3A8453'
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 30             -o "$body" -w '%{http_code}'             -X POST 'https://nohumans.directory/v1/listings'             -H 'content-type: application/json'             --data "$(jq -cn --arg sample "$SAMPLE" '{
+              name:"AgentResolver Verified Resolve",
+              description:"$0.02 evidence-backed capability verification for autonomous agents. Given a goal and optional target URL, AgentResolver checks provider/discovery evidence and performs bounded live MCP/x402 verification before returning a recommendation.",
+              endpoint_url:"https://agentresolver.vercel.app/api/verified-resolve",
+              category:"tools.verification",
+              price_amount:0.02,
+              price_currency:"USDC",
+              chains:["base","solana"],
+              sample_query:$sample
+            }')" || printf '000')"
+          echo "submit_http=$code"
+          python3 - "$body" <<'PY'
+          import json,sys
+          try: p=json.load(open(sys.argv[1]))
+          except Exception: p={}
+          for k in ("claim_token","edit_token","token"):
+            if k in p: p[k]="[REDACTED]"
+          if isinstance(p.get("data"),dict):
+            for k in ("claim_token","edit_token","token"):
+              if k in p["data"]: p["data"][k]="[REDACTED]"
+          print(json.dumps(p,separators=(",",":"),sort_keys=True))
+          PY
+          case "$code" in 200|201|202|409) ;; *) exit 1;; esac
