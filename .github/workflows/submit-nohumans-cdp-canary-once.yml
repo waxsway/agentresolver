@@ -1,0 +1,157 @@
+name: Submit NoHumans CDP Canary Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/submit-nohumans-cdp-canary-once.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: submit-nohumans-cdp-canary-once
+  cancel-in-progress: true
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      RESOURCE: https://agentresolver.vercel.app/api/x402-cdp-canary
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Verify live CDP Bazaar-bearing canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}' "$RESOURCE")"
+          test "$code" = "402"
+          python3 - "$body" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          assert payload.get("x402Version")==2
+          accepts=payload.get("accepts") or []
+          assert any(
+              item.get("network")=="eip155:8453"
+              and str(item.get("amount"))=="2000"
+              and item.get("payTo")=="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+              for item in accepts
+          )
+          bazaar=((payload.get("extensions") or {}).get("bazaar") or {})
+          info=bazaar.get("info") or {}
+          schema=bazaar.get("schema") or {}
+          assert (info.get("input") or {}).get("method")=="GET"
+          assert schema.get("type")=="object"
+          print("LIVE_CDP_CANARY_BAZAAR_OK=true")
+          PY
+
+      - name: Submit distinct CDP settlement canary to NoHumans
+        id: submit
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg endpoint "$RESOURCE" '{
+            name:"AgentResolver CDP Settlement Canary",
+            description:"$0.002 Base x402 settlement canary using Coinbase CDP. A successful paid GET independently proves the buyer wallet, CDP facilitator, USDC settlement and paid delivery path end to end.",
+            endpoint_url:$endpoint,
+            category:"tools.verification",
+            price_amount:0.002,
+            price_currency:"USDC",
+            chains:["base"]
+          }')"
+          code="$(curl -sS --connect-timeout 5 --max-time 30             -o "$body" -w '%{http_code}'             -X POST 'https://nohumans.directory/v1/listings'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          echo "submit_http=$code"
+
+          python3 - "$body" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          path, output = sys.argv[1], sys.argv[2]
+          raw=open(path,"r",encoding="utf-8").read()
+          try: data=json.loads(raw)
+          except Exception:
+              print(raw)
+              raise
+          root=data.get("data") if isinstance(data,dict) and isinstance(data.get("data"),dict) else data
+          if not isinstance(root,dict): root={}
+          listing_id=root.get("id") or root.get("listing_id") or data.get("listing_id")
+          token=root.get("claim_token") or (data.get("claim_token") if isinstance(data,dict) else None)
+          safe=dict(data) if isinstance(data,dict) else {"response":data}
+          if "claim_token" in safe: safe["claim_token"]="[REDACTED]"
+          if isinstance(safe.get("data"),dict) and "claim_token" in safe["data"]:
+              safe["data"]=dict(safe["data"]); safe["data"]["claim_token"]="[REDACTED]"
+          print(json.dumps(safe,separators=(",",":"),sort_keys=True))
+          with open(output,"a",encoding="utf-8") as out:
+              out.write(f"listing_id={listing_id or ''}\n")
+              out.write(f"has_token={'true' if token else 'false'}\n")
+          if token:
+              open("/tmp/nohumans-cdp-token","w",encoding="utf-8").write(token)
+          PY
+
+          case "$code" in
+            200|201|202|409) ;;
+            429|500|502|503|504|000)
+              echo "::notice::NoHumans temporarily unavailable/rate-limited (HTTP $code); no user funds were used."
+              exit 0
+              ;;
+            *)
+              echo "::error::Unexpected NoHumans submission HTTP $code."
+              exit 1
+              ;;
+          esac
+
+      - name: Preserve edit token without deploying
+        if: steps.submit.outputs.has_token == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          test -s /tmp/nohumans-cdp-token
+          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          token="$(cat /tmp/nohumans-cdp-token)"
+          echo "::add-mask::$token"
+          vercel env rm NOHUMANS_CDP_CANARY_TOKEN production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          vercel env add NOHUMANS_CDP_CANARY_TOKEN production --sensitive --token="$VERCEL_TOKEN" <<<"$token" >/dev/null
+          if [ -n "${{ steps.submit.outputs.listing_id }}" ]; then
+            vercel env rm NOHUMANS_CDP_CANARY_ID production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+            vercel env add NOHUMANS_CDP_CANARY_ID production --token="$VERCEL_TOKEN" <<<"${{ steps.submit.outputs.listing_id }}" >/dev/null
+          fi
+          rm -f /tmp/nohumans-cdp-token
+          echo "Stored NoHumans CDP canary edit credentials; no deployment requested."
+
+      - name: Check discovery visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             -G 'https://nohumans.directory/v1/discover'             --data-urlencode 'q=AgentResolver CDP Settlement Canary' || printf '000')"
+          echo "discover_http=$code"
+          if [ "$code" = "200" ]; then
+            python3 - "$body" <<'PY'
+          import json, sys
+          data=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          rows=data.get("results") if isinstance(data,dict) else []
+          if not isinstance(rows,list): rows=[]
+          hits=[{
+              "id":r.get("id"),
+              "name":r.get("name"),
+              "endpoint_url":r.get("endpoint_url"),
+              "status":r.get("status"),
+              "paid_verified":r.get("paid_verified"),
+              "evidence_tier":r.get("evidence_tier"),
+          } for r in rows if isinstance(r,dict) and "agentresolver" in json.dumps(r).lower()]
+          print(json.dumps({"agentresolver_hits":hits},separators=(",",":"),sort_keys=True))
+          PY
+          fi
+
+      - name: Clean local token
+        if: always()
+        run: rm -f /tmp/nohumans-cdp-token
