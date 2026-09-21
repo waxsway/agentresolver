@@ -1,0 +1,91 @@
+name: One-shot Market402 CDP Guard Paid Probe Opt-In
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/market402-cdp-guard-optin-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  optin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      RESOURCE: "https://agentresolver.vercel.app/api/cdp-payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET"
+    steps:
+      - name: Free Market402 self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 45             -o "$body" -w '%{http_code}'             -X POST 'https://market402.com/selftest'             -H 'content-type: application/json'             --data "$(jq -cn --arg url "$RESOURCE" '{url:$url}')")"
+
+          echo "Market402 selftest -> HTTP $code"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202) ;;
+            *) echo "Market402 self-test unavailable or rejected (HTTP $code)." >&2; exit 1 ;;
+          esac
+
+          python3 - "$body" <<'PY'
+          import json, sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          verdict=(data.get("summary") or {}).get("verdict")
+          if verdict != "spec_compliant":
+              raise SystemExit(f"CDP Guard is not spec_compliant: {verdict!r}")
+          PY
+
+      - name: Opt new CDP Guard into funded paid-delivery probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg resource "$RESOURCE" '{
+            resource:$resource,
+            declared_price_usd:0.002,
+            paid_probe_optin:true
+          }')"
+          code="$(curl -sS --connect-timeout 10 --max-time 60             -o "$body" -w '%{http_code}'             -X POST 'https://market402.com/submit'             -H 'content-type: application/json'             --data "$payload")"
+
+          echo "Market402 submit -> HTTP $code"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) echo "Market402 CDP Guard submission failed with HTTP $code" >&2; exit 1 ;;
+          esac
+
+          python3 - "$body" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          q=data.get("paid_probe_qualification") or {}
+          instant=data.get("instant_check") or {}
+          print("qualification:",json.dumps({
+            "qualified":q.get("qualified"),
+            "reason":q.get("reason"),
+            "hint":q.get("hint"),
+            "instant_ok":instant.get("ok"),
+            "verdict":(instant.get("summary") or {}).get("verdict")
+          },sort_keys=True))
+          PY
+
+      - name: Check public paid-probe roster
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/optin.json -w '%{http_code}'             'https://market402.com/optin.json' || printf '000')"
+          echo "Market402 optin roster -> HTTP $code"
+          if [ "$code" = "200" ]; then
+            if grep -Fq '/api/cdp-payment-guard' /tmp/optin.json; then
+              echo "AgentResolver CDP Guard is visible in Market402 paid-probe opt-in roster."
+            else
+              echo "::notice::Submission accepted but public opt-in roster has not refreshed yet."
+            fi
+          else
+            echo "::notice::Public opt-in roster unavailable; submission result above is authoritative for this run."
+          fi
