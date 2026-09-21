@@ -1,0 +1,24 @@
+name: Audit Apiosk AgentResolver Discovery
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Query Apiosk discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          for q in 'verify x402 payment before paying' 'x402 settlement test'; do
+            echo "=== $q ==="
+            code="$(curl -sS --get --connect-timeout 5 --max-time 20               -o /tmp/body -w '%{http_code}'               'https://gateway.apiosk.com/v1/discover'               --data-urlencode "q=$q" || printf '000')"
+            echo "http=$code"
+            head -c 14000 /tmp/body || true
+            echo
+          done
