@@ -1,3 +1,4 @@
+# Zero-spend host registration only; never fund a local Dexter payer wallet in CI.
 name: Dexter Host Registration
 
 on:
