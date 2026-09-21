@@ -167,6 +167,42 @@ Important:
 
 This is interoperability guidance only; AgentResolver is not affiliated with nirholas or `@nirholas/x402-agent-wallet`.
 
+## AgentBIT Router — explicit-resource Guard execution
+
+AgentBIT's router can execute an external x402 resource on a buyer's behalf: the buyer pays AgentBIT once, AgentBIT pays the selected external seller from its own treasury, and AgentBIT relays the result. Use its **explicit `resource` mode** for Guard rather than depending on AgentBIT search rank.
+
+For a GET target, first build the fully parameterized AgentResolver Guard URL:
+
+```text
+https://agentresolver.vercel.app/api/payment-guard?url=<percent-encoded-target>&method=GET&maxPriceUsd=<caller-limit>
+```
+
+Then give that exact URL to AgentBIT's paid router:
+
+```json
+{
+  "resource": "https://agentresolver.vercel.app/api/payment-guard?url=<percent-encoded-target>&method=GET&maxPriceUsd=<caller-limit>"
+}
+```
+
+Router endpoint:
+
+```text
+POST https://agentbit.app/v1/route/execute
+```
+
+Important:
+
+- The caller authorizes the **AgentBIT router charge** according to AgentBIT's live 402. AgentBIT, not the original caller wallet, pays AgentResolver's underlying $0.001 Guard charge from its treasury.
+- Treat the AgentBIT router payment as authorization only for obtaining the Guard result. It does **not** authorize the original target payment.
+- Require the relayed Guard result to contain `decision === "eligible"` and compare amount, asset, network, payTo, scheme, and resource binding against caller policy.
+- After Guard succeeds, require a fresh, independent caller authorization before paying the original target.
+- This path is Base-oriented because AgentBIT's router payment rail is Base. Do not infer the original buyer's wallet identity from the payer that AgentResolver observes on the Guard settlement.
+- Prefer a fully parameterized GET Guard URL. For POST targets, keep unpaid POST probing disabled unless the caller already knows the probe is side-effect safe and explicitly opts in.
+- AgentBIT discovery/ranking is optional for this composition; explicit `resource` mode avoids depending on whether AgentResolver is currently top-ranked in AgentBIT's aggregated index.
+
+This is interoperability guidance only; AgentResolver is not affiliated with AgentBIT.
+
 ## MCP wallet-capable clients — fail-closed pre-sign gate
 
 For `@x402/mcp`, use `onPaymentRequested` before the wallet creates a payment. The host must supply its own `hostAllowsGuardSpend(context)` policy check. Return `false` on every mismatch.
