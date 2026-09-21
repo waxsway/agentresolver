@@ -54,7 +54,8 @@ const KEEP_RESOURCE_PATHS = new Set([
   "/api/x402-preflight",
   "/api/prepayment-authorization-gate",
   "/api/api-trust-security-preflight",
-  "/api/x402-transaction-path-payment-gate"
+  "/api/x402-transaction-path-payment-gate",
+  "/api/cdp-payment-guard"
 ]);
 
 const MANIFEST_PATHS = [
