@@ -1,4 +1,5 @@
 name: Audit vet402 Autonomous Buyer
+# Current-state refresh: observation-only; no payment, submission, or identity mutation.
 
 on:
   workflow_dispatch:
