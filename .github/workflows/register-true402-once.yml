@@ -124,3 +124,15 @@ jobs:
             lastSeen:.reputation.lastSeen
           }' /tmp/service.json
           echo "AgentResolver exact true402 service is registered and retrievable."
+
+          search_code="$(curl -4 -sS -o /tmp/search.json -w '%{http_code}' \
+            --connect-timeout 8 --max-time 20 \
+            --get 'https://true402.dev/api/v1/services' \
+            --data-urlencode 'q=agentresolver' \
+            --data-urlencode 'limit=100' || printf '000')"
+          echo "true402 AgentResolver search -> HTTP $search_code"
+          test "$search_code" = "200"
+          jq -e --arg id "$SERVICE_ID" '
+            any((.data // .services // [] )[]; .id == $id)
+          ' /tmp/search.json >/dev/null
+          echo "AgentResolver is searchable by name in the true402 buyer catalog."
