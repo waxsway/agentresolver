@@ -1,0 +1,55 @@
+name: Register AgentResolver Guard on true402
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Register executable Guard listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESOURCE='https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453'
+          payload="$(jq -cn --arg url "$RESOURCE" --arg endpoint "$RESOURCE" '{
+            url:$url,
+            manifest:{
+              x402:"1.0",
+              name:"AgentResolver Guard — Verify x402 Before Paying",
+              description:"$0.001 fail-closed x402 payment preflight. This executable sample verifies AgentResolver Settlement Ping before authorization; use AgentResolver Guard directly with your own target URL for repeat pre-sign checks.",
+              capabilities:["agents","x402","payment-guard","preflight","wallet-safety","verification"],
+              pricing:{currency:"USDC",base:"0.001",unit:"request"},
+              payment:{
+                address:"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+                chain:"base",
+                facilitator:"https://facilitator.payai.network"
+              },
+              endpoint:$endpoint
+            }
+          }')"
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 30             -o "$body" -w '%{http_code}'             -X POST 'https://true402.dev/api/v1/services/register'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|409) ;;
+            *) echo "true402 Guard registration failed HTTP $code" >&2; exit 1 ;;
+          esac
+
+          sleep 2
+          catalog="$(curl -sS --get --connect-timeout 5 --max-time 20             'https://true402.dev/api/v1/services'             --data-urlencode 'q=AgentResolver Guard'             --data-urlencode 'limit=20')"
+          echo "$catalog"
+          python3 - <<'PY' "$catalog"
+          import json,sys
+          data=json.loads(sys.argv[1])
+          rows=data.get("data") or []
+          matches=[r for r in rows if "payment-guard" in json.dumps(r).lower() or "agentresolver guard" in json.dumps(r).lower()]
+          print(json.dumps({"matches":len(matches),"ids":[r.get("id") for r in matches]},separators=(",",":")))
+          if not matches:
+              raise SystemExit("Guard registration accepted but not visible yet")
+          PY
