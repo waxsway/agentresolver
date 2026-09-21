@@ -43,18 +43,48 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          body="$(mktemp)"
-          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             --get 'https://payanagent.com/api/v1/offers'             --data-urlencode 'q=AgentResolver'             --data-urlencode 'offerType=api'             --data-urlencode 'limit=100' || printf '000')"
+
+          probe_catalog() {
+            local url="$1"
+            shift
+            local body="$1"
+            shift
+            curl -sS --connect-timeout 5 --max-time 20 \
+              -o "$body" -w '%{http_code}' \
+              --get "$url" "$@" || printf '000'
+          }
+
+          discover_body="$(mktemp)"
+          discover_code="$(probe_catalog 'https://payanagent.com/api/v1/discover' "$discover_body" \
+            --data-urlencode 'q=AgentResolver' \
+            --data-urlencode 'limit=100')"
+
+          body="$discover_body"
+          code="$discover_code"
+          source="discover"
+
+          if [ "$discover_code" != "200" ]; then
+            offers_body="$(mktemp)"
+            offers_code="$(probe_catalog 'https://payanagent.com/api/v1/offers' "$offers_body" \
+              --data-urlencode 'q=AgentResolver' \
+              --data-urlencode 'offerType=api' \
+              --data-urlencode 'limit=100')"
+            if [ "$offers_code" = "200" ]; then
+              body="$offers_body"
+              code="$offers_code"
+              source="offers"
+            fi
+          fi
 
           case "$code" in
             200) ;;
             429|500|502|503|504|000)
-              echo "::notice::PayanAgent catalog is temporarily unavailable (HTTP $code); registration is deferred, no payment was attempted, and the hourly zero-spend retry will try again."
+              echo "::notice::PayanAgent discovery and browse surfaces are temporarily unavailable (discover HTTP $discover_code; selected $source HTTP $code). Registration is deferred with no payment."
               echo "already_listed=unavailable" >> "$GITHUB_OUTPUT"
               exit 0
               ;;
             *)
-              echo "::error::PayanAgent catalog contract changed unexpectedly (HTTP $code)."
+              echo "::error::PayanAgent catalog contract changed unexpectedly ($source HTTP $code)."
               cat "$body" 2>/dev/null || true
               exit 1
               ;;
@@ -67,10 +97,10 @@ jobs:
           raise SystemExit(0 if "agentresolver.vercel.app" in blob else 1)
           PY
           then
-            echo "PayanAgent already contains an AgentResolver resource; refusing to create a duplicate provider."
+            echo "PayanAgent already contains an AgentResolver resource via $source; refusing to create a duplicate provider."
             echo "already_listed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "AgentResolver not found in PayanAgent catalog."
+            echo "AgentResolver not found via PayanAgent $source; proceeding with zero-spend anonymous provider registration."
             echo "already_listed=false" >> "$GITHUB_OUTPUT"
           fi
 
