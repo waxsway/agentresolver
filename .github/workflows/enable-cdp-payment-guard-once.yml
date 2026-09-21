@@ -1,0 +1,125 @@
+name: Enable CDP Payment Guard Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/enable-cdp-payment-guard-once.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enable-cdp-payment-guard-once
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      DESIRED_CAPABILITIES: x402-ping,x402-payment-preflight
+    steps:
+      - name: Verify existing isolated CDP production state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          curl -fsS --connect-timeout 5 --max-time 20             'https://agentresolver.vercel.app/api/health?cdpGuardAllowlistCheck=1'             -o /tmp/health.json
+          jq -e '
+            .paymentRails.cdpFacilitatorEnabledForCdpCanary == true and
+            .paymentRails.x402CdpCanary == "coinbase-cdp" and
+            .paymentRails.x402PingBase == "payai" and
+            .paymentRails.x402PingSolana == "payai" and
+            .paymentRails.circleGatewayEnabled == false
+          ' /tmp/health.json >/dev/null
+          echo "Existing isolated CDP canary is healthy; canonical Ping remains on PayAI."
+
+      - name: Extend only the CDP capability allowlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_file="$(mktemp)"
+          response_file="$(mktemp)"
+          request_file="$(mktemp)"
+          trap 'rm -f "$current_file" "$response_file" "$request_file"' EXIT
+          chmod 600 "$current_file" "$response_file" "$request_file"
+
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$current_file" -w '%{http_code}'             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID&decrypt=true&source=vercel-cli:pull"             -H "Authorization: Bearer $VERCEL_TOKEN")"
+          test "$code" = "200"
+
+          current="$(python3 - "$current_file" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          values=[]
+          for item in data.get("envs",[]):
+              target=item.get("target") or []
+              if isinstance(target,str): target=[target]
+              if item.get("key")=="AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES" and "production" in target:
+                  values.append(str(item.get("value") or "").strip())
+          print(values[-1] if values else "")
+          PY
+          )"
+
+          case "$current" in
+            ""|"x402-ping")
+              ;;
+            "$DESIRED_CAPABILITIES")
+              echo "CDP Payment Guard capability is already allowlisted."
+              exit 0
+              ;;
+            *)
+              echo "::error::Unexpected existing CDP capability allowlist; refusing to overwrite: $current"
+              exit 1
+              ;;
+          esac
+
+          python3 - "$request_file" "$DESIRED_CAPABILITIES" <<'PY'
+          import json,sys
+          path,value=sys.argv[1],sys.argv[2]
+          payload=[{
+            "key":"AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES",
+            "value":value,
+            "type":"plain",
+            "target":["production"],
+            "comment":"Allow isolated Coinbase CDP Guard alongside x402 settlement canary"
+          }]
+          json.dump(payload,open(path,"w",encoding="utf-8"),separators=(",",":"))
+          PY
+
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$response_file" -w '%{http_code}'             -X POST             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true&teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN"             -H 'content-type: application/json'             --data-binary @"$request_file")"
+          case "$code" in 200|201) ;; *) echo "::error::Vercel env update failed HTTP $code"; exit 1;; esac
+
+          failed="$(python3 - "$response_file" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          print("true" if isinstance(data,dict) and data.get("failed") else "false")
+          PY
+          )"
+          test "$failed" = "false"
+          echo "Extended production CDP allowlist to x402-ping + x402-payment-preflight. No build or deploy was requested."
+
+      - name: Verify configured allowlist metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o "$body" -w '%{http_code}'             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID&decrypt=true&source=vercel-cli:pull"             -H "Authorization: Bearer $VERCEL_TOKEN")"
+          test "$code" = "200"
+          python3 - "$body" "$DESIRED_CAPABILITIES" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          expected=sys.argv[2]
+          matches=[]
+          for item in data.get("envs",[]):
+              target=item.get("target") or []
+              if isinstance(target,str): target=[target]
+              if item.get("key")=="AGENTRESOLVER_CDP_FACILITATOR_CAPABILITIES" and "production" in target:
+                  matches.append(str(item.get("value") or "").strip())
+          assert matches and matches[-1]==expected, matches
+          print("CDP payment-preflight allowlist verified. No deployment occurred.")
+          PY
