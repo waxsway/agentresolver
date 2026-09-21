@@ -1,0 +1,118 @@
+name: One-shot Market402 Guard Qualification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/market402-guard-qualification-once.yml"
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  qualify:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Query exact Guard paid-probe qualification
+        id: submit
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESOURCE='https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453'
+          body="$(mktemp)"
+          payload="$(jq -cn --arg resource "$RESOURCE" '{
+            resource:$resource,
+            declared_price_usd:0.001,
+            paid_probe_optin:true
+          }')"
+          code="$(curl -sS --connect-timeout 5 --max-time 60             -o "$body" -w '%{http_code}'             -X POST 'https://market402.com/submit'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          python3 - "$body" "$code" <<'PY'
+          import json, os, re, sys
+          path, code = sys.argv[1], sys.argv[2]
+          try:
+              data=json.load(open(path,"r",encoding="utf-8"))
+          except Exception:
+              data={}
+          # Keep only non-sensitive machine qualification fields in logs/status.
+          keys = (
+              "ok","status","message","paid_probe_optin","paid_probe_eligible",
+              "paid_probe_qualification","qualification","qualifying",
+              "reason","fix","hint","resource","declared_price_usd","instant_check"
+          )
+          safe={k:data.get(k) for k in keys if k in data}
+          print(json.dumps({"http_status":code,"response":safe},separators=(",",":"),sort_keys=True))
+
+          candidates=[]
+          def walk(v,prefix=""):
+              if isinstance(v,dict):
+                  for k,x in v.items():
+                      lk=str(k).lower()
+                      if any(t in lk for t in ("qualif","eligible","reason","fix","hint","paid_probe")):
+                          candidates.append((k,x))
+                      walk(x, f"{prefix}.{k}" if prefix else str(k))
+              elif isinstance(v,list):
+                  for x in v: walk(x,prefix)
+          walk(data)
+
+          eligible=None
+          reason="unknown"
+          for k,v in candidates:
+              lk=str(k).lower()
+              if eligible is None and ("eligible" in lk or "qualifying" in lk):
+                  if isinstance(v,bool): eligible=v
+                  elif isinstance(v,str) and v.lower() in ("true","yes","qualified","qualifying","eligible"): eligible=True
+                  elif isinstance(v,str) and v.lower() in ("false","no","ineligible","not_qualified","not qualifying"): eligible=False
+              if reason=="unknown" and any(t in lk for t in ("reason","fix","hint")) and isinstance(v,(str,int,float)):
+                  reason=str(v)
+
+          def codeify(v,limit=52):
+              return re.sub(r'[^a-z0-9._-]+','-',str(v).lower()).strip("-")[:limit] or "unknown"
+
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as out:
+              out.write(f"http_status={code}\n")
+              out.write(f"eligible={'true' if eligible is True else 'false' if eligible is False else 'unknown'}\n")
+              out.write(f"reason={codeify(reason)}\n")
+
+          if code not in ("200","201","202","409"):
+              raise SystemExit(f"Market402 submit returned HTTP {code}")
+          PY
+
+      - name: Publish auditable qualification status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          HTTP_STATUS: ${{ steps.submit.outputs.http_status }}
+          ELIGIBLE: ${{ steps.submit.outputs.eligible }}
+          REASON: ${{ steps.submit.outputs.reason }}
+        shell: bash
+        run: |
+          if [ "$ELIGIBLE" = "true" ]; then state=success; else state=pending; fi
+          export state
+          CONTEXT="distribution/market402-guard-qualified-${ELIGIBLE:-unknown}-${REASON:-unknown}-http-${HTTP_STATUS:-0}"
+          export CONTEXT
+          python - <<'PY'
+          import json, os, urllib.request
+          payload={
+            "state":os.environ["state"],
+            "context":os.environ["CONTEXT"][:100],
+            "description":"Market402 exact Guard paid-probe qualification",
+            "target_url":"https://market402.com/methodology"
+          }
+          req=urllib.request.Request(
+            f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+            data=json.dumps(payload).encode(),
+            headers={
+              "Authorization":f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept":"application/vnd.github+json",
+              "Content-Type":"application/json",
+              "X-GitHub-Api-Version":"2022-11-28"
+            },
+            method="POST"
+          )
+          with urllib.request.urlopen(req,timeout=30) as resp:
+              print(resp.status)
+          PY
