@@ -115,6 +115,21 @@ AgentCore / AWS Marketplace early-access discussion:
 
 AgentResolver supplies evidence and payment-contract verification; the calling agent or organization keeps execution and spending authority.
 
+### AgentCore organization early access
+
+AgentResolver is validating an organization-level control-plane package for teams running Amazon Bedrock AgentCore Gateway and external MCP/API/x402 capabilities.
+
+Current validation terms:
+
+- **$299/month per organization**
+- **10,000 paid control checks/month**
+- free external-capability procurement remains free
+- paid controls focus on Verified Resolve, Batch Verified Resolve, and Payment Preflight
+- planned AWS Marketplace + Quick Launch installation into an existing AgentCore Gateway
+- non-custodial: the organization keeps execution, policy, credentials, and spending authority
+
+This is a commercial validation offer, **not a currently published AWS Marketplace listing**. If your team would genuinely evaluate it, comment on [issue #616](https://github.com/waxsway/agentresolver/issues/616). No sales call is required; concrete feedback on the $299 price, control requirements, and AgentCore setup is the useful signal.
+
 ## Use AgentResolver as an agent fallback
 
 If you build an autonomous agent, add this behavior to its tool-selection policy:
