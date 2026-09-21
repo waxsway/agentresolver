@@ -1,4 +1,5 @@
 name: Register AgentResolver with PayanAgent Once
+# Current-state refresh: idempotent zero-spend registration check; never duplicates an existing provider.
 
 on:
   workflow_dispatch:
