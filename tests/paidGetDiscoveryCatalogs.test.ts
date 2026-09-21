@@ -21,6 +21,7 @@ test("machine catalogs advertise GET-first x402 preflight while preserving POST"
   );
   assert.ok(preflightGetResource, "GET preflight resource must be published");
   assert.ok(preflightPostResource, "POST preflight resource must remain published");
+  assert.equal(preflightPostResource.name, "Verify x402 Payment Before Paying");
   assert.equal(preflightGetResource.method, "GET");
   assert.equal(preflightGetResource.inputTransport, "query");
   assert.match(manifest.instructions, /GET \/api\/x402-payment-preflight/);
