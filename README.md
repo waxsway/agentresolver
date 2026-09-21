@@ -1,277 +1,137 @@
-# AgentResolver
+# AgentResolver Guard
 
-AgentResolver is a **stable open-world fallback for autonomous agents**.
+**AgentResolver Guard is a pre-sign safety check for autonomous x402 payments.**
 
-Keep the tools your agent already has. Add one lean AgentResolver control plane behind them. When the installed tool set cannot satisfy a task, AgentResolver can search external MCP/API/x402 supply and return bounded candidates, contract evidence, and a non-custodial handoff without taking execution or spending authority.
-
-The default MCP surface stays intentionally small: **two free tools — `procure` and `resolve` — instead of hundreds of pre-attached external tools.**
+An agent is about to pay an unfamiliar or changed x402 endpoint. Before the target wallet signs, Guard reads the target's live payment challenge, validates the payment contract, and returns a fail-closed decision plus evidence the caller can bind to its own policy.
 
 **Production:** https://agentresolver.vercel.app
 
-## Install as a persistent fallback
+## What Guard checks
 
-Remote Streamable HTTP MCP control-plane endpoint:
+Guard performs one bounded HTTPS preflight against the target and verifies the live x402 contract before the caller authorizes spend:
+
+- endpoint reachability and HTTPS/TLS evidence
+- `PAYMENT-REQUIRED` structure
+- x402 version and payment scheme
+- quoted USDC amount
+- optional `maxPriceUsd` ceiling
+- network
+- asset
+- `payTo` recipient
+- optional `expectedPayTo` and `expectedNetwork` assertions
+- resource/payment binding
+- stable evidence fingerprints for change detection
+
+Guard blocks private/reserved network targets, does not follow redirects, uses bounded timeouts, and fails closed when required evidence is missing or mismatched.
+
+Guard **never receives the target-payment private key, signs the target payment, authorizes the target spend, or custodies/forwards target funds.** The calling runtime keeps spending authority.
+
+## Price
+
+Canonical Guard:
 
 ```text
-https://agentresolver.vercel.app/mcp/control
+POST or GET https://agentresolver.vercel.app/api/x402-payment-preflight
+$0.001 USDC per successful Guard check
+Base or Solana where advertised
 ```
 
-The full compatibility MCP surface remains available at `https://agentresolver.vercel.app/mcp`.
+The compatibility alias `/api/payment-guard` uses the same Guard product. A Coinbase-CDP-specific Base route is available at `/api/cdp-payment-guard` for **$0.002 USDC** because that rail has a higher observed settlement floor.
 
-Portable MCP configuration:
-
-```json
-{
-  "servers": {
-    "agentresolver": {
-      "type": "http",
-      "url": "https://agentresolver.vercel.app/mcp/control"
-    }
-  }
-}
-```
-
-Official MCP Registry name:
+## The intended transaction path
 
 ```text
-io.github.waxsway/agentresolver
+target request
+  -> target returns 402
+  -> AgentResolver Guard
+  -> validate amount / asset / network / payTo / scheme / resource binding
+  -> Guard returns eligible or blocked + evidence
+  -> caller policy decides
+  -> caller-owned wallet may sign the target payment
 ```
 
-The official MCP Registry entry points at the lean control plane with exactly two free tools: `procure` for constrained capability selection and `resolve` for broad discovery. Paid tools are intentionally excluded from the default control-plane entrypoint.
+Guard is evidence for a payment decision, not permission to spend.
 
+## Install as a pre-sign hook
 
-### Runtime policy
+The official x402 client exposes `onBeforePaymentCreation`. Use **two x402 clients**: one hooked client for the target payment and one hook-free client dedicated to the separate Guard payment. This prevents recursive Guard payments.
 
-Use native/installed tools first. Call AgentResolver only when no installed capability clearly fits.
+Three maintained integration guides:
 
-- `procure` — constrained external-capability selection.
-- `resolve` — broad discovery when exact constraints are not available.
-- paid verification — separate, explicit and caller-authorized when fresh live evidence is worth paying for.
-- third-party execution/payment — remains under the calling runtime's own policy.
+- [x402 core pre-sign Guard](docs/integrations/x402-core-payment-guard.md)
+- [Coinbase CDP SDK payment Guard](docs/integrations/coinbase-cdp-sdk-payment-guard.md)
+- [Thirdweb x402 payment Guard](docs/integrations/thirdweb-x402-payment-guard.md)
 
-AgentResolver is not a wallet, payment signer, or arbitrary execution proxy.
-
-## Install the payment guard skill
-
-For agent runtimes that support Agent Skills, install the repeat-use x402 safety procedure directly:
+## Install as an Agent Skill
 
 ```bash
 npx skills add waxsway/agentresolver --skill agentresolver-payment-guard
 ```
 
-The skill tells a wallet-capable agent to run AgentResolver Guard **before each unfamiliar or changed autonomous x402 spend**:
-
-```text
-target 402
-  -> $0.001 AgentResolver Guard
-  -> verify live amount / asset / network / payTo / scheme / resource binding
-  -> caller policy decides
-  -> caller-owned wallet may sign target
-```
-
 Direct skill source:
 
-`https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md`
+```text
+https://agentresolver.vercel.app/.well-known/agent-skills/agentresolver-payment-guard/SKILL.md
+```
 
-AgentResolver never receives the target-payment private key and never authorizes the target spend. The Guard fee and the target payment remain separate caller-authorized decisions.
+The skill tells a wallet-capable agent to run Guard before each unfamiliar or changed autonomous x402 spend.
 
-[![skills.sh](https://skills.sh/b/waxsway/agentresolver)](https://skills.sh/waxsway/agentresolver)
+## Example Guard request
 
+Guard supports a target URL plus optional caller assertions:
 
-### Native x402 pre-sign hook
+```json
+{
+  "url": "https://target.example/api",
+  "method": "GET",
+  "maxPriceUsd": 1.00,
+  "expectedPayTo": "0x...",
+  "expectedNetwork": "eip155:8453"
+}
+```
 
-The official x402 client exposes a stable `onBeforePaymentCreation` lifecycle hook. AgentResolver can be installed there as a fail-closed Guard before the target payment payload is created.
+The unpaid request returns AgentResolver's own x402 challenge. After the caller authorizes and settles the Guard fee, the response contains the observed target-payment terms, reason codes, eligibility decision, and evidence receipt.
 
-Use **two x402 clients**: one hooked client for the target payment and one hook-free client dedicated to paying the separate AgentResolver Guard fee. This prevents recursive Guard payments and keeps both spends under caller-owned policy.
+## What Guard is — and is not
 
-Copy-paste TypeScript integration:
+Guard is a **transaction-path control** for x402 buyers. It is designed to answer a narrow question immediately before signing:
 
-[`docs/integrations/x402-core-payment-guard.md`](docs/integrations/x402-core-payment-guard.md)
+> Does the live payment challenge still match the payment contract my agent is willing to authorize?
 
-Coinbase CDP SDK users can compose `CdpX402Client` spend controls with the same live AgentResolver pre-sign check while keeping wallet secrets inside CDP:
+Guard does not claim that a provider is honest, that a wallet has a particular legal owner, or that future fulfillment is guaranteed. It validates live payment-contract evidence and caller-supplied policy assertions.
 
-[`docs/integrations/coinbase-cdp-sdk-payment-guard.md`](docs/integrations/coinbase-cdp-sdk-payment-guard.md)
+Wallet-risk, reputation, AML, and other third-party evidence can be added later through explicit evidence-provider interfaces if real users require them. They are not bundled into Guard by default.
 
-Thirdweb wallet users can bind AgentResolver evidence to Thirdweb's exact selected x402 payment requirement before the wallet signs:
+## Supporting infrastructure
 
-[`docs/integrations/thirdweb-x402-payment-guard.md`](docs/integrations/thirdweb-x402-payment-guard.md)
+AgentResolver still exposes supporting infrastructure used by integrations, testing, and open-world fallback workflows. These surfaces are **not the primary product**:
 
-This path does not depend on Coinbase AgentKit's still-unmerged `beforePayment` proposal.
+- free `procure` / `resolve` capability discovery
+- remote MCP control plane: `https://agentresolver.vercel.app/mcp/control`
+- x402 settlement canaries and compatibility routes
+- machine-readable manifests, OpenAPI, skills, and discovery metadata
+- legacy deterministic utilities retained for compatibility and evidence
 
-## Framework-native fallback recipes
+New utility endpoints, passive directory submissions, and speculative marketplace-specific builds are not product strategy. Guard is the product; supporting infrastructure exists to help agents reach and use it safely.
 
-Machine-readable recipes for OpenAI Agents, Cloudflare Agents, portable MCP hosts, and AI SDK-compatible runtimes:
-
-`https://agentresolver.vercel.app/framework-integrations.json`
-
-The default remote MCP is the lean control plane at `/mcp/control`, exposing only free `procure` and `resolve`. Paid verification remains a separate caller-authorized path.
-
-
-## Amazon Bedrock AgentCore Payments / x402 v2
-
-AgentResolver exposes live x402 v2 merchant endpoints that can be used by wallet-capable agents and payment middleware, including Amazon Bedrock AgentCore Payments integrations.
-
-Protocol contract:
-
-- challenge: `PAYMENT-REQUIRED`
-- paid retry: `PAYMENT-SIGNATURE`
-- settlement response: `PAYMENT-RESPONSE`
-- Base mainnet and Solana are supported where advertised by the capability
-- AgentResolver never requests or receives the caller's private key
-
-Useful live endpoints:
-
-- `https://agentresolver.vercel.app/api/x402-ping` — minimal settlement canary
-- `https://agentresolver.vercel.app/api/x402-payment-preflight` — verify an x402 endpoint before authorizing spend
-- `https://agentresolver.vercel.app/api/verified-resolve` — paid capability procurement plus bounded live verification
-- `https://agentresolver.vercel.app/api/batch-verified-resolve` — bounded multi-capability verification
-
-Machine-readable paid catalog:
-
-`https://agentresolver.vercel.app/.well-known/x402`
-
-AgentCore / AWS Marketplace early-access discussion:
-
-`https://github.com/waxsway/agentresolver/issues/616`
-
-AgentResolver supplies evidence and payment-contract verification; the calling agent or organization keeps execution and spending authority.
-
-### AgentCore organization early access
-
-AgentResolver is validating an organization-level control-plane package for teams running Amazon Bedrock AgentCore Gateway and external MCP/API/x402 capabilities.
-
-Current validation terms:
-
-- **$299/month per organization**
-- **10,000 paid control checks/month**
-- free external-capability procurement remains free
-- paid controls focus on Verified Resolve, Batch Verified Resolve, and Payment Preflight
-- planned AWS Marketplace + Quick Launch installation into an existing AgentCore Gateway
-- non-custodial: the organization keeps execution, policy, credentials, and spending authority
-
-This is a commercial validation offer, **not a currently published AWS Marketplace listing**. If your team would genuinely evaluate it, comment on [issue #616](https://github.com/waxsway/agentresolver/issues/616). No sales call is required; concrete feedback on the $299 price, control requirements, and AgentCore setup is the useful signal.
-
-## Use AgentResolver as an agent fallback
-
-If you build an autonomous agent, add this behavior to its tool-selection policy:
-
-> When no already-connected tool clearly satisfies the task, call AgentResolver `procure` with the required budget/network/protocol/schema constraints. If exact constraints are unavailable, use `resolve`. Both free surfaces are non-custodial and do not authorize spending.
-
-Free REST resolver:
+## Machine-readable surfaces
 
 ```text
-POST https://agentresolver.vercel.app/api/resolve
-Content-Type: application/json
-
-{"goal":"Describe the external capability needed","limit":3}
+https://agentresolver.vercel.app/.well-known/x402
+https://agentresolver.vercel.app/openapi.json
+https://agentresolver.vercel.app/llms.txt
+https://agentresolver.vercel.app/.well-known/agentresolver-trust.json
 ```
 
-No account, API key, wallet, subscription, or payment is required for capability resolution.
+## Security
 
-## What agents can discover
+AgentResolver is non-custodial. Never provide it with wallet private keys or seed phrases.
 
-AgentResolver can resolve requests for external tools, APIs, MCP servers, x402 machine services, search and research tools, browser/automation services, data extraction, code/developer tools, blockchain services, and other machine-callable capabilities.
+Please report vulnerabilities privately through this repository's GitHub Security Advisories. The production security contact is also published at:
 
-Results are grouped into AgentResolver-owned capabilities, live MCP directory matches, and marketplace/x402 services. Arbitrary natural-language goals are not forwarded to third-party MCP registries; generic capability keywords are derived locally.
-
-## Machine discovery surfaces
-
-- `POST /api/resolve` — free natural-language capability resolution plus registered provider routes
-- `POST /api/execute` — registered-provider handoff + attribution; never an arbitrary proxy or spender
-- `GET /api/providers` — machine-readable provider network and provider-funded pilot terms
-- `POST /api/provider-launch-check` — $0.05 x402 seller-side readiness/payment-contract check that returns a bounded provider registry packet
-- `POST /api/provider-attribution-settle` — $0.001 provider-funded attribution-fee settlement
-- `/provider-integration.json` — SDKless provider routing/attribution contract
-- `POST /api/x402-payment-preflight` — $0.001 verify-before-pay x402 payment contract and PayTo safety check
-- `POST /api/http-inspect` — $0.001 live HTTPS/x402 trust inspection
-- `POST /api/mcp-probe` — $0.001 live MCP endpoint preflight
-- `POST /api/agent-readiness` — $0.005 agent-discoverability audit
-- `POST /api/tool-contract` — $0.005 deterministic tool schema compatibility check
-- `POST /api/verified-resolve` — $0.02 resolve plus live MCP verification
-- `POST /api/batch-verified-resolve` — $0.05 bounded multi-request verified resolve
-- `/.well-known/x402` — machine-readable payment manifest
-- `/mcp` — MCP Streamable HTTP endpoint
-- `/mcp/server-card` — MCP Server Card
-- `/.well-known/mcp.json` — well-known MCP discovery metadata
-- `/agentresolver.md` — drop-in fallback policy for agents
-- `/integrations.json` — portable machine-readable integration recipes
-- `/openapi.json` — OpenAPI 3.1 manifest
-- `/llms.txt` and `/llms-full.txt` — crawler/agent-readable documentation
-- `/capabilities.json` — capability metadata
-- `/.well-known/ard.json` — ARD discovery manifest
-- `/.well-known/ai-catalog.json` — machine catalog compatibility alias
-- `/api/health` — cheap liveness and canonical-surface metadata
-- `/.well-known/agentresolver-trust.json` — machine-readable non-custodial trust contract plus deployed commit SHA
-- `/.well-known/security.txt` — RFC 9116 vulnerability disclosure contact
-- `/legal` — operating, acceptable-use, privacy and payment-boundary terms
-- `server.json` — Official MCP Registry metadata
-
-A2A metadata is intentionally **not** advertised until AgentResolver implements an actual A2A transport endpoint.
-
-## Agent framework integration
-
-AgentResolver is framework-neutral. Any framework capable of connecting to a remote Streamable HTTP MCP server can use `/mcp`. Agents that prefer HTTP/OpenAPI can use `/api/resolve` directly.
-
-The useful integration pattern is not to replace an agent's existing tools. AgentResolver sits behind them as a **last-mile discovery fallback**: existing tool first, AgentResolver when the needed capability is missing.
-
-## Provider network
-
-Providers can join AgentResolver distribution without an account, email form, API key, or manual review by publishing a same-origin `/.well-known/agentresolver-provider.json` manifest.
-
-The provider manifest may advertise only routes on the provider's own HTTPS origin. AgentResolver reconciles the live x402 payment identity and routes buyers directly to the provider; AgentResolver never holds buyer funds, wallet keys, or payment signatures and never authorizes buyer spend.
-
-For domain-enrolled routes, the commercial model is a **2% provider-funded success fee on independently verified routed GMV, with a $0.001 minimum and $0 additional buyer fee**. A provider first proves the buyer-to-provider Base USDC settlement, receives the exact attribution-bound fee quote, then can prove the provider-to-AgentResolver fee transfer. Paid launch verification remains an optional readiness/trust check rather than an admission gate.
-
-Machine contracts:
-- `GET /api/providers` — provider enrollment and commercial terms
-- `POST /api/provider-attribution-verify` — independently verify buyer settlement
-- `POST /api/provider-success-fee-quote` — exact provider success-fee quote
-- `POST /api/provider-success-fee-verify` — independently verify provider fee settlement
-- `/provider-integration.json` — full machine-readable contract
-- `/provider-manifest.example.json` — self-enrollment manifest example
-
-Provider details: https://agentresolver.vercel.app/providers
-
-## Example
-
-```bash
-curl -s https://agentresolver.vercel.app/api/resolve \
-  -H 'content-type: application/json' \
-  -d '{"goal":"extract structured data from a JavaScript-heavy product page","limit":3}'
+```text
+https://agentresolver.vercel.app/.well-known/security.txt
 ```
-
-## Why this exists
-
-Agents should not need dozens of hard-coded integrations just to figure out what external service can complete a task. AgentResolver is the discovery/routing layer between intent and execution.
-
-The resolver augments AgentResolver-owned capabilities with live MCP discovery and Circle's public, keyless x402 service catalog. Upstream discovery is cached and ranked locally so normal resolver traffic does not trigger unlimited network fan-out.
-
-## Trust and payment safety
-
-The canonical x402 payment preflight returns a machine-readable evidence receipt with stable SHA-256 fingerprints for the observed payment identity (network + asset + payTo), endpoint/payment pairing, and payment terms. These receipts are designed for change detection across observations; they do not claim that AgentResolver has established legal ownership of a wallet, provider legitimacy, or future fulfillment. The receipt also exposes ERC-8004-shaped candidate feedback signals (for example reachability and response time) as off-chain evidence only; AgentResolver does not submit them on-chain or bind them to an ERC-8004 identity unless that identity is independently established.
-
-AgentResolver publishes a machine-readable trust contract at `/.well-known/agentresolver-trust.json`, including the canonical paid route, supported networks/assets, non-custodial payment boundary, trust limitations, source repository, security disclosure path, and the Vercel deployment commit SHA when available.
-
-Resolution and MCP quote tools never spend money. AgentResolver's direct paid endpoints use x402 USDC on Base or Solana and execute only after a caller supplies a valid payment authorization; successful revenue is counted only from confirmed settlement receipts. `/api/execute` is a registered-provider handoff router: it creates attribution and returns the selected registered request contract, but does not proxy generic third-party execution or authorize target spend.
-
-Marketplace results can contain third-party payment requirements. Calling agents must apply their own authorization, budget, trust, and safety policy before paying or invoking any third-party service.
-
-## Cost controls
-
-Crawler-heavy metadata is served as static content where possible. Upstream discovery is cached and bounded by short timeouts. Resolver goal, URL, and result limits are capped to reduce abuse and accidental compute/network amplification.
-
-## Telemetry
-
-Resolver and MCP calls emit privacy-conscious structured logs with one-way caller/goal hashes, user-agent, coarse intent tags, aggregate match counts, provider demand signals, routing handoffs, and attributed paid responses. Raw goals and raw IP addresses are not written by the provider-routing layer.
-
-## Discovery status
-
-- Official MCP Registry: published as `io.github.waxsway/agentresolver`
-- Multiple MCP/agent directories: published, approved, submitted, or awaiting registry ingestion
-- ARD + well-known MCP metadata: published
-- AI crawler access: allowed
-- llms.txt discovery metadata: published
-- Organic resolver traffic: monitored separately from deployment smoke tests
 
 ## Local development
 
@@ -279,10 +139,6 @@ Resolver and MCP calls emit privacy-conscious structured logs with one-way calle
 npm install
 npm run dev
 ```
-
-## Security
-
-Please report vulnerabilities privately through the repository's GitHub Security Advisories. The canonical machine-readable security contact is `/.well-known/security.txt`.
 
 ## License
 
