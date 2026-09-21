@@ -1,0 +1,21 @@
+name: Audit x402 List AgentResolver
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Search AgentResolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --get --connect-timeout 5 --max-time 20             -o /tmp/body -w '%{http_code}'             'https://x402-list.com/api/v1/services'             --data-urlencode 'q=agentresolver'             --data-urlencode 'per_page=100' || printf '000')"
+          echo "http=$code"
+          test "$code" = "200"
+          jq -c '{count:((.data//[])|length),rows:[(.data//[])[]|{slug,name,base_url}]}' /tmp/body
