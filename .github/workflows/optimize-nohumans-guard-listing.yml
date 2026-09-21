@@ -1,0 +1,261 @@
+name: Optimize NoHumans AgentResolver Guard Listing
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/optimize-nohumans-guard-listing.yml"
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: optimize-nohumans-guard-listing
+  cancel-in-progress: true
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      LISTING_ID: 628b5619-143
+      SAMPLE_QUERY: https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453
+    steps:
+      - name: Load existing NoHumans owner token from Vercel
+        id: token
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::VERCEL_TOKEN is unavailable; no external mutation attempted."
+            exit 0
+          fi
+
+          response_file="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 \
+            -o "$response_file" -w '%{http_code}' \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H 'content-type: application/json' \
+            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID&decrypt=true&source=vercel-cli:pull" || printf '000')"
+
+          if [ "$code" != "200" ]; then
+            rm -f "$response_file"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Vercel env API returned HTTP $code; no external mutation attempted."
+            exit 0
+          fi
+
+          token="$(python3 - "$response_file" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1], "r", encoding="utf-8"))
+          for item in payload.get("envs", []):
+              if item.get("key") == "NOHUMANS_OWNER_TOKEN" and "production" in (item.get("target") or []):
+                  value=item.get("value")
+                  if isinstance(value, str) and value:
+                      print(value)
+                      break
+          PY
+          )"
+          rm -f "$response_file"
+
+          if [ -z "$token" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::NOHUMANS_OWNER_TOKEN is unavailable; no external mutation attempted."
+            exit 0
+          fi
+
+          echo "::add-mask::$token"
+          printf '%s' "$token" > /tmp/nohumans-owner-token
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Add machine-usable Guard sample and schemas
+        id: patch
+        if: steps.token.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(cat /tmp/nohumans-owner-token)"
+          payload="$(jq -cn --arg sample "$SAMPLE_QUERY" '{
+            sample_query:$sample,
+            request_schema:{
+              type:"object",
+              required:["url"],
+              additionalProperties:false,
+              properties:{
+                url:{type:"string",format:"uri",description:"Public x402 target URL to independently inspect before caller authorization."},
+                method:{type:"string",enum:["GET","HEAD","POST"],default:"GET"},
+                maxPriceUsd:{type:"number",exclusiveMinimum:0,description:"Optional fail-closed maximum target price in USD."},
+                expectedPayTo:{type:"string",description:"Optional expected target payment recipient."},
+                expectedNetwork:{type:"string",description:"Optional expected CAIP-2 network identifier."},
+                allowUnpaidPostProbe:{type:"boolean",default:false,description:"Explicit opt-in only when an unpaid POST probe is known side-effect safe."}
+              }
+            },
+            response_schema:{
+              type:"object",
+              required:["guard","prepaymentDecision","evidenceReceipt"],
+              additionalProperties:true,
+              properties:{
+                guard:{
+                  type:"object",
+                  required:["product","decision","eligibleForCallerAuthorization","reasonCodes","evidenceDigestSha256","paymentIdentityFingerprint","paymentTermsFingerprint"],
+                  additionalProperties:true,
+                  properties:{
+                    product:{type:"string",const:"AgentResolver Guard"},
+                    decision:{type:"string",enum:["eligible","blocked"]},
+                    eligibleForCallerAuthorization:{type:"boolean"},
+                    reasonCodes:{type:"array",items:{type:"string"}},
+                    evidenceDigestSha256:{type:"string"},
+                    paymentIdentityFingerprint:{type:"string"},
+                    paymentTermsFingerprint:{type:"string"}
+                  }
+                },
+                prepaymentDecision:{
+                  type:"object",
+                  required:["kind","decision","eligibleForCallerAuthorization","targetPayment","authorizationBoundary","reasons"],
+                  additionalProperties:true,
+                  properties:{
+                    kind:{type:"string",const:"x402-prepayment-decision"},
+                    decision:{type:"string",enum:["eligible","blocked"]},
+                    eligibleForCallerAuthorization:{type:"boolean"},
+                    targetPayment:{type:"object"},
+                    authorizationBoundary:{type:"object"},
+                    reasons:{type:"array",items:{type:"string"}}
+                  }
+                },
+                evidenceReceipt:{type:"object"}
+              }
+            }
+          }')"
+
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 \
+            -o "$body" -w '%{http_code}' \
+            -X PATCH "https://nohumans.directory/v1/listings/$LISTING_ID" \
+            -H "x-claim-token: $token" \
+            -H 'content-type: application/json' \
+            --data "$payload" || printf '000')"
+
+          jq 'del(.claim_token,.edit_token,.owner_token,.token,.email)' "$body" 2>/dev/null || cat "$body"
+          echo
+          case "$code" in
+            200|204)
+              echo "result=updated" >> "$GITHUB_OUTPUT"
+              ;;
+            401|403)
+              echo "result=auth_rejected" >> "$GITHUB_OUTPUT"
+              echo "::notice::Stored NoHumans owner token does not control the Guard listing; refusing claim recovery or identity action."
+              ;;
+            400|422)
+              echo "result=schema_rejected" >> "$GITHUB_OUTPUT"
+              echo "::notice::NoHumans rejected the Guard metadata payload (HTTP $code)."
+              ;;
+            429|500|502|503|504|000)
+              echo "result=temporary_failure" >> "$GITHUB_OUTPUT"
+              echo "::notice::NoHumans metadata endpoint temporarily unavailable (HTTP $code)."
+              ;;
+            *)
+              echo "result=unexpected_$code" >> "$GITHUB_OUTPUT"
+              echo "::notice::Unexpected NoHumans update status $code."
+              ;;
+          esac
+
+      - name: Verify Guard listing metadata
+        id: verify
+        if: steps.patch.outputs.result == 'updated'
+        shell: bash
+        run: |
+          set +e
+          curl -fsS --connect-timeout 5 --max-time 20 \
+            "https://nohumans.directory/v1/listings/$LISTING_ID" \
+            -o /tmp/nohumans-guard-listing.json
+          CURL_RC=$?
+          if [ "$CURL_RC" -ne 0 ]; then
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          python3 - "$SAMPLE_QUERY" <<'PY'
+          import json, sys
+          from pathlib import Path
+          expected=sys.argv[1]
+          data=json.loads(Path("/tmp/nohumans-guard-listing.json").read_text())
+          summary={
+              "id":data.get("id"),
+              "status":data.get("status"),
+              "paid_verified":data.get("paid_verified"),
+              "has_sample":data.get("has_sample"),
+              "sample_query":data.get("sample_query"),
+              "request_schema_present":bool(data.get("request_schema")),
+              "response_schema_present":bool(data.get("response_schema")),
+              "probe_count":data.get("probe_count"),
+              "onchain_unique_payers_30d":data.get("onchain_unique_payers_30d"),
+          }
+          print(json.dumps(summary,separators=(",",":")))
+          assert data.get("sample_query") == expected
+          assert bool(data.get("request_schema"))
+          assert bool(data.get("response_schema"))
+          PY
+          PY_RC=$?
+          if [ "$PY_RC" -eq 0 ]; then
+            echo "verified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Publish auditable status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          TOKEN_AVAILABLE: ${{ steps.token.outputs.available }}
+          PATCH_RESULT: ${{ steps.patch.outputs.result }}
+          VERIFIED: ${{ steps.verify.outputs.verified }}
+        run: |
+          if [ "$VERIFIED" = "true" ]; then
+            STATE=success
+            DESC="NoHumans Guard sample/schema metadata verified"
+          else
+            STATE=failure
+            DESC="NoHumans Guard optimization not applied: ${PATCH_RESULT:-token_${TOKEN_AVAILABLE:-unknown}}"
+          fi
+          export STATE DESC
+          python3 - <<'PY'
+          import json, os, urllib.request
+          url=f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
+          payload={
+              "state":os.environ["STATE"],
+              "context":"distribution/nohumans-guard-metadata",
+              "description":os.environ["DESC"][:140],
+              "target_url":"https://nohumans.directory/l/628b5619-143"
+          }
+          req=urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode(),
+              headers={
+                  "Authorization":f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept":"application/vnd.github+json",
+                  "Content-Type":"application/json",
+                  "X-GitHub-Api-Version":"2022-11-28"
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              print(resp.status)
+          PY
+
+      - name: Remove local owner token
+        if: always()
+        shell: bash
+        run: rm -f /tmp/nohumans-owner-token
+
+      - name: Fail if Guard metadata was not verified
+        if: always() && steps.verify.outputs.verified != 'true'
+        run: exit 1
