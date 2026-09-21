@@ -38,6 +38,74 @@
       ]
     },
     {
+      "resource": "POST /api/x402-payment-preflight",
+      "name": "AgentResolver Payment Preflight — Verify x402 Before Paying",
+      "description": "Verify a live x402 payment contract before an autonomous wallet signs. Returns fail-closed eligible/blocked evidence for endpoint reachability, quoted USDC amount, payTo recipient, network, asset, exact scheme and resource binding, with optional max-price, expected-payee and expected-network assertions. AgentResolver never signs or authorizes the target payment.",
+      "price": "$0.001",
+      "method": "POST",
+      "inputTransport": "json",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "pattern": "^https://",
+            "maxLength": 500
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "HEAD",
+              "POST"
+            ]
+          },
+          "maxPriceUsd": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "expectedPayTo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expectedNetwork": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "body": {},
+          "allowUnpaidPostProbe": {
+            "type": "boolean"
+          }
+        }
+      },
+      "examples": [
+        {
+          "url": "https://target.example/api",
+          "method": "GET",
+          "maxPriceUsd": 0.01
+        }
+      ],
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+          "maxAmountRequired": "1000",
+          "extra": {
+            "name": "USD Coin",
+            "version": "2"
+          }
+        }
+      ]
+    },
+    {
       "resource": "POST /api/http-inspect",
       "description": "Preflight a public HTTPS or x402 API before an agent depends on or pays it. Returns a live 0-100 trust score, grade and weighted TLS, reachability, latency, redirect and security-header evidence.",
       "price": "$0.001",
