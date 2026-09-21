@@ -1,0 +1,114 @@
+name: Submit AgentResolver to Market402
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/submit-market402.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  submit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Submit canonical x402 canary
+        id: submit
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          submit_url = "https://market402.com/submit"
+          target = "https://agentresolver.vercel.app/api/x402-ping"
+          ua = "agentresolver-free-distribution/1.0 (+https://github.com/waxsway/agentresolver)"
+
+          def request(data, content_type):
+              req = urllib.request.Request(
+                  submit_url,
+                  data=data,
+                  headers={"Content-Type": content_type, "User-Agent": ua},
+                  method="POST",
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as resp:
+                      return resp.status, resp.read().decode("utf-8", "replace")
+              except urllib.error.HTTPError as exc:
+                  return exc.code, exc.read().decode("utf-8", "replace")
+              except Exception as exc:
+                  return 0, f"{type(exc).__name__}: {exc}"
+
+          status, body = request(
+              json.dumps({"url": target}).encode("utf-8"),
+              "application/json",
+          )
+
+          if status in (400, 404, 405, 415, 422):
+              status, body = request(
+                  urllib.parse.urlencode({"url": target}).encode("utf-8"),
+                  "application/x-www-form-urlencoded",
+              )
+
+          safe_body = body.replace("\n", " ").replace("\r", " ")[:1200]
+          print(json.dumps({
+              "provider": "Market402",
+              "target": target,
+              "status": status,
+              "body": safe_body
+          }))
+
+          success = 200 <= status < 300
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"http_status={status}\n")
+              out.write(f"success={'true' if success else 'false'}\n")
+          if not success:
+              raise SystemExit(1)
+          PY
+
+      - name: Publish auditable commit status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          SUBMIT_STATUS: ${{ steps.submit.outputs.http_status }}
+          SUBMIT_SUCCESS: ${{ steps.submit.outputs.success }}
+        run: |
+          if [ "$SUBMIT_SUCCESS" = "true" ]; then
+            STATE=success
+            DESC="Market402 submission HTTP ${SUBMIT_STATUS:-0}"
+          else
+            STATE=failure
+            DESC="Market402 submission failed HTTP ${SUBMIT_STATUS:-0}"
+          fi
+          export STATE DESC
+          python - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
+          payload = {
+              "state": os.environ["STATE"],
+              "context": "distribution/market402",
+              "description": os.environ["DESC"][:140],
+              "target_url": "https://market402.com/"
+          }
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28"
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              print(resp.status, resp.read().decode("utf-8", "replace")[:500])
+          PY
