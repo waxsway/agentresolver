@@ -1,0 +1,35 @@
+name: Submit AgentResolver Settlement Ping to Aegis
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Idempotent anonymous Aegis submission
+        shell: bash
+        run: |
+          set -euo pipefail
+          discover="$(mktemp)"
+          dcode="$(curl -sS --connect-timeout 5 --max-time 20             -o "$discover" -w '%{http_code}'             --get 'https://aegis.borisinc.com/discover'             --data-urlencode 'q=AgentResolver' || printf '000')"
+          echo "discover_http=$dcode"
+          if [ "$dcode" = "200" ] && grep -qi 'agentresolver' "$discover"; then
+            echo "AEGIS_ALREADY_LISTED=true"
+            cat "$discover" | head -c 5000
+            exit 0
+          fi
+
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 30             -o "$body" -w '%{http_code}'             --get 'https://aegis.borisinc.com/submit'             --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping'             --data-urlencode 'name=AgentResolver Settlement Ping'             --data-urlencode 'category=verification'             --data-urlencode 'price_usd=0.001' || printf '000')"
+          echo "submit_http=$code"
+          cat "$body" | head -c 8000
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            *) exit 1 ;;
+          esac
