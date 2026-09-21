@@ -411,6 +411,126 @@ jobs:
               print(resp.status)
           PY
 
+      - name: Compare Agent402 seller health for #1 and #2
+        id: seller_health
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.request
+
+          req = urllib.request.Request(
+              "https://agent402.tools/api/index",
+              headers={"User-Agent":"agentresolver-discovery-audit/1.0 (+https://github.com/waxsway/agentresolver)"}
+          )
+          with urllib.request.urlopen(req, timeout=60) as resp:
+              payload = json.loads(resp.read().decode("utf-8", "replace"))
+          sellers = payload.get("sellers") or []
+
+          def find_seller(needle):
+              for seller in sellers:
+                  blob = json.dumps(seller, separators=(",",":"), sort_keys=True).lower()
+                  if needle in blob:
+                      return seller
+              return None
+
+          def extract(seller):
+              seller = seller or {}
+              flat = {}
+              def walk(v, prefix=""):
+                  if isinstance(v, dict):
+                      for k, x in v.items():
+                          key = f"{prefix}.{k}" if prefix else str(k)
+                          if isinstance(x, (str,int,float,bool)) or x is None:
+                              flat[key] = x
+                          else:
+                              walk(x, key)
+              walk(seller)
+              health = None
+              health_key = None
+              for key, value in flat.items():
+                  lk=key.lower()
+                  if "health" in lk and isinstance(value,(str,int,float,bool)):
+                      health_key, health = key, value
+                      if lk.endswith("health") or "rolling" in lk:
+                          break
+              eligible = None
+              reason = None
+              for key,value in flat.items():
+                  lk=key.lower()
+                  if "routerdispatcheligible" in lk or ("dispatch" in lk and "eligible" in lk):
+                      eligible=value
+                  if "routerdispatchreason" in lk or ("dispatch" in lk and "reason" in lk):
+                      reason=value
+              return health_key, health, eligible, reason, sorted(flat.keys())
+
+          ar = find_seller("agentresolver.vercel.app")
+          dx = find_seller("api.delx.ai")
+          ar_info = extract(ar)
+          dx_info = extract(dx)
+
+          print(json.dumps({
+              "agentresolver":{"seller":ar,"healthKey":ar_info[0],"health":ar_info[1],"dispatchEligible":ar_info[2],"dispatchReason":ar_info[3],"keys":ar_info[4]},
+              "delx":{"seller":dx,"healthKey":dx_info[0],"health":dx_info[1],"dispatchEligible":dx_info[2],"dispatchReason":dx_info[3],"keys":dx_info[4]}
+          }, separators=(",",":"), sort_keys=True))
+
+          def code(v):
+              return re.sub(r'[^a-z0-9.-]+','-',str(v).lower())[:24] if v is not None else "unknown"
+
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as out:
+              out.write(f"ar_found={'true' if ar else 'false'}\n")
+              out.write(f"ar_health={code(ar_info[1])}\n")
+              out.write(f"ar_dispatch={code(ar_info[2])}\n")
+              out.write(f"ar_reason={code(ar_info[3])}\n")
+              out.write(f"dx_found={'true' if dx else 'false'}\n")
+              out.write(f"dx_health={code(dx_info[1])}\n")
+              out.write(f"dx_dispatch={code(dx_info[2])}\n")
+              out.write(f"dx_reason={code(dx_info[3])}\n")
+          PY
+
+      - name: Publish seller health comparison
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          AR_FOUND: ${{ steps.seller_health.outputs.ar_found }}
+          AR_HEALTH: ${{ steps.seller_health.outputs.ar_health }}
+          AR_DISPATCH: ${{ steps.seller_health.outputs.ar_dispatch }}
+          AR_REASON: ${{ steps.seller_health.outputs.ar_reason }}
+          DX_FOUND: ${{ steps.seller_health.outputs.dx_found }}
+          DX_HEALTH: ${{ steps.seller_health.outputs.dx_health }}
+          DX_DISPATCH: ${{ steps.seller_health.outputs.dx_dispatch }}
+          DX_REASON: ${{ steps.seller_health.outputs.dx_reason }}
+        shell: bash
+        run: |
+          for item in "agentresolver:$AR_FOUND:$AR_HEALTH:$AR_DISPATCH:$AR_REASON" "delx:$DX_FOUND:$DX_HEALTH:$DX_DISPATCH:$DX_REASON"; do
+            IFS=: read -r seller found health dispatch reason <<< "$item"
+            if [ "$found" = "true" ]; then state=success; else state=failure; fi
+            CONTEXT="distribution/agent402-health-${seller}-${health}-dispatch-${dispatch}-${reason}"
+            export state CONTEXT
+            python - <<'PY'
+          import json, os, urllib.request
+          payload={
+            "state":os.environ["state"],
+            "context":os.environ["CONTEXT"][:100],
+            "description":"Agent402 current seller health/dispatch snapshot",
+            "target_url":"https://agent402.tools/api/index"
+          }
+          req=urllib.request.Request(
+            f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+            data=json.dumps(payload).encode(),
+            headers={
+              "Authorization":f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept":"application/vnd.github+json",
+              "Content-Type":"application/json",
+              "X-GitHub-Api-Version":"2022-11-28"
+            },
+            method="POST"
+          )
+          with urllib.request.urlopen(req,timeout=30) as resp:
+              print(resp.status)
+          PY
+          done
+
       - name: Publish external-route quote status
         if: always()
         shell: bash
