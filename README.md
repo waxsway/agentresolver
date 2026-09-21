@@ -88,6 +88,10 @@ Copy-paste TypeScript integration:
 
 [`docs/integrations/x402-core-payment-guard.md`](docs/integrations/x402-core-payment-guard.md)
 
+Coinbase CDP SDK users can compose `CdpX402Client` spend controls with the same live AgentResolver pre-sign check while keeping wallet secrets inside CDP:
+
+[`docs/integrations/coinbase-cdp-sdk-payment-guard.md`](docs/integrations/coinbase-cdp-sdk-payment-guard.md)
+
 This path does not depend on Coinbase AgentKit's still-unmerged `beforePayment` proposal.
 
 ## Framework-native fallback recipes
