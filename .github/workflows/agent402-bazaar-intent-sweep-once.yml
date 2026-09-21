@@ -81,9 +81,8 @@ jobs:
               f.write(f"ar_calls={c(calls(ar_b))}\n")
               f.write(f"top_bazaar_keys={c('.'.join(sorted(top_b.keys())))}\n")
               f.write(f"ar_bazaar_keys={c('.'.join(sorted(ar_b.keys())))}\n")
-              for q,v in rows_out.items():
-                  slug=re.sub(r'[^a-z0-9]+','-',q.lower()).strip('-')[:40]
-                  f.write(f"rank_{slug}={v['rank'] or 0}\n")
+              for idx,(q,v) in enumerate(rows_out.items(),1):
+                  f.write(f"rank_q{idx}={v['rank'] or 0}\n")
           PY
 
       - name: Publish Bazaar quality
@@ -97,14 +96,14 @@ jobs:
           AR_CALLS: ${{ steps.sweep.outputs.ar_calls }}
           TOP_KEYS: ${{ steps.sweep.outputs.top_bazaar_keys }}
           AR_KEYS: ${{ steps.sweep.outputs.ar_bazaar_keys }}
-          R1: ${{ steps.sweep.outputs.rank_verify-x402-payment-before-paying }}
-          R2: ${{ steps.sweep.outputs.rank_prepayment-authorization-gate }}
-          R3: ${{ steps.sweep.outputs.rank_x402-transaction-path-payment-gate }}
-          R4: ${{ steps.sweep.outputs.rank_usdc-payment-check }}
-          R5: ${{ steps.sweep.outputs.rank_verify-endpoint-before-paying }}
-          R6: ${{ steps.sweep.outputs.rank_x402-preflight }}
-          R7: ${{ steps.sweep.outputs.rank_payto-verification }}
-          R8: ${{ steps.sweep.outputs.rank_endpoint-safety }}
+          R1: ${{ steps.sweep.outputs.rank_q1 }}
+          R2: ${{ steps.sweep.outputs.rank_q2 }}
+          R3: ${{ steps.sweep.outputs.rank_q3 }}
+          R4: ${{ steps.sweep.outputs.rank_q4 }}
+          R5: ${{ steps.sweep.outputs.rank_q5 }}
+          R6: ${{ steps.sweep.outputs.rank_q6 }}
+          R7: ${{ steps.sweep.outputs.rank_q7 }}
+          R8: ${{ steps.sweep.outputs.rank_q8 }}
         shell: bash
         run: |
           python - <<'PY'
