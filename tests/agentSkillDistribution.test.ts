@@ -91,6 +91,18 @@ test("installable Guard skill documents the Franklin pre-sign market seam", () =
 });
 
 
+test("installable Guard skill documents AgentBIT explicit-resource execution", () => {
+  assert.match(installable, /## AgentBIT Router — explicit-resource Guard execution/);
+  assert.match(installable, /POST https:\/\/agentbit\.app\/v1\/route\/execute/);
+  assert.match(installable, /explicit `resource` mode/i);
+  assert.match(installable, /pays AgentResolver's underlying \$0\.001 Guard charge from its treasury/i);
+  assert.match(installable, /does \*\*not\*\* authorize the original target payment/i);
+  assert.match(installable, /fresh, independent caller authorization/i);
+  assert.match(installable, /Do not infer the original buyer's wallet identity/i);
+  assert.match(installable, /not affiliated with AgentBIT/i);
+});
+
+
 test("installable and published Guard skills carry the network-aware MCP pre-sign gate", () => {
   for (const text of [installable, published]) {
     assert.match(text, /## MCP wallet-capable clients — fail-closed pre-sign gate/);
