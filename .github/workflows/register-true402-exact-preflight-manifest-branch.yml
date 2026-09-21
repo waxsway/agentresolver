@@ -1,0 +1,41 @@
+name: Register true402 Exact Preflight With Manifest
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Register canonical Preflight with fallback manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESOURCE='https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453'
+
+          payload="$(jq -cn --arg url "$RESOURCE" '{
+            url:$url,
+            manifest:{
+              x402:"1.0",
+              name:"Verify x402 Payment Before Paying",
+              description:"$0.001 fail-closed x402 payment preflight for autonomous agents before signing a target payment.",
+              capabilities:["agents","x402","payment-preflight","payment-guard","wallet-safety","verification"],
+              pricing:{currency:"USDC",base:"0.001",unit:"request"},
+              payment:{
+                address:"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+                chain:"base",
+                facilitator:"https://facilitator.payai.network"
+              },
+              endpoint:$url
+            }
+          }')"
+
+          code="$(curl -sS --connect-timeout 5 --max-time 30             -o /tmp/reg.json -w '%{http_code}'             -X POST 'https://true402.dev/api/v1/services/register'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          echo "register_http=$code"
+          cat /tmp/reg.json
+          echo
+          case "$code" in 200|201|202|409) ;; *) exit 1;; esac
