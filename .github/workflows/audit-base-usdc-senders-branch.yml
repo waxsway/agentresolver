@@ -1,0 +1,54 @@
+name: Audit Base USDC Transfer Senders
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Compare known and unmatched Base USDC senders
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, urllib.request, time
+          RPC="https://mainnet.base.org"
+          hashes=[
+            ("unmatched","0x23ad71e35f76e689a3ad23f821d1d240c9170c8fa6408e93bddf6d4b7713ce12"),
+            ("known","0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72"),
+            ("known","0xa4d504f662c554ee2bb4745352fe640e1235141311ef9e4eeec9b8aa6bf45cd8"),
+            ("unmatched","0xbcf4cd8f2cf32650d316f71e15c8c8f1c3519a7d7737e3fd79ccb497cb9d7ff6"),
+            ("known","0x439885dab80375051b5295df179b668a6a67490d20c3e1cb4725809f4ea4b5b8"),
+          ]
+          def rpc(method,params):
+            body=json.dumps({"jsonrpc":"2.0","id":1,"method":method,"params":params}).encode()
+            for i in range(5):
+              try:
+                req=urllib.request.Request(RPC,data=body,headers={"content-type":"application/json","user-agent":"agentresolver-chain-audit/1.0"},method="POST")
+                with urllib.request.urlopen(req,timeout=20) as r:
+                  data=json.load(r)
+                if data.get("error"): raise RuntimeError(data["error"])
+                return data.get("result")
+              except Exception:
+                if i==4: raise
+                time.sleep(1+i)
+          out=[]
+          for kind,h in hashes:
+            tx=rpc("eth_getTransactionByHash",[h]) or {}
+            rcpt=rpc("eth_getTransactionReceipt",[h]) or {}
+            out.append({
+              "kind":kind,
+              "hash":h,
+              "from":tx.get("from"),
+              "to":tx.get("to"),
+              "inputSelector":(tx.get("input") or "")[:10],
+              "status":rcpt.get("status"),
+              "logCount":len(rcpt.get("logs") or []),
+            })
+          print(json.dumps(out,separators=(",",":"),sort_keys=True))
+          PY
