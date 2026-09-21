@@ -1,0 +1,50 @@
+name: Audit CDP Bazaar AgentResolver
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Query CDP Bazaar by payee and resource server
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources'
+          for mode in payto resource_server; do
+            body="$(mktemp)"
+            if [ "$mode" = "payto" ]; then
+              url="$base?payTo=0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8&limit=100"
+            else
+              url="$base?resource_server=agentresolver.vercel.app&limit=100"
+            fi
+            code="$(curl -sS -o "$body" -w '%{http_code}' --connect-timeout 5 --max-time 30 "$url" || printf '000')"
+            echo "MODE=$mode HTTP=$code"
+            python3 - "$body" <<'PY'
+          import json,sys
+          try: d=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          except Exception:
+              print("NON_JSON"); raise SystemExit
+          blob=json.dumps(d,separators=(",",":"),sort_keys=True)
+          def walk(v):
+              out=[]
+              if isinstance(v,dict):
+                  if "agentresolver" in json.dumps(v,separators=(",",":")).lower():
+                      out.append(v)
+                  for x in v.values(): out.extend(walk(x))
+              elif isinstance(v,list):
+                  for x in v: out.extend(walk(x))
+              return out
+          matches=walk(d)
+          print(json.dumps({
+            "topKeys":sorted(d.keys()) if isinstance(d,dict) else [],
+            "count":len(matches),
+            "matches":matches[:20]
+          },separators=(",",":"),sort_keys=True))
+          PY
+          done
