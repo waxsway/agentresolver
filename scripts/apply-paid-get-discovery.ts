@@ -224,7 +224,7 @@ guardPath["x-agentresolver-alias-of"] = PREFLIGHT_ENDPOINT;
 guardPath["x-agentresolver-preferred-method"] = "GET";
 if (guardPath.get) {
   guardPath.get.operationId = "agentResolverPaymentGuardGet";
-  guardPath.get.summary = "Validate x402 payment requirements before wallet signing";
+  guardPath.get.summary = "Verify x402 Payment Before Paying";
   guardPath.get["x-agentresolver-alias-of"] = PREFLIGHT_ENDPOINT;
 }
 if (guardPath.post) {
