@@ -65,19 +65,15 @@ test("installable Guard skill documents the Coinbase AgentKit confirmation-first
   assert.match(installable, /make_http_request/);
   assert.match(installable, /retry_http_request_with_x402/);
   assert.match(installable, /discover_x402_services/);
-  assert.match(installable, /facilitator: "payai"/);
-  assert.match(installable, /maxUsdcPrice: 0\.001/);
-  assert.match(installable, /x402Versions: \[2\]/);
-  assert.match(installable, /AgentKit's current default facilitator is CDP/i);
-  assert.match(
-    installable,
-    /expected Base resource is `https:\/\/agentresolver\.vercel\.app\/api\/x402-ping`/i
-  );
+  assert.match(installable, /Do \*\*not\*\* require Bazaar discovery before using AgentResolver/i);
+  assert.match(installable, /register\/allowlist the exact AgentResolver origin directly/i);
+  assert.match(installable, /missing AgentResolver result as catalog lag/i);
+  assert.match(installable, /beforePayment.*PR #1454.*not merged/is);
   assert.match(installable, /list_registered_services/);
   assert.match(installable, /register_x402_service/);
   assert.match(installable, /allowDynamicServiceRegistration/);
   assert.match(installable, /registeredServices/);
-  assert.match(installable, /Do not enable dynamic registration merely to bypass the service allowlist/i);
+  assert.match(installable, /(?:Do not|Never) enable dynamic registration merely to bypass the service allowlist/i);
   assert.match(installable, /do not use `make_http_request_with_x402` on an unfamiliar target/i);
   assert.match(published, /## Coinbase AgentKit/);
 });
