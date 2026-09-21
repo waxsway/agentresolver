@@ -1,0 +1,117 @@
+name: Probe Tollbooth Test-Call Contract Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tollbooth-test-call-contract-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      TOLLBOOTH_API: https://www.trytollbooth.com
+      ENDPOINT_URL: "https://agentresolver.vercel.app/api/cdp-payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET"
+    steps:
+      - name: Discover exact AgentResolver CDP Guard service id
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 30             -o "$body" -w '%{http_code}'             "$TOLLBOOTH_API/api/services?q=AgentResolver" || printf '000')"
+          echo "catalog_http=$code"
+          case "$code" in
+            200) ;;
+            429|500|502|503|504|000)
+              echo "::notice::Tollbooth catalog unavailable; unpaid test-call probe deferred."
+              exit 0
+              ;;
+            *)
+              echo "::notice::Unexpected catalog HTTP $code; no further action."
+              exit 0
+              ;;
+          esac
+
+          python3 - "$body" "$ENDPOINT_URL" "$GITHUB_OUTPUT" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          endpoint=sys.argv[2]
+          output=sys.argv[3]
+
+          def walk(x):
+              if isinstance(x,dict):
+                  yield x
+                  for v in x.values():
+                      yield from walk(v)
+              elif isinstance(x,list):
+                  for v in x:
+                      yield from walk(v)
+
+          matches=[]
+          for row in walk(data):
+              u=row.get("endpoint") or row.get("endpointUrl") or row.get("url")
+              if u == endpoint:
+                  matches.append(row)
+          safe=[]
+          for row in matches:
+              safe.append({
+                  "id": row.get("id") or row.get("serviceId") or row.get("slug"),
+                  "name": row.get("name"),
+                  "endpoint": row.get("endpoint") or row.get("endpointUrl") or row.get("url"),
+                  "verified": row.get("verified"),
+                  "status": row.get("status"),
+              })
+          print(json.dumps({"matches":safe},separators=(",",":"),sort_keys=True))
+          sid=next((r["id"] for r in safe if r.get("id")),None)
+          with open(output,"a",encoding="utf-8") as f:
+              f.write(f"service_id={sid or ''}\n")
+          PY
+
+      - name: Probe test-call with pay false only
+        if: steps.discover.outputs.service_id != ''
+        shell: bash
+        env:
+          SERVICE_ID: ${{ steps.discover.outputs.service_id }}
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg id "$SERVICE_ID" '{serviceId:$id,pay:false}')"
+          code="$(curl -sS --connect-timeout 10 --max-time 45             -o "$body" -w '%{http_code}'             -X POST "$TOLLBOOTH_API/api/test-call"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+
+          echo "test_call_http=$code"
+          python3 - "$body" <<'PY'
+          import json,sys
+          raw=open(sys.argv[1],encoding="utf-8",errors="replace").read()
+          try:
+              data=json.loads(raw)
+              def scrub(x):
+                  if isinstance(x,dict):
+                      return {k:("[REDACTED]" if any(s in k.lower() for s in ("private","secret","seed","mnemonic","token","key")) else scrub(v)) for k,v in x.items()}
+                  if isinstance(x,list): return [scrub(v) for v in x]
+                  return x
+              print(json.dumps(scrub(data),separators=(",",":"),sort_keys=True)[:8000])
+          except Exception:
+              print(raw[:2000])
+          PY
+
+          # This workflow is deliberately discovery-only. Never change pay:false here
+          # without first confirming the public API contract and independently deciding
+          # that a third-party-funded call is intended.
+          case "$code" in
+            200|201|202|400|404|409|422) ;;
+            401|403)
+              echo "::notice::Tollbooth test-call requires authorization; stop here."
+              ;;
+            429|500|502|503|504|000)
+              echo "::notice::Tollbooth test-call temporarily unavailable."
+              ;;
+            *)
+              echo "::notice::Unexpected test-call HTTP $code."
+              ;;
+          esac
