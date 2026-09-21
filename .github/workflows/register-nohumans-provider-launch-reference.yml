@@ -1,4 +1,5 @@
 name: Register NoHumans Provider Launch Reference
+# Revenue trigger: one-shot provider-launch reference submission, 2026-09-21
 
 on:
   workflow_dispatch:
