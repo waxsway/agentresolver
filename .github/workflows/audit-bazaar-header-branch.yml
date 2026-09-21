@@ -1,0 +1,47 @@
+name: Audit Bazaar PAYMENT-REQUIRED Header
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Decode production payment header
+        shell: bash
+        run: |
+          set -euo pipefail
+          hdr="$(mktemp)"
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -D "$hdr" -o "$body" -w '%{http_code}'             'https://agentresolver.vercel.app/api/x402-ping' || printf '000')"
+          echo "http=$code"
+          test "$code" = "402"
+          python3 - "$hdr" <<'PY'
+          import base64,json,re,sys
+          text=open(sys.argv[1],encoding='utf-8',errors='replace').read()
+          vals=[]
+          for line in text.splitlines():
+              if line.lower().startswith('payment-required:'):
+                  vals.append(line.split(':',1)[1].strip())
+          print("payment_required_headers",len(vals))
+          for v in vals:
+              try:
+                  pad='='*((4-len(v)%4)%4)
+                  d=json.loads(base64.b64decode(v+pad))
+                  rows=[]
+                  for a in d.get("accepts") or []:
+                      rows.append({
+                        "network":a.get("network"),
+                        "resource":a.get("resource"),
+                        "hasOutputSchema":"outputSchema" in a,
+                        "outputSchema":a.get("outputSchema"),
+                        "extensions":a.get("extensions"),
+                      })
+                  print(json.dumps({"x402Version":d.get("x402Version"),"accepts":rows},separators=(",",":"),sort_keys=True))
+              except Exception as e:
+                  print("decode_error",type(e).__name__)
+          PY
