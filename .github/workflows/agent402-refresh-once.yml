@@ -20,6 +20,11 @@ jobs:
         run: |
           set -euo pipefail
           test "$(curl -sS -o /tmp/well.json -w '%{http_code}' https://agentresolver.vercel.app/.well-known/x402)" = "200"
+          jq -e '
+            ([.resources[] | select(.resource == "GET /api/payment-guard" and .name == "Verify x402 Payment Before Paying")] | length) == 1 and
+            ([.resources[] | select(.resource == "POST /api/payment-guard" and .name == "Verify x402 Payment Before Paying")] | length) == 1 and
+            ([.resources[] | select(.resource == "GET /api/payment-guard") | .accepts[]?.resource] | index("https://agentresolver.vercel.app/api/payment-guard")) != null
+          ' /tmp/well.json >/dev/null
           test "$(curl -sS -o /tmp/ping.json -w '%{http_code}' https://agentresolver.vercel.app/api/x402-ping)" = "402"
 
       - name: Register origin once
@@ -45,11 +50,20 @@ jobs:
           with urllib.request.urlopen(req,timeout=60) as r:
               p=json.loads(r.read().decode())
           rank=0
+          picked=None
           for i,row in enumerate(p.get("results") or [],1):
               if "agentresolver.vercel.app" in json.dumps(row).lower():
                   rank=i
+                  picked=row
                   break
-          print(json.dumps({"rank":rank or None,"results":(p.get("results") or [])[:3]},separators=(",",":"),sort_keys=True))
+          print(json.dumps({
+              "rank":rank or None,
+              "score":(picked or {}).get("score"),
+              "slug":(picked or {}).get("slug"),
+              "name":(picked or {}).get("name"),
+              "result":picked,
+              "top3":(p.get("results") or [])[:3]
+          },separators=(",",":"),sort_keys=True))
           with open(os.environ["GITHUB_OUTPUT"],"a") as f: f.write(f"rank={rank}\n")
           PY
 
