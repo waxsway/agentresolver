@@ -101,11 +101,12 @@ jobs:
         run: |
           if [ "$ARENA_SUCCESS" = "true" ]; then
             STATE=success
-            DESC="x402 Arena registration HTTP $ARENA_STATUS"
+            DESC="x402 Arena registration HTTP ${ARENA_STATUS:-0}"
           else
             STATE=failure
             DESC="x402 Arena registration failed HTTP ${ARENA_STATUS:-0}"
           fi
+          export STATE DESC
           python - <<'PY'
           import json, os, urllib.request
           url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
@@ -129,6 +130,3 @@ jobs:
           with urllib.request.urlopen(req, timeout=30) as resp:
               print(resp.status, resp.read().decode("utf-8", "replace")[:500])
           PY
-        env:
-          STATE: ${{ steps.arena.outputs.success == 'true' && 'success' || 'failure' }}
-          DESC: ${{ steps.arena.outputs.success == 'true' && format('x402 Arena registration HTTP {0}', steps.arena.outputs.http_status) || format('x402 Arena registration failed HTTP {0}', steps.arena.outputs.http_status) }}
