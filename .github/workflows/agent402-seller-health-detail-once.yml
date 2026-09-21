@@ -1,0 +1,83 @@
+name: One-shot Agent402 Seller Health Detail
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/agent402-seller-health-detail-once.yml"
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Read seller-filtered index rows
+        id: health
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.parse, urllib.request
+
+          sellers={"ar":"agentresolver.vercel.app","dx":"api.delx.ai"}
+          vals={}
+          for key,host in sellers.items():
+              u="https://agent402.tools/api/index?"+urllib.parse.urlencode({"seller":host})
+              req=urllib.request.Request(u,headers={"User-Agent":"agentresolver-health-detail/1.0"})
+              with urllib.request.urlopen(req,timeout=60) as r:
+                  p=json.loads(r.read().decode())
+              rows=p.get("sellers") or []
+              row=rows[0] if rows else {}
+              vals[key]={
+                  "found":bool(row),
+                  "origin":row.get("origin"),
+                  "health":row.get("health"),
+                  "routable":row.get("routable"),
+                  "routerDispatchEligible":row.get("routerDispatchEligible"),
+                  "routerDispatchReason":row.get("routerDispatchReason"),
+                  "lastCrawledAt":row.get("lastCrawledAt"),
+                  "toolCount":row.get("toolCount"),
+              }
+          print(json.dumps(vals,separators=(",",":"),sort_keys=True))
+          def c(v):
+              if v is None: return "na"
+              return re.sub(r'[^a-zA-Z0-9._-]+','-',str(v))[:30] or "na"
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              for k,row in vals.items():
+                  for field,v in row.items():
+                      f.write(f"{k}_{field}={c(v)}\n")
+          PY
+
+      - name: Publish detail
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          AR_HEALTH: ${{ steps.health.outputs.ar_health }}
+          AR_ROUTABLE: ${{ steps.health.outputs.ar_routable }}
+          AR_ELIGIBLE: ${{ steps.health.outputs.ar_routerDispatchEligible }}
+          AR_REASON: ${{ steps.health.outputs.ar_routerDispatchReason }}
+          DX_HEALTH: ${{ steps.health.outputs.dx_health }}
+          DX_ROUTABLE: ${{ steps.health.outputs.dx_routable }}
+          DX_ELIGIBLE: ${{ steps.health.outputs.dx_routerDispatchEligible }}
+          DX_REASON: ${{ steps.health.outputs.dx_routerDispatchReason }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          rows=[
+            (f"distribution/a402-ar-health-{os.environ.get('AR_HEALTH','na')}-route-{os.environ.get('AR_ROUTABLE','na')}-elig-{os.environ.get('AR_ELIGIBLE','na')}-{os.environ.get('AR_REASON','na')}","AgentResolver seller health"),
+            (f"distribution/a402-dx-health-{os.environ.get('DX_HEALTH','na')}-route-{os.environ.get('DX_ROUTABLE','na')}-elig-{os.environ.get('DX_ELIGIBLE','na')}-{os.environ.get('DX_REASON','na')}","Delx seller health"),
+          ]
+          for context,desc in rows:
+              payload={"state":"success","context":context[:100],"description":desc,"target_url":"https://agent402.tools/api/index"}
+              req=urllib.request.Request(
+                f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+                data=json.dumps(payload).encode(),
+                headers={"Authorization":f"Bearer {os.environ['GH_TOKEN']}","Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},
+                method="POST")
+              with urllib.request.urlopen(req,timeout=30) as r: print(r.status)
+          PY
