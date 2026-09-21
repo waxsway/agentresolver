@@ -221,6 +221,89 @@ jobs:
               print(resp.status)
           PY
 
+      - name: Measure AgentResolver external rank by settlement chain
+        id: chain_rank
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, urllib.parse, urllib.request
+
+          q = "verify x402 payment before paying"
+          ranks = {}
+          for network in ("base", "solana"):
+              url = "https://agent402.tools/api/route?" + urllib.parse.urlencode({
+                  "q": q,
+                  "include": "external",
+                  "network": network,
+              })
+              req = urllib.request.Request(
+                  url,
+                  headers={"User-Agent": "agentresolver-discovery-audit/1.0 (+https://github.com/waxsway/agentresolver)"}
+              )
+              rank = 0
+              result = None
+              with urllib.request.urlopen(req, timeout=60) as resp:
+                  payload = json.loads(resp.read().decode("utf-8", "replace"))
+              for item_idx, item in enumerate(payload.get("results") or [], 1):
+                  blob = json.dumps(item, separators=(",", ":"), sort_keys=True).lower()
+                  if "agentresolver.vercel.app" in blob or '"sellername":"agentresolver"' in blob:
+                      rank = item_idx
+                      result = item
+                      break
+              ranks[network] = {"rank": rank or None, "result": result}
+              print(json.dumps({"network":network,"rank":rank or None,"result":result}, separators=(",",":"), sort_keys=True))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"base_rank={ranks['base']['rank'] or 0}\n")
+              out.write(f"solana_rank={ranks['solana']['rank'] or 0}\n")
+          PY
+
+      - name: Publish chain-specific route ranks
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          BASE_RANK: ${{ steps.chain_rank.outputs.base_rank }}
+          SOLANA_RANK: ${{ steps.chain_rank.outputs.solana_rank }}
+        run: |
+          for pair in "base:$BASE_RANK" "solana:$SOLANA_RANK"; do
+            network="${pair%%:*}"
+            rank="${pair#*:}"
+            if [ "${rank:-0}" -gt 0 ]; then
+              STATE=success
+              CONTEXT="distribution/agent402-${network}-rank-${rank}"
+              DESC="AgentResolver external route rank ${rank} on ${network}"
+            else
+              STATE=success
+              CONTEXT="distribution/agent402-${network}-not-ranked"
+              DESC="AgentResolver absent from external ${network} route results"
+            fi
+            export STATE CONTEXT DESC
+            python - <<'PY'
+          import json, os, urllib.request
+          payload = {
+              "state": os.environ["STATE"],
+              "context": os.environ["CONTEXT"][:100],
+              "description": os.environ["DESC"][:140],
+              "target_url": "https://agent402.tools/guides/smart-order-router"
+          }
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28"
+              },
+              method="POST"
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              print(resp.status)
+          PY
+          done
+
       - name: Publish external-route quote status
         if: always()
         shell: bash
