@@ -1,0 +1,44 @@
+name: Update true402 Guard Exact Intent
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Upsert exact-intent Guard listing and verify search
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453'
+          payload="$(jq -nc --arg url "$URL" '{
+            url:$url,
+            manifest:{
+              x402:"1.0",
+              name:"Verify x402 Payment Before Paying",
+              description:"AgentResolver Guard — $0.001 fail-closed x402 payment preflight for autonomous wallets. Inspect amount, asset, network, payTo, scheme and resource binding before authorizing a target payment.",
+              capabilities:["agents","x402","verify-payment-before-paying","payment-preflight","payment-guard","wallet-safety","verification"],
+              pricing:{currency:"USDC",base:"0.001",unit:"request"},
+              payment:{
+                address:"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+                chain:"base",
+                facilitator:"https://facilitator.payai.network"
+              },
+              endpoint:$url
+            }
+          }')"
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 30 -o "$body" -w '%{http_code}'             -X POST 'https://true402.dev/api/v1/services/register'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          echo "REGISTER_HTTP=$code"
+          cat "$body"
+          echo
+          test "$code" = "201"
+          sleep 2
+          echo '=== exact search ==='
+          curl -sS --get --connect-timeout 5 --max-time 20             'https://true402.dev/api/v1/services'             --data-urlencode 'q=verify x402 payment before paying'             --data-urlencode 'limit=20'
+          echo
