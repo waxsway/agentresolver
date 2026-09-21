@@ -92,7 +92,7 @@ jobs:
           url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
           payload = {
               "state": os.environ["STATE"],
-              "context": "distribution/x402dash",
+              "context": f"distribution/x402dash-http-{os.environ.get('REG_STATUS', '0')}",
               "description": os.environ["DESC"][:140],
               "target_url": "https://x402dash.com/"
           }
