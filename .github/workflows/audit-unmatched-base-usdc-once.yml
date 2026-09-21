@@ -1,0 +1,141 @@
+name: Audit Unmatched Base USDC Inbound Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-unmatched-base-usdc-once.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Reconcile Base USDC inbound transfers against verified AgentResolver settlements
+        id: audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime as dt
+          import json, os, time, urllib.request
+
+          RPC="https://mainnet.base.org"
+          USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+          PAYTO="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+          TRANSFER="0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+          TO_TOPIC="0x"+PAYTO[2:].lower().rjust(64,"0")
+          KNOWN={
+            "0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72",
+            "0xa4d504f662c554ee2bb4745352fe640e1235141311ef9e4eeec9b8aa6bf45cd8",
+            "0x439885dab80375051b5295df179b668a6a67490d20c3e1cb4725809f4ea4b5b8",
+          }
+
+          def rpc(method, params, retries=5):
+              payload=json.dumps({"jsonrpc":"2.0","id":1,"method":method,"params":params}).encode()
+              last=None
+              for attempt in range(retries):
+                  try:
+                      req=urllib.request.Request(RPC,data=payload,headers={"content-type":"application/json","user-agent":"agentresolver-chain-audit/1.0"},method="POST")
+                      with urllib.request.urlopen(req,timeout=20) as resp:
+                          body=json.load(resp)
+                      if body.get("error"):
+                          raise RuntimeError(str(body["error"]))
+                      return body["result"]
+                  except Exception as e:
+                      last=e
+                      time.sleep(min(8, 1.5*(attempt+1)))
+              raise RuntimeError(f"RPC {method} failed: {last}")
+
+          def block_ts(n):
+              b=rpc("eth_getBlockByNumber",[hex(n),False])
+              return int(b["timestamp"],16)
+
+          latest=int(rpc("eth_blockNumber",[]),16)
+          def lower_bound(ts):
+              lo,hi=0,latest
+              while lo<hi:
+                  mid=(lo+hi)//2
+                  if block_ts(mid)<ts: lo=mid+1
+                  else: hi=mid
+              return lo
+
+          start_ts=int(dt.datetime(2026,9,17,tzinfo=dt.timezone.utc).timestamp())
+          end_ts=int(dt.datetime(2026,9,19,tzinfo=dt.timezone.utc).timestamp())
+          start=lower_bound(start_ts)
+          end=lower_bound(end_ts)-1
+
+          rows=[]
+          step=2000
+          cur=start
+          while cur<=end:
+              hi=min(end,cur+step-1)
+              logs=rpc("eth_getLogs",[{
+                  "fromBlock":hex(cur),
+                  "toBlock":hex(hi),
+                  "address":USDC,
+                  "topics":[TRANSFER,None,TO_TOPIC],
+              }])
+              for log in logs:
+                  tx=str(log["transactionHash"]).lower()
+                  block=int(log["blockNumber"],16)
+                  amount=int(log["data"],16)
+                  when=dt.datetime.fromtimestamp(block_ts(block),tz=dt.timezone.utc).isoformat().replace("+00:00","Z")
+                  rows.append({
+                      "transactionHash":tx,
+                      "blockTime":when,
+                      "amountAtomic":str(amount),
+                      "amountUsd":amount/1_000_000,
+                      "knownAgentResolverSettlement":tx in KNOWN,
+                  })
+              cur=hi+1
+
+          rows.sort(key=lambda r:r["blockTime"])
+          unmatched=[r for r in rows if not r["knownAgentResolverSettlement"]]
+          summary={
+              "windowUtc":["2026-09-17T00:00:00Z","2026-09-19T00:00:00Z"],
+              "transferCount":len(rows),
+              "knownCount":len(rows)-len(unmatched),
+              "unmatchedCount":len(unmatched),
+              "unmatchedTotalUsd":round(sum(r["amountUsd"] for r in unmatched),6),
+              "transfers":rows,
+          }
+          print(json.dumps(summary,separators=(",",":"),sort_keys=True))
+          with open(os.environ["GITHUB_OUTPUT"],"a") as out:
+              out.write(f"unmatched_count={len(unmatched)}\n")
+              out.write(f"unmatched_total={summary['unmatchedTotalUsd']:.6f}\n")
+          PY
+
+      - name: Publish auditable reconciliation status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          COUNT: ${{ steps.audit.outputs.unmatched_count }}
+          TOTAL: ${{ steps.audit.outputs.unmatched_total }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request
+          count=os.environ.get("COUNT") or "unknown"
+          total=os.environ.get("TOTAL") or "unknown"
+          payload={
+              "state":"success",
+              "context":f"audit/base-usdc-unmatched-{count}-usd-{total}"[:100],
+              "description":f"Public-chain inbound USDC reconciliation: {count} unmatched / ${total}"[:140],
+              "target_url":"https://github.com/waxsway/agentresolver/tree/evidence-history/evidence",
+          }
+          req=urllib.request.Request(
+              f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+              data=json.dumps(payload).encode(),
+              headers={"Authorization":f"Bearer {os.environ['GH_TOKEN']}","Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req,timeout=30) as resp:
+              print(resp.status)
+          PY
