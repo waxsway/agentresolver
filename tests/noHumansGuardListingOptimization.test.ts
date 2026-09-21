@@ -10,7 +10,9 @@ test("NoHumans Guard optimization is zero-spend and targets the existing listing
   assert.match(workflow, /sample_query/);
   assert.match(workflow, /request_schema/);
   assert.match(workflow, /response_schema/);
-  assert.match(workflow, /payment-guard\?url=/);
+  assert.match(workflow, /api\/x402-client-setup\?source=x402-challenge/);
+  assert.match(workflow, /test "\$code" = "200"/);
+  assert.doesNotMatch(workflow, /SAMPLE_QUERY:.*api\/payment-guard/);
   assert.match(workflow, /x-claim-token/);
   assert.doesNotMatch(workflow, /verify-now/);
   assert.doesNotMatch(workflow, /claim\/challenge/);
