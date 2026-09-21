@@ -28,7 +28,8 @@ test("public x402 manifest advertises Payment Preflight as a payable resource", 
 
   assert.ok(preflight, "Payment Preflight must remain in /.well-known/x402");
   assert.equal(preflight.price, "$0.001");
-  assert.ok(preflight.name?.includes("Verify x402 Before Paying"));
+  assert.ok(preflight.name?.includes("Preflight"));
+  assert.match(preflight.name ?? "", /Before Paying/i);
   assert.deepEqual(preflight.inputSchema?.required, ["url"]);
   assert.ok(preflight.inputSchema?.properties?.expectedPayTo);
   assert.ok(preflight.inputSchema?.properties?.expectedNetwork);
