@@ -44,11 +44,9 @@ jobs:
                       rank = i
                       break
               row = row or {}
-              schema = row.get("inputSchema") if isinstance(row.get("inputSchema"), dict) else {}
-              required = row.get("required") if isinstance(row.get("required"), list) else schema.get("required") if isinstance(schema.get("required"), list) else []
-              props = schema.get("properties") if isinstance(schema.get("properties"), dict) else {}
-              example = row.get("example") if isinstance(row.get("example"), dict) else {}
-              call_example = row.get("callExample")
+              contract = row.get("requestContract") if isinstance(row.get("requestContract"), dict) else {}
+              required_by_location = contract.get("required") if isinstance(contract.get("required"), dict) else {}
+              required_body = required_by_location.get("body") if isinstance(required_by_location.get("body"), list) else []
               route = row.get("route")
               method = row.get("method")
               url = row.get("url") or row.get("endpoint")
@@ -58,7 +56,7 @@ jobs:
                   rank == 1
                   and execute_now is True
                   and isinstance(url, str) and url.startswith("https://agentresolver.vercel.app/")
-                  and ("url" in required or "url" in props)
+                  and "url" in required_body
               )
               out[label] = {
                   "query": q,
@@ -70,10 +68,8 @@ jobs:
                   "priceUsd": row.get("priceUsd"),
                   "score": row.get("score"),
                   "health": row.get("health"),
-                  "required": required,
-                  "inputProperties": sorted(props.keys()),
-                  "example": example,
-                  "callExamplePresent": isinstance(call_example, str) and bool(call_example.strip()),
+                  "requestContractState": contract.get("state"),
+                  "requestContractRequired": required_by_location,
                   "executeViaCallableNow": execute_now,
                   "executeVia": execute_via,
                   "routerDispatchEligible": row.get("routerDispatchEligible"),
@@ -94,8 +90,8 @@ jobs:
                   f.write(f"{label}_rank={row['rank'] or 0}\n")
                   f.write(f"{label}_slug={code(row['slug'])}\n")
                   f.write(f"{label}_method={code(row['method'])}\n")
-                  f.write(f"{label}_required_url={'true' if 'url' in row['required'] or 'url' in row['inputProperties'] else 'false'}\n")
-                  f.write(f"{label}_call_example={'true' if row['callExamplePresent'] else 'false'}\n")
+                  f.write(f"{label}_required_url={'true' if 'url' in (row['requestContractRequired'].get('body') or []) else 'false'}\n")
+                  f.write(f"{label}_contract_state={code(row['requestContractState'])}\n")
                   f.write(f"{label}_execute_now={code(row['executeViaCallableNow'])}\n")
                   f.write(f"{label}_executable={'true' if row['executableContract'] else 'false'}\n")
           PY
@@ -108,19 +104,19 @@ jobs:
           PREAUTH_RANK: ${{ steps.audit.outputs.preauth_rank }}
           PREAUTH_SLUG: ${{ steps.audit.outputs.preauth_slug }}
           PREAUTH_URL: ${{ steps.audit.outputs.preauth_required_url }}
-          PREAUTH_EXAMPLE: ${{ steps.audit.outputs.preauth_call_example }}
+          PREAUTH_CONTRACT: ${{ steps.audit.outputs.preauth_contract_state }}
           PREAUTH_NOW: ${{ steps.audit.outputs.preauth_execute_now }}
           PREAUTH_EXEC: ${{ steps.audit.outputs.preauth_executable }}
           TXPATH_RANK: ${{ steps.audit.outputs.txpath_rank }}
           TXPATH_SLUG: ${{ steps.audit.outputs.txpath_slug }}
           TXPATH_URL: ${{ steps.audit.outputs.txpath_required_url }}
-          TXPATH_EXAMPLE: ${{ steps.audit.outputs.txpath_call_example }}
+          TXPATH_CONTRACT: ${{ steps.audit.outputs.txpath_contract_state }}
           TXPATH_NOW: ${{ steps.audit.outputs.txpath_execute_now }}
           TXPATH_EXEC: ${{ steps.audit.outputs.txpath_executable }}
           USDC_RANK: ${{ steps.audit.outputs.usdc_rank }}
           USDC_SLUG: ${{ steps.audit.outputs.usdc_slug }}
           USDC_URL: ${{ steps.audit.outputs.usdc_required_url }}
-          USDC_EXAMPLE: ${{ steps.audit.outputs.usdc_call_example }}
+          USDC_CONTRACT: ${{ steps.audit.outputs.usdc_contract_state }}
           USDC_NOW: ${{ steps.audit.outputs.usdc_execute_now }}
           USDC_EXEC: ${{ steps.audit.outputs.usdc_executable }}
         shell: bash
@@ -130,7 +126,7 @@ jobs:
           rows = []
           for prefix, name in (("PREAUTH","preauth"),("TXPATH","txpath"),("USDC","usdc")):
               rows.append((
-                  f"distribution/a402-call-{name}-r{os.environ.get(prefix+'_RANK','0')}-{os.environ.get(prefix+'_SLUG','na')}-url-{os.environ.get(prefix+'_URL','false')}-ex-{os.environ.get(prefix+'_EXAMPLE','false')}-now-{os.environ.get(prefix+'_NOW','na')}-ok-{os.environ.get(prefix+'_EXEC','false')}",
+                  f"distribution/a402-call-{name}-r{os.environ.get(prefix+'_RANK','0')}-{os.environ.get(prefix+'_SLUG','na')}-url-{os.environ.get(prefix+'_URL','false')}-contract-{os.environ.get(prefix+'_CONTRACT','na')}-now-{os.environ.get(prefix+'_NOW','na')}-ok-{os.environ.get(prefix+'_EXEC','false')}",
                   os.environ.get(prefix+"_EXEC") == "true",
               ))
           for context, ok in rows:
