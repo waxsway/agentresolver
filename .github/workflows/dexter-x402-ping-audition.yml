@@ -1,0 +1,26 @@
+name: Dexter x402 Ping Audition
+
+on:
+  push:
+    paths:
+      - ".github/workflows/dexter-x402-ping-audition.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run one-route Dexter audition
+        run: |
+          set -o pipefail
+          npx --yes @dexterai/opendexter@1.23.3 audition https://agentresolver.vercel.app/api/x402-ping --json | tee dexter-audition.json
+      - name: Show result
+        if: always()
+        run: |
+          test -f dexter-audition.json && cat dexter-audition.json || true
