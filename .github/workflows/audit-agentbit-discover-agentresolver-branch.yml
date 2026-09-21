@@ -1,4 +1,4 @@
-name: Audit AgentBIT OpenAPI Route Paths
+name: Audit AgentBIT AgentResolver Indexed Discovery
 
 on:
   push:
@@ -11,12 +11,16 @@ jobs:
     runs-on: ubuntu-slim
     timeout-minutes: 4
     steps:
-      - name: Read route/discovery path names
+      - name: Use one unsigned free ecosystem-discovery call
         shell: bash
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl -sS --connect-timeout 5 --max-time 30 -o "$body" -w '%{http_code}' 'https://agentbit.app/openapi.json' || printf '000')"
+          code="$(curl -sS --connect-timeout 5 --max-time 30             -o "$body" -w '%{http_code}'             -X POST 'https://agentbit.app/v1/x402/discover'             -H 'content-type: application/json'             --data '{"query":"AgentResolver payment guard verify x402","limit":25,"sort":"recency"}' || printf '000')"
           echo "HTTP $code"
+          if [ "$code" = "402" ]; then
+            echo "UNSIGNED_FREE_CALL_UNAVAILABLE=true"
+            exit 0
+          fi
           test "$code" = "200"
-          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); p=d.get("paths",{}); out={k:v for k,v in p.items() if any(t in k.lower() for t in ("route","discover","recommend"))}; print(json.dumps(out,separators=(",",":"),sort_keys=True))' "$body"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); data=d.get("data") or {}; rows=data.get("items") or []; sel=[]; for i,r in enumerate(rows,1):  blob=json.dumps(r,separators=(",",":"),sort_keys=True).lower();  sel.append({"rank":i,"row":r}) if ("agentresolver" in blob or "agentresolver.vercel.app" in blob or "payment-guard" in blob) else None; print(json.dumps({"success":d.get("success"),"total":data.get("total"),"sources":data.get("sources"),"freshness":data.get("freshness"),"matches":sel},separators=(",",":"),sort_keys=True))' "$body"
