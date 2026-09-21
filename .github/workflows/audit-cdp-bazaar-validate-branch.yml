@@ -1,0 +1,45 @@
+name: Validate AgentResolver with CDP Bazaar
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Validate Ping and Guard against CDP
+        shell: bash
+        run: |
+          set -euo pipefail
+          validate() {
+            label="$1"; resource="$2"; method="$3"
+            body="$(mktemp)"
+            payload="$(jq -nc --arg resource "$resource" --arg method "$method" '{resource:$resource,method:$method}')"
+            code="$(curl -sS -o "$body" -w '%{http_code}' --connect-timeout 5 --max-time 45               -X POST 'https://api.cdp.coinbase.com/platform/v2/x402/validate'               -H 'content-type: application/json'               --data "$payload" || printf '000')"
+            echo "LABEL=$label HTTP=$code"
+            python3 - "$body" <<'PY'
+          import json,sys
+          try: d=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          except Exception:
+              print("NON_JSON"); raise SystemExit
+          pre=d.get("preflight") or []
+          failed=[]
+          if isinstance(pre,list):
+              for x in pre:
+                  if isinstance(x,dict) and x.get("passed") is False:
+                      failed.append({k:x.get(k) for k in ("name","check","reason","message") if k in x})
+          print(json.dumps({
+            "valid":d.get("valid"),
+            "statusCode":d.get("statusCode"),
+            "simulation":d.get("simulation"),
+            "index":d.get("index"),
+            "failedPreflight":failed
+          },separators=(",",":"),sort_keys=True))
+          PY
+          }
+          validate ping 'https://agentresolver.vercel.app/api/x402-ping' GET
+          validate guard 'https://agentresolver.vercel.app/api/payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453' GET
