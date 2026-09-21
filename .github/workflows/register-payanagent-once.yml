@@ -43,8 +43,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          PAYOUT='0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8'
 
-          probe_catalog() {
+          probe_get() {
             local url="$1"
             shift
             local body="$1"
@@ -54,55 +55,75 @@ jobs:
               --get "$url" "$@" || printf '000'
           }
 
+          # Provider rows are authoritative for duplicate registration. The
+          # registration mutation itself does not de-duplicate by wallet.
+          agents_body="$(mktemp)"
+          agents_code="$(probe_get 'https://payanagent.com/api/v1/agents' "$agents_body" \
+            --data-urlencode 'status=active')"
+
+          if [ "$agents_code" = "200" ]; then
+            if python3 - "$agents_body" "$PAYOUT" <<'PY'
+          import json, sys
+          data=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          payout=sys.argv[2].lower()
+          rows=data.get("agents") if isinstance(data,dict) else []
+          if not isinstance(rows,list): rows=[]
+          found=any(
+              isinstance(a,dict) and (
+                  str(a.get("walletAddress","")).lower()==payout or
+                  "agentresolver.vercel.app" in str(a.get("agentUrl","")).lower() or
+                  str(a.get("name","")).lower()=="agentresolver"
+              )
+              for a in rows
+          )
+          raise SystemExit(0 if found else 1)
+          PY
+            then
+              echo "PayanAgent already has an AgentResolver provider row; refusing duplicate registration."
+              echo "already_listed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          elif [[ "$agents_code" =~ ^(429|500|502|503|504|000)$ ]]; then
+            echo "::notice::PayanAgent agent directory is temporarily unavailable (HTTP $agents_code); catalog reads will be checked, but registration will remain deferred unless provider absence can be proven."
+          else
+            echo "::error::PayanAgent agent directory contract changed unexpectedly (HTTP $agents_code)."
+            cat "$agents_body" 2>/dev/null || true
+            exit 1
+          fi
+
           discover_body="$(mktemp)"
-          discover_code="$(probe_catalog 'https://payanagent.com/api/v1/discover' "$discover_body" \
+          discover_code="$(probe_get 'https://payanagent.com/api/v1/discover' "$discover_body" \
             --data-urlencode 'q=AgentResolver' \
             --data-urlencode 'limit=100')"
+          offers_body="$(mktemp)"
+          offers_code="$(probe_get 'https://payanagent.com/api/v1/offers' "$offers_body" \
+            --data-urlencode 'q=AgentResolver' \
+            --data-urlencode 'offerType=api' \
+            --data-urlencode 'limit=100')"
 
-          body="$discover_body"
-          code="$discover_code"
-          source="discover"
-
-          if [ "$discover_code" != "200" ]; then
-            offers_body="$(mktemp)"
-            offers_code="$(probe_catalog 'https://payanagent.com/api/v1/offers' "$offers_body" \
-              --data-urlencode 'q=AgentResolver' \
-              --data-urlencode 'offerType=api' \
-              --data-urlencode 'limit=100')"
-            if [ "$offers_code" = "200" ]; then
-              body="$offers_body"
-              code="$offers_code"
-              source="offers"
-            fi
-          fi
-
-          case "$code" in
-            200) ;;
-            429|500|502|503|504|000)
-              echo "::notice::PayanAgent discovery and browse surfaces are temporarily unavailable (discover HTTP $discover_code; selected $source HTTP $code). Registration is deferred with no payment."
-              echo "already_listed=unavailable" >> "$GITHUB_OUTPUT"
-              exit 0
-              ;;
-            *)
-              echo "::error::PayanAgent catalog contract changed unexpectedly ($source HTTP $code)."
-              cat "$body" 2>/dev/null || true
-              exit 1
-              ;;
-          esac
-
-          if python3 - "$body" <<'PY'
+          for candidate in "$discover_body" "$offers_body"; do
+            if python3 - "$candidate" <<'PY'
           import json, sys
-          data = json.load(open(sys.argv[1], "r", encoding="utf-8"))
-          blob = json.dumps(data, separators=(",", ":")).lower()
+          try: data=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          except Exception: raise SystemExit(1)
+          blob=json.dumps(data,separators=(",",":")).lower()
           raise SystemExit(0 if "agentresolver.vercel.app" in blob else 1)
           PY
-          then
-            echo "PayanAgent already contains an AgentResolver resource via $source; refusing to create a duplicate provider."
-            echo "already_listed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "AgentResolver not found via PayanAgent $source; proceeding with zero-spend anonymous provider registration."
+            then
+              echo "PayanAgent already contains an AgentResolver resource; refusing duplicate provider registration."
+              echo "already_listed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          if [ "$agents_code" = "200" ]; then
+            echo "PayanAgent agent directory proves no AgentResolver provider exists; proceeding with zero-spend anonymous registration."
             echo "already_listed=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          echo "::notice::Could not prove provider absence safely (agents=$agents_code discover=$discover_code offers=$offers_code); registration deferred with no payment."
+          echo "already_listed=unavailable" >> "$GITHUB_OUTPUT"
 
       - name: Register zero-spend AgentResolver provider
         if: steps.existing.outputs.already_listed == 'false'
@@ -260,12 +281,34 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl -sS --retry 5 --retry-delay 3 --retry-all-errors             --connect-timeout 5 --max-time 30             -o "$body" -w '%{http_code}'             --get 'https://payanagent.com/api/v1/offers'             --data-urlencode 'q=AgentResolver'             --data-urlencode 'offerType=api'             --data-urlencode 'limit=100')"
-          test "$code" = "200"
-          python3 - "$body" <<'PY'
+          code="$(curl -sS --retry 2 --retry-delay 2 --retry-all-errors \
+            --connect-timeout 5 --max-time 30 \
+            -o "$body" -w '%{http_code}' \
+            --get 'https://payanagent.com/api/v1/offers' \
+            --data-urlencode 'q=AgentResolver' \
+            --data-urlencode 'offerType=api' \
+            --data-urlencode 'limit=100' || printf '000')"
+
+          if [ "$code" = "200" ]; then
+            python3 - "$body" <<'PY'
           import json, sys
-          data = json.load(open(sys.argv[1], "r", encoding="utf-8"))
-          blob = json.dumps(data, separators=(",", ":")).lower()
+          data=json.load(open(sys.argv[1],"r",encoding="utf-8"))
+          blob=json.dumps(data,separators=(",",":")).lower()
           assert "agentresolver" in blob
           print("AgentResolver is visible in PayanAgent catalog.")
           PY
+            exit 0
+          fi
+
+          case "$code" in
+            429|500|502|503|504|000)
+              echo "::notice::PayanAgent accepted provider/offers, but public catalog verification is temporarily unavailable (HTTP $code). Leaving accepted offers in place; no duplicate retry in this run."
+              exit 0
+              ;;
+            *)
+              echo "Unexpected PayanAgent catalog verification HTTP $code" >&2
+              cat "$body" >&2
+              exit 1
+              ;;
+          esac
+
