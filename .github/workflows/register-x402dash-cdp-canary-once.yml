@@ -1,0 +1,48 @@
+name: Register CDP Canary with x402dash Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/register-x402dash-cdp-canary-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Verify and register CDP canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://agentresolver.vercel.app/api/x402-cdp-canary'
+          challenge="$(mktemp)"
+          status="$(curl -sS --connect-timeout 5 --max-time 20 -o "$challenge" -w '%{http_code}' "$URL")"
+          test "$status" = "402"
+          jq -e '
+            .x402Version == 2 and
+            .resource.url == "https://agentresolver.vercel.app/api/x402-cdp-canary" and
+            any(.accepts[]; .network=="eip155:8453" and .amount=="2000") and
+            (((.extensions.bazaar.info.input.method) // "") == "GET")
+          ' "$challenge" >/dev/null
+
+          payload="$(jq -cn --arg url "$URL" '{
+            url:$url,
+            name:"AgentResolver CDP Settlement Canary",
+            description:"$0.002 Base USDC x402 settlement canary on Coinbase CDP. A paid call proves wallet, facilitator, settlement, Bazaar metadata, and fulfilled response end to end.",
+            category:"Agents/Developer Tools",
+            tags:["x402","coinbase-cdp","settlement","bazaar","agent-payments"]
+          }')"
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 30 -o "$body" -w '%{http_code}'             -X POST 'https://api.x402dash.com/v1/register'             -H 'content-type: application/json' --data "$payload" || printf '000')"
+          echo "register_http=$code"
+          cat "$body"
+          echo
+          case "$code" in
+            200|201|202|409) ;;
+            429) echo "::notice::x402dash rate limit reached; no payment or retry attempted." ;;
+            *) exit 1 ;;
+          esac
