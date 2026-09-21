@@ -1,0 +1,90 @@
+name: Audit AgentResolver CDP Bazaar Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-agentresolver-cdp-bazaar-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CDP: https://api.cdp.coinbase.com/platform/v2/x402
+      PAY_TO: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+      RESOURCE: "https://agentresolver.vercel.app/api/cdp-payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET"
+    steps:
+      - name: Query merchant discovery by AgentResolver payTo
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 30             -o "$body" -w '%{http_code}'             -G "$CDP/discovery/merchant"             --data-urlencode "payTo=$PAY_TO"             --data-urlencode "limit=100" || printf '000')"
+          echo "merchant_http=$code"
+          case "$code" in
+            200)
+              python3 - "$body" "$RESOURCE" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          target=sys.argv[2]
+          resources=data.get("resources") if isinstance(data,dict) else []
+          if not isinstance(resources,list): resources=[]
+          hits=[r for r in resources if isinstance(r,dict) and (r.get("resource")==target or "agentresolver.vercel.app" in str(r.get("resource","")))]
+          print(json.dumps({
+              "total":data.get("total") if isinstance(data,dict) else None,
+              "agentresolver_count":len(hits),
+              "resources":[{
+                  "resource":r.get("resource"),
+                  "lastUpdated":r.get("lastUpdated"),
+                  "quality":r.get("quality"),
+                  "accepts":r.get("accepts")
+              } for r in hits]
+          },separators=(",",":"),sort_keys=True))
+          PY
+              ;;
+            404)
+              echo "merchant_result=not_found"
+              ;;
+            401|403)
+              echo "::notice::CDP discovery requires auth in this environment; no credential workaround attempted."
+              ;;
+            429|500|502|503|504|000)
+              echo "::notice::CDP discovery temporarily unavailable (HTTP $code)."
+              ;;
+            *)
+              echo "::notice::Unexpected merchant discovery HTTP $code."
+              head -c 1000 "$body" || true
+              ;;
+          esac
+
+      - name: Search Bazaar for AgentResolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 30             -o "$body" -w '%{http_code}'             -G "$CDP/discovery/search"             --data-urlencode "query=AgentResolver verify x402 payment before paying"             --data-urlencode "limit=20" || printf '000')"
+          echo "search_http=$code"
+          if [ "$code" = "200" ]; then
+            python3 - "$body" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          rows=data.get("resources") if isinstance(data,dict) else []
+          if not isinstance(rows,list): rows=[]
+          hits=[r for r in rows if isinstance(r,dict) and "agentresolver.vercel.app" in str(r.get("resource",""))]
+          print(json.dumps({
+              "agentresolver_count":len(hits),
+              "resources":[{
+                  "resource":r.get("resource"),
+                  "lastUpdated":r.get("lastUpdated"),
+                  "quality":r.get("quality")
+              } for r in hits]
+          },separators=(",",":"),sort_keys=True))
+          PY
+          else
+            echo "::notice::Bazaar search unavailable without action (HTTP $code)."
+          fi
