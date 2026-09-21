@@ -1,0 +1,134 @@
+name: Register AgentResolver x402 Ping with Arena
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/register-x402-arena.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  register:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Register canonical paid canary
+        id: arena
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          endpoint = "https://core.x402arena.gg/register"
+          payload = {
+              "name": "agentresolver-x402-ping",
+              "endpoint": "https://agentresolver.vercel.app/api/x402-ping",
+              "niche": "developer-tools",
+              "description": "AgentResolver $0.001 USDC x402 v2 settlement canary. Proves wallet -> facilitator -> settlement -> fulfilled response with no API key or account; paid response points buyers to verify-before-pay Preflight.",
+              "walletAddress": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+              "method": "GET",
+              "resourceType": "http",
+              "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                      "echo": {"type": "string", "maxLength": 256}
+                  },
+                  "additionalProperties": False
+              },
+              "outputSchema": {
+                  "type": "object",
+                  "properties": {
+                      "pong": {"type": "boolean"},
+                      "settledDelivery": {"type": "boolean"},
+                      "requestId": {"type": "string"}
+                  }
+              }
+          }
+
+          req = urllib.request.Request(
+              endpoint,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "agentresolver-free-distribution/1.0 (+https://github.com/waxsway/agentresolver)"
+              },
+              method="POST",
+          )
+
+          status = 0
+          body = ""
+          try:
+              with urllib.request.urlopen(req, timeout=60) as resp:
+                  status = resp.status
+                  body = resp.read().decode("utf-8", "replace")
+          except urllib.error.HTTPError as exc:
+              status = exc.code
+              body = exc.read().decode("utf-8", "replace")
+          except Exception as exc:
+              body = f"{type(exc).__name__}: {exc}"
+
+          safe_body = body.replace("\n", " ").replace("\r", " ")[:1200]
+          print(json.dumps({
+              "provider": "x402 Arena",
+              "status": status,
+              "body": safe_body
+          }))
+
+          # Registration is explicitly zero-spend. If Arena ever paywalls this
+          # endpoint, record the response and stop; never sign or retry payment.
+          success = 200 <= status < 300
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"http_status={status}\n")
+              out.write(f"success={'true' if success else 'false'}\n")
+          if not success:
+              raise SystemExit(1)
+          PY
+
+      - name: Publish auditable commit status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          ARENA_STATUS: ${{ steps.arena.outputs.http_status }}
+          ARENA_SUCCESS: ${{ steps.arena.outputs.success }}
+        run: |
+          if [ "$ARENA_SUCCESS" = "true" ]; then
+            STATE=success
+            DESC="x402 Arena registration HTTP $ARENA_STATUS"
+          else
+            STATE=failure
+            DESC="x402 Arena registration failed HTTP ${ARENA_STATUS:-0}"
+          fi
+          python - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
+          payload = {
+              "state": os.environ["STATE"],
+              "context": "distribution/x402-arena",
+              "description": os.environ["DESC"][:140],
+              "target_url": "https://x402arena.gg/"
+          }
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28"
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              print(resp.status, resp.read().decode("utf-8", "replace")[:500])
+          PY
+        env:
+          STATE: ${{ steps.arena.outputs.success == 'true' && 'success' || 'failure' }}
+          DESC: ${{ steps.arena.outputs.success == 'true' && format('x402 Arena registration HTTP {0}', steps.arena.outputs.http_status) || format('x402 Arena registration failed HTTP {0}', steps.arena.outputs.http_status) }}
