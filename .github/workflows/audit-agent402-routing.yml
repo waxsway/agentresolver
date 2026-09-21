@@ -238,6 +238,99 @@ jobs:
               print(resp.status)
           PY
 
+      - name: Fingerprint #1 external route competitor
+        id: top_competitor
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.parse, urllib.request
+
+          q = "verify x402 payment before paying"
+          url = "https://agent402.tools/api/route?" + urllib.parse.urlencode({"q": q, "include": "external"})
+          req = urllib.request.Request(url, headers={"User-Agent":"agentresolver-discovery-audit/1.0 (+https://github.com/waxsway/agentresolver)"})
+          with urllib.request.urlopen(req, timeout=60) as resp:
+              payload = json.loads(resp.read().decode("utf-8", "replace"))
+          results = payload.get("results") or []
+          top = results[0] if results else {}
+
+          blob = json.dumps(top, separators=(",", ":"), sort_keys=True)
+          values = []
+          def strings(v):
+              if isinstance(v, str):
+                  yield v
+              elif isinstance(v, dict):
+                  for x in v.values():
+                      yield from strings(x)
+              elif isinstance(v, list):
+                  for x in v:
+                      yield from strings(x)
+          values = list(strings(top))
+
+          urls = []
+          for value in values:
+              for match in re.finditer(r'https://[^\s"<>]+', value):
+                  urls.append(match.group(0).rstrip("),.;"))
+          endpoint = urls[0] if urls else ""
+          parsed = urllib.parse.urlparse(endpoint)
+          host = (parsed.hostname or "unknown").lower()
+          path = parsed.path or "/"
+          host_code = re.sub(r'[^a-z0-9.-]+', '-', host)[:34]
+          path_code = re.sub(r'[^a-z0-9-]+', '-', path.lower().strip("/").replace("/","-"))[:30] or "root"
+
+          price = None
+          for key in ("underlyingPriceUsd","priceUsd","price","price_amount","priceAmount"):
+              if key in top:
+                  price = top.get(key)
+                  break
+          if price is None:
+              lower = blob.lower()
+              m = re.search(r'"(?:underlyingpriceusd|priceusd|price|price_amount|priceamount)":("?)([0-9.]+)', lower)
+              if m:
+                  price = m.group(2)
+          price_code = re.sub(r'[^0-9.]','',str(price or "unknown"))[:10] or "unknown"
+
+          print(json.dumps({"top":top,"endpoint":endpoint,"host":host,"path":path,"price":price}, separators=(",",":"), sort_keys=True))
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as out:
+              out.write(f"host={host_code}\n")
+              out.write(f"path={path_code}\n")
+              out.write(f"price={price_code}\n")
+          PY
+
+      - name: Publish #1 competitor fingerprint
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          HOST: ${{ steps.top_competitor.outputs.host }}
+          PATH_CODE: ${{ steps.top_competitor.outputs.path }}
+          PRICE: ${{ steps.top_competitor.outputs.price }}
+        shell: bash
+        run: |
+          CONTEXT="distribution/agent402-top-${HOST:-unknown}-${PATH_CODE:-unknown}-usd-${PRICE:-unknown}"
+          export CONTEXT
+          python - <<'PY'
+          import json, os, urllib.request
+          payload={
+            "state":"success",
+            "context":os.environ["CONTEXT"][:100],
+            "description":"Current #1 external route result for AgentResolver payment-verification intent",
+            "target_url":"https://agent402.tools/guides/smart-order-router"
+          }
+          req=urllib.request.Request(
+            f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+            data=json.dumps(payload).encode(),
+            headers={
+              "Authorization":f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept":"application/vnd.github+json",
+              "Content-Type":"application/json",
+              "X-GitHub-Api-Version":"2022-11-28"
+            },
+            method="POST"
+          )
+          with urllib.request.urlopen(req,timeout=30) as resp:
+              print(resp.status)
+          PY
+
       - name: Publish external-route quote status
         if: always()
         shell: bash
