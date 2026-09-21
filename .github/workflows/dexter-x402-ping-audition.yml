@@ -1,4 +1,4 @@
-name: Dexter x402 Ping Audition
+name: Dexter Host Registration
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 jobs:
-  audition:
+  register:
     runs-on: ubuntu-slim
     timeout-minutes: 8
     steps:
@@ -19,12 +19,12 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run one-route Dexter audition
+      - name: Run zero-spend host-level Dexter audition
         id: audition
         shell: bash
         run: |
           set +e
-          npx --yes @dexterai/opendexter@1.23.3 audition https://agentresolver.vercel.app/api/x402-ping --json > dexter-audition.json 2>&1
+          npx --yes @dexterai/opendexter@1.23.3 audition https://agentresolver.vercel.app --json > dexter-audition.json 2>&1
           RC=$?
           cat dexter-audition.json
           echo "exit_code=$RC" >> "$GITHUB_OUTPUT"
@@ -45,10 +45,10 @@ jobs:
         run: |
           if [ "$AUDITION_SUCCESS" = "true" ]; then
             STATE=success
-            DESC="Dexter paid x402-ping audition passed"
+            DESC="Dexter zero-spend host registration passed"
           else
             STATE=failure
-            DESC="Dexter audition failed exit ${AUDITION_EXIT:-unknown}"
+            DESC="Dexter host registration failed exit ${AUDITION_EXIT:-unknown}"
           fi
           export STATE DESC
           python - <<'PY'
@@ -56,9 +56,9 @@ jobs:
           url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
           payload = {
               "state": os.environ["STATE"],
-              "context": "distribution/dexter-paid-audition",
+              "context": "distribution/dexter-host-registration",
               "description": os.environ["DESC"][:140],
-              "target_url": "https://x402gle.com/agent"
+              "target_url": "https://x402gle.com/servers/agentresolver.vercel.app"
           }
           req = urllib.request.Request(
               url,
