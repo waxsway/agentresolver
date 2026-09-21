@@ -1,0 +1,32 @@
+name: Audit true402 Buyer Routes
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Extract buyer-related OpenAPI routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}' https://true402.dev/openapi.json || printf '000')"
+          echo "HTTP=$code"
+          test "$code" = "200"
+          python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          rows=[]
+          for p,ops in (d.get("paths") or {}).items():
+            if not isinstance(ops,dict): continue
+            blob=(p+" "+json.dumps(ops,separators=(",",":"))).lower()
+            if any(k in blob for k in ("purchase","execute","pay","service","transaction","checkout","buy")):
+              rows.append({"path":p,"methods":[m for m in ops.keys() if m.lower() in ("get","post","put","patch","delete")]})
+          print(json.dumps(rows,separators=(",",":"),sort_keys=True))
+          PY
