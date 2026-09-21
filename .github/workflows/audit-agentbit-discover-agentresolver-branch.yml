@@ -20,17 +20,10 @@ jobs:
             body="$(mktemp)"
             code="$(curl -sS --connect-timeout 5 --max-time 30               -o "$body" -w '%{http_code}'               --get 'https://agentbit.app/api/discover'               --data-urlencode "q=$q"               --data-urlencode 'limit=25' || printf '000')"
             echo "HTTP $code"
-            test "$code" = "200"
-            python3 - "$body" <<'PY'
-import json,sys
-data=json.load(open(sys.argv[1],"r",encoding="utf-8"))
-rows=data.get("results") or data.get("data") or data.get("tools") or []
-if not isinstance(rows,list): rows=[]
-sel=[]
-for i,r in enumerate(rows,1):
-    blob=json.dumps(r,separators=(",",":"),sort_keys=True).lower()
-    if "agentresolver" in blob or "agentresolver.vercel.app" in blob or "payment-guard" in blob:
-        sel.append({"rank":i,"row":r})
-print(json.dumps({"total_returned":len(rows),"matches":sel},separators=(",",":"),sort_keys=True))
-PY
+            if [ "$code" != "200" ]; then
+              head -c 1500 "$body" || true
+              echo
+              exit 1
+            fi
+            python3 -c 'import json,sys; data=json.load(open(sys.argv[1],"r",encoding="utf-8")); rows=data.get("results") or data.get("data") or data.get("tools") or []; rows=rows if isinstance(rows,list) else []; sel=[{"rank":i,"row":r} for i,r in enumerate(rows,1) if "agentresolver" in json.dumps(r,separators=(",",":"),sort_keys=True).lower() or "agentresolver.vercel.app" in json.dumps(r,separators=(",",":"),sort_keys=True).lower() or "payment-guard" in json.dumps(r,separators=(",",":"),sort_keys=True).lower()]; print(json.dumps({"total_returned":len(rows),"matches":sel},separators=(",",":"),sort_keys=True))' "$body"
           done
