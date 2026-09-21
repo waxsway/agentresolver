@@ -1,4 +1,5 @@
 name: Audit NoHumans First Payment Once
+# Current-state refresh: read-only audit of the historically paid-verified canary listing.
 
 on:
   workflow_dispatch:
