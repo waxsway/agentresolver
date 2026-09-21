@@ -1,0 +1,24 @@
+name: Audit PayanAgent Unified Discovery
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Query AgentResolver in unified catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          for endpoint in             'https://payanagent.com/api/v1/discover?q=AgentResolver'             'https://payanagent.com/api/v1/offers?q=AgentResolver&limit=100'; do
+            echo "=== $endpoint ==="
+            code="$(curl -sS --connect-timeout 5 --max-time 20 -o /tmp/body -w '%{http_code}' "$endpoint" || printf '000')"
+            echo "http=$code"
+            head -c 12000 /tmp/body || true
+            echo
+          done
