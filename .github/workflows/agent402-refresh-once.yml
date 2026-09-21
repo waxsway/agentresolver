@@ -1,0 +1,78 @@
+name: One-shot Agent402 Origin Refresh
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/agent402-refresh-once.yml"
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Validate live seller surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(curl -sS -o /tmp/well.json -w '%{http_code}' https://agentresolver.vercel.app/.well-known/x402)" = "200"
+          test "$(curl -sS -o /tmp/ping.json -w '%{http_code}' https://agentresolver.vercel.app/api/x402-ping)" = "402"
+
+      - name: Register origin once
+        id: register
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --connect-timeout 5 --max-time 30 -o /tmp/register.json -w '%{http_code}'             -X POST https://agent402.tools/api/index/register             -H 'content-type: application/json'             --data '{"origin":"https://agentresolver.vercel.app"}' || printf '000')"
+          cat /tmp/register.json || true
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          case "$code" in 200|201|202|204|409) ;; *) exit 1 ;; esac
+
+      - name: Measure exact buyer-intent rank after refresh
+        id: rank
+        shell: bash
+        run: |
+          sleep 5
+          python - <<'PY'
+          import json, os, urllib.parse, urllib.request
+          q="verify x402 payment before paying"
+          u="https://agent402.tools/api/route?"+urllib.parse.urlencode({"q":q,"include":"external"})
+          req=urllib.request.Request(u,headers={"User-Agent":"agentresolver-refresh-audit/1.0"})
+          with urllib.request.urlopen(req,timeout=60) as r:
+              p=json.loads(r.read().decode())
+          rank=0
+          for i,row in enumerate(p.get("results") or [],1):
+              if "agentresolver.vercel.app" in json.dumps(row).lower():
+                  rank=i
+                  break
+          print(json.dumps({"rank":rank or None,"results":(p.get("results") or [])[:3]},separators=(",",":"),sort_keys=True))
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f: f.write(f"rank={rank}\n")
+          PY
+
+      - name: Publish result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REG_CODE: ${{ steps.register.outputs.code }}
+          RANK: ${{ steps.rank.outputs.rank }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          code=os.environ.get("REG_CODE") or "none"
+          rank=os.environ.get("RANK") or "0"
+          state="success" if code in {"200","201","202","204","409"} else "failure"
+          context=f"distribution/agent402-refresh-http-{code}-rank-{rank}"
+          payload={"state":state,"context":context[:100],"description":"One legitimate Agent402 origin refresh and post-refresh rank","target_url":"https://agent402.tools/sell"}
+          req=urllib.request.Request(
+            f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+            data=json.dumps(payload).encode(),
+            headers={"Authorization":f"Bearer {os.environ['GH_TOKEN']}","Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},
+            method="POST")
+          with urllib.request.urlopen(req,timeout=30) as r: print(r.status)
+          PY
