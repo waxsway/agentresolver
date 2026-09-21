@@ -1,18 +1,19 @@
-# Zero-spend host registration only; never fund a local Dexter payer wallet in CI.
-name: Dexter Host Registration
+# Quote-only compatibility check. Never fund a Dexter payer wallet in CI.
+name: Dexter x402 Quote Check
 
 on:
   push:
     branches: [main]
     paths:
       - .github/workflows/dexter-x402-ping-audition.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
   statuses: write
 
 jobs:
-  register:
+  check:
     runs-on: ubuntu-slim
     timeout-minutes: 8
     steps:
@@ -20,14 +21,14 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run zero-spend host-level Dexter audition
-        id: audition
+      - name: Inspect x402 payment terms without paying
+        id: check
         shell: bash
         run: |
           set +e
-          npx --yes @dexterai/opendexter@1.23.3 audition https://agentresolver.vercel.app --json > dexter-audition.json 2>&1
+          npx --yes @dexterai/opendexter@1.23.3 check https://agentresolver.vercel.app/api/x402-ping > dexter-check.txt 2>&1
           RC=$?
-          cat dexter-audition.json
+          cat dexter-check.txt
           echo "exit_code=$RC" >> "$GITHUB_OUTPUT"
           if [ "$RC" -eq 0 ]; then
             echo "success=true" >> "$GITHUB_OUTPUT"
@@ -41,15 +42,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
-          AUDITION_SUCCESS: ${{ steps.audition.outputs.success }}
-          AUDITION_EXIT: ${{ steps.audition.outputs.exit_code }}
+          CHECK_SUCCESS: ${{ steps.check.outputs.success }}
+          CHECK_EXIT: ${{ steps.check.outputs.exit_code }}
         run: |
-          if [ "$AUDITION_SUCCESS" = "true" ]; then
+          if [ "$CHECK_SUCCESS" = "true" ]; then
             STATE=success
-            DESC="Dexter zero-spend host registration passed"
+            DESC="Dexter quote-only x402 check passed"
           else
             STATE=failure
-            DESC="Dexter host registration failed exit ${AUDITION_EXIT:-unknown}"
+            DESC="Dexter quote-only check failed exit ${CHECK_EXIT:-unknown}"
           fi
           export STATE DESC
           python - <<'PY'
@@ -57,9 +58,9 @@ jobs:
           url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
           payload = {
               "state": os.environ["STATE"],
-              "context": "distribution/dexter-host-registration",
+              "context": "distribution/dexter-quote-check",
               "description": os.environ["DESC"][:140],
-              "target_url": "https://x402gle.com/servers/agentresolver.vercel.app"
+              "target_url": "https://docs.dexter.cash/docs/operator/opendexter-for-non-developers/"
           }
           req = urllib.request.Request(
               url,
@@ -77,5 +78,5 @@ jobs:
           PY
 
       - name: Fail job after publishing status
-        if: steps.audition.outputs.success != 'true'
+        if: steps.check.outputs.success != 'true'
         run: exit 1
