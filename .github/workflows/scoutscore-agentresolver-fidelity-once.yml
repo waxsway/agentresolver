@@ -1,0 +1,60 @@
+name: Check ScoutScore AgentResolver Fidelity
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/scoutscore-agentresolver-fidelity-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Query ScoutScore index and request one fresh fidelity check
+        shell: bash
+        env:
+          DOMAIN: agentresolver.vercel.app
+          SCOUT: https://scoutscore.ai
+        run: |
+          set -euo pipefail
+
+          score_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/scout-score.json -w '%{http_code}'             -H 'accept: application/json'             -H 'x-scout-action: CHECK_SERVICE_TRUST'             "$SCOUT/api/bazaar/score/$DOMAIN" || printf '000')"
+
+          echo "ScoutScore score -> HTTP $score_status"
+          jq -c . /tmp/scout-score.json 2>/dev/null || cat /tmp/scout-score.json || true
+
+          case "$score_status" in
+            200) ;;
+            404|422)
+              echo "::notice::AgentResolver is not currently probeable in ScoutScore (HTTP $score_status); no fresh probe requested."
+              exit 0
+              ;;
+            429|500|502|503|504|000)
+              echo "::warning::ScoutScore is temporarily unavailable (HTTP $score_status); deferred."
+              exit 0
+              ;;
+            *)
+              echo "::warning::Unexpected ScoutScore status $score_status; refusing further action."
+              exit 0
+              ;;
+          esac
+
+          fidelity_status="$(curl -sS --connect-timeout 10 --max-time 45             -o /tmp/scout-fidelity.json -w '%{http_code}'             -H 'accept: application/json'             -H 'x-scout-action: CHECK_FIDELITY'             "$SCOUT/api/bazaar/fidelity/$DOMAIN?fresh=true" || printf '000')"
+
+          echo "ScoutScore fresh fidelity -> HTTP $fidelity_status"
+          jq -c . /tmp/scout-fidelity.json 2>/dev/null || cat /tmp/scout-fidelity.json || true
+
+          case "$fidelity_status" in
+            200) ;;
+            404|422|429|500|502|503|504|000)
+              echo "::notice::Fresh fidelity request did not complete (HTTP $fidelity_status); no retry loop created."
+              ;;
+            *)
+              echo "::warning::Unexpected fresh fidelity status $fidelity_status."
+              ;;
+          esac
