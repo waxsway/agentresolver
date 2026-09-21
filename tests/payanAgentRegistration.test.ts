@@ -16,7 +16,10 @@ test("PayanAgent lane is free, no-email, and uses only the public payout address
 test("PayanAgent registration is idempotent and publishes both buyer funnel stages", () => {
   assert.match(workflow, /q=AgentResolver/);
   assert.match(workflow, /agentresolver\.vercel\.app/);
-  assert.match(workflow, /refusing to create a duplicate provider/);
+  assert.match(workflow, /api\/v1\/agents/);
+  assert.match(workflow, /walletAddress/);
+  assert.match(workflow, /refusing duplicate registration/);
+  assert.match(workflow, /agent directory proves no AgentResolver provider exists/);
   assert.match(workflow, /AgentResolver Settlement Ping/);
   assert.match(workflow, /AgentResolver Guard — Verify x402 Before Paying/);
   assert.match(workflow, /externalUrl": "https:\/\/agentresolver\.vercel\.app\/api\/x402-ping"/);
