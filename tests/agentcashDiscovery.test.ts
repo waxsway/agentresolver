@@ -129,7 +129,6 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   const publicResourcePaths = new Set([
     "/api/x402-ping",
     "/api/x402-payment-preflight",
-    "/api/payment-guard",
     "/api/x402-settlement-verify",
     "/api/verified-resolve",
     "/api/batch-verified-resolve",
