@@ -116,7 +116,8 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "x402-settlement-verify",
     "verified-resolve",
     "batch-verified-resolve",
-    "provider-launch-check"
+    "provider-launch-check",
+    "cdp-payment-guard"
   ]);
   const intentAliasIds = new Set([
     "usdc-payment-check",
@@ -138,7 +139,8 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "/api/x402-preflight",
     "/api/prepayment-authorization-gate",
     "/api/api-trust-security-preflight",
-    "/api/x402-transaction-path-payment-gate"
+    "/api/x402-transaction-path-payment-gate",
+    "/api/cdp-payment-guard"
   ]);
 
   assert.deepEqual(
