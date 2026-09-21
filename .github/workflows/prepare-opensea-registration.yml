@@ -94,4 +94,4 @@ jobs:
             signerBalanceEth: signerBalanceWei !== null ? formatEther(signerBalanceWei) : null,
           };
           console.log('OPEN_SEA_REGISTRATION=' + JSON.stringify(result));
-NODE
+          NODE
