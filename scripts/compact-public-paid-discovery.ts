@@ -6,7 +6,8 @@ const KEEP_PAID_IDS = new Set([
   "x402-settlement-verify",
   "verified-resolve",
   "batch-verified-resolve",
-  "provider-launch-check"
+  "provider-launch-check",
+  "cdp-payment-guard"
 ]);
 
 const KEEP_INTENT_ALIAS_IDS = new Set([
@@ -37,7 +38,8 @@ const KEEP_OPENAPI_PATHS = new Set([
   "/api/x402-preflight",
   "/api/prepayment-authorization-gate",
   "/api/api-trust-security-preflight",
-  "/api/x402-transaction-path-payment-gate"
+  "/api/x402-transaction-path-payment-gate",
+  "/api/cdp-payment-guard"
 ]);
 
 const KEEP_RESOURCE_PATHS = new Set([
