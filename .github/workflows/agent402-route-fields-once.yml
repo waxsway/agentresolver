@@ -1,0 +1,94 @@
+name: One-shot Agent402 Route Fields
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/agent402-route-fields-once.yml"
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Inspect #1 and AgentResolver route fields
+        id: fields
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.parse, urllib.request
+
+          q="verify x402 payment before paying"
+          u="https://agent402.tools/api/route?"+urllib.parse.urlencode({"q":q,"include":"external"})
+          req=urllib.request.Request(u,headers={"User-Agent":"agentresolver-route-fields/1.0"})
+          with urllib.request.urlopen(req,timeout=60) as r:
+              p=json.loads(r.read().decode())
+          rows=p.get("results") or []
+          top=rows[0] if rows else {}
+          ar={}
+          rank=0
+          for i,row in enumerate(rows,1):
+              b=json.dumps(row,separators=(",",":"),sort_keys=True).lower()
+              if "agentresolver.vercel.app" in b or '"sellername":"agentresolver"' in b:
+                  ar=row; rank=i; break
+
+          fields=["score","health","priceUsd","underlyingPriceUsd","routerDispatchEligible","routerDispatchReason","executeViaCallableNow","network","networks","sellerName","name","slug"]
+          def subset(row):
+              return {k:row.get(k) for k in fields if k in row}
+          print(json.dumps({"rank":rank or None,"top":subset(top),"agentresolver":subset(ar),"topRaw":top,"agentresolverRaw":ar},separators=(",",":"),sort_keys=True))
+
+          def code(v):
+              if v is None:return "na"
+              if isinstance(v,(dict,list)):v=json.dumps(v,separators=(",",":"),sort_keys=True)
+              return re.sub(r'[^a-zA-Z0-9._-]+','-',str(v))[:42] or "na"
+
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write(f"rank={rank}\n")
+              for prefix,row in (("top",top),("ar",ar)):
+                  for field in fields:
+                      f.write(f"{prefix}_{field}={code(row.get(field))}\n")
+          PY
+
+      - name: Publish decisive fields
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          RANK: ${{ steps.fields.outputs.rank }}
+          TOP_SCORE: ${{ steps.fields.outputs.top_score }}
+          AR_SCORE: ${{ steps.fields.outputs.ar_score }}
+          TOP_HEALTH: ${{ steps.fields.outputs.top_health }}
+          AR_HEALTH: ${{ steps.fields.outputs.ar_health }}
+          TOP_PRICE: ${{ steps.fields.outputs.top_priceUsd }}
+          AR_PRICE: ${{ steps.fields.outputs.ar_priceUsd }}
+          TOP_UPRICE: ${{ steps.fields.outputs.top_underlyingPriceUsd }}
+          AR_UPRICE: ${{ steps.fields.outputs.ar_underlyingPriceUsd }}
+          TOP_REASON: ${{ steps.fields.outputs.top_routerDispatchReason }}
+          AR_REASON: ${{ steps.fields.outputs.ar_routerDispatchReason }}
+          TOP_ELIG: ${{ steps.fields.outputs.top_routerDispatchEligible }}
+          AR_ELIG: ${{ steps.fields.outputs.ar_routerDispatchEligible }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          contexts=[
+            f"distribution/a402-route-rank-{os.environ.get('RANK','0')}",
+            f"distribution/a402-route-score-top-{os.environ.get('TOP_SCORE','na')}-ar-{os.environ.get('AR_SCORE','na')}",
+            f"distribution/a402-route-health-top-{os.environ.get('TOP_HEALTH','na')}-ar-{os.environ.get('AR_HEALTH','na')}",
+            f"distribution/a402-route-price-top-{os.environ.get('TOP_PRICE','na')}-ar-{os.environ.get('AR_PRICE','na')}",
+            f"distribution/a402-route-uprice-top-{os.environ.get('TOP_UPRICE','na')}-ar-{os.environ.get('AR_UPRICE','na')}",
+            f"distribution/a402-route-elig-top-{os.environ.get('TOP_ELIG','na')}-{os.environ.get('TOP_REASON','na')}-ar-{os.environ.get('AR_ELIG','na')}-{os.environ.get('AR_REASON','na')}",
+          ]
+          for c in contexts:
+              payload={"state":"success","context":c[:100],"description":"Agent402 external route field comparison","target_url":"https://agent402.tools/api/route"}
+              req=urllib.request.Request(
+                f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+                data=json.dumps(payload).encode(),
+                headers={"Authorization":f"Bearer {os.environ['GH_TOKEN']}","Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},
+                method="POST")
+              with urllib.request.urlopen(req,timeout=30) as r: print(r.status)
+          PY
