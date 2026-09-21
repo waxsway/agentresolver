@@ -83,6 +83,7 @@ test("AgentResolver Guard is additive to the canonical preflight contract", () =
   assert.ok(guard?.post);
   assert.equal(guard?.["x-agentresolver-alias-of"], "/api/x402-payment-preflight");
   assert.equal(guard.get.operationId, "agentResolverPaymentGuardGet");
+  assert.equal(guard.get.summary, "Verify x402 Payment Before Paying");
   assert.equal(guard.post.operationId, "agentResolverPaymentGuardPost");
   assert.equal(canonical.post.operationId, "x402PaymentPreflightPayToVerification");
 });
