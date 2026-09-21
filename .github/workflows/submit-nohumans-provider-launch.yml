@@ -1,4 +1,5 @@
 name: Submit NoHumans Provider Launch Check
+# Revenue trigger: provider-launch submission, 2026-09-21
 
 on:
   workflow_dispatch:
