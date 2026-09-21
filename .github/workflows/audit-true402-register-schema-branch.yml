@@ -1,0 +1,28 @@
+name: Audit true402 Register Schema
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Extract register request schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          curl -sS --connect-timeout 5 --max-time 20 -o "$body" https://true402.dev/openapi.json
+          python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          op=d["paths"]["/api/v1/services/register"]["post"]
+          print(json.dumps({
+            "requestBody":op.get("requestBody"),
+            "responses":op.get("responses"),
+          },separators=(",",":"),sort_keys=True))
+          PY
