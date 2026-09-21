@@ -92,6 +92,10 @@ Coinbase CDP SDK users can compose `CdpX402Client` spend controls with the same 
 
 [`docs/integrations/coinbase-cdp-sdk-payment-guard.md`](docs/integrations/coinbase-cdp-sdk-payment-guard.md)
 
+Thirdweb wallet users can bind AgentResolver evidence to Thirdweb's exact selected x402 payment requirement before the wallet signs:
+
+[`docs/integrations/thirdweb-x402-payment-guard.md`](docs/integrations/thirdweb-x402-payment-guard.md)
+
 This path does not depend on Coinbase AgentKit's still-unmerged `beforePayment` proposal.
 
 ## Framework-native fallback recipes
