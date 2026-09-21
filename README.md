@@ -77,6 +77,19 @@ AgentResolver never receives the target-payment private key and never authorizes
 
 [![skills.sh](https://skills.sh/b/waxsway/agentresolver)](https://skills.sh/waxsway/agentresolver)
 
+
+### Native x402 pre-sign hook
+
+The official x402 client exposes a stable `onBeforePaymentCreation` lifecycle hook. AgentResolver can be installed there as a fail-closed Guard before the target payment payload is created.
+
+Use **two x402 clients**: one hooked client for the target payment and one hook-free client dedicated to paying the separate AgentResolver Guard fee. This prevents recursive Guard payments and keeps both spends under caller-owned policy.
+
+Copy-paste TypeScript integration:
+
+[`docs/integrations/x402-core-payment-guard.md`](docs/integrations/x402-core-payment-guard.md)
+
+This path does not depend on Coinbase AgentKit's still-unmerged `beforePayment` proposal.
+
 ## Framework-native fallback recipes
 
 Machine-readable recipes for OpenAI Agents, Cloudflare Agents, portable MCP hosts, and AI SDK-compatible runtimes:
