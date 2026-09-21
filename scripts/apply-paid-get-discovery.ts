@@ -6,6 +6,11 @@ const PING_ENDPOINT = "/api/x402-ping";
 const PREFLIGHT_ID = "x402-payment-preflight";
 const PREFLIGHT_ENDPOINT = "/api/x402-payment-preflight";
 const GUARD_ENDPOINT = "/api/payment-guard";
+const CDP_GUARD_ID = "cdp-payment-guard";
+const CDP_GUARD_ENDPOINT = "/api/cdp-payment-guard";
+const CDP_GUARD_PRICE_USD = "0.002";
+const CDP_GUARD_PRICE_ATOMIC = "2000";
+const CDP_FACILITATOR_URL = "https://api.cdp.coinbase.com/platform/v2/x402";
 const X402_MANIFEST_PATHS = [
   "public/.well-known/x402",
   "public/.well-known/x402.json"
@@ -156,15 +161,62 @@ for (const path of X402_MANIFEST_PATHS) {
     }
   }
 
+  const cdpGuardService = clone(preflightService);
+  cdpGuardService.id = CDP_GUARD_ID;
+  cdpGuardService.name = "AgentResolver CDP Payment Guard — Coinbase CDP";
+  cdpGuardService.description = "Base-only $0.002 USDC verify-before-pay Guard settled through Coinbase CDP. Run immediately before an autonomous x402 spend to check the live target payTo, amount, network, asset, scheme and resource binding. The caller alone authorizes any target payment.";
+  cdpGuardService.endpoint = `${CANONICAL_ORIGIN}${CDP_GUARD_ENDPOINT}`;
+  cdpGuardService.method = "GET";
+  cdpGuardService.methods = ["GET", "POST"];
+  cdpGuardService.preferredMethod = "GET";
+  cdpGuardService.price_usdc = CDP_GUARD_PRICE_USD;
+  cdpGuardService.price_atomic = Number(CDP_GUARD_PRICE_ATOMIC);
+  cdpGuardService.facilitator = CDP_FACILITATOR_URL;
+  cdpGuardService.queryExample = preflightQueryExample;
+  cdpGuardService.brandName = "AgentResolver CDP Payment Guard";
+  cdpGuardService.repeatUse = "before_autonomous_x402_spend_when_cdp_settlement_evidence_is_useful";
+  cdpGuardService.tags = [...new Set([...(cdpGuardService.tags ?? []), "coinbase-cdp", "payment-guard", "verify-before-pay"])];
+
+  manifest.services = [
+    ...(manifest.services ?? []).filter((item: any) => item.id !== CDP_GUARD_ID),
+    cdpGuardService
+  ];
+
+  const cdpGuardGet = clone(preflightGet);
+  cdpGuardGet.id = CDP_GUARD_ID;
+  cdpGuardGet.name = "AgentResolver CDP Payment Guard — Coinbase CDP";
+  cdpGuardGet.endpoint = `${CANONICAL_ORIGIN}${CDP_GUARD_ENDPOINT}`;
+  cdpGuardGet.resource = `GET ${CDP_GUARD_ENDPOINT}`;
+  cdpGuardGet.description = "Base-only $0.002 USDC verify-before-pay Guard settled through Coinbase CDP. Supply the target x402 URL as a query parameter; AgentResolver returns a fail-closed eligible/blocked decision and observed payment evidence after successful settlement. The caller alone authorizes any target payment.";
+  cdpGuardGet.price = "$0.002";
+  cdpGuardGet.price_usdc = CDP_GUARD_PRICE_USD;
+  cdpGuardGet.price_atomic = Number(CDP_GUARD_PRICE_ATOMIC);
+  cdpGuardGet.facilitator = CDP_FACILITATOR_URL;
+  cdpGuardGet.brandName = "AgentResolver CDP Payment Guard";
+  cdpGuardGet.repeatUse = "before_autonomous_x402_spend_when_cdp_settlement_evidence_is_useful";
+  cdpGuardGet.tags = [...new Set([...(cdpGuardGet.tags ?? []), "coinbase-cdp", "payment-guard", "verify-before-pay"])];
+  if (Array.isArray(cdpGuardGet.accepts)) {
+    cdpGuardGet.accepts = cdpGuardGet.accepts
+      .filter((accept: any) => accept.network === "eip155:8453")
+      .map((accept: any) => ({
+        ...accept,
+        resource: `${CANONICAL_ORIGIN}${CDP_GUARD_ENDPOINT}`,
+        amount: CDP_GUARD_PRICE_ATOMIC,
+        maxAmountRequired: CDP_GUARD_PRICE_ATOMIC
+      }));
+  }
+
   manifest.resources = [
     ...manifest.resources.filter((item: any) =>
       item.resource !== `GET ${PREFLIGHT_ENDPOINT}` &&
       item.resource !== `GET ${GUARD_ENDPOINT}` &&
-      item.resource !== `POST ${GUARD_ENDPOINT}`
+      item.resource !== `POST ${GUARD_ENDPOINT}` &&
+      item.resource !== `GET ${CDP_GUARD_ENDPOINT}`
     ),
     preflightGet,
     guardGet,
-    guardPost
+    guardPost,
+    cdpGuardGet
   ];
 
   manifest.instructions = "Use AgentResolver Guard immediately before every autonomous x402 spend: GET /api/x402-payment-preflight?url=<https-endpoint> costs $0.001 USDC and returns a fail-closed eligible/blocked decision, exact target payment terms, reason codes and evidence fingerprints. POST remains supported for body-bearing workflows. For the cheapest end-to-end paid integration check, GET /api/x402-ping costs $0.001 USDC; successful canaries hand off to POST /api/verified-resolve ($0.02) or POST /api/batch-verified-resolve ($0.05). POST /api/procure is the preferred free constrained procurement surface; POST /api/resolve remains free for broad discovery. A 402 is a quote, never spending authorization.";
