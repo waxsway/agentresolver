@@ -1,0 +1,86 @@
+name: Audit Aegis and PayWitness Buyers
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Aegis zero-spend state
+        shell: bash
+        run: |
+          set -euo pipefail
+          for endpoint in lint discover; do
+            body="$(mktemp)"
+            if [ "$endpoint" = "lint" ]; then
+              code="$(curl -sS -G -o "$body" -w '%{http_code}' --connect-timeout 5 --max-time 20 \
+                "https://aegis.borisinc.com/$endpoint" \
+                --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping' || printf '000')"
+            else
+              code="$(curl -sS -G -o "$body" -w '%{http_code}' --connect-timeout 5 --max-time 20 \
+                "https://aegis.borisinc.com/$endpoint" \
+                --data-urlencode 'query=AgentResolver' || printf '000')"
+            fi
+            echo "AEGIS_ENDPOINT=$endpoint HTTP=$code"
+            head -c 3000 "$body" || true
+            echo
+          done
+          body="$(mktemp)"
+          code="$(curl -sS -G -o "$body" -w '%{http_code}' --connect-timeout 5 --max-time 20 \
+            'https://aegis.borisinc.com/submit' \
+            --data-urlencode 'url=https://agentresolver.vercel.app/api/x402-ping' \
+            --data-urlencode 'name=AgentResolver Settlement Ping' \
+            --data-urlencode 'category=verification' \
+            --data-urlencode 'price_usd=0.001' || printf '000')"
+          echo "AEGIS_SUBMIT_HTTP=$code"
+          head -c 3000 "$body" || true
+          echo
+          if [ "$code" = "402" ]; then echo "AEGIS_PAYMENT_REFUSED=true"; fi
+
+      - name: PayWitness zero-spend state and free self-list
+        shell: bash
+        run: |
+          set -euo pipefail
+          spec="$(mktemp)"
+          code="$(curl -sS -o "$spec" -w '%{http_code}' --connect-timeout 5 --max-time 20 \
+            'https://paywitness.ai/openapi.json' || printf '000')"
+          echo "PAYWITNESS_OPENAPI_HTTP=$code"
+          if [ "$code" != "200" ]; then exit 0; fi
+          python3 - "$spec" > /tmp/payload.json <<'PY'
+          import json,sys
+          s=json.load(open(sys.argv[1]))
+          post=((s.get("paths") or {}).get("/list") or {}).get("post")
+          if not post:
+              print("{}"); raise SystemExit
+          node=(((post.get("requestBody") or {}).get("content") or {}).get("application/json") or {}).get("schema") or {}
+          while isinstance(node,dict) and "$ref" in node:
+              cur=s
+              for p in node["$ref"][2:].split("/"): cur=cur[p]
+              node=cur
+          props=node.get("properties") or {}; req=node.get("required") or []
+          target="https://agentresolver.vercel.app/api/x402-ping"
+          vals={"resource":target,"url":target,"endpoint":target,"endpoint_url":target,"resource_url":target,
+                "name":"AgentResolver Settlement Ping","description":"Minimal $0.001 x402 settlement canary for autonomous buyers.",
+                "method":"GET","price":0.001,"price_usd":0.001,"priceUsd":0.001,"declared_price_usd":0.001,
+                "network":"eip155:8453","chain":"base","payTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+                "pay_to":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","tags":["x402","settlement","verification"]}
+          payload={k:vals[k] for k in props if k in vals}
+          missing=[k for k in req if k not in payload]
+          if missing: raise SystemExit("unsupported-required:"+",".join(missing))
+          print(json.dumps(payload,separators=(",",":")))
+          PY
+          if [ "$(cat /tmp/payload.json)" = "{}" ]; then exit 0; fi
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' --connect-timeout 5 --max-time 30 \
+            -X POST 'https://paywitness.ai/list' \
+            -H 'content-type: application/json' \
+            --data-binary @/tmp/payload.json || printf '000')"
+          echo "PAYWITNESS_LIST_HTTP=$code"
+          head -c 4000 "$body" || true
+          echo
+          if [ "$code" = "402" ]; then echo "PAYWITNESS_PAYMENT_REFUSED=true"; fi
