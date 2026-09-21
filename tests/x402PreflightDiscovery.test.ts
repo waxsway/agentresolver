@@ -10,7 +10,10 @@ test("canonical x402 preflight owns verify-before-pay buyer language", () => {
   assert.equal(canonical.endpoint, "/api/x402-payment-preflight");
   assert.equal(canonical.operationId, "x402PaymentPreflightPayToVerification");
   assert.match(canonical.operationId, /x402.*preflight.*payto.*verification/i);
-  assert.match(canonical.name, /verify endpoint before paying/i);
+  assert.equal(canonical.name, "Verify x402 Payment Before Paying");
+  assert.equal(canonical.endpoint, "/api/x402-payment-preflight");
+  assert.equal(canonical.operationId, "x402PaymentPreflightPayToVerification");
+  assert.equal(canonical.priceUsd, 0.001);
   assert.ok(canonical.tags.includes("payment guard"));
   assert.ok(canonical.tags.includes("agent wallet firewall"));
   assert.ok(canonical.tags.includes("payTo verification"));
