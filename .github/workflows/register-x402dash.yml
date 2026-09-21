@@ -25,7 +25,7 @@ jobs:
           import urllib.error
           import urllib.request
 
-          endpoint = "https://x402dash.com/v1/register"
+          endpoint = "https://api.x402dash.com/v1/register"
           payload = {
               "url": "https://agentresolver.vercel.app/api/x402-ping",
               "name": "AgentResolver x402 Ping",
@@ -94,7 +94,7 @@ jobs:
               "state": os.environ["STATE"],
               "context": f"distribution/x402dash-http-{os.environ.get('REG_STATUS', '0')}",
               "description": os.environ["DESC"][:140],
-              "target_url": "https://x402dash.com/"
+              "target_url": "https://x402dash.com/developers/"
           }
           req = urllib.request.Request(
               url,
