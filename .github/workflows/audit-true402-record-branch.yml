@@ -1,0 +1,24 @@
+name: Audit true402 Accepted Record
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Read accepted service and live catalog search
+        shell: bash
+        run: |
+          set -euo pipefail
+          id='58e2dff8-a1d8-45e3-9861-b0dc7e2e320b'
+          echo '=== record ==='
+          curl -sS -i --connect-timeout 5 --max-time 20 "https://true402.dev/api/v1/services/$id" | head -c 5000
+          echo
+          echo '=== catalog search ==='
+          curl -sS --get --connect-timeout 5 --max-time 20             'https://true402.dev/api/v1/services'             --data-urlencode 'q=AgentResolver'             --data-urlencode 'limit=20' | head -c 5000
+          echo
