@@ -22,13 +22,24 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}' "$RESOURCE")"
+          headers="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -D "$headers" -o "$body" -w '%{http_code}' "$RESOURCE")"
           test "$code" = "402"
           jq -e '
             .x402Version == 2 and
-            any(.accepts[]; .network=="eip155:8453" and .amount=="2000" and .payTo=="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8") and
-            (((.extensions.bazaar.info.input.method) // "") == "GET")
+            any(.accepts[]; .network=="eip155:8453" and .amount=="2000" and .payTo=="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8")
           ' "$body" >/dev/null
+          python3 - "$headers" <<'PY'
+          import base64,json,sys
+          lines=open(sys.argv[1],encoding="utf-8",errors="replace").read().splitlines()
+          raw=next((x.split(":",1)[1].strip() for x in lines if x.lower().startswith("payment-required:")),None)
+          if not raw:
+              raise SystemExit("missing PAYMENT-REQUIRED header")
+          raw += "=" * (-len(raw) % 4)
+          data=json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
+          bazaar=((data.get("extensions") or {}).get("bazaar") or {})
+          assert (((bazaar.get("info") or {}).get("input") or {}).get("method")=="GET")
+          PY
 
       - name: Submit distinct CDP Guard listing
         shell: bash
