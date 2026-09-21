@@ -60,6 +60,46 @@ AgentResolver supports its own service payment on:
 Register only payment schemes backed by the caller's own signer and enforce caller-owned limits before signing.
 
 
+## Simple Agent Wallet (`saw`) — no-code composition
+
+AxLabs Simple Agent Wallet already exposes the two primitives needed for a fail-closed Guard loop:
+
+- `saw inspect <url>` — read/decode the target 402 without paying.
+- `saw pay <url> --confirm` — explicitly sign and retry an x402 request.
+
+When both skills are installed, use this procedure:
+
+```text
+saw inspect TARGET
+  -> build AgentResolver Guard URL for TARGET
+  -> saw pay GUARD_URL --confirm
+  -> require Guard decision === eligible
+  -> compare observed amount / asset / network / payTo / resource to caller policy
+  -> saw pay TARGET --confirm
+```
+
+Example Guard URL for a GET target:
+
+```text
+https://agentresolver.vercel.app/api/payment-guard?url=<percent-encoded-target>&method=GET&maxPriceUsd=<caller-limit>
+```
+
+Important:
+
+- The first `saw pay` authorizes only AgentResolver's separate **$0.001 Guard fee**.
+- The second `saw pay` is a distinct authorization for the target.
+- Do not use `--skip-balance-check` merely to make the flow succeed.
+- Do not pay the target when Guard is blocked, malformed, unavailable, or conflicts with caller policy.
+- For POST targets, leave unpaid POST probing disabled unless the caller already knows the probe is side-effect safe and explicitly opts in.
+
+Install the complementary wallet skill:
+
+```bash
+npx skills add AxLabs/simple-agent-wallet --skill saw -g -y
+```
+
+This is interoperability guidance only; AgentResolver is not affiliated with AxLabs.
+
 ## MCP wallet-capable clients — fail-closed pre-sign gate
 
 For `@x402/mcp`, use `onPaymentRequested` before the wallet creates a payment. The host must supply its own `hostAllowsGuardSpend(context)` policy check. Return `false` on every mismatch.
