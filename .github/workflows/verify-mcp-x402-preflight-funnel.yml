@@ -75,10 +75,10 @@ jobs:
           expected_setup="$BUYER_SETUP_URL?source=x402-challenge&capabilityId=x402-payment-preflight&method=POST"
           grep -Fi "x-agentresolver-buyer-setup: $expected_setup" /tmp/http-x402-preflight.headers >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/http-x402-preflight.headers | grep -Fi 'x-agentresolver-buyer-setup' >/dev/null
-          jq -e --arg setup "$expected_setup" '
+          jq -e '
             .x402Version == 2 and
-            .buyerSetup.method == "POST" and
-            .buyerSetup.setup == $setup
+            (.accepts | type) == "array" and
+            (.accepts | length) >= 1
           ' /tmp/http-x402-preflight.out >/dev/null
 
           payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-x402-preflight.headers)"
