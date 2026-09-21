@@ -347,7 +347,7 @@ export const PAID_CAPABILITIES = {
   },
   "x402-payment-preflight": {
     id: "x402-payment-preflight",
-    name: "X402 Preflight — Verify Endpoint Before Paying | Endpoint Safety | USDC Payment Check",
+    name: "Verify x402 Payment Before Paying",
     operationId: "x402PaymentPreflightPayToVerification",
     endpoint: "/api/x402-payment-preflight",
     price: "$0.001",
