@@ -55,9 +55,27 @@ jobs:
             .x402Version == 2 and
             (.accepts | length == 2) and
             (.accepts | any(.network == "eip155:8453" and .amount == "1000")) and
-            (.accepts | any(.network == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and .amount == "1000")) and
-            (.extensions.bazaar.schema.properties.output != null)
+            (.accepts | any(.network == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and .amount == "1000"))
           ' /tmp/preflight.json >/dev/null
+
+          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]+:[[:space:]]*/, ""); gsub("\\r", ""); print; exit}' /tmp/preflight.headers)"
+          test -n "$payment_required"
+          python3 - "$payment_required" <<'PY'
+import base64
+import json
+import sys
+
+encoded = sys.argv[1].strip()
+encoded += "=" * (-len(encoded) % 4)
+payload = json.loads(base64.urlsafe_b64decode(encoded).decode("utf-8"))
+
+assert payload.get("x402Version") == 2
+accepts = payload.get("accepts") or []
+assert len(accepts) == 2
+assert any(item.get("network") == "eip155:8453" and str(item.get("amount")) == "1000" for item in accepts)
+assert any(item.get("network") == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and str(item.get("amount")) == "1000" for item in accepts)
+assert (((payload.get("extensions") or {}).get("bazaar") or {}).get("schema") or {}).get("properties", {}).get("output") is not None
+PY
 
           curl -fsS "$BASE_URL/.well-known/security.txt?audit=$GITHUB_RUN_ID" |
             grep -F 'Canonical: https://agentresolver.vercel.app/.well-known/security.txt' >/dev/null
