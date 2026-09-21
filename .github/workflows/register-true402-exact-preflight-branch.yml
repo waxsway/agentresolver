@@ -1,4 +1,4 @@
-name: Register true402 Exact Preflight
+name: Register true402 Exact Preflight Explicit Manifest
 
 on:
   push:
@@ -11,24 +11,29 @@ jobs:
     runs-on: ubuntu-slim
     timeout-minutes: 4
     steps:
-      - name: Register exact-intent executable Preflight
+      - name: Register exact-intent Preflight with explicit fallback manifest
         shell: bash
         run: |
           set -euo pipefail
           RESOURCE='https://agentresolver.vercel.app/api/x402-payment-preflight?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET&maxPriceUsd=0.01&expectedNetwork=eip155%3A8453'
+          PAYTO='0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8'
 
-          code="$(curl -sS --connect-timeout 5 --max-time 20             -o /tmp/challenge.json -w '%{http_code}' "$RESOURCE" || printf '000')"
-          echo "challenge_http=$code"
-          test "$code" = "402"
+          payload="$(jq -cn --arg url "$RESOURCE" --arg payto "$PAYTO" '{
+            url:$url,
+            manifest:{
+              x402:"1.0",
+              name:"Verify x402 Payment Before Paying",
+              description:"$0.001 AgentResolver payment preflight for autonomous wallets. Verifies the target x402 challenge before the caller separately authorizes and signs the target payment.",
+              capabilities:["agents","x402","payment-preflight","payment-guard","wallet-safety","verification"],
+              pricing:{currency:"USDC",base:"0.001",unit:"request"},
+              payment:{address:$payto,chain:"base",facilitator:"https://facilitator.payai.network"},
+              endpoint:$url
+            }
+          }')"
 
-          reg="$(mktemp)"
-          rcode="$(curl -sS --connect-timeout 5 --max-time 30             -o "$reg" -w '%{http_code}'             -X POST 'https://true402.dev/api/v1/services/register'             -H 'content-type: application/json'             --data "$(jq -cn --arg url "$RESOURCE" '{url:$url}')" || printf '000')"
-          echo "register_http=$rcode"
-          cat "$reg"
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 30             -o "$body" -w '%{http_code}'             -X POST 'https://true402.dev/api/v1/services/register'             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          echo "register_http=$code"
+          cat "$body"
           echo
-          case "$rcode" in 200|201|202|409) ;; *) exit 1;; esac
-
-          sleep 2
-          echo '=== exact search ==='
-          curl -sS --get --connect-timeout 5 --max-time 20             'https://true402.dev/api/v1/services'             --data-urlencode 'q=verify x402 payment before paying'             --data-urlencode 'limit=20'
-          echo
+          case "$code" in 200|201|202|409) ;; *) exit 1;; esac
