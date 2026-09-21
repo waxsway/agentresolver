@@ -1,0 +1,105 @@
+name: Audit Agent402 Routing Visibility
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/audit-agent402-routing.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Query free Agent402 finder
+        id: query
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          q = "verify x402 payment before paying"
+          url = "https://agent402.tools/api/find?" + urllib.parse.urlencode({"q": q})
+          req = urllib.request.Request(
+              url,
+              headers={"User-Agent": "agentresolver-discovery-audit/1.0 (+https://github.com/waxsway/agentresolver)"}
+          )
+
+          status = 0
+          body = ""
+          try:
+              with urllib.request.urlopen(req, timeout=60) as resp:
+                  status = resp.status
+                  body = resp.read().decode("utf-8", "replace")
+          except Exception as exc:
+              body = f"{type(exc).__name__}: {exc}"
+
+          lower = body.lower()
+          found = "agentresolver.vercel.app" in lower or "agentresolver" in lower
+          print(json.dumps({
+              "status": status,
+              "query": q,
+              "agentresolverFound": found,
+              "bodyPreview": body.replace("\n", " ").replace("\r", " ")[:1800]
+          }))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"http_status={status}\n")
+              out.write(f"found={'true' if found else 'false'}\n")
+          if status != 200:
+              raise SystemExit(1)
+          PY
+
+      - name: Publish visibility status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          HTTP_STATUS: ${{ steps.query.outputs.http_status }}
+          FOUND: ${{ steps.query.outputs.found }}
+        run: |
+          if [ "$HTTP_STATUS" = "200" ] && [ "$FOUND" = "true" ]; then
+            STATE=success
+            CONTEXT="distribution/agent402-router-visible"
+            DESC="AgentResolver found by Agent402 free finder"
+          elif [ "$HTTP_STATUS" = "200" ]; then
+            STATE=success
+            CONTEXT="distribution/agent402-router-not-yet"
+            DESC="Agent402 query worked; AgentResolver not returned yet"
+          else
+            STATE=failure
+            CONTEXT="distribution/agent402-router-http-${HTTP_STATUS:-0}"
+            DESC="Agent402 free finder query failed"
+          fi
+          export STATE CONTEXT DESC
+          python - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
+          payload = {
+              "state": os.environ["STATE"],
+              "context": os.environ["CONTEXT"],
+              "description": os.environ["DESC"][:140],
+              "target_url": "https://agent402.tools/marketplace"
+          }
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28"
+              },
+              method="POST"
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              print(resp.status, resp.read().decode("utf-8", "replace")[:500])
+          PY
