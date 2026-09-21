@@ -29,17 +29,33 @@ jobs:
               req=urllib.request.Request(u,headers={"User-Agent":"agentresolver-health-detail/1.0"})
               with urllib.request.urlopen(req,timeout=60) as r:
                   p=json.loads(r.read().decode())
-              rows=p.get("sellers") or []
-              row=rows[0] if rows else {}
+              if isinstance(p,dict) and isinstance(p.get("seller"),dict):
+                  row=p["seller"]
+              elif isinstance(p,dict) and isinstance(p.get("data"),dict):
+                  data=p["data"]
+                  if isinstance(data.get("seller"),dict):
+                      row=data["seller"]
+                  elif data.get("origin") or data.get("sellerName"):
+                      row=data
+                  else:
+                      rows=data.get("sellers") or data.get("results") or []
+                      row=rows[0] if isinstance(rows,list) and rows else {}
+              elif isinstance(p,dict) and (p.get("origin") or p.get("sellerName")):
+                  row=p
+              else:
+                  rows=(p.get("sellers") or p.get("results") or []) if isinstance(p,dict) else []
+                  row=rows[0] if isinstance(rows,list) and rows else {}
               vals[key]={
                   "found":bool(row),
-                  "origin":row.get("origin"),
-                  "health":row.get("health"),
-                  "routable":row.get("routable"),
-                  "routerDispatchEligible":row.get("routerDispatchEligible"),
-                  "routerDispatchReason":row.get("routerDispatchReason"),
-                  "lastCrawledAt":row.get("lastCrawledAt"),
-                  "toolCount":row.get("toolCount"),
+                  "topLevelKeys":".".join(sorted(p.keys())) if isinstance(p,dict) else type(p).__name__,
+                  "rowKeys":".".join(sorted(row.keys())) if isinstance(row,dict) else type(row).__name__,
+                  "origin":row.get("origin") if isinstance(row,dict) else None,
+                  "health":row.get("health") if isinstance(row,dict) else None,
+                  "routable":row.get("routable") if isinstance(row,dict) else None,
+                  "routerDispatchEligible":row.get("routerDispatchEligible") if isinstance(row,dict) else None,
+                  "routerDispatchReason":row.get("routerDispatchReason") if isinstance(row,dict) else None,
+                  "lastCrawledAt":row.get("lastCrawledAt") if isinstance(row,dict) else None,
+                  "toolCount":row.get("toolCount") if isinstance(row,dict) else None,
               }
           print(json.dumps(vals,separators=(",",":"),sort_keys=True))
           def c(v):
