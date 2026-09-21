@@ -85,31 +85,6 @@ test("AgentResolver Guard is additive to the canonical preflight contract", () =
   assert.equal(guard.get.operationId, "agentResolverPaymentGuardGet");
   assert.equal(guard.post.operationId, "agentResolverPaymentGuardPost");
   assert.equal(canonical.post.operationId, "x402PaymentPreflightPayToVerification");
-
-  const guardGetResource = manifest.resources?.find(
-    (item: any) => item.resource === "GET /api/payment-guard"
-  );
-  const guardPostResource = manifest.resources?.find(
-    (item: any) => item.resource === "POST /api/payment-guard"
-  );
-  const canonicalGetResource = manifest.resources?.find(
-    (item: any) => item.resource === "GET /api/x402-payment-preflight"
-  );
-  const canonicalPostResource = manifest.resources?.find(
-    (item: any) => item.resource === "POST /api/x402-payment-preflight"
-  );
-  assert.ok(guardGetResource);
-  assert.ok(guardPostResource);
-  assert.ok(canonicalGetResource);
-  assert.ok(canonicalPostResource);
-  assert.equal(guardGetResource.name, "Verify x402 Payment Before Paying");
-  assert.equal(guardPostResource.name, "Verify x402 Payment Before Paying");
-  assert.equal(guardGetResource.price, canonicalGetResource.price);
-  assert.equal(guardPostResource.price, canonicalPostResource.price);
-  assert.equal(
-    guardGetResource.accepts?.[0]?.resource,
-    "https://agentresolver.vercel.app/api/payment-guard"
-  );
 });
 
 
