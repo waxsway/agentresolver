@@ -1,0 +1,25 @@
+name: Refresh x402scan Origin Once
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Refresh AgentResolver origin in x402scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://www.x402scan.com/api/trpc/public.resources.registerFromOrigin?batch=1'
+          payload='{"0":{"json":{"origin":"https://agentresolver.vercel.app"}}}'
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 180             -o "$body" -w '%{http_code}'             -X POST "$endpoint"             -H 'content-type: application/json'             -H 'x-trpc-source: nextjs-react'             --data "$payload" || printf '000')"
+          echo "http=$code"
+          test "$code" = "200"
+          jq -e '.[0].result.data.json.success == true' "$body" >/dev/null
+          jq '.[0].result.data.json | {success,registered,publicCount,apiKeyCount,failed,skipped,deprecated,total,source,originId}' "$body"
