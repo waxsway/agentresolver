@@ -1,0 +1,123 @@
+name: Register AgentResolver with OrbitX402 Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-orbitx402-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      ORIGIN: https://agentresolver.vercel.app
+      ORBIT: https://api.orbitx402.com
+    steps:
+      - name: Validate public x402 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}' "$ORIGIN/.well-known/x402" || printf '000')"
+          echo "manifest_http=$code"
+          test "$code" = "200"
+          jq -e '.. | strings | select(contains("agentresolver.vercel.app"))' "$body" >/dev/null
+
+      - name: Check existing Orbit server
+        id: existing
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 30             -o "$body" -w '%{http_code}'             -G "$ORBIT/api/servers/detail"             --data-urlencode "url=$ORIGIN" || printf '000')"
+          echo "detail_http=$code"
+          if [ "$code" = "200" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          def safe(v,depth=0):
+              if depth>3:return None
+              if isinstance(v,dict):
+                  return {k:safe(x,depth+1) for k,x in v.items() if k.lower() not in {'apikey','api_key','token','secret','password'}}
+              if isinstance(v,list):return [safe(x,depth+1) for x in v[:20]]
+              return v
+          print(json.dumps(safe(d),separators=(',',':'))[:5000])
+          PY
+            exit 0
+          fi
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          case "$code" in
+            404) ;;
+            429|500|502|503|504|000)
+              echo "::notice::Orbit detail lookup temporarily unavailable (HTTP $code); no registration attempted."
+              exit 0
+              ;;
+            *)
+              echo "::notice::Orbit detail lookup returned HTTP $code; proceeding with idempotent registration request."
+              ;;
+          esac
+
+      - name: Register server with Orbit
+        if: steps.existing.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -nc             --arg url "$ORIGIN"             --arg title "AgentResolver"             --arg description "Non-custodial x402 payment preflight, Guard, settlement verification, and agent procurement infrastructure."             '{url:$url,title:$title,description:$description}')"
+          code="$(curl -sS --connect-timeout 10 --max-time 45             -o "$body" -w '%{http_code}'             -X POST "$ORBIT/api/servers/register"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          echo "register_http=$code"
+          python3 - "$body" <<'PY'
+          import json,sys
+          raw=open(sys.argv[1],encoding='utf-8',errors='replace').read()
+          try:
+              d=json.loads(raw)
+              print(json.dumps({
+                  'success':d.get('success'),
+                  'message':d.get('message'),
+                  'server':d.get('server')
+              },separators=(',',':'))[:5000])
+          except Exception:
+              print(raw[:2000])
+          PY
+          case "$code" in
+            200|201|202|409) ;;
+            429|500|502|503|504|000)
+              echo "::notice::Orbit registration temporarily unavailable; no identity, payment, or credential action occurred."
+              exit 0
+              ;;
+            *)
+              echo "::warning::Unexpected Orbit registration HTTP $code."
+              exit 1
+              ;;
+          esac
+
+      - name: Verify Orbit visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 30             -o "$body" -w '%{http_code}'             -G "$ORBIT/api/servers/detail"             --data-urlencode "url=$ORIGIN" || printf '000')"
+          echo "verify_detail_http=$code"
+          if [ "$code" = "200" ]; then
+            python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          blob=json.dumps(d,separators=(',',':'))
+          print(json.dumps({
+              'agentresolver_present':'agentresolver.vercel.app' in blob.lower(),
+              'cdp_guard_present':'cdp-payment-guard' in blob.lower(),
+              'preflight_present':'x402-payment-preflight' in blob.lower(),
+              'ping_present':'x402-ping' in blob.lower()
+          },separators=(',',':')))
+          PY
+          fi
+
+      - name: Boundary
+        run: echo "Anonymous/free Orbit registration only. No user funds, credentials, outreach, or Vercel deploy."
