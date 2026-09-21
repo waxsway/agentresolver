@@ -1,0 +1,107 @@
+name: Register AgentResolver with Agent402
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/register-agent402-index.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  register:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Register AgentResolver origin
+        id: register
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          endpoint = "https://agent402.tools/api/index/register"
+          payload = {"origin": "https://agentresolver.vercel.app"}
+          req = urllib.request.Request(
+              endpoint,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "agentresolver-free-distribution/1.0 (+https://github.com/waxsway/agentresolver)"
+              },
+              method="POST",
+          )
+
+          status = 0
+          body = ""
+          try:
+              with urllib.request.urlopen(req, timeout=60) as resp:
+                  status = resp.status
+                  body = resp.read().decode("utf-8", "replace")
+          except urllib.error.HTTPError as exc:
+              status = exc.code
+              body = exc.read().decode("utf-8", "replace")
+          except Exception as exc:
+              body = f"{type(exc).__name__}: {exc}"
+
+          safe_body = body.replace("\n", " ").replace("\r", " ")[:1200]
+          print(json.dumps({
+              "provider": "Agent402",
+              "origin": payload["origin"],
+              "status": status,
+              "body": safe_body
+          }))
+
+          success = 200 <= status < 300
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"http_status={status}\n")
+              out.write(f"success={'true' if success else 'false'}\n")
+          if not success:
+              raise SystemExit(1)
+          PY
+
+      - name: Publish auditable commit status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REG_STATUS: ${{ steps.register.outputs.http_status }}
+          REG_SUCCESS: ${{ steps.register.outputs.success }}
+        run: |
+          if [ "$REG_SUCCESS" = "true" ]; then
+            STATE=success
+            DESC="Agent402 registration HTTP ${REG_STATUS:-0}"
+          else
+            STATE=failure
+            DESC="Agent402 registration failed HTTP ${REG_STATUS:-0}"
+          fi
+          export STATE DESC
+          python - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
+          payload = {
+              "state": os.environ["STATE"],
+              "context": "distribution/agent402-index",
+              "description": os.environ["DESC"][:140],
+              "target_url": "https://agent402.tools/marketplace"
+          }
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28"
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              print(resp.status, resp.read().decode("utf-8", "replace")[:500])
+          PY
