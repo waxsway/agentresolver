@@ -1,0 +1,109 @@
+name: One-shot Agent402 Route Detail
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/agent402-route-detail-once.yml"
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Read exact external route rows
+        id: detail
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.parse, urllib.request
+
+          q="verify x402 payment before paying"
+          u="https://agent402.tools/api/route?"+urllib.parse.urlencode({"q":q,"include":"external"})
+          req=urllib.request.Request(u,headers={"User-Agent":"agentresolver-route-detail/1.0"})
+          with urllib.request.urlopen(req,timeout=60) as r:
+              p=json.loads(r.read().decode("utf-8","replace"))
+          rows=p.get("results") or []
+          top=rows[0] if rows else {}
+          ar=None
+          ar_rank=0
+          for i,row in enumerate(rows,1):
+              blob=json.dumps(row,separators=(",",":"),sort_keys=True).lower()
+              if "agentresolver.vercel.app" in blob or '"sellername":"agentresolver"' in blob:
+                  ar=row
+                  ar_rank=i
+                  break
+
+          def compact(row):
+              row=row or {}
+              return {
+                  "seller":row.get("seller") or row.get("sellerName") or row.get("origin"),
+                  "name":row.get("name"),
+                  "slug":row.get("slug"),
+                  "route":row.get("route"),
+                  "method":row.get("method"),
+                  "priceUsd":row.get("priceUsd") if row.get("priceUsd") is not None else row.get("price"),
+                  "score":row.get("score"),
+                  "health":row.get("health"),
+                  "routerDispatchEligible":row.get("routerDispatchEligible"),
+                  "routerDispatchReason":row.get("routerDispatchReason"),
+                  "executeViaCallableNow":row.get("executeViaCallableNow"),
+                  "networks":row.get("networks"),
+                  "origin":row.get("origin"),
+                  "endpoint":row.get("endpoint") or row.get("url"),
+              }
+
+          out={"query":q,"top":compact(top),"agentresolverRank":ar_rank or None,"agentresolver":compact(ar)}
+          print(json.dumps(out,separators=(",",":"),sort_keys=True))
+
+          def code(v,limit=28):
+              if v is None: return "na"
+              if isinstance(v,(list,dict)): v=json.dumps(v,separators=(",",":"))
+              return re.sub(r'[^a-zA-Z0-9._-]+','-',str(v))[:limit] or "na"
+
+          vals={"top":compact(top),"ar":compact(ar)}
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:
+              f.write(f"ar_rank={ar_rank}\n")
+              for prefix,row in vals.items():
+                  for field in ("seller","name","slug","route","method","priceUsd","score","health","routerDispatchEligible","routerDispatchReason"):
+                      f.write(f"{prefix}_{field}={code(row.get(field))}\n")
+          PY
+
+      - name: Publish exact route detail
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          AR_RANK: ${{ steps.detail.outputs.ar_rank }}
+          AR_SLUG: ${{ steps.detail.outputs.ar_slug }}
+          AR_PRICE: ${{ steps.detail.outputs.ar_priceUsd }}
+          AR_SCORE: ${{ steps.detail.outputs.ar_score }}
+          AR_HEALTH: ${{ steps.detail.outputs.ar_health }}
+          TOP_SELLER: ${{ steps.detail.outputs.top_seller }}
+          TOP_SLUG: ${{ steps.detail.outputs.top_slug }}
+          TOP_PRICE: ${{ steps.detail.outputs.top_priceUsd }}
+          TOP_SCORE: ${{ steps.detail.outputs.top_score }}
+          TOP_HEALTH: ${{ steps.detail.outputs.top_health }}
+        shell: bash
+        run: |
+          export AR_CONTEXT="distribution/a402-ar-r${AR_RANK:-0}-${AR_SLUG:-na}-p-${AR_PRICE:-na}-s-${AR_SCORE:-na}-h-${AR_HEALTH:-na}"
+          export TOP_CONTEXT="distribution/a402-top-${TOP_SELLER:-na}-${TOP_SLUG:-na}-p-${TOP_PRICE:-na}-s-${TOP_SCORE:-na}-h-${TOP_HEALTH:-na}"
+          python - <<'PY'
+          import json,os,urllib.request
+          rows=[
+            (os.environ["AR_CONTEXT"],"AgentResolver exact external route detail"),
+            (os.environ["TOP_CONTEXT"],"Agent402 #1 exact external route detail"),
+          ]
+          for context,desc in rows:
+              payload={"state":"success","context":context[:100],"description":desc,"target_url":"https://agent402.tools/guides/smart-order-router"}
+              req=urllib.request.Request(
+                f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+                data=json.dumps(payload).encode(),
+                headers={"Authorization":f"Bearer {os.environ['GH_TOKEN']}","Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},
+                method="POST")
+              with urllib.request.urlopen(req,timeout=30) as r: print(r.status)
+          PY
