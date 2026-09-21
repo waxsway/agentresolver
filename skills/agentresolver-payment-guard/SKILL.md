@@ -258,7 +258,11 @@ For Coinbase AgentKit, use its built-in confirmation-first x402 actions instead 
 6. Require `decision === "eligible"` and compare the observed amount, asset, network, payTo, scheme and resource binding against caller policy.
 7. Only after separate authorization for the target amount, call `retry_http_request_with_x402` for the original target challenge.
 
-AgentKit also exposes `discover_x402_services` for discovery. AgentKit's current default facilitator is CDP, while AgentResolver's settled Base canary is currently cataloged in PayAI Bazaar. For AgentResolver discovery explicitly use `facilitator: "payai"`, `maxUsdcPrice: 0.001`, `x402Versions: [2]`, and no keyword filter. The expected Base resource is `https://agentresolver.vercel.app/api/x402-ping`. After discovery, keep the normal service allowlist/registration step before calling it. Do not enable dynamic registration merely to bypass the service allowlist, and do not use `make_http_request_with_x402` on an unfamiliar target before Guard and caller authorization because that action combines challenge handling and payment.
+Do **not** require Bazaar discovery before using AgentResolver. The current AgentResolver Guard and Settlement Ping resources can be temporarily absent from PayAI Bazaar even while the live endpoints are healthy and spec-compliant. For repeatable integration, register/allowlist the exact AgentResolver origin directly and use the two-step challenge → authorized retry flow above.
+
+`discover_x402_services` remains optional discovery only. If you use it, treat a missing AgentResolver result as catalog lag rather than permission to bypass Guard or service policy. Never enable dynamic registration merely to bypass the service allowlist, and do not use `make_http_request_with_x402` on an unfamiliar target before Guard and caller authorization because that action combines challenge handling and payment.
+
+AgentKit's proposed `beforePayment` hook (upstream PR #1454) is not merged as of 2026-09-21. Do not depend on it in released AgentKit yet. When a released version exposes that hook, use it only as the local pre-sign decision point; the caller must still independently authorize the separate $0.001 Guard payment and then separately authorize the target payment.
 
 ## MCP
 
