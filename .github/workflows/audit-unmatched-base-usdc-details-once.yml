@@ -1,0 +1,115 @@
+name: Audit Unmatched Base USDC Details Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-unmatched-base-usdc-details-once.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 6
+    steps:
+      - name: Compare unmatched inflows with known x402 settlements
+        id: audit
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+
+          RPC="https://mainnet.base.org"
+          USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913".lower()
+          PAYTO="0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8".lower()
+          TRANSFER="0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+          txs=[
+            ("unmatched","0x23ad71e35f76e689a3ad23f821d1d240c9170c8fa6408e93bddf6d4b7713ce12"),
+            ("unmatched","0xbcf4cd8f2cf32650d316f71e15c8c8f1c3519a7d7737e3fd79ccb497cb9d7ff6"),
+            ("known","0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72"),
+            ("known","0xa4d504f662c554ee2bb4745352fe640e1235141311ef9e4eeec9b8aa6bf45cd8"),
+            ("known","0x439885dab80375051b5295df179b668a6a67490d20c3e1cb4725809f4ea4b5b8"),
+          ]
+
+          def rpc(method,params):
+              payload=json.dumps({"jsonrpc":"2.0","id":1,"method":method,"params":params}).encode()
+              req=urllib.request.Request(RPC,data=payload,headers={"content-type":"application/json","user-agent":"agentresolver-chain-audit/1.0"},method="POST")
+              with urllib.request.urlopen(req,timeout=25) as resp:
+                  body=json.load(resp)
+              if body.get("error"): raise RuntimeError(body["error"])
+              return body["result"]
+
+          rows=[]
+          for label,h in txs:
+              tx=rpc("eth_getTransactionByHash",[h])
+              receipt=rpc("eth_getTransactionReceipt",[h])
+              transfers=[]
+              for log in receipt.get("logs") or []:
+                  if str(log.get("address","")).lower()!=USDC: continue
+                  topics=log.get("topics") or []
+                  if len(topics)<3 or str(topics[0]).lower()!=TRANSFER: continue
+                  src="0x"+str(topics[1])[-40:].lower()
+                  dst="0x"+str(topics[2])[-40:].lower()
+                  amount=int(log.get("data","0x0"),16)
+                  if dst==PAYTO:
+                      transfers.append({"from":src,"to":dst,"amountAtomic":str(amount),"amountUsd":amount/1_000_000})
+              rows.append({
+                  "class":label,
+                  "txHash":h,
+                  "txFrom":str(tx.get("from") or "").lower(),
+                  "txTo":str(tx.get("to") or "").lower(),
+                  "inputSelector":str(tx.get("input") or "")[:10].lower(),
+                  "receiptStatus":int(receipt.get("status","0x0"),16),
+                  "gasUsed":int(receipt.get("gasUsed","0x0"),16),
+                  "inboundTransfers":transfers,
+              })
+
+          known=rows[2:]
+          unmatched=rows[:2]
+          known_senders=sorted(set(r["txFrom"] for r in known))
+          known_tos=sorted(set(r["txTo"] for r in known))
+          known_selectors=sorted(set(r["inputSelector"] for r in known))
+          for r in unmatched:
+              r["matchesKnownTxFrom"]=r["txFrom"] in known_senders
+              r["matchesKnownTxTo"]=r["txTo"] in known_tos
+              r["matchesKnownSelector"]=r["inputSelector"] in known_selectors
+
+          summary={
+              "knownTxFrom":known_senders,
+              "knownTxTo":known_tos,
+              "knownSelectors":known_selectors,
+              "rows":rows,
+          }
+          print(json.dumps(summary,separators=(",",":"),sort_keys=True))
+          match=sum(1 for r in unmatched if r["matchesKnownTxFrom"] and r["matchesKnownTxTo"] and r["matchesKnownSelector"])
+          with open(os.environ["GITHUB_OUTPUT"],"a") as out:
+              out.write(f"full_shape_matches={match}\n")
+          PY
+
+      - name: Publish comparison status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          MATCHES: ${{ steps.audit.outputs.full_shape_matches }}
+        shell: bash
+        run: |
+          export CONTEXT="audit/base-usdc-unmatched-x402-shape-matches-${MATCHES:-unknown}"
+          python3 - <<'PY'
+          import json,os,urllib.request
+          payload={
+            "state":"success",
+            "context":os.environ["CONTEXT"][:100],
+            "description":"Compare unmatched Base USDC inflows with known AgentResolver x402 settlement transaction shape",
+            "target_url":"https://github.com/waxsway/agentresolver/tree/evidence-history/evidence"
+          }
+          req=urllib.request.Request(
+            f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}",
+            data=json.dumps(payload).encode(),
+            headers={"Authorization":f"Bearer {os.environ['GH_TOKEN']}","Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},
+            method="POST")
+          with urllib.request.urlopen(req,timeout=30) as r: print(r.status)
+          PY
