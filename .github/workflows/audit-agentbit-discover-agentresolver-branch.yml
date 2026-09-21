@@ -1,4 +1,4 @@
-name: Audit AgentBIT OpenAPI Contracts
+name: Audit AgentBIT OpenAPI Route Paths
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-slim
     timeout-minutes: 4
     steps:
-      - name: Read AgentBIT discovery and execute contracts
+      - name: Read route/discovery path names
         shell: bash
         run: |
           set -euo pipefail
@@ -19,4 +19,4 @@ jobs:
           code="$(curl -sS --connect-timeout 5 --max-time 30 -o "$body" -w '%{http_code}' 'https://agentbit.app/openapi.json' || printf '000')"
           echo "HTTP $code"
           test "$code" = "200"
-          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); p=d.get("paths",{}); print(json.dumps({"discover":p.get("/api/discover"),"routeExecute":p.get("/v1/route/execute")},separators=(",",":"),sort_keys=True))' "$body"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); p=d.get("paths",{}); out={k:v for k,v in p.items() if any(t in k.lower() for t in ("route","discover","recommend"))}; print(json.dumps(out,separators=(",",":"),sort_keys=True))' "$body"
