@@ -207,6 +207,7 @@ jobs:
           url = "https://facilitator.payai.network/discovery/listing-status?" + urllib.parse.urlencode({"resource": resource})
           state = "failure"
           desc = "Preflight listing status unavailable"
+          detail_code = "unknown"
           try:
               req = urllib.request.Request(url, headers={"user-agent":"AgentResolver-Bazaar-Audit/1.0"})
               with urllib.request.urlopen(req, timeout=20) as resp:
@@ -216,20 +217,24 @@ jobs:
               last_write = data.get("lastWrite") or {}
               reason = last_write.get("reason") or last_write.get("status") or "none"
               state = "success" if listed and not hidden else "failure"
+              safe_reason = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in str(reason).lower()).strip("-")[:60] or "none"
+              detail_code = "listed" if listed and not hidden else (f"hidden-{safe_reason}" if hidden else f"unlisted-{safe_reason}")
               desc = f"listed={str(listed).lower()} hidden={str(hidden).lower()} reason={reason}"[:140]
               print(json.dumps(data, indent=2, sort_keys=True))
           except urllib.error.HTTPError as exc:
               body = exc.read().decode("utf-8", "replace")[:1200]
               desc = f"listing-status HTTP {exc.code}"[:140]
+              detail_code = f"http-{exc.code}"
               print(body)
           except Exception as exc:
               desc = f"listing-status error: {type(exc).__name__}"[:140]
+              detail_code = "error-" + type(exc).__name__.lower()
               print(repr(exc))
 
           status_url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
           payload = {
               "state": state,
-              "context": "distribution/payai-bazaar-preflight-detail",
+              "context": f"distribution/payai-bazaar-preflight-detail/{detail_code}"[:100],
               "description": desc,
               "target_url": url,
           }
