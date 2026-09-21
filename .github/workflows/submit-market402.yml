@@ -46,13 +46,13 @@ jobs:
                   return 0, f"{type(exc).__name__}: {exc}"
 
           status, body = request(
-              json.dumps({"url": target}).encode("utf-8"),
+              json.dumps({"resource": target}).encode("utf-8"),
               "application/json",
           )
 
           if status in (400, 404, 405, 415, 422):
               status, body = request(
-                  urllib.parse.urlencode({"url": target}).encode("utf-8"),
+                  urllib.parse.urlencode({"resource": target}).encode("utf-8"),
                   "application/x-www-form-urlencoded",
               )
 
