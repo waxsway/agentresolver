@@ -1,0 +1,23 @@
+name: Validate CDP Bazaar Canary
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-slim
+    timeout-minutes: 4
+    steps:
+      - name: Run official CDP Bazaar validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 40             -o "$body" -w '%{http_code}'             -X POST 'https://api.cdp.coinbase.com/platform/v2/x402/validate'             -H 'content-type: application/json'             --data '{"resource":"https://agentresolver.vercel.app/api/x402-cdp-canary?echo=bazaar-seed","method":"GET"}' || printf '000')"
+          echo "http=$code"
+          cat "$body"
+          echo
+          case "$code" in 200|201|202) ;; *) exit 1;; esac
