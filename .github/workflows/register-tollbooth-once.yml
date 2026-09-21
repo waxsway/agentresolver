@@ -1,4 +1,4 @@
-name: Register AgentResolver with Tollbooth
+name: Register AgentResolver CDP Guard with Tollbooth
 
 on:
   workflow_dispatch:
@@ -16,13 +16,19 @@ jobs:
   register:
     runs-on: ubuntu-latest
     timeout-minutes: 6
+    env:
+      TOLLBOOTH_API: https://www.trytollbooth.com
+      ENDPOINT_URL: https://agentresolver.vercel.app/api/cdp-payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping%26method%3DGET
+      PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
     steps:
-      - name: Validate live Base settlement canary
+      - name: Validate live Coinbase-CDP Guard challenge
         shell: bash
         run: |
           set -euo pipefail
 
-          code="$(curl -sS --connect-timeout 5 --max-time 20             -o /tmp/agentresolver-tollbooth-canary.json             -w '%{http_code}'             -H 'x-agentresolver-internal: 1'             https://agentresolver.vercel.app/api/x402-ping || true)"
+          # Use the external request contract Tollbooth itself will see.
+          # The target query is required so Guard reaches its 402 payment boundary.
+          code="$(curl -sS --connect-timeout 5 --max-time 20             -o /tmp/agentresolver-tollbooth-guard.json             -w '%{http_code}'             "$ENDPOINT_URL" || true)"
 
           test "$code" = "402"
           jq -e '
@@ -30,18 +36,14 @@ jobs:
             ([.accepts[] | select(
               .scheme == "exact" and
               .network == "eip155:8453" and
-              .amount == "1000" and
+              .amount == "2000" and
               .asset == "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" and
               .payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
             )] | length) >= 1
-          ' /tmp/agentresolver-tollbooth-canary.json >/dev/null
+          ' /tmp/agentresolver-tollbooth-guard.json >/dev/null
 
-      - name: Register settlement canary with Tollbooth if absent
+      - name: Register CDP Guard with Tollbooth if absent
         shell: bash
-        env:
-          TOLLBOOTH_API: https://www.trytollbooth.com
-          ENDPOINT_URL: https://agentresolver.vercel.app/api/x402-ping
-          PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
         run: |
           set -euo pipefail
 
@@ -66,23 +68,23 @@ jobs:
               select((.endpoint? // .endpointUrl? // .url? // "") == $endpoint)
             ] | length > 0
           ' /tmp/tollbooth-services.json >/dev/null; then
-            echo "AgentResolver settlement canary is already present in Tollbooth."
+            echo "AgentResolver CDP Guard is already present in Tollbooth."
             exit 0
           fi
 
-          payload="$(jq -nc             --arg name "AgentResolver x402 Settlement Test"             --arg endpoint "$ENDPOINT_URL"             --arg wallet "$PAYOUT_WALLET"             --arg description "A $0.001 USDC Base x402 settlement canary for wallet-capable agents; successful fulfillment returns machine-readable next-step payment preflight guidance."             '{
+          payload="$(jq -nc             --arg name "AgentResolver CDP Payment Guard"             --arg endpoint "$ENDPOINT_URL"             --arg wallet "$PAYOUT_WALLET"             --arg description "Verify an x402 payment contract before an autonomous agent signs it; Base USDC, non-custodial, Coinbase CDP settlement rail."             '{
               name: $name,
               endpoint: $endpoint,
               category: "developer-tools",
-              priceUsdc: 0.001,
+              priceUsdc: 0.002,
               wallet: $wallet,
               chain: "base",
               description: $description
             }')"
 
-          status="$(curl -sS             --connect-timeout 10             --max-time 45             -o /tmp/tollbooth-register.json             -w '%{http_code}'             -X POST "$TOLLBOOTH_API/api/services"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          status="$(curl -sS             --connect-timeout 10             --max-time 60             -o /tmp/tollbooth-register.json             -w '%{http_code}'             -X POST "$TOLLBOOTH_API/api/services"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
 
-          echo "Tollbooth registration -> HTTP $status"
+          echo "Tollbooth CDP Guard registration -> HTTP $status"
 
           case "$status" in
             200|201|202)
@@ -94,13 +96,14 @@ jobs:
                   (.verification.steps // [])[]? |
                   {
                     name: (.name // .step // null),
-                    status: (.status // .result // null)
+                    status: (.status // .result // null),
+                    detail: (.detail // .message // null)
                   }
                 ]
               }' /tmp/tollbooth-register.json
               ;;
             409)
-              echo "Tollbooth reports the settlement canary is already registered."
+              echo "Tollbooth reports the CDP Guard is already registered."
               ;;
             429|500|502|503|504|000)
               echo "::warning::Tollbooth registration is temporarily unavailable (HTTP $status); no user spend or identity submission occurred."
@@ -118,9 +121,6 @@ jobs:
 
       - name: Re-check catalog visibility
         shell: bash
-        env:
-          TOLLBOOTH_API: https://www.trytollbooth.com
-          ENDPOINT_URL: https://agentresolver.vercel.app/api/x402-ping
         run: |
           set -euo pipefail
 
@@ -138,7 +138,7 @@ jobs:
               select((.endpoint? // .endpointUrl? // .url? // "") == $endpoint)
             ] | length > 0
           ' /tmp/tollbooth-after.json >/dev/null; then
-            echo "AgentResolver settlement canary is visible in Tollbooth."
+            echo "AgentResolver CDP Guard is visible in Tollbooth."
           else
-            echo "::notice::Tollbooth accepted or deferred registration but the canary is not visible in the public catalog yet."
+            echo "::notice::Tollbooth accepted or deferred registration but the CDP Guard is not visible in the public catalog yet."
           fi
