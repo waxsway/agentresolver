@@ -220,6 +220,25 @@ For EVM identifiers, address equality is case-insensitive. For Solana, Base58 as
 For HTTP clients, the free buyer setup exposes equivalent pre-sign gates: `paymentRequirementsSelector` for `@x402/fetch` and `@x402/axios`, and client policies plus `on_before_payment_creation` / `AbortResult` for Python `x402HttpxClient`.
 
 
+## BlockRun Franklin — pre-sign market seam
+
+Franklin's current `src/market/client.ts` has a useful fail-closed insertion point: it first makes the unpaid marketplace POST, parses the 402, validates the demanded amount against its hard/catalog ceiling, and only then calls `signMarketPayment`. Insert Guard **after the amount check and immediately before `signMarketPayment`**.
+
+For that flow:
+
+1. Keep Franklin's existing unpaid POST that obtains the target marketplace 402.
+2. Keep Franklin's existing amount ceiling check.
+3. Before signing the target challenge, call AgentResolver Guard for the exact `runUrl` with `method: "POST"`, the same request body, the caller's price ceiling, `expectedNetwork: "eip155:8453"`, and `allowUnpaidPostProbe: true`.
+4. Authorize and pay the separate **$0.001 Guard fee** with the caller-owned wallet.
+5. Require Guard `decision === "eligible"` and compare the observed amount, asset, network, payTo, scheme, and resource binding with the original marketplace challenge and caller policy.
+6. Only then call Franklin's existing `signMarketPayment` for the target challenge.
+
+`allowUnpaidPostProbe: true` is appropriate here only because Franklin's existing market protocol already intentionally performs that same unpaid POST to obtain a 402 before signing. Do **not** generalize this to arbitrary POST targets; leave unpaid POST probing disabled unless the caller already knows the probe is side-effect safe.
+
+Guard does not replace Franklin's `HARD_MAX_HIRE_USD`, catalog-price ceiling, permission gate, or target-payment authorization. A Guard failure or non-`eligible` result must stop before `signMarketPayment`.
+
+This is interoperability guidance based on Franklin's public market-client flow; AgentResolver is not affiliated with BlockRun or Franklin.
+
 ## Cloudflare Agents SDK — native x402 MCP
 
 Cloudflare Agents has a native x402 v2 MCP client. Keep the signer inside the caller-controlled Cloudflare runtime and use AgentResolver only as the paid verification service.

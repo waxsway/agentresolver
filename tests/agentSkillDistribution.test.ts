@@ -79,6 +79,18 @@ test("installable Guard skill documents the Coinbase AgentKit confirmation-first
 });
 
 
+test("installable Guard skill documents the Franklin pre-sign market seam", () => {
+  assert.match(installable, /## BlockRun Franklin — pre-sign market seam/);
+  assert.match(installable, /src\/market\/client\.ts/);
+  assert.match(installable, /immediately before `signMarketPayment`/i);
+  assert.match(installable, /allowUnpaidPostProbe: true/);
+  assert.match(installable, /HARD_MAX_HIRE_USD/);
+  assert.match(installable, /separate \*\*\$0\.001 Guard fee\*\*/);
+  assert.match(installable, /Do \*\*not\*\* generalize this to arbitrary POST targets/i);
+  assert.match(installable, /not affiliated with BlockRun or Franklin/i);
+});
+
+
 test("installable and published Guard skills carry the network-aware MCP pre-sign gate", () => {
   for (const text of [installable, published]) {
     assert.match(text, /## MCP wallet-capable clients — fail-closed pre-sign gate/);
