@@ -1,0 +1,87 @@
+name: Audit AgentPay CDP Guard Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-agentpay-cdp-guard-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      RESOURCE: "https://agentresolver.vercel.app/api/cdp-payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET"
+    steps:
+      - name: Confirm live Guard challenge
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}' "$RESOURCE" || printf '000')"
+          echo "guard_http=$code"
+          test "$code" = "402"
+          jq -e '
+            .x402Version == 2 and
+            any(.accepts[];
+              .scheme == "exact" and
+              .network == "eip155:8453" and
+              .amount == "2000" and
+              .asset == "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" and
+              .payTo == "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+            )
+          ' "$body" >/dev/null
+
+      - name: Run AgentPay external pre-pay report
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 45             -o "$body" -w '%{http_code}'             -G 'https://x402-agent-pay.com/facilitator/report'             --data-urlencode "url=$RESOURCE"             --data-urlencode 'method=GET' || printf '000')"
+
+          echo "agentpay_report_http=$code"
+          if [ "$code" != "200" ]; then
+            head -c 2000 "$body" || true
+            echo
+            case "$code" in
+              429|500|502|503|504|000)
+                echo "::notice::AgentPay report temporarily unavailable; no payment or credentials sent."
+                exit 0
+                ;;
+              *)
+                echo "::warning::Unexpected AgentPay report HTTP $code."
+                exit 0
+                ;;
+            esac
+          fi
+
+          python3 - "$body" <<'PY'
+          import json, sys
+          data=json.load(open(sys.argv[1], encoding="utf-8"))
+          safe={}
+          for k in (
+              "score","verdict","price_usdc","settlement_gas_usd",
+              "gas_share_of_price_pct","payment_required_header_bytes",
+              "probed_from_outside","facilitator","facilitator_url",
+              "all_in_cost_usd","total_cost_usd"
+          ):
+              if k in data:
+                  safe[k]=data[k]
+          defects=data.get("defects")
+          if isinstance(defects,list):
+              safe["defect_count"]=len(defects)
+              safe["defects"]=[
+                  {k:d.get(k) for k in ("code","name","severity","message","buyer_workaround") if k in d}
+                  for d in defects[:20] if isinstance(d,dict)
+              ]
+          print(json.dumps(safe,separators=(",",":"),sort_keys=True))
+          PY
+
+      - name: State no-spend boundary
+        shell: bash
+        run: |
+          echo "Observation only: no API key, wallet key, PAYMENT-SIGNATURE, X-PAYMENT, registration, or payment was sent."
