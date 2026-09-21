@@ -1,0 +1,19 @@
+name: Verify true402 Exact Preflight Search
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Verify exact-intent search
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --get --connect-timeout 5 --max-time 20             'https://true402.dev/api/v1/services'             --data-urlencode 'q=verify x402 payment before paying'             --data-urlencode 'limit=20'
+          echo
