@@ -1,0 +1,32 @@
+name: Audit Bazaar V1 Live Challenge
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Inspect production 402 requirements
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 20 -o "$body" -w '%{http_code}'             'https://agentresolver.vercel.app/api/x402-ping' || printf '000')"
+          echo "http=$code"
+          test "$code" = "402"
+          jq '{
+            x402Version,
+            accepts: [(.accepts // [])[] | {
+              network,
+              amount,
+              resource,
+              hasOutputSchema: has("outputSchema"),
+              outputSchema,
+              extensions
+            }]
+          }' "$body"
