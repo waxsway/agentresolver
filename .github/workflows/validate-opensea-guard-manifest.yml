@@ -1,0 +1,41 @@
+name: Validate OpenSea ERC-8257 Guard Manifest
+
+on:
+  push:
+    branches:
+      - opensea-erc8257-guard
+    paths:
+      - "public/.well-known/ai-tool/agentresolver-guard.json"
+      - ".github/workflows/validate-opensea-guard-manifest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate with upstream OpenSea Tool SDK
+        run: |
+          set -euo pipefail
+          npx -y @opensea/tool-sdk@0.30.1 validate public/.well-known/ai-tool/agentresolver-guard.json
+
+      - name: Compute canonical ERC-8257 manifest hash
+        run: |
+          set -euo pipefail
+          hash="$(npx -y @opensea/tool-sdk@0.30.1 hash public/.well-known/ai-tool/agentresolver-guard.json | tail -n 1)"
+          test -n "$hash"
+          echo "ERC8257_MANIFEST_HASH=$hash"
+          echo "## OpenSea ERC-8257 Guard manifest" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SDK: @opensea/tool-sdk@0.30.1" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Manifest: public/.well-known/ai-tool/agentresolver-guard.json" >> "$GITHUB_STEP_SUMMARY"
+          echo "- JCS keccak256: $hash" >> "$GITHUB_STEP_SUMMARY"
