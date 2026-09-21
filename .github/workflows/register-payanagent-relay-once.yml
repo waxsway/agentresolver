@@ -91,7 +91,12 @@ jobs:
           fi
 
           echo "payanagent_agent_http=$code"
-          test "$code" = "200" -o "$code" = "201"
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+            echo "=== redacted registration response ==="
+            jq 'del(.apiKey,.token,.secret,.email,.ownerEmail)' "$body" 2>/dev/null || head -c 3000 "$body"
+            echo
+            exit 1
+          fi
 
           agent_id="$(jq -r '.agentId // empty' "$body")"
           api_key="$(jq -r '.apiKey // empty' "$body")"
