@@ -28,6 +28,7 @@ concurrency:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   audit:
@@ -35,6 +36,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Page PayAI Bazaar and locate AgentResolver
+        id: bazaar
         env:
           CATALOG_URL: "https://facilitator.payai.network/discovery/resources"
           AGENTRESOLVER_ORIGIN: "https://agentresolver.vercel.app"
@@ -118,6 +120,9 @@ jobs:
                       break
 
           matches = list(matches_by_resource.values())
+          match_blob = json.dumps(matches, separators=(",", ":"), sort_keys=True).lower()
+          preflight_catalogued = "/api/x402-payment-preflight" in match_blob
+          guard_catalogued = "/api/payment-guard" in match_blob
 
           settlement_stats = []
           for item in matches:
@@ -176,6 +181,53 @@ jobs:
               else:
                   fh.write("\n> AgentResolver was not found by canonical origin or either configured payout address. This is a distribution-state warning, not a deployment failure.\n")
 
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"catalogued={'true' if bool(matches) else 'false'}\n")
+              out.write(f"preflight_catalogued={'true' if preflight_catalogued else 'false'}\n")
+              out.write(f"guard_catalogued={'true' if guard_catalogued else 'false'}\n")
+
           if not matches:
               print("::warning::AgentResolver is not present in the PayAI Bazaar catalog by origin or configured payout address.")
+          if not preflight_catalogued:
+              print("::warning::Canonical Payment Preflight is not present in the PayAI Bazaar matches.")
+          PY
+
+      - name: Publish canonical Preflight catalog status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          PREFLIGHT_CATALOGUED: ${{ steps.bazaar.outputs.preflight_catalogued }}
+        shell: bash
+        run: |
+          if [ "$PREFLIGHT_CATALOGUED" = "true" ]; then
+            STATE=success
+            DESC="Payment Preflight is catalogued in PayAI Bazaar"
+          else
+            STATE=failure
+            DESC="Payment Preflight not found in PayAI Bazaar"
+          fi
+          export STATE DESC
+          python3 - <<'PY'
+          import json, os, urllib.request
+          url = f"https://api.github.com/repos/waxsway/agentresolver/statuses/{os.environ['SHA']}"
+          payload = {
+              "state": os.environ["STATE"],
+              "context": "distribution/payai-bazaar-preflight",
+              "description": os.environ["DESC"][:140],
+              "target_url": "https://facilitator.payai.network/discovery/resources",
+          }
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              print(resp.status, resp.read().decode("utf-8", "replace")[:500])
           PY
