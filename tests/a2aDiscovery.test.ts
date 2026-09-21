@@ -19,5 +19,6 @@ test("A2A discovery card exposes paid Guard without moving payment custody", () 
   assert.match(route, /\/api\/verified-resolve/);
   assert.match(route, /nonCustodial:\s*true/);
   assert.match(route, /signsPayments:\s*false/);
-  assert.doesNotMatch(route, /private.?key|seed phrase|broadcastTransaction|sendTransaction/i);
+  assert.match(route, /never receives a private key/i);
+  assert.doesNotMatch(route, /seed phrase|broadcastTransaction|sendTransaction|privateKey|secretKey/i);
 });
