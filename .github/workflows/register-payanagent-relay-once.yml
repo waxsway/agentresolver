@@ -1,0 +1,245 @@
+name: Register PayanAgent AgentResolver Relay Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/register-payanagent-relay-once.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: register-payanagent-relay-once
+  cancel-in-progress: false
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PAY_TO: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
+      GUARD_URL: "https://agentresolver.vercel.app/api/cdp-payment-guard"
+      VERIFY_TARGET: "https://agentresolver.vercel.app/api/x402-ping"
+      VERCEL_ORG_ID: "team_ciQJak0lFZjXNgqry88ZDIKN"
+      VERCEL_PROJECT_ID: "prj_uJKVWBawxKkEjIWV5EQkbkQPIABD"
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - name: Verify live AgentResolver CDP Guard terms
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          headers="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 25 \
+            -D "$headers" -o "$body" -w '%{http_code}' \
+            -X POST "$GUARD_URL" \
+            -H 'content-type: application/json' \
+            --data "$(jq -cn --arg u "$VERIFY_TARGET" '{url:$u,method:"GET"}')")"
+          echo "guard_http=$code"
+          test "$code" = "402"
+          jq -e --arg pay "$PAY_TO" '
+            .x402Version == 2 and
+            any(.accepts[];
+              .scheme == "exact" and
+              .network == "eip155:8453" and
+              .amount == "2000" and
+              .asset == "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" and
+              (.payTo|ascii_downcase) == ($pay|ascii_downcase)
+            )
+          ' "$body" >/dev/null
+
+      - name: Register anonymous PayanAgent seller
+        id: agent
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          payload="$(jq -cn --arg wallet "$PAY_TO" '{
+            name:"AgentResolver",
+            description:"Machine-native x402 payment preflight and verify-before-pay infrastructure for autonomous agents.",
+            walletAddress:$wallet,
+            chain:"base",
+            tags:["x402","payment-security","preflight","agent-infrastructure"],
+            providerType:"api",
+            agentUrl:"https://agentresolver.vercel.app"
+          }')"
+
+          code="$(curl -sS --connect-timeout 5 --max-time 30 \
+            -o "$body" -w '%{http_code}' \
+            -X POST 'https://payanagent.com/api/v1/agents' \
+            -H 'content-type: application/json' \
+            --data "$payload" || printf '000')"
+
+          if [ "$code" = "409" ]; then
+            payload="$(jq -cn --arg wallet "$PAY_TO" '{
+              name:"AgentResolver Guard",
+              description:"Machine-native x402 payment preflight and verify-before-pay infrastructure for autonomous agents.",
+              walletAddress:$wallet,
+              chain:"base",
+              tags:["x402","payment-security","preflight","agent-infrastructure"],
+              providerType:"api",
+              agentUrl:"https://agentresolver.vercel.app"
+            }')"
+            code="$(curl -sS --connect-timeout 5 --max-time 30 \
+              -o "$body" -w '%{http_code}' \
+              -X POST 'https://payanagent.com/api/v1/agents' \
+              -H 'content-type: application/json' \
+              --data "$payload" || printf '000')"
+          fi
+
+          echo "payanagent_agent_http=$code"
+          test "$code" = "200" -o "$code" = "201"
+
+          agent_id="$(jq -r '.agentId // empty' "$body")"
+          api_key="$(jq -r '.apiKey // empty' "$body")"
+          prefix="$(jq -r '.apiKeyPrefix // empty' "$body")"
+          test -n "$agent_id"
+          test -n "$api_key"
+
+          echo "::add-mask::$api_key"
+          printf '%s' "$api_key" > /tmp/payanagent-api-key
+          echo "agent_id=$agent_id" >> "$GITHUB_OUTPUT"
+          echo "api_key_prefix=$prefix" >> "$GITHUB_OUTPUT"
+          echo "registered_agent_id=$agent_id"
+          echo "api_key_prefix=$prefix"
+
+      - name: Store seller credential securely in Vercel environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          npm install --global vercel@48.8.0 --no-audit --no-fund >/dev/null
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          vercel env rm PAYANAGENT_API_KEY production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+          vercel env add PAYANAGENT_API_KEY production --sensitive --token="$VERCEL_TOKEN" < /tmp/payanagent-api-key >/dev/null
+          echo "PAYANAGENT_KEY_STORED=true"
+
+      - name: Register live CDP Guard as PayanAgent relay offer
+        id: offer
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_key="$(cat /tmp/payanagent-api-key)"
+          input_schema='{"type":"object","required":["url"],"properties":{"url":{"type":"string","format":"uri","description":"Public HTTPS x402 endpoint to inspect before payment"},"method":{"type":"string","enum":["GET","HEAD","POST"],"default":"GET"},"maxPriceUsd":{"type":"number","exclusiveMinimum":0},"expectedPayTo":{"type":"string"},"expectedNetwork":{"type":"string"},"allowUnpaidPostProbe":{"type":"boolean","default":false}}}'
+          output_schema='{"type":"object","properties":{"guard":{"type":"object"},"prepaymentDecision":{"type":"object"},"evidenceReceipt":{"type":"object"}}}'
+          payload="$(jq -cn \
+            --arg external "$GUARD_URL" \
+            --arg verify "$VERIFY_TARGET" \
+            --arg input "$input_schema" \
+            --arg output "$output_schema" '{
+              title:"Verify x402 Payment Before Paying",
+              description:"Inspect a live x402 payment challenge before wallet signing. Validates payTo, quoted USDC amount, network, asset, exact scheme and resource binding, then returns a fail-closed eligible/blocked decision with evidence.",
+              category:"Developer Tools",
+              tags:["x402","payment-security","preflight","wallet-safety","agents"],
+              offerType:"api",
+              externalUrl:$external,
+              httpMethod:"POST",
+              verificationBody:{url:$verify,method:"GET"},
+              inputSchema:$input,
+              outputSchema:$output,
+              estimatedDurationSeconds:5,
+              previewDescription:"Verify payment terms before an autonomous wallet signs."
+            }')"
+
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 45 \
+            -o "$body" -w '%{http_code}' \
+            -X POST 'https://payanagent.com/api/v1/offers' \
+            -H "authorization: Bearer $api_key" \
+            -H 'content-type: application/json' \
+            --data "$payload" || printf '000')"
+
+          echo "payanagent_offer_http=$code"
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+            jq . "$body" 2>/dev/null || cat "$body"
+            exit 1
+          fi
+
+          offer_id="$(jq -r '.offerId // empty' "$body")"
+          mode="$(jq -r '.mode // empty' "$body")"
+          test -n "$offer_id"
+          test "$mode" = "relay"
+          jq -e --arg pay "$PAY_TO" '
+            (.verified.payTo|ascii_downcase) == ($pay|ascii_downcase) and
+            .verified.amountRaw == "2000" and
+            .verified.network == "eip155:8453"
+          ' "$body" >/dev/null
+
+          echo "offer_id=$offer_id" >> "$GITHUB_OUTPUT"
+          echo "registered_offer_id=$offer_id"
+          jq '{mode,buyUrl,verified:{amountRaw:.verified.amountRaw,network:.verified.network,asset:.verified.asset,payTo:.verified.payTo}}' "$body"
+
+      - name: Verify public PayanAgent buy route relays AgentResolver terms
+        shell: bash
+        env:
+          OFFER_ID: ${{ steps.offer.outputs.offer_id }}
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          headers="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 30 \
+            -D "$headers" -o "$body" -w '%{http_code}' \
+            -X POST "https://payanagent.com/x402/$OFFER_ID" \
+            -H 'content-type: application/json' \
+            --data "$(jq -cn --arg u "$VERIFY_TARGET" '{url:$u,method:"GET"}')" || printf '000')"
+          echo "payanagent_buy_probe_http=$code"
+          test "$code" = "402"
+
+          python3 - "$headers" "$PAY_TO" "$OFFER_ID" <<'PY'
+          import base64, json, sys
+          header_file, pay_to, offer_id = sys.argv[1:]
+          raw=None
+          for line in open(header_file, encoding="utf-8", errors="replace"):
+              if line.lower().startswith("payment-required:"):
+                  raw=line.split(":",1)[1].strip()
+                  break
+          if not raw:
+              raise SystemExit("missing payment-required header")
+          raw += "=" * (-len(raw) % 4)
+          data=json.loads(base64.urlsafe_b64decode(raw).decode())
+          accepts=data.get("accepts") or []
+          assert any(
+              str(x.get("payTo","")).lower()==pay_to.lower()
+              and x.get("amount")=="2000"
+              and x.get("network")=="eip155:8453"
+              for x in accepts
+          )
+          resource=(data.get("resource") or {}).get("url","")
+          assert resource == f"https://payanagent.com/x402/{offer_id}"
+          print(json.dumps({
+              "x402Version":data.get("x402Version"),
+              "resource":resource,
+              "amount":"2000",
+              "network":"eip155:8453",
+              "payTo":pay_to
+          }, separators=(",",":")))
+          PY
+
+      - name: Verify marketplace discovery
+        shell: bash
+        env:
+          OFFER_ID: ${{ steps.offer.outputs.offer_id }}
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 5 --max-time 30 \
+            -o "$body" -w '%{http_code}' \
+            -G 'https://payanagent.com/api/v1/offers' \
+            --data-urlencode 'q=Verify x402 Payment Before Paying' \
+            --data-urlencode 'limit=20' || printf '000')"
+          echo "payanagent_discovery_http=$code"
+          test "$code" = "200"
+          jq -e --arg id "$OFFER_ID" '
+            any(.offers[]?; ((._id // .id // "")|tostring) == $id)
+          ' "$body" >/dev/null
+          echo "PAYANAGENT_DISCOVERY_VERIFIED=true"
+
+      - name: Remove local credential
+        if: always()
+        shell: bash
+        run: rm -f /tmp/payanagent-api-key
