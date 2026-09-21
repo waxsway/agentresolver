@@ -60,7 +60,7 @@ jobs:
             : > "$body"
             code="$(curl -4 -sS -o "$body" -w '%{http_code}' \
               --connect-timeout 8 --max-time 20 \
-              -X POST https://true402.dev/api/v1/services \
+              -X POST https://true402.dev/api/v1/services/register \
               -H 'content-type: application/json' \
               -d '{"url":"https://agentresolver.vercel.app"}' || printf '000')"
             echo "true402 registration attempt $attempt -> HTTP $code"
