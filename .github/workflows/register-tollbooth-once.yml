@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 6
     env:
       TOLLBOOTH_API: https://www.trytollbooth.com
-      ENDPOINT_URL: https://agentresolver.vercel.app/api/cdp-payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping%26method%3DGET
+      ENDPOINT_URL: "https://agentresolver.vercel.app/api/cdp-payment-guard?url=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping&method=GET"
       PAYOUT_WALLET: "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8"
     steps:
       - name: Validate live Coinbase-CDP Guard challenge
