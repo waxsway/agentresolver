@@ -78,18 +78,33 @@ jobs:
                   body = resp.read().decode("utf-8", "replace")
           except Exception as exc:
               body = f"{type(exc).__name__}: {exc}"
-          lower = body.lower()
-          found = "agentresolver.vercel.app" in lower or "agentresolver" in lower
+          rank = 0
+          agent = None
+          top = None
+          if status == 200:
+              try:
+                  payload = json.loads(body)
+                  results = payload.get("results") or []
+                  top = results[0] if results else None
+                  for idx, item in enumerate(results, 1):
+                      blob = json.dumps(item, separators=(",", ":"), sort_keys=True).lower()
+                      if "agentresolver.vercel.app" in blob or '"sellername":"agentresolver"' in blob:
+                          rank = idx
+                          agent = item
+                          break
+              except Exception:
+                  pass
           print(json.dumps({
               "status": status,
               "query": q,
               "include": "external",
-              "agentresolverSelected": found,
-              "bodyPreview": body.replace("\n", " ").replace("\r", " ")[:2400]
-          }))
+              "agentresolverRank": rank or None,
+              "topResult": top,
+              "agentresolverResult": agent
+          }, separators=(",", ":"), sort_keys=True))
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"http_status={status}\n")
-              out.write(f"found={'true' if found else 'false'}\n")
+              out.write(f"rank={rank}\n")
           if status != 200:
               raise SystemExit(1)
           PY
@@ -101,16 +116,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
           HTTP_STATUS: ${{ steps.external_route.outputs.http_status }}
-          FOUND: ${{ steps.external_route.outputs.found }}
+          RANK: ${{ steps.external_route.outputs.rank }}
         run: |
-          if [ "$HTTP_STATUS" = "200" ] && [ "$FOUND" = "true" ]; then
+          if [ "$HTTP_STATUS" = "200" ] && [ "${RANK:-0}" -gt 0 ]; then
             STATE=success
-            CONTEXT="distribution/agent402-external-route-selected"
-            DESC="AgentResolver selected by Agent402 external route quote"
+            CONTEXT="distribution/agent402-external-route-rank-${RANK}"
+            if [ "$RANK" = "1" ]; then
+              DESC="AgentResolver is #1 external route result"
+            else
+              DESC="AgentResolver is external route result #${RANK}"
+            fi
           elif [ "$HTTP_STATUS" = "200" ]; then
             STATE=success
-            CONTEXT="distribution/agent402-external-route-not-selected"
-            DESC="Agent402 external route quote works; another seller selected"
+            CONTEXT="distribution/agent402-external-route-not-ranked"
+            DESC="AgentResolver absent from Agent402 external route results"
           else
             STATE=failure
             CONTEXT="distribution/agent402-external-route-http-${HTTP_STATUS:-0}"
