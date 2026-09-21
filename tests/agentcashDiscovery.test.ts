@@ -116,8 +116,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "x402-settlement-verify",
     "verified-resolve",
     "batch-verified-resolve",
-    "provider-launch-check",
-    "cdp-payment-guard"
+    "provider-launch-check"
   ]);
   const intentAliasIds = new Set([
     "usdc-payment-check",
@@ -126,7 +125,8 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "api-trust-security-preflight",
     "x402-transaction-path-payment-gate"
   ]);
-  const publicServiceIds = new Set([...paidIds, ...intentAliasIds]);
+  const discoveryOnlyServiceIds = new Set(["cdp-payment-guard"]);
+  const publicServiceIds = new Set([...paidIds, ...intentAliasIds, ...discoveryOnlyServiceIds]);
   const publicResourcePaths = new Set([
     "/api/x402-ping",
     "/api/x402-payment-preflight",
