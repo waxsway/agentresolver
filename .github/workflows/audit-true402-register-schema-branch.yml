@@ -1,0 +1,24 @@
+name: Audit true402 Registration Schema
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Print registration request schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          curl -sS --connect-timeout 5 --max-time 20 https://true402.dev/openapi.json -o "$body"
+          python3 - "$body" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          print(json.dumps((d.get("paths") or {}).get("/api/v1/services/register",{}).get("post",{}),separators=(",",":"),sort_keys=True))
+          PY
