@@ -73,7 +73,7 @@ test("installable Guard skill documents the Coinbase AgentKit confirmation-first
   assert.match(installable, /register_x402_service/);
   assert.match(installable, /allowDynamicServiceRegistration/);
   assert.match(installable, /registeredServices/);
-  assert.match(installable, /Do not enable dynamic registration merely to bypass the service allowlist/i);
+  assert.match(installable, /(?:Do not|Never) enable dynamic registration merely to bypass the service allowlist/i);
   assert.match(installable, /do not use `make_http_request_with_x402` on an unfamiliar target/i);
   assert.match(published, /## Coinbase AgentKit/);
 });
