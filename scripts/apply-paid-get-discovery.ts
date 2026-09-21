@@ -132,9 +132,39 @@ for (const path of X402_MANIFEST_PATHS) {
   preflightGet.aliases = [`${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`];
   preflightGet.repeatUse = "before_every_autonomous_x402_spend";
 
+  const guardGet = clone(preflightGet);
+  guardGet.id = "payment-guard-get";
+  guardGet.name = "Verify x402 Payment Before Paying";
+  guardGet.endpoint = `${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`;
+  guardGet.resource = `GET ${GUARD_ENDPOINT}`;
+  guardGet.description = "AgentResolver Guard alias for the canonical Payment Preflight. Verify a live x402 payment contract before the caller authorizes spend; returns fail-closed eligible/blocked evidence and observed payment terms. The caller alone authorizes any target payment.";
+  if (Array.isArray(guardGet.accepts)) {
+    for (const accept of guardGet.accepts) {
+      accept.resource = `${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`;
+    }
+  }
+
+  const guardPost = clone(preflightPost);
+  guardPost.id = "payment-guard-post";
+  guardPost.name = "Verify x402 Payment Before Paying";
+  guardPost.endpoint = `${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`;
+  guardPost.resource = `POST ${GUARD_ENDPOINT}`;
+  guardPost.description = "AgentResolver Guard POST alias for body-bearing Payment Preflight workflows. Verify a live x402 payment contract before the caller authorizes spend; returns fail-closed eligible/blocked evidence and observed payment terms. The caller alone authorizes any target payment.";
+  if (Array.isArray(guardPost.accepts)) {
+    for (const accept of guardPost.accepts) {
+      accept.resource = `${CANONICAL_ORIGIN}${GUARD_ENDPOINT}`;
+    }
+  }
+
   manifest.resources = [
-    ...manifest.resources.filter((item: any) => item.resource !== `GET ${PREFLIGHT_ENDPOINT}`),
-    preflightGet
+    ...manifest.resources.filter((item: any) =>
+      item.resource !== `GET ${PREFLIGHT_ENDPOINT}` &&
+      item.resource !== `GET ${GUARD_ENDPOINT}` &&
+      item.resource !== `POST ${GUARD_ENDPOINT}`
+    ),
+    preflightGet,
+    guardGet,
+    guardPost
   ];
 
   manifest.instructions = "Use AgentResolver Guard immediately before every autonomous x402 spend: GET /api/x402-payment-preflight?url=<https-endpoint> costs $0.001 USDC and returns a fail-closed eligible/blocked decision, exact target payment terms, reason codes and evidence fingerprints. POST remains supported for body-bearing workflows. For the cheapest end-to-end paid integration check, GET /api/x402-ping costs $0.001 USDC; successful canaries hand off to POST /api/verified-resolve ($0.02) or POST /api/batch-verified-resolve ($0.05). POST /api/procure is the preferred free constrained procurement surface; POST /api/resolve remains free for broad discovery. A 402 is a quote, never spending authorization.";
