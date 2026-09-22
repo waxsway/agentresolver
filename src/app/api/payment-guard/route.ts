@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createDeterministicPaidRoute } from "@/lib/createDeterministicPaidRoute";
 import { executeX402PaymentPreflight } from "@/lib/executeX402PaymentPreflight";
+import { classifyTraffic, trafficLogFields } from "@/lib/trafficClassification";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,18 @@ const route = createDeterministicPaidRoute(
   { paidGet: true, endpoint: "/api/payment-guard" }
 );
 
-function invalidInput() {
+function invalidInput(req: NextRequest) {
+  const traffic = classifyTraffic(req, { path: req.nextUrl.pathname });
+  console.log(JSON.stringify({
+    event: "payment_guard_invalid_input",
+    at: new Date().toISOString(),
+    capabilityId: "x402-payment-preflight",
+    endpoint: req.nextUrl.pathname,
+    method: req.method,
+    reason: "missing_url",
+    ...trafficLogFields(req, traffic)
+  }));
+
   return NextResponse.json(
     {
       error: "INVALID_INPUT",
@@ -40,12 +52,12 @@ function invalidInput() {
 
 export async function POST(req: NextRequest) {
   const body = await req.clone().json().catch(() => null) as { url?: unknown } | null;
-  if (typeof body?.url !== "string" || !body.url.trim()) return invalidInput();
+  if (typeof body?.url !== "string" || !body.url.trim()) return invalidInput(req);
   return route.POST(req);
 }
 
 export async function GET(req: NextRequest) {
-  if (!req.nextUrl.searchParams.get("url")?.trim()) return invalidInput();
+  if (!req.nextUrl.searchParams.get("url")?.trim()) return invalidInput(req);
   return route.GET(req);
 }
 export const OPTIONS = route.OPTIONS;
