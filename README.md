@@ -56,6 +56,21 @@ Guard is evidence for a payment decision, not permission to spend.
 
 The official x402 client exposes `onBeforePaymentCreation`. Use **two x402 clients**: one hooked client for the target payment and one hook-free client dedicated to the separate Guard payment. This prevents recursive Guard payments.
 
+The framework-neutral client package now exports the reusable pre-sign hook directly:
+
+```ts
+import { createAgentResolverX402GuardHook } from "agentresolver-client";
+
+targetClient.onBeforePaymentCreation(
+  createAgentResolverX402GuardHook({
+    maxTargetPriceUsd: 0.05,
+    guardFetch // separate payment-enabled fetch used only for the Guard fee
+  })
+);
+```
+
+Until registry publication, build `packages/agentresolver-client` directly from this repository. The hook fails closed and binds AgentResolver evidence back to the exact selected scheme, network, asset, amount, payee, x402 version, and resource before the x402 client can proceed to signing.
+
 Three maintained integration guides:
 
 - [x402 core pre-sign Guard](docs/integrations/x402-core-payment-guard.md)
