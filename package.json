@@ -1,6 +1,6 @@
 {
   "name": "agentresolver",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Machine-first capability discovery and live-evidence utilities for AI agents, with free resolve and optional x402-paid verification on Base and Solana.",
   "homepage": "https://agentresolver.vercel.app",
