@@ -215,3 +215,34 @@ test("Provider Launch Check is GET-first and focused seller discovery stays accu
   assert.equal(pathItem.post["x-agentresolver-product"]?.inputTransport, "json-body");
   assert.equal(pathItem["x-agentresolver-preferred-method"], "GET");
 });
+
+
+test("focused public discovery exposes the existing high-demand Hash & Encode product", () => {
+  const manifest = readJson("public/.well-known/x402");
+  const service = manifest.services?.find((item: any) => item.id === "hash-encode");
+  assert.ok(service, "hash-encode must be retained in the focused x402 service catalog");
+  assert.equal(service.price_usdc, "0.001");
+  assert.equal(service.endpoint, "https://agentresolver.vercel.app/api/hash-encode");
+
+  const resource = manifest.resources?.find(
+    (item: any) => item.resource === "POST /api/hash-encode"
+  );
+  assert.ok(resource, "hash-encode POST resource must be discoverable");
+  assert.equal(resource.price, "$0.001");
+  assert.match(resource.description ?? "", /hash|sha-256|base64/i);
+
+  const capabilities = readJson("public/capabilities.json");
+  assert.ok(
+    capabilities.capabilities?.some((item: any) => item.id === "hash-encode"),
+    "hash-encode must be retained in capabilities.json"
+  );
+
+  const integrations = readJson("public/integrations.json");
+  assert.ok(
+    integrations.paidActions?.some((item: any) => item.id === "hash-encode"),
+    "hash-encode must be retained in integrations.json"
+  );
+
+  const openapi = readJson("public/openapi.json");
+  assert.ok(openapi.paths?.["/api/hash-encode"]?.post, "hash-encode POST must remain in OpenAPI");
+});
