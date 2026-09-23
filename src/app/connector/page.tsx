@@ -26,7 +26,10 @@ export default function ConnectorPage() {
 
       <div className="grid">
         <section>
-          <h2>Hosted MCP</h2>
+          <h2>Product + hosted MCP</h2>
+          <p>
+            Website: <a href="https://agentresolver.vercel.app">https://agentresolver.vercel.app</a>
+          </p>
           <p>
             Endpoint: <code>https://agentresolver.vercel.app/mcp</code>
           </p>
