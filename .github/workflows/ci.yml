@@ -67,6 +67,12 @@ jobs:
           curl -fsS http://127.0.0.1:3001/agentresolver.md | grep -F 'AgentResolver' >/dev/null
           curl -fsS http://127.0.0.1:3001/integrations.json | grep -F 'https://agentresolver.vercel.app/mcp' >/dev/null
           curl -fsS http://127.0.0.1:3001/openapi.json | grep -F 'resolveCapability' >/dev/null
+          curl -fsS http://127.0.0.1:3001/connector | grep -F 'https://agentresolver.vercel.app/mcp' >/dev/null
+          curl -fsS http://127.0.0.1:3001/connector | grep -F 'No account, API key, or OAuth' >/dev/null
+          curl -fsS http://127.0.0.1:3001/privacy | grep -F 'AgentResolver privacy policy' >/dev/null
+          curl -fsS http://127.0.0.1:3001/terms | grep -F 'AgentResolver terms of service' >/dev/null
+          curl -fsS http://127.0.0.1:3001/support | grep -F 'waxsway@gmail.com' >/dev/null
+          curl -fsS http://127.0.0.1:3001/mcp/server-card | grep -F 'https://agentresolver.vercel.app/mcp' >/dev/null
           grep -F '"ok":true' /tmp/health.json >/dev/null
           grep -F '"version":"0.1.4"' /tmp/health.json >/dev/null
           grep -F '"paidManifest":"/.well-known/x402"' /tmp/health.json >/dev/null
