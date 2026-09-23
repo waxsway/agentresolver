@@ -43,3 +43,15 @@ test("homepage makes hosted MCP review information easy to find", () => {
   assert.match(home, /href="\/terms"/);
   assert.match(home, /href="\/support"/);
 });
+
+
+test("machine-readable MCP metadata matches the public connector facts", () => {
+  const route = readFileSync("src/app/.well-known/mcp.json/route.ts", "utf8");
+
+  assert.match(route, /version: "0\.1\.4"/);
+  assert.match(route, /connectorInformation/);
+  assert.match(route, /privacyPolicy/);
+  assert.match(route, /termsOfService/);
+  assert.match(route, /support/);
+  assert.match(route, /solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/);
+});
