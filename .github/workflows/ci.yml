@@ -39,6 +39,13 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Build client package
+        run: ./node_modules/.bin/tsc -p packages/agentresolver-client/tsconfig.json
+
+      - name: Validate client package tarball
+        working-directory: packages/agentresolver-client
+        run: npm pack --dry-run
+
       - name: Build
         run: npm run build
 
