@@ -73,6 +73,8 @@ jobs:
           curl -fsS http://127.0.0.1:3001/terms | grep -F 'AgentResolver terms of service' >/dev/null
           curl -fsS http://127.0.0.1:3001/support | grep -F 'waxsway@gmail.com' >/dev/null
           curl -fsS http://127.0.0.1:3001/mcp/server-card | grep -F 'https://agentresolver.vercel.app/mcp' >/dev/null
+          curl -fsS http://127.0.0.1:3001/.well-known/mcp.json | grep -F '"version":"0.1.4"' >/dev/null
+          curl -fsS http://127.0.0.1:3001/.well-known/mcp.json | grep -F '"privacyPolicy":"https://agentresolver.vercel.app/privacy"' >/dev/null
           grep -F '"ok":true' /tmp/health.json >/dev/null
           grep -F '"version":"0.1.4"' /tmp/health.json >/dev/null
           grep -F '"paidManifest":"/.well-known/x402"' /tmp/health.json >/dev/null
