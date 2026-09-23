@@ -23,7 +23,8 @@ const INTERNAL_UA = [
 ];
 
 const AUTOMATED_FETCH_UA = [
-  "vercel mcp fetch"
+  "vercel mcp fetch",
+  "dexter-api/x402-schema-fetcher"
 ];
 
 const DIRECTORY_UA = [
