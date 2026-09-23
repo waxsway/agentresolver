@@ -30,6 +30,19 @@ export default function Home() {
         <a className="button secondary" href="/openapi.json">OpenAPI</a>
       </p>
 
+      <section>
+        <div className="eyebrow">FOR API COMPANIES</div>
+        <h2>Need an official MCP layer for your existing API?</h2>
+        <p>
+          AgentResolver also offers a fixed $1,000 implementation sprint for up
+          to five existing API operations: first-party MCP, canonical discovery
+          metadata, validation, and handoff. Your team owns the code.
+        </p>
+        <p className="actions">
+          <a className="button" href="/mcp-sprint">See the $1,000 MCP sprint</a>
+        </p>
+      </section>
+
       <div className="grid">
         <section>
           <h2>PayTo verification</h2>
