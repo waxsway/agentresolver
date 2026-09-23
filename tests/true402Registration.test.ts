@@ -22,6 +22,8 @@ test("true402 registration is zero-spend, anonymous, and manual-only after accep
   assert.match(workflow, /v1\/services\/register/);
   assert.match(workflow, /POST "\$TRUE402_API\/v1\/services\/register"/);
   assert.match(workflow, /\{url:\$url\}/);
+  assert.match(workflow, /q=agentresolver/);
+  assert.match(workflow, /v1\/services\/\$service_id/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /^\s*push:/m);
   assert.doesNotMatch(workflow, /^\s*workflow_run:/m);
@@ -31,6 +33,7 @@ test("true402 registration is zero-spend, anonymous, and manual-only after accep
   assert.doesNotMatch(workflow, /schedule:/);
   assert.match(workflow, /id:\(\.id \/\/ \.data\.id \/\/ null\)/);
   assert.match(workflow, /status:\(\.status \/\/ \.data\.status \/\/ null\)/);
+  assert.match(workflow, /service_id=.*\.id \/\/ \.data\.id/);
 });
 
 test("true402 lane validates the live manifest and x402 v2 canary before registration", () => {

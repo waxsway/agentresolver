@@ -51,6 +51,7 @@ jobs:
           exit 1
 
       - name: Register AgentResolver with true402
+        id: register
         shell: bash
         run: |
           set -euo pipefail
@@ -86,44 +87,52 @@ jobs:
               ;;
           esac
 
-      - name: Verify live true402 buyer catalog visibility
-        shell: bash
-        run: |
-          set -euo pipefail
-          code="000"
-          for attempt in 1 2 3; do
-            code="$(curl -4 -sS -D /tmp/services.headers -o /tmp/services.body -w '%{http_code}' \
-              --connect-timeout 8 --max-time 20 \
-              'https://true402.dev/api/v1/services' || printf '000')"
-            echo "true402 catalog attempt $attempt -> HTTP $code"
-            if [ "$code" = "200" ]; then break; fi
-            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 2)); fi
-          done
-          test "$code" = "200"
-          grep -i '^content-type:' /tmp/services.headers || true
-          if grep -Fq 'agentresolver-settlement-ping' /tmp/services.body || grep -Fq 'agentresolver.vercel.app/api/x402-ping' /tmp/services.body; then
-            echo "AgentResolver settlement canary is present in the live true402 buyer catalog."
-            python - <<'PY'
-          import json
-          from pathlib import Path
-          data=json.loads(Path('/tmp/services.body').read_text())
-          rows=data.get('data', []) if isinstance(data, dict) else []
-          for row in rows:
-              text=json.dumps(row).lower()
-              if 'agentresolver-settlement-ping' in text or 'agentresolver.vercel.app/api/x402-ping' in text:
-                  manifest=row.get('manifest') or {}
-                  reputation=row.get('reputation') or {}
-                  print(json.dumps({
-                      'id': row.get('id'),
-                      'url': row.get('url'),
-                      'name': manifest.get('name'),
-                      'endpoint': manifest.get('endpoint'),
-                      'price': (manifest.get('pricing') or {}).get('base'),
-                      'trustScore': reputation.get('trustScore'),
-                      'registeredAt': reputation.get('registeredAt')
-                  }, indent=2))
-          PY
-          else
-            echo "true402 registration returned success but AgentResolver is absent from the live buyer catalog." >&2
+          service_id="$(jq -r '.id // .data.id // empty' "$body")"
+          if [ -z "$service_id" ]; then
+            echo "true402 registration response omitted service id." >&2
             exit 1
           fi
+          echo "service_id=$service_id" >> "$GITHUB_OUTPUT"
+
+      - name: Verify exact true402 registered service
+        shell: bash
+        env:
+          SERVICE_ID: ${{ steps.register.outputs.service_id }}
+        run: |
+          set -euo pipefail
+          test -n "$SERVICE_ID"
+          code="$(curl -4 -sS -o /tmp/service.json -w '%{http_code}' \
+            --connect-timeout 8 --max-time 20 \
+            "https://true402.dev/api/v1/services/$SERVICE_ID" || printf '000')"
+          echo "true402 exact service lookup -> HTTP $code"
+          test "$code" = "200"
+          jq -e '
+            .id == env.SERVICE_ID and
+            .url == "https://agentresolver.vercel.app" and
+            .manifest.name == "agentresolver-settlement-ping" and
+            .manifest.endpoint == "https://agentresolver.vercel.app/api/x402-ping" and
+            (.manifest.pricing.base | tostring) == "0.001"
+          ' /tmp/service.json >/dev/null
+          jq '{
+            id,
+            url,
+            name:.manifest.name,
+            endpoint:.manifest.endpoint,
+            price:.manifest.pricing.base,
+            trustScore:.reputation.trustScore,
+            registeredAt:.reputation.registeredAt,
+            lastSeen:.reputation.lastSeen
+          }' /tmp/service.json
+          echo "AgentResolver exact true402 service is registered and retrievable."
+
+          search_code="$(curl -4 -sS -o /tmp/search.json -w '%{http_code}' \
+            --connect-timeout 8 --max-time 20 \
+            --get 'https://true402.dev/api/v1/services' \
+            --data-urlencode 'q=agentresolver' \
+            --data-urlencode 'limit=100' || printf '000')"
+          echo "true402 AgentResolver search -> HTTP $search_code"
+          test "$search_code" = "200"
+          jq -e --arg id "$SERVICE_ID" '
+            any((.data // .services // [] )[]; .id == $id)
+          ' /tmp/search.json >/dev/null
+          echo "AgentResolver is searchable by name in the true402 buyer catalog."
