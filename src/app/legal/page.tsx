@@ -4,9 +4,9 @@ export default function Legal() {
       <div className="eyebrow">LEGAL & SAFETY</div>
       <h1>AgentResolver operating terms.</h1>
       <p className="lead">
-        Last updated September 16, 2026. These terms describe the current
-        non-custodial AgentResolver service and its machine-readable x402
-        verification utilities.
+        Last updated September 23, 2026. This page summarizes the current
+        non-custodial AgentResolver service. The dedicated privacy policy and
+        terms of service are linked below.
       </p>
 
       <section>
@@ -68,10 +68,9 @@ export default function Legal() {
           hash derived from the caller IP, user-agent, referrer hostname,
           requested capability, whether a payment signature was present, and
           hashed settlement identifiers. AgentResolver does not intentionally
-          persist paid request bodies in its application telemetry. Hosting and
-          network providers may process standard request metadata needed to
-          operate the service.
+          persist paid request bodies in its application telemetry.
         </p>
+        <p><a href="/privacy">Read the full privacy policy.</a></p>
       </section>
 
       <section>
@@ -93,12 +92,16 @@ export default function Legal() {
           use case and should apply their own spending, security, compliance,
           and authorization policies before signing or sending a payment.
         </p>
+        <p><a href="/terms">Read the full terms of service.</a></p>
       </section>
 
       <p className="links">
         <a href="/">Home</a> ·{" "}
+        <a href="/connector">Connector info</a> ·{" "}
         <a href="/docs">Docs</a> ·{" "}
-        <a href="/openapi.json">OpenAPI</a>
+        <a href="/privacy">Privacy</a> ·{" "}
+        <a href="/terms">Terms</a> ·{" "}
+        <a href="/support">Support</a>
       </p>
     </main>
   );
