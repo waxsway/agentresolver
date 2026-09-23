@@ -22,7 +22,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 1
     },
+    weekly("/connector", 0.95),
     weekly("/docs", 0.9),
+    weekly("/mcp-sprint", 0.7),
+    weekly("/support", 0.6),
+    weekly("/privacy", 0.5),
+    weekly("/terms", 0.5),
     weekly("/providers", 0.8),
     weekly("/agentresolver.md", 0.95),
     weekly("/integrations.json", 0.95),
