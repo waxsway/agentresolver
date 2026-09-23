@@ -2,6 +2,10 @@ name: Verify MCP x402 Preflight Funnel
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-mcp-x402-preflight-funnel.yml'
   schedule:
     - cron: "37 */6 * * *"
 
@@ -75,22 +79,49 @@ jobs:
           expected_setup="$BUYER_SETUP_URL?source=x402-challenge&capabilityId=x402-payment-preflight&method=POST"
           grep -Fi "x-agentresolver-buyer-setup: $expected_setup" /tmp/http-x402-preflight.headers >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/http-x402-preflight.headers | grep -Fi 'x-agentresolver-buyer-setup' >/dev/null
-          jq -e --arg setup "$expected_setup" '
+          # The compatibility JSON body mirrors the core x402 challenge only.
+          # Buyer setup is intentionally advertised through the dedicated response
+          # header and setup endpoint rather than duplicated into the body.
+          jq -e '
             .x402Version == 2 and
-            .buyerSetup.method == "POST" and
-            .buyerSetup.setup == $setup
+            (.accepts | length == 2) and
+            (.accepts | any(.network == "eip155:8453" and .amount == "1000")) and
+            (.accepts | any(.network == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and .amount == "1000"))
           ' /tmp/http-x402-preflight.out >/dev/null
 
-          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' /tmp/http-x402-preflight.headers)"
-          PAYMENT_REQUIRED="$payment_required" EXPECTED_SETUP="$expected_setup" python3 -c '
+          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/http-x402-preflight.headers)"
+          test -n "$payment_required"
+          PAYMENT_REQUIRED="$payment_required" python3 -c '
           import base64, json, os
           raw = os.environ["PAYMENT_REQUIRED"].strip()
           raw += "=" * (-len(raw) % 4)
           payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
-          info = payload["extensions"]["agentresolver"]["info"]
-          assert info["method"] == "POST"
-          assert info["setup"] == os.environ["EXPECTED_SETUP"]
+          assert payload["x402Version"] == 2
+          accepts = payload["accepts"]
+          assert any(a.get("network") == "eip155:8453" and a.get("amount") == "1000" for a in accepts)
+          assert any(a.get("network") == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and a.get("amount") == "1000" for a in accepts)
           '
+
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS \
+            "$expected_setup" \
+            -H 'user-agent: AgentResolver-MCP-X402-Preflight-Funnel-Smoke/1.0' \
+            -H 'x-agentresolver-internal: 1' \
+            -o /tmp/http-x402-buyer-setup.json
+
+          jq -e '
+            .free == true and
+            .mode == "challenge_compact" and
+            .challengeContext.source == "x402-challenge" and
+            .challengeContext.capabilityId == "x402-payment-preflight" and
+            .challengeContext.method == "POST" and
+            .challengeContext.retryHeader == "PAYMENT-SIGNATURE" and
+            .next.action == "retry_challenged_request" and
+            .next.payment.protocol == "x402" and
+            .next.payment.retryHeader == "PAYMENT-SIGNATURE" and
+            .authorizationBoundary.callerControlsSigner == true and
+            .authorizationBoundary.agentResolverReceivesPrivateKey == false and
+            .authorizationBoundary.agentResolverAuthorizesSpend == false
+          ' /tmp/http-x402-buyer-setup.json >/dev/null
 
       - name: Verify free resolve hands x402 buyers to canonical preflight
         shell: bash

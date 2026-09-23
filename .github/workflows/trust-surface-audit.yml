@@ -51,13 +51,30 @@ jobs:
           grep -Fi 'payment-required:' /tmp/preflight.headers >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/preflight.headers | grep -Fi 'x-agentresolver-request-id' >/dev/null
           grep -Fi 'access-control-expose-headers:' /tmp/preflight.headers | grep -Fi 'payment-response' >/dev/null
+          # The compatibility JSON body intentionally mirrors only the core x402
+          # challenge fields. Extension metadata remains authoritative in the
+          # standard Payment-Required header.
           jq -e '
             .x402Version == 2 and
             (.accepts | length == 2) and
             (.accepts | any(.network == "eip155:8453" and .amount == "1000")) and
-            (.accepts | any(.network == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and .amount == "1000")) and
-            (.extensions.bazaar.schema.properties.output != null)
+            (.accepts | any(.network == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and .amount == "1000"))
           ' /tmp/preflight.json >/dev/null
+
+          payment_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/preflight.headers)"
+          test -n "$payment_required"
+          PAYMENT_REQUIRED="$payment_required" python3 -c '
+          import base64, json, os
+          raw = os.environ["PAYMENT_REQUIRED"].strip()
+          raw += "=" * (-len(raw) % 4)
+          payload = json.loads(base64.urlsafe_b64decode(raw).decode("utf-8"))
+          assert payload["x402Version"] == 2
+          accepts = payload["accepts"]
+          assert any(a.get("network") == "eip155:8453" and a.get("amount") == "1000" for a in accepts)
+          assert any(a.get("network") == "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" and a.get("amount") == "1000" for a in accepts)
+          output = payload.get("extensions", {}).get("bazaar", {}).get("schema", {}).get("properties", {}).get("output")
+          assert output is not None
+          '
 
           curl -fsS "$BASE_URL/.well-known/security.txt?audit=$GITHUB_RUN_ID" |
             grep -F 'Canonical: https://agentresolver.vercel.app/.well-known/security.txt' >/dev/null
