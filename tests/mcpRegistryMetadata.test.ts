@@ -13,9 +13,17 @@ test("MCP registry metadata leads with the paid Guard and keeps procurement disc
   assert.equal(server.remotes?.[0]?.url, "https://agentresolver.vercel.app/mcp");
 });
 
-test("runtime MCP card and health surface match registry release version", () => {
+test("runtime MCP identity, package, card and health agree on 0.1.4", () => {
   const card = readFileSync("src/app/mcp/server-card/route.ts", "utf8");
   const health = readFileSync("src/app/api/health/route.ts", "utf8");
+  const runtime = readFileSync("src/app/mcp/route.ts", "utf8");
+  const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+  const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
+
+  assert.equal(pkg.version, "0.1.4");
+  assert.equal(lock.version, "0.1.4");
+  assert.equal(lock.packages?.[""]?.version, "0.1.4");
+  assert.match(runtime, /new McpServer\(\{ name: "agentresolver", version: "0\.1\.4" \}/);
   assert.match(card, /version: "0\.1\.4"/);
   assert.match(card, /AgentResolver Guard — x402 Verify Before Pay/);
   assert.match(health, /version: "0\.1\.4"/);

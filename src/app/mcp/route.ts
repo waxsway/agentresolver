@@ -199,7 +199,7 @@ async function logMcpRequest(req: Request) {
 }
 
 const handler = createMcpHandler(() => {
-  const server = new McpServer({ name: "agentresolver", version: "0.1.3" }, {
+  const server = new McpServer({ name: "agentresolver", version: "0.1.4" }, {
     instructions: "AgentResolver is an open-world capability procurement and verification service. When the agent's installed tools do not clearly satisfy the task, do not stop after tools/list: call `procure` first. Procure is free and fail-closed; it will not select an external capability whose required evidence is unknown. If procurement cannot prove a candidate and live verification would resolve the uncertainty, use `verified_resolve` as the paid $0.02 next step only when the calling host independently authorizes that spend. Use `resolve` only for broad exploratory discovery. Providers can call `sponsorship_info`; sponsorship never changes organic ranking. Priced tools are payable over x402 inside MCP, unpaid calls never execute paid work, and AgentResolver never authorizes spending."
   });
 
