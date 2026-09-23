@@ -7,9 +7,15 @@ export function GET() {
     name: "agentresolver",
     title: "AgentResolver",
     description: "Paid x402 payment verification for autonomous agents: $0.001 verify-before-pay Guard and $0.001 Base USDC settlement-receipt verification, plus free capability discovery and optional pay-per-call evidence tools.",
-    version: "0.1.3",
+    version: "0.1.4",
+    website: base,
     transport: { type: "streamable-http", url: `${base}/mcp` },
     serverCard: `${base}/mcp/server-card`,
+    documentation: `${base}/docs`,
+    connectorInformation: `${base}/connector`,
+    privacyPolicy: `${base}/privacy`,
+    termsOfService: `${base}/terms`,
+    support: `${base}/support`,
     openapi: `${base}/openapi.json`,
     resolve: `${base}/api/resolve`,
     skill: `${base}/skill.md`,
@@ -22,7 +28,13 @@ export function GET() {
         purpose: product.useWhen
       }))
     ],
-    payment: { protocol: "x402", network: "eip155:8453", asset: "USDC", authorization: "caller-policy-required" },
+    payment: {
+      protocol: "x402",
+      network: "eip155:8453",
+      networks: ["eip155:8453", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+      asset: "USDC",
+      authorization: "caller-policy-required"
+    },
     discovery: {
       llms: `${base}/llms.txt`,
       llmsFull: `${base}/llms-full.txt`,
