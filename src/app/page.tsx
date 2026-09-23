@@ -31,6 +31,22 @@ export default function Home() {
       </p>
 
       <section>
+        <div className="eyebrow">HOSTED MCP CONNECTOR</div>
+        <h2>Connect AgentResolver directly to an MCP host.</h2>
+        <p>
+          Hosted endpoint: <code>https://agentresolver.vercel.app/mcp</code>.
+          No account, API key, OAuth login, or subscription is required to
+          connect. Free discovery surfaces stay free; paid tools disclose their
+          x402 USDC price before execution and require caller-controlled payment
+          authorization.
+        </p>
+        <p className="actions">
+          <a className="button" href="/connector">Connector information</a>{" "}
+          <a className="button secondary" href="/docs">MCP documentation</a>
+        </p>
+      </section>
+
+      <section>
         <div className="eyebrow">FOR API COMPANIES</div>
         <h2>Need an official MCP layer for your existing API?</h2>
         <p>
@@ -93,12 +109,15 @@ export default function Home() {
       </p>
 
       <p className="links">
+        <a href="/connector">Connector info</a> ·{" "}
         <a href="/docs">Docs</a> ·{" "}
         <a href="/mcp/server-card">MCP Server Card</a> ·{" "}
         <a href="/.well-known/x402">x402 manifest</a> ·{" "}
         <a href="/llms.txt">llms.txt</a> ·{" "}
         <a href="/capabilities.json">Capabilities</a> ·{" "}
-        <a href="/legal">Legal & Safety</a>
+        <a href="/privacy">Privacy</a> ·{" "}
+        <a href="/terms">Terms</a> ·{" "}
+        <a href="/support">Support</a>
       </p>
     </main>
   );
