@@ -139,3 +139,220 @@ export function createAgentResolverClient(
 }
 
 export type AgentResolverClient = ReturnType<typeof createAgentResolverClient>;
+
+
+export type X402SelectedRequirements = {
+  scheme: string;
+  network: string;
+  asset: string;
+  amount: string;
+  payTo: string;
+};
+
+export type X402PaymentRequired = {
+  x402Version: number;
+  resource?: {
+    url?: string;
+  } | null;
+  extensions?: {
+    bazaar?: {
+      info?: {
+        input?: {
+          method?: unknown;
+        };
+      };
+    };
+  } | null;
+};
+
+export type X402BeforePaymentContext = {
+  paymentRequired: X402PaymentRequired;
+  selectedRequirements: X402SelectedRequirements;
+};
+
+export type X402BeforePaymentAbort = {
+  abort: true;
+  reason: string;
+};
+
+export type AgentResolverGuardHookOptions = {
+  /**
+   * Separate payment-enabled fetch used only for the AgentResolver Guard fee.
+   * Never pass the merchant's guarded fetch here or Guard can recurse into itself.
+   */
+  guardFetch: typeof globalThis.fetch;
+  maxTargetPriceUsd: number;
+  agentResolverOrigin?: string;
+};
+
+type GuardTargetPayment = {
+  network?: unknown;
+  asset?: unknown;
+  payTo?: unknown;
+  resource?: unknown;
+  amountAtomic?: unknown;
+  scheme?: unknown;
+  x402Version?: unknown;
+};
+
+type GuardResponse = {
+  prepaymentDecision?: {
+    decision?: unknown;
+    eligibleForCallerAuthorization?: unknown;
+    targetPayment?: GuardTargetPayment;
+  };
+};
+
+function samePaymentIdentifier(left: unknown, right: unknown): boolean {
+  if (typeof left !== "string" || typeof right !== "string") {
+    return false;
+  }
+
+  if (left.startsWith("0x") && right.startsWith("0x")) {
+    return left.toLowerCase() === right.toLowerCase();
+  }
+
+  return left === right;
+}
+
+function guardTargetUrl(paymentRequired: X402PaymentRequired): string | null {
+  const value = paymentRequired.resource?.url;
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password ||
+      parsed.hash
+    ) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Creates a fail-closed pre-sign hook compatible with the official x402 client's
+ * onBeforePaymentCreation lifecycle.
+ *
+ * The host remains responsible for wallet custody and for independently
+ * authorizing both the $0.001 AgentResolver Guard payment and the merchant
+ * payment. AgentResolver never receives a private key or signs the target spend.
+ *
+ * The supplied guardFetch MUST be a separate payment-enabled fetch without this
+ * hook installed, otherwise paying AgentResolver Guard can recurse into itself.
+ */
+export function createAgentResolverX402GuardHook(
+  options: AgentResolverGuardHookOptions
+) {
+  if (
+    !Number.isFinite(options.maxTargetPriceUsd) ||
+    options.maxTargetPriceUsd < 0
+  ) {
+    throw new Error("maxTargetPriceUsd must be a finite non-negative number.");
+  }
+
+  const origin = (
+    options.agentResolverOrigin || "https://agentresolver.vercel.app"
+  ).replace(/\/$/, "");
+
+  return async function agentResolverGuardHook(
+    context: X402BeforePaymentContext
+  ): Promise<void | X402BeforePaymentAbort> {
+    const targetUrl = guardTargetUrl(context.paymentRequired);
+    if (!targetUrl) {
+      return {
+        abort: true,
+        reason: "AgentResolver Guard requires a public HTTPS target resource"
+      };
+    }
+
+    const advertisedMethod =
+      context.paymentRequired.extensions?.bazaar?.info?.input?.method;
+
+    if (
+      advertisedMethod !== undefined &&
+      String(advertisedMethod).toUpperCase() !== "GET"
+    ) {
+      return {
+        abort: true,
+        reason:
+          "AgentResolver embedded Guard hook is GET-only; use the explicit request-scoped Guard flow for non-GET targets"
+      };
+    }
+
+    const selected = context.selectedRequirements;
+    const guardUrl = new URL("/api/payment-guard", origin);
+    guardUrl.searchParams.set("url", targetUrl);
+    guardUrl.searchParams.set("method", "GET");
+    guardUrl.searchParams.set(
+      "maxPriceUsd",
+      String(options.maxTargetPriceUsd)
+    );
+    guardUrl.searchParams.set("expectedPayTo", selected.payTo);
+    guardUrl.searchParams.set("expectedNetwork", selected.network);
+
+    let response: Response;
+    try {
+      response = await options.guardFetch(guardUrl.toString(), {
+        method: "GET"
+      });
+    } catch (error) {
+      return {
+        abort: true,
+        reason:
+          error instanceof Error
+            ? `AgentResolver Guard unavailable: ${error.message}`
+            : "AgentResolver Guard unavailable"
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        abort: true,
+        reason: `AgentResolver Guard returned HTTP ${response.status}`
+      };
+    }
+
+    const result = (await response.json().catch(() => null)) as
+      | GuardResponse
+      | null;
+    const decision = result?.prepaymentDecision;
+
+    if (
+      decision?.decision !== "eligible" ||
+      decision?.eligibleForCallerAuthorization !== true
+    ) {
+      return {
+        abort: true,
+        reason: "AgentResolver Guard did not return an eligible decision"
+      };
+    }
+
+    const observed = decision.targetPayment;
+    if (
+      observed?.network !== selected.network ||
+      observed?.amountAtomic !== selected.amount ||
+      observed?.scheme !== selected.scheme ||
+      observed?.x402Version !== context.paymentRequired.x402Version ||
+      observed?.resource !== targetUrl ||
+      !samePaymentIdentifier(observed?.asset, selected.asset) ||
+      !samePaymentIdentifier(observed?.payTo, selected.payTo)
+    ) {
+      return {
+        abort: true,
+        reason:
+          "AgentResolver Guard evidence does not match the selected x402 payment requirements"
+      };
+    }
+
+    // Returning void lets the x402 client continue to its own caller-controlled
+    // signing and spend policy. It is not authorization from AgentResolver.
+  };
+}
