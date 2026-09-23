@@ -1,7 +1,7 @@
 {
   "name": "agentresolver-client",
-  "version": "0.1.0",
-  "description": "Framework-neutral non-custodial capability procurement client for AgentResolver.",
+  "version": "0.2.0",
+  "description": "Framework-neutral non-custodial x402 Guard and capability procurement client for AgentResolver.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,7 +11,10 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
@@ -20,6 +23,8 @@
     "agent-tools",
     "capability-discovery",
     "capability-procurement",
+    "payment-guard",
+    "pre-sign",
     "mcp",
     "x402",
     "non-custodial"
