@@ -208,7 +208,10 @@ function samePaymentIdentifier(left: unknown, right: unknown): boolean {
     return false;
   }
 
-  if (left.startsWith("0x") && right.startsWith("0x")) {
+  if (
+    left.slice(0, 2).toLowerCase() === "0x" &&
+    right.slice(0, 2).toLowerCase() === "0x"
+  ) {
     return left.toLowerCase() === right.toLowerCase();
   }
 
