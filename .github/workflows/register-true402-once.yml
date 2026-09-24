@@ -86,44 +86,38 @@ jobs:
               ;;
           esac
 
+          service_id="$(jq -r '.id // empty' "$body")"
+          if [ -z "$service_id" ]; then
+            echo "true402 registration succeeded but returned no service id." >&2
+            exit 1
+          fi
+          printf '%s' "$service_id" > /tmp/true402-service-id
+
       - name: Verify live true402 buyer catalog visibility
         shell: bash
         run: |
           set -euo pipefail
-          code="000"
-          for attempt in 1 2 3; do
-            code="$(curl -4 -sS -D /tmp/services.headers -o /tmp/services.body -w '%{http_code}' \
-              --connect-timeout 8 --max-time 20 \
-              'https://true402.dev/api/v1/services' || printf '000')"
-            echo "true402 catalog attempt $attempt -> HTTP $code"
-            if [ "$code" = "200" ]; then break; fi
-            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 2)); fi
-          done
+          service_id="$(cat /tmp/true402-service-id)"
+          code="$(curl -4 -sS -o /tmp/service.body -w '%{http_code}' \
+            --connect-timeout 8 --max-time 20 \
+            "https://true402.dev/api/v1/services/$service_id" || printf '000')"
+          echo "true402 service detail -> HTTP $code"
           test "$code" = "200"
-          grep -i '^content-type:' /tmp/services.headers || true
-          if grep -Fq 'agentresolver-settlement-ping' /tmp/services.body || grep -Fq 'agentresolver.vercel.app/api/x402-ping' /tmp/services.body; then
-            echo "AgentResolver settlement canary is present in the live true402 buyer catalog."
-            python - <<'PY'
-          import json
-          from pathlib import Path
-          data=json.loads(Path('/tmp/services.body').read_text())
-          rows=data.get('data', []) if isinstance(data, dict) else []
-          for row in rows:
-              text=json.dumps(row).lower()
-              if 'agentresolver-settlement-ping' in text or 'agentresolver.vercel.app/api/x402-ping' in text:
-                  manifest=row.get('manifest') or {}
-                  reputation=row.get('reputation') or {}
-                  print(json.dumps({
-                      'id': row.get('id'),
-                      'url': row.get('url'),
-                      'name': manifest.get('name'),
-                      'endpoint': manifest.get('endpoint'),
-                      'price': (manifest.get('pricing') or {}).get('base'),
-                      'trustScore': reputation.get('trustScore'),
-                      'registeredAt': reputation.get('registeredAt')
-                  }, indent=2))
-          PY
-          else
-            echo "true402 registration returned success but AgentResolver is absent from the live buyer catalog." >&2
-            exit 1
-          fi
+          jq -e --arg id "$service_id" '
+            .id == $id and
+            .url == "https://agentresolver.vercel.app" and
+            .manifest.name == "agentresolver-settlement-ping" and
+            .manifest.endpoint == "https://agentresolver.vercel.app/api/x402-ping" and
+            .manifest.pricing.base == "0.001"
+          ' /tmp/service.body >/dev/null
+          jq '{
+            id,
+            url,
+            name:.manifest.name,
+            endpoint:.manifest.endpoint,
+            price:.manifest.pricing.base,
+            trustScore:.reputation.trustScore,
+            registeredAt:.reputation.registeredAt,
+            lastSeen:.reputation.lastSeen
+          }' /tmp/service.body
+          echo "AgentResolver settlement canary is present in the live true402 buyer catalog."
