@@ -76,6 +76,7 @@ Three maintained integration guides:
 - [x402 core pre-sign Guard](docs/integrations/x402-core-payment-guard.md)
 - [Coinbase CDP SDK payment Guard](docs/integrations/coinbase-cdp-sdk-payment-guard.md)
 - [Thirdweb x402 payment Guard](docs/integrations/thirdweb-x402-payment-guard.md)
+- [Zero-dependency wallet/proxy Guard](docs/integrations/zero-dependency-payment-guard.md)
 
 ## Install as an Agent Skill
 
