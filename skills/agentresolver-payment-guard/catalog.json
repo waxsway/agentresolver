@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "slug": "agentresolver-payment-guard",
+  "provider": "AgentResolver",
+  "providerUrl": "https://agentresolver.vercel.app",
+  "demo": {
+    "title": "guard-before-pay.sh",
+    "language": "bash",
+    "code": "TARGET='https://merchant.example/api'\nGUARD='https://agentresolver.vercel.app/api/payment-guard'\n\n# Use an x402-capable caller-owned client to pay the separate $0.001 Guard fee.\n# Require decision=eligible before separately authorizing the merchant payment.\nprintf '%s?url=%s&method=GET&maxPriceUsd=0.05\\n' \"$GUARD\" \"$TARGET\""
+  },
+  "setup": [
+    "Install the AgentResolver Payment Guard skill.",
+    "Use a caller-owned x402-capable wallet/client for the separate Guard fee.",
+    "Keep merchant spending authorization and local wallet policy separate from Guard eligibility."
+  ],
+  "install": {
+    "type": "external",
+    "provider": "AgentResolver",
+    "command": "npx skills add waxsway/agentresolver --skill agentresolver-payment-guard -g -y",
+    "reference": null
+  }
+}
