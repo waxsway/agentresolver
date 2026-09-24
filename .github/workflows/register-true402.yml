@@ -69,7 +69,7 @@ jobs:
           fi
 
           payload="$(jq -nc --arg url "$ORIGIN" '{url:$url}')"
-          status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-register.json             -w '%{http_code}'             -X POST "$TRUE402_API/v1/services/register"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
+          status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-register.json             -w '%{http_code}'             -X POST "$TRUE402_API/v1/services"             -H 'content-type: application/json'             --data "$payload" || printf '000')"
 
           echo "true402 registration -> HTTP $status"
           case "$status" in
