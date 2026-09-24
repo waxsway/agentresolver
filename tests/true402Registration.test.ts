@@ -44,7 +44,7 @@ test("true402 lane validates the live manifest and x402 v2 canary before registr
 
 
 test("true402 visibility proof verifies the exact returned listing instead of only page one", () => {
-  assert.match(onceWorkflow, /service_id=.*jq -r '\\.id \/\/ empty'/);
+  assert.ok(onceWorkflow.includes(`service_id="$(jq -r '.id // empty' "$body")"`));
   assert.match(onceWorkflow, /v1\/services\/\$service_id/);
   assert.match(onceWorkflow, /\.manifest\.name == "agentresolver-settlement-ping"/);
   assert.doesNotMatch(onceWorkflow, /grep -Fq 'agentresolver-settlement-ping' \/tmp\/services\.body/);
