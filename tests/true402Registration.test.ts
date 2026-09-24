@@ -19,8 +19,8 @@ test("true402 manifest publishes the input-free $0.001 Base settlement canary", 
 
 test("true402 registration is zero-spend, anonymous, and manual-only after acceptance", () => {
   assert.match(workflow, /https:\/\/true402\.dev\/api/);
-  assert.match(workflow, /v1\\/services/);
-  assert.match(workflow, /POST "\$TRUE402_API\/v1\\/services"/);
+  assert.match(workflow, /v1\/services/);
+  assert.match(workflow, /POST "\$TRUE402_API\/v1\/services"/);
   assert.match(workflow, /\{url:\$url\}/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /^\s*push:/m);
