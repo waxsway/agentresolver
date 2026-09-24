@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/register-true402.yml", "utf8");
+const onceWorkflow = readFileSync(".github/workflows/register-true402-once.yml", "utf8");
 const manifest = JSON.parse(readFileSync("public/.well-known/x402-service.json", "utf8"));
 
 test("true402 manifest publishes the input-free $0.001 Base settlement canary", () => {
@@ -39,4 +40,13 @@ test("true402 lane validates the live manifest and x402 v2 canary before registr
   assert.match(workflow, /\.network == "eip155:8453"/);
   assert.match(workflow, /\.amount == "1000"/);
   assert.match(workflow, /facilitator\.payai\.network/);
+});
+
+
+test("true402 visibility proof verifies the exact returned listing instead of only page one", () => {
+  assert.match(onceWorkflow, /service_id=.*jq -r '\\.id \/\/ empty'/);
+  assert.match(onceWorkflow, /v1\/services\/\$service_id/);
+  assert.match(onceWorkflow, /\.manifest\.name == "agentresolver-settlement-ping"/);
+  assert.doesNotMatch(onceWorkflow, /grep -Fq 'agentresolver-settlement-ping' \/tmp\/services\.body/);
+  assert.match(workflow, /v1\/services\/\$service_id/);
 });
