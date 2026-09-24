@@ -92,9 +92,19 @@ jobs:
               ;;
           esac
 
-          verify_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-services-after.json             -w '%{http_code}'             "$TRUE402_API/v1/services" || printf '000')"
-          if [ "$verify_status" = "200" ] && grep -Fq 'agentresolver.vercel.app' /tmp/true402-services-after.json; then
-            echo "AgentResolver is visible in true402."
+          service_id="$(jq -r '.id // empty' /tmp/true402-register.json)"
+          if [ -z "$service_id" ]; then
+            echo "::notice::true402 accepted the registration but returned no listing id."
+            exit 0
+          fi
+
+          verify_status="$(curl -sS --connect-timeout 10 --max-time 30             -o /tmp/true402-service-after.json             -w '%{http_code}'             "$TRUE402_API/v1/services/$service_id" || printf '000')"
+          if [ "$verify_status" = "200" ] && jq -e --arg id "$service_id" '
+            .id == $id and
+            .url == "https://agentresolver.vercel.app" and
+            .manifest.endpoint == "https://agentresolver.vercel.app/api/x402-ping"
+          ' /tmp/true402-service-after.json >/dev/null; then
+            echo "AgentResolver is visible in true402 as $service_id."
           else
-            echo "::notice::true402 accepted or already knew the listing, but public catalog visibility is not confirmed yet."
+            echo "::notice::true402 accepted the listing but direct detail verification did not confirm it yet."
           fi
