@@ -50,7 +50,7 @@ jobs:
           echo "Settlement canary manifest or x402 challenge did not become ready." >&2
           exit 1
 
-      - name: Register AgentResolver with true402
+      - name: Register AgentResolver with current true402 catalog endpoint
         shell: bash
         run: |
           set -euo pipefail
@@ -60,7 +60,7 @@ jobs:
             : > "$body"
             code="$(curl -4 -sS -o "$body" -w '%{http_code}' \
               --connect-timeout 8 --max-time 20 \
-              -X POST https://true402.dev/api/v1/services/register \
+              -X POST https://true402.dev/api/v1/services \
               -H 'content-type: application/json' \
               -d '{"url":"https://agentresolver.vercel.app"}' || printf '000')"
             echo "true402 registration attempt $attempt -> HTTP $code"
