@@ -6,7 +6,7 @@ test("MCP registry metadata leads with the paid Guard and keeps procurement disc
   const server = JSON.parse(readFileSync("server.json", "utf8"));
   assert.equal(server.name, "io.github.waxsway/agentresolver");
   assert.equal(server.title, "AgentResolver Guard — Verify x402 Before Paying");
-  assert.equal(server.version, "0.2.2");
+  assert.equal(server.version, "0.2.3");
   assert.match(server.description, /\$0\.001 x402 verify-before-pay Guard/i);
   assert.match(server.description, /capability procurement/i);
   assert.match(server.description, /provider routing/i);
