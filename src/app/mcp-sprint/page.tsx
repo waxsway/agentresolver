@@ -17,7 +17,21 @@ const commercialTerms = [
   "Recurring AgentResolver fee: none for this sprint"
 ].join("\n");
 
+function sprintDepositUrl() {
+  const raw = process.env.XPAY_SPRINT_DEPOSIT_URL?.trim();
+  if (!raw) return null;
+
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function McpSprintPage() {
+  const depositUrl = sprintDepositUrl();
+
   return (
     <main>
       <div className="eyebrow">FIRST-PARTY MCP IMPLEMENTATION</div>
@@ -30,16 +44,35 @@ export default function McpSprintPage() {
       </p>
 
       <p className="actions">
-        <a
-          className="button"
-          href="mailto:wade@credscore.us?subject=AgentResolver%20MCP%20Sprint"
-        >
-          Start the $1,000 sprint
-        </a>{" "}
+        {depositUrl ? (
+          <a
+            className="button"
+            href={depositUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Pay the $500 start deposit
+          </a>
+        ) : (
+          <a
+            className="button"
+            href="mailto:wade@credscore.us?subject=AgentResolver%20MCP%20Sprint"
+          >
+            Start the $1,000 sprint
+          </a>
+        )}{" "}
         <a className="button secondary" href="/">
           See AgentResolver infrastructure
         </a>
       </p>
+
+      {depositUrl ? (
+        <p>
+          The $500 start deposit is credited toward the fixed $1,000 sprint.
+          Implementation begins only after written scope acceptance and payment
+          confirmation.
+        </p>
+      ) : null}
 
       <div className="grid">
         <section>
