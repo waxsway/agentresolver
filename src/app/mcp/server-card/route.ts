@@ -27,7 +27,7 @@ export function GET(req: Request) {
     name: "io.github.waxsway/agentresolver",
     version: "0.1.4",
     title: "AgentResolver — Agent Distribution for APIs & MCP",
-    description: "Seller-side agent distribution for API, MCP, x402, and agent-service providers: $5 launch artifacts, live route verification, provider routing, and supporting buyer-side x402 verification.",
+    description: "Seller-side agent distribution for API, MCP, x402, and agent-service providers: $5 launch artifacts, live route verification, provider routing, plus supporting verify-before-pay and settlement-receipt verification.",
     websiteUrl: "https://agentresolver.vercel.app",
     repository: { url: "https://github.com/waxsway/agentresolver", source: "github", id: "1370616809" },
     remotes: [{ type: "streamable-http", url: "https://agentresolver.vercel.app/mcp", supportedProtocolVersions: ["2026-07-28"] }],
