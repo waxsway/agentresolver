@@ -56,6 +56,11 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
   assert.deepEqual(openapi.paths?.["/api/resolve"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/health"]?.get?.security, []);
   assert.deepEqual(openapi.paths?.["/api/providers"]?.get?.security, []);
+  assert.deepEqual(openapi.paths?.["/api/agent-distribution-preview"]?.get?.security, []);
+  assert.equal(
+    openapi.paths?.["/api/agent-distribution-preview"]?.get?.operationId,
+    "agentDistributionPreview"
+  );
   assert.deepEqual(openapi.paths?.["/api/provider-attribution-verify"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/provider-bootstrap"]?.post?.security, []);
   assert.deepEqual(openapi.paths?.["/api/provider-success-fee-quote"]?.post?.security, []);
@@ -70,6 +75,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     Object.keys(openapi.paths || {}).sort(),
     [
       "/api/agent-distribution-pack",
+      "/api/agent-distribution-preview",
       "/api/api-trust-security-preflight",
       "/api/batch-verified-resolve",
       "/api/health",
