@@ -86,6 +86,16 @@ for (const path of MANIFEST_PATHS) {
   manifest.resources = (manifest.resources ?? []).filter((item: any) =>
     KEEP_RESOURCE_PATHS.has(resourcePath(item))
   );
+  manifest.description =
+    "Seller-side agent distribution for API, MCP, x402, and agent-service providers. The $5 Agent Distribution Pack audits live machine-readable launch surfaces and returns ready-to-commit discovery artifacts plus a prioritized publication sequence; buyer-side settlement and verify-before-pay utilities remain supporting infrastructure.";
+  manifest.tags = [
+    "agent-distribution",
+    "api-distribution",
+    "mcp-distribution",
+    "seller-launch",
+    "provider-growth",
+    "x402"
+  ];
   manifest.freeDiscovery = {
     ...(manifest.freeDiscovery ?? {}),
     mcp: "https://agentresolver.vercel.app/mcp",
@@ -139,6 +149,7 @@ openapi.paths = Object.fromEntries(
 );
 openapi.info = {
   ...(openapi.info ?? {}),
+  title: "AgentResolver — Agent Distribution + x402 Settlement Canary",
   description:
     "Seller-side agent distribution for API and MCP providers. The primary paid product is POST /api/agent-distribution-pack ($5 USDC), which audits live machine-readable discovery surfaces and returns ready-to-commit launch artifacts plus a prioritized distribution sequence. GET/POST /api/provider-launch-check ($0.05) verifies the live route and x402 contract as the next seller step. Buyer-side payment verification for autonomous buyers remains available as supporting infrastructure through the x402 settlement canary, on-chain receipt verification, and verify-before-pay Guard. Unrelated paid utilities stay live but are omitted from public machine discovery to reduce unpaid crawler sweeps and keep the commercial funnel focused.",
   "x-guidance":
