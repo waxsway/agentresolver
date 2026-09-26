@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.waxsway/agentresolver",
-  "title": "AgentResolver Guard — Verify x402 Before Paying",
-  "description": "Capability procurement + provider routing; $0.001 x402 verify-before-pay Guard on Base + Solana.",
-  "version": "0.2.3",
+  "title": "AgentResolver — Agent Distribution for APIs & MCP",
+  "description": "Seller-side agent distribution for APIs/MCP: $5 launch pack, live checks, provider routing.",
+  "version": "0.2.4",
   "repository": {
     "url": "https://github.com/waxsway/agentresolver",
     "source": "github"
