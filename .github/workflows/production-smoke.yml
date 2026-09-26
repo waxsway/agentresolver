@@ -44,6 +44,7 @@ jobs:
           grep -F 'agentResolverPaymentGuardGet' /tmp/openapi.json >/dev/null
           grep -F 'x402SettlementVerifyGet' /tmp/openapi.json >/dev/null
           grep -F 'providerLaunchCheckGet' /tmp/openapi.json >/dev/null
+          grep -F 'agentDistributionPack' /tmp/openapi.json >/dev/null
           jq -e '
             (.info["x-guidance"] | type == "string" and length > 0) and
             (.paths["/api/resolve"].post.security == []) and
@@ -79,6 +80,7 @@ jobs:
             ($ids | index("x402-settlement-verify") != null) and
             ($ids | index("verified-resolve") != null) and
             ($ids | index("batch-verified-resolve") != null) and
+            ($ids | index("agent-distribution-pack") != null) and
             ($ids | index("provider-launch-check") != null) and
             ($ids | index("hash-encode") == null) and
             ($ids | index("mcp-probe") == null)
@@ -92,6 +94,7 @@ jobs:
             ($ids | index("x402-settlement-verify") != null) and
             ($ids | index("verified-resolve") != null) and
             ($ids | index("batch-verified-resolve") != null) and
+            ($ids | index("agent-distribution-pack") != null) and
             ($ids | index("provider-launch-check") != null) and
             ($ids | index("hash-encode") == null) and
             ($ids | index("mcp-probe") == null)
@@ -237,6 +240,7 @@ jobs:
           check_402 'EVM Units' '/api/evm-units' '{"mode":"parse","value":"1.5","decimals":18}' 'evm-units' '5000'
           check_402 'x402 Settlement Ping' '/api/x402-ping' '{"echo":"smoke"}' 'x402-ping' '1000'
           check_402 'x402 Settlement Verify' '/api/x402-settlement-verify' '{"txHash":"0x7729766d8615c6bd052340bddc95019be20afd78c2cd39faa4812775e3227b72","expectedPayTo":"0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8","expectedAmountAtomic":"1000"}' 'x402-settlement-verify' '1000'
+          check_402 'Agent Distribution Pack' '/api/agent-distribution-pack' '{"providerName":"Smoke API","description":"Smoke seller distribution validation.","origin":"https://agentresolver.vercel.app","primaryEndpoint":"https://agentresolver.vercel.app/api/x402-ping","mcpName":"io.github.waxsway/agentresolver","mcpEndpoint":"https://agentresolver.vercel.app/mcp"}' 'agent-distribution-pack' '5000000'
           check_402 'Provider Launch Check' '/api/provider-launch-check' '{"providerId":"agentresolver-reference","providerName":"AgentResolver Reference Provider","capabilityId":"x402-ping","name":"AgentResolver x402 Settlement Ping","description":"Reference x402 service used to demonstrate paid provider launch verification.","origin":"https://agentresolver.vercel.app","endpoint":"https://agentresolver.vercel.app/api/x402-ping","method":"GET","probeUrl":"https://agentresolver.vercel.app/api/x402-ping","priceUsd":0.001,"network":"eip155:8453","tags":["x402","provider-launch","reference"]}' 'provider-launch-check' '50000'
 
           settlement_ping_required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\\r$/, ""); print; exit}' /tmp/x402-ping-headers.txt)"
