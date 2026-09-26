@@ -261,15 +261,16 @@ const marketplaceServices = PAID_CAPABILITY_LIST.map((product) => ({
 const x402Manifest = {
   x402Version: 2,
   name: "AgentResolver",
-  description: "Machine-native $0.001 x402 settlement canary plus verify-before-pay, API trust/security preflight, endpoint safety evidence, payTo verification and USDC payment verification for autonomous agents. No signup or API key.",
+  description: "Seller-side agent distribution for API, MCP, x402 and agent-service providers, with a $5 launch pack, live route checks, provider routing, and supporting buyer-side x402 verification. No signup or API key.",
   category: "Developer Tools",
   tags: [
+    "agent-distribution",
+    "mcp-distribution",
+    "api-distribution",
+    "provider-launch",
     "x402",
     "agent-payments",
-    "settlement-test",
-    "payment-canary",
     "payment-preflight",
-    "payto-verification",
     "usdc",
     "base",
     "solana"
@@ -343,7 +344,7 @@ const x402Manifest = {
     procure: `${CANONICAL_ORIGIN}/api/procure`,
     resolve: `${CANONICAL_ORIGIN}/api/resolve`
   },
-  instructions: "For the cheapest end-to-end paid integration check, call GET /api/x402-ping for $0.001 USDC. Before authorizing a target x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint>; POST remains supported for body-bearing compatibility. Free procure is the preferred constrained capability-selection surface; free resolve remains available for broad discovery. A 402 is a quote, never spending authorization."
+  instructions: "Providers launching an API, MCP server, x402 service or agent product should start with POST /api/agent-distribution-pack for the $5 seller launch package, then use /api/provider-launch-check for live route verification. Buyer-side Guard and settlement tools remain available as supporting infrastructure. A 402 is a quote, never spending authorization."
 };
 
 for (const path of X402_MANIFEST_PATHS) {
@@ -394,15 +395,15 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  title: "AgentResolver — X402 Settlement Canary & Payment Preflight",
-  description: "Machine-readable x402 settlement testing and transaction-path verification for autonomous buyers. For the lowest-friction first paid integration, GET /api/x402-ping settles $0.001 USDC on Base or Solana and returns a timestamped delivery canary. Before authorizing a target x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint> to check endpoint reachability, PAYMENT-REQUIRED structure, payTo recipient, quoted price, network, asset, exact scheme and resource binding, then receive a fail-closed eligible/blocked decision and reusable evidence fingerprints. POST remains available for body-bearing compatibility. Free capability resolution remains available as a secondary surface.",
+  title: "AgentResolver — Agent Distribution for APIs & MCP",
+  description: "Seller-side agent distribution for APIs, MCP servers, x402 services and agent products. The $5 Agent Distribution Pack audits live machine-readable launch surfaces and returns launch-ready discovery artifacts plus a prioritized distribution sequence. Provider Launch Check adds live route and payment-contract verification. Buyer-side x402 Guard, settlement verification and free procurement remain supporting infrastructure.",
   version: "0.1.6",
   contact: {
     name: "AgentResolver",
     url: "https://github.com/waxsway/agentresolver"
   },
   termsOfService: "https://agentresolver.vercel.app/legal",
-  "x-guidance": "For a first paid integration or end-to-end settlement check, use GET /api/x402-ping: it costs $0.001 USDC on Base or Solana, requires no request body, and returns a timestamped pong only after successful x402 settlement. Immediately before authorizing a separate x402 purchase, prefer GET /api/x402-payment-preflight?url=<https-endpoint> as the canonical transaction-path verification gate; it costs $0.001 USDC and returns eligible/blocked, exact observed target payment terms, fail-closed reason codes, structured endpoint/payment evidence, and stable fingerprints. POST remains available for body-bearing compatibility. The caller remains the only party that can authorize spend. Use POST /api/procure for free constrained capability procurement and POST /api/resolve for broad free discovery. Payment is always caller-authorized."
+  "x-guidance": "Primary seller workflow: call POST /api/agent-distribution-pack for the $5 launch package, publish the returned machine-readable artifacts, then run /api/provider-launch-check against the live route. Buyer-side Guard and settlement verification remain available for autonomous payment workflows. Use POST /api/procure for free constrained capability procurement. Payment is always caller-authorized."
 };
 openapi.paths ||= {};
 if (openapi.paths["/api/resolve"]?.post) {
