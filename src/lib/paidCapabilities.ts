@@ -518,6 +518,52 @@ export const PAID_CAPABILITIES = {
       description: "Paid $0.05 USDC on Base or Solana batch live verification for 2–4 capability decisions using unpaid MCP and x402/HTTP evidence. x402-aware MCP clients can authorize and settle inside this tool call."
     }
   },
+  "agent-distribution-pack": {
+    id: "agent-distribution-pack",
+    name: "Agent Distribution Pack",
+    operationId: "agentDistributionPack",
+    endpoint: "/api/agent-distribution-pack",
+    price: "$5.00",
+    priceUsd: 5,
+    atomicAmount: "5000000",
+    description: "Seller-side launch pack for API and MCP providers. Audits live machine-readable discovery surfaces, diagnoses missing launch signals, and returns ready-to-commit discovery artifacts plus a prioritized distribution sequence.",
+    useWhen: "An API, MCP server, or agent service is technically live but needs a concrete machine-distribution package rather than another generic readiness score.",
+    costClass: "bounded-network",
+    tags: ["agent distribution", "mcp discoverability", "api discoverability", "llms.txt", "mcp registry", "seller launch", "provider growth"],
+    inputSchema: {
+      type: "object",
+      required: ["providerName", "description", "origin"],
+      additionalProperties: false,
+      properties: {
+        providerName: { type: "string", minLength: 1, maxLength: 120 },
+        description: { type: "string", minLength: 1, maxLength: 500 },
+        origin: { type: "string", pattern: "^https://" },
+        primaryEndpoint: { type: "string", pattern: "^https://" },
+        openapiUrl: { type: "string", pattern: "^https://" },
+        mcpName: { type: "string", maxLength: 160 },
+        mcpEndpoint: { type: "string", pattern: "^https://" },
+        repositoryUrl: { type: "string", pattern: "^https://" },
+        version: { type: "string", maxLength: 40 },
+        tags: { type: "array", maxItems: 12, items: { type: "string", maxLength: 60 } }
+      }
+    },
+    example: {
+      providerName: "Example API",
+      description: "Current structured data for autonomous agents.",
+      origin: "https://api.example.com",
+      primaryEndpoint: "https://api.example.com/v1/search",
+      openapiUrl: "https://api.example.com/openapi.json",
+      mcpName: "com.example/api",
+      mcpEndpoint: "https://api.example.com/mcp",
+      repositoryUrl: "https://github.com/example/api",
+      tags: ["search", "data", "agents"]
+    },
+    quoteTool: {
+      name: "agent_distribution_pack",
+      title: "Agent distribution pack — $5",
+      description: "Paid $5 USDC seller-side launch pack: live discovery audit, ready-to-commit agent-readable artifacts, and a prioritized API/MCP distribution sequence."
+    }
+  },
   "provider-launch-check": {
     id: "provider-launch-check",
     name: "Provider Launch Check",

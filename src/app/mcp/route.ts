@@ -20,6 +20,7 @@ import { callerHash, classifyIntent, safeUserAgent, shortHash } from "@/lib/tele
 import { classifyTraffic } from "@/lib/trafficClassification";
 import { resolveProviderRoutes } from "@/lib/providerNetwork";
 import { parseProviderLaunchCheckInput, runProviderLaunchCheck } from "@/lib/providerLaunchCheck";
+import { buildAgentDistributionPack, parseAgentDistributionPackInput } from "@/lib/agentDistributionPack";
 import { procureCapability } from "@/lib/procureCapability";
 import type { ProcurementConstraints } from "@/lib/procurement";
 import {
@@ -79,6 +80,7 @@ const readinessProduct = getPaidCapability("agent-readiness");
 const openApiSelectProduct = getPaidCapability("openapi-select");
 const verifiedResolveProduct = getPaidCapability("verified-resolve");
 const batchVerifiedResolveProduct = getPaidCapability("batch-verified-resolve");
+const agentDistributionPackProduct = getPaidCapability("agent-distribution-pack");
 const providerLaunchCheckProduct = getPaidCapability("provider-launch-check");
 
 const x402PingNextActionSchema = z.looseObject({
@@ -200,7 +202,7 @@ async function logMcpRequest(req: Request) {
 
 const handler = createMcpHandler(() => {
   const server = new McpServer({ name: "agentresolver", version: "0.1.4" }, {
-    instructions: "AgentResolver is an open-world capability procurement and verification service. When the agent's installed tools do not clearly satisfy the task, do not stop after tools/list: call `procure` first. Procure is free and fail-closed; it will not select an external capability whose required evidence is unknown. If procurement cannot prove a candidate and live verification would resolve the uncertainty, use `verified_resolve` as the paid $0.02 next step only when the calling host independently authorizes that spend. Use `resolve` only for broad exploratory discovery. Providers can call `sponsorship_info`; sponsorship never changes organic ranking. Priced tools are payable over x402 inside MCP, unpaid calls never execute paid work, and AgentResolver never authorizes spending."
+    instructions: "AgentResolver is primarily a seller-side distribution service for API, MCP, and agent providers, with buyer-side procurement and verification as supporting infrastructure. Providers preparing a public launch should use `agent_distribution_pack` for the $5 launch package, then `provider_launch_check` for live route verification. AgentResolver is also an open-world capability procurement and verification service. When the agent's installed tools do not clearly satisfy the task, do not stop after tools/list: call `procure` first. Procure is free and fail-closed; it will not select an external capability whose required evidence is unknown. If procurement cannot prove a candidate and live verification would resolve the uncertainty, use `verified_resolve` as the paid $0.02 next step only when the calling host independently authorizes that spend. Use `resolve` only for broad exploratory discovery. Providers can call `sponsorship_info`; sponsorship never changes organic ranking. Priced tools are payable over x402 inside MCP, unpaid calls never execute paid work, and AgentResolver never authorizes spending."
   });
 
   server.registerTool("sponsorship_info", {
@@ -851,6 +853,50 @@ const handler = createMcpHandler(() => {
       at: new Date().toISOString(),
       score: report.score,
       grade: report.grade
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(report) }],
+      structuredContent: report as unknown as Record<string, unknown>
+    };
+  }));
+
+  server.registerTool("agent_distribution_pack", {
+    title: agentDistributionPackProduct.quoteTool.title,
+    description: agentDistributionPackProduct.quoteTool.description,
+    inputSchema: z.object({
+      providerName: z.string().min(1).max(120),
+      description: z.string().min(1).max(500),
+      origin: z.string().url(),
+      primaryEndpoint: z.string().url().optional(),
+      openapiUrl: z.string().url().optional(),
+      mcpName: z.string().max(160).optional(),
+      mcpEndpoint: z.string().url().optional(),
+      repositoryUrl: z.string().url().optional(),
+      version: z.string().max(40).optional(),
+      tags: z.array(z.string().max(60)).max(12).optional()
+    }),
+    annotations: {
+      title: agentDistributionPackProduct.quoteTool.title,
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true
+    }
+  }, createLazyPaidMcpTool<Record<string, unknown>>("agent-distribution-pack", async (input) => {
+    logToolCall("agent_distribution_pack", {
+      priceUsd: agentDistributionPackProduct.priceUsd,
+      mode: "direct_paid_mcp"
+    });
+    const parsed = parseAgentDistributionPackInput(input);
+    const report = await buildAgentDistributionPack(parsed);
+    console.log(JSON.stringify({
+      event: "paid_capability_completed",
+      capabilityId: "agent-distribution-pack",
+      surface: "mcp",
+      at: new Date().toISOString(),
+      origin: parsed.origin,
+      baselineScore: report.baseline.score,
+      missingSurfaceCount: report.diagnosis.missingSurfaceCount
     }));
     return {
       content: [{ type: "text", text: JSON.stringify(report) }],
