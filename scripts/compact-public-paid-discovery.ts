@@ -87,14 +87,15 @@ for (const path of MANIFEST_PATHS) {
     KEEP_RESOURCE_PATHS.has(resourcePath(item))
   );
   manifest.description =
-    "Seller-side agent distribution for API, MCP, x402, and agent-service providers. The $5 Agent Distribution Pack audits live machine-readable launch surfaces and returns ready-to-commit discovery artifacts plus a prioritized publication sequence; buyer-side settlement and verify-before-pay utilities remain supporting infrastructure.";
+    "Seller-side agent distribution for API, MCP, x402, and agent-service providers. The $5 Agent Distribution Pack audits live machine-readable launch surfaces and returns ready-to-commit discovery artifacts plus a prioritized publication sequence; buyer-side settlement and payment verification utilities remain supporting infrastructure.";
   manifest.tags = [
     "agent-distribution",
     "api-distribution",
     "mcp-distribution",
     "seller-launch",
     "provider-growth",
-    "x402"
+    "x402",
+    "payment-canary"
   ];
   manifest.freeDiscovery = {
     ...(manifest.freeDiscovery ?? {}),
