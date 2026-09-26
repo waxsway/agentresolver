@@ -31,6 +31,7 @@ test("public machine surfaces focus on the revenue funnel while the runtime regi
     "x402-settlement-verify",
     "verified-resolve",
     "batch-verified-resolve",
+    "agent-distribution-pack",
     "provider-launch-check"
   ]);
 
@@ -92,7 +93,7 @@ test("canonical preflight vocabulary covers broad buyer discovery intents", () =
 test("focused public paid operations retain machine-invocable response schemas", () => {
   const x402 = readJson("public/.well-known/x402");
   const openapi = readJson("public/openapi.json");
-  for (const id of ["x402-ping", "x402-payment-preflight", "x402-settlement-verify", "verified-resolve", "batch-verified-resolve", "provider-launch-check"]) {
+  for (const id of ["x402-ping", "x402-payment-preflight", "x402-settlement-verify", "verified-resolve", "batch-verified-resolve", "agent-distribution-pack", "provider-launch-check"]) {
     const product = PAID_CAPABILITY_LIST.find((item) => item.id === id);
     assert.ok(product, `missing paid product ${id}`);
     const resource = x402.resources.find((item: any) => item.resource === `POST ${product.endpoint}`);
