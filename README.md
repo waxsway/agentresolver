@@ -1,10 +1,21 @@
-# AgentResolver Guard
+# AgentResolver
 
-**AgentResolver Guard is a pre-sign safety check for autonomous x402 payments.**
+**AgentResolver is a seller-side agent-distribution layer for APIs, MCP servers, x402 services, and agent products.**
 
-An agent is about to pay an unfamiliar or changed x402 endpoint. Before the target wallet signs, Guard reads the target's live payment challenge, validates the payment contract, and returns a fail-closed decision plus evidence the caller can bind to its own policy.
+The primary customer is a provider that already has software to sell and needs that software to be legible, discoverable, and callable by AI agents.
 
-**Production:** https://agentresolver.vercel.app
+Primary commercial workflow:
+
+- **$5 Agent Distribution Pack** — audits the public origin and returns launch-ready `llms.txt`, MCP Registry metadata when applicable, crawler-discovery additions, MCP client config, and a prioritized distribution sequence.
+- **$0.05 Provider Launch Check** — live seller-side route and x402 contract verification before AgentResolver provider-network review.
+- **$1,000 MCP Implementation Sprint** — higher-touch implementation for companies that want a first-party MCP layer built for them.
+
+**Production:** https://agentresolver.vercel.app  
+**Seller launch page:** https://agentresolver.vercel.app/distribution
+
+## Supporting buyer-side infrastructure: Guard
+
+AgentResolver Guard remains a pre-sign safety check for autonomous x402 payments. Before the target wallet signs, Guard reads the target's live payment challenge, validates the payment contract, and returns a fail-closed decision plus evidence the caller can bind to its own policy.
 
 ## What Guard checks
 
