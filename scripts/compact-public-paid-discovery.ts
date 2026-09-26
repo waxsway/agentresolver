@@ -27,6 +27,7 @@ const KEEP_OPENAPI_PATHS = new Set([
   "/api/provider-success-fee-quote",
   "/api/provider-success-fee-verify",
   "/api/health",
+  "/api/agent-distribution-preview",
   "/api/x402-ping",
   "/api/x402-payment-preflight",
   "/api/payment-guard",
@@ -101,7 +102,9 @@ for (const path of MANIFEST_PATHS) {
     ...(manifest.freeDiscovery ?? {}),
     mcp: "https://agentresolver.vercel.app/mcp",
     procure: "https://agentresolver.vercel.app/api/procure",
-    resolve: "https://agentresolver.vercel.app/api/resolve"
+    resolve: "https://agentresolver.vercel.app/api/resolve",
+    distributionPreview:
+      "https://agentresolver.vercel.app/api/agent-distribution-preview?origin=https%3A%2F%2Fapi.example.com"
   };
   manifest.instructions =
     "For API, MCP, and agent-service sellers, the primary paid funnel is POST /api/agent-distribution-pack ($5 USDC) for a live discoverability audit, ready-to-commit launch artifacts, and a prioritized publication sequence, followed by GET or POST /api/provider-launch-check ($0.05) for live route/payment-contract verification before provider-network review. Free capability discovery and procurement remain available through POST /api/resolve and POST /api/procure; free provider bootstrap remains at /api/provider-bootstrap. Buyer-side payment verification for autonomous buyers remains supporting infrastructure: GET /api/x402-ping for the settlement canary, GET /api/x402-settlement-verify after Base settlement, and GET /api/x402-payment-preflight before a target x402 purchase; POST remains supported where applicable. POST /api/verified-resolve and POST /api/batch-verified-resolve remain available for paid live-verified buyer decisions. Other paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid crawler sweeps and keep the seller funnel focused. A 402 is a quote, never spending authorization.";
@@ -113,6 +116,20 @@ capabilities.capabilities = (capabilities.capabilities ?? []).filter((item: any)
   const priceUsd = Number(item?.priceUsd ?? 0);
   return priceUsd === 0 || KEEP_PAID_IDS.has(String(item?.id ?? ""));
 });
+if (!capabilities.capabilities.some((item: any) => item?.id === "agent-distribution-preview")) {
+  capabilities.capabilities.unshift({
+    id: "agent-distribution-preview",
+    name: "Agent Distribution Preview",
+    description:
+      "Free bounded preview for API/MCP sellers: inspect one public origin, see the current machine-readiness score and highest-priority discovery gaps, then upgrade to the $5 Distribution Pack for generated launch artifacts and the full publication sequence.",
+    tags: ["agent distribution", "api distribution", "mcp distribution", "seller preview"],
+    priceUsd: 0,
+    mode: "owned",
+    status: "live",
+    endpoint: "/api/agent-distribution-preview",
+    method: "GET"
+  });
+}
 writeJson("public/capabilities.json", capabilities);
 
 const integrations = readJson("public/integrations.json");
@@ -148,6 +165,29 @@ const openapi = readJson("public/openapi.json");
 openapi.paths = Object.fromEntries(
   Object.entries(openapi.paths ?? {}).filter(([path]) => KEEP_OPENAPI_PATHS.has(path))
 );
+openapi.paths["/api/agent-distribution-preview"] = {
+  get: {
+    operationId: "agentDistributionPreview",
+    tags: ["Agent Distribution"],
+    summary: "Preview agent-distribution gaps before paying",
+    description:
+      "Free bounded seller preview. Audits one public API/MCP origin and returns its readiness score plus the top missing machine-readable surfaces. Generated files and the full launch sequence remain in the paid $5 Agent Distribution Pack.",
+    security: [],
+    parameters: [
+      {
+        name: "origin",
+        in: "query",
+        required: true,
+        schema: { type: "string", format: "uri" },
+        description: "Public API, MCP, x402, or agent-service origin to inspect."
+      }
+    ],
+    responses: {
+      "200": { description: "Seller-specific free distribution preview." },
+      "400": { description: "Invalid, private, or missing public origin." }
+    }
+  }
+};
 openapi.info = {
   ...(openapi.info ?? {}),
   title: "AgentResolver — Agent Distribution + x402 Settlement Canary",
