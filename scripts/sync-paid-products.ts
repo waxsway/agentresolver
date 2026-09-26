@@ -261,7 +261,7 @@ const marketplaceServices = PAID_CAPABILITY_LIST.map((product) => ({
 const x402Manifest = {
   x402Version: 2,
   name: "AgentResolver",
-  description: "Seller-side agent distribution for API, MCP, x402 and agent-service providers, with a $5 launch pack, live route checks, provider routing, and supporting buyer-side x402 verification. No signup or API key.",
+  description: "Seller-side agent distribution for API, MCP, x402 and agent-service providers, with a $5 launch pack, live route checks, provider routing, and supporting buyer-side x402 payment verification. No signup or API key.",
   category: "Developer Tools",
   tags: [
     "agent-distribution",
@@ -270,6 +270,7 @@ const x402Manifest = {
     "provider-launch",
     "x402",
     "agent-payments",
+    "payment-canary",
     "payment-preflight",
     "usdc",
     "base",
@@ -395,7 +396,7 @@ writeJson("public/integrations.json", integrations);
 const openapi = readJson("public/openapi.json");
 openapi.info = {
   ...openapi.info,
-  title: "AgentResolver — Agent Distribution for APIs & MCP",
+  title: "AgentResolver — Agent Distribution + x402 Settlement Canary",
   description: "Seller-side agent distribution for APIs, MCP servers, x402 services and agent products. The $5 Agent Distribution Pack audits live machine-readable launch surfaces and returns launch-ready discovery artifacts plus a prioritized distribution sequence. Provider Launch Check adds live route and payment-contract verification. Buyer-side x402 Guard, settlement verification and free procurement remain supporting infrastructure.",
   version: "0.1.6",
   contact: {
