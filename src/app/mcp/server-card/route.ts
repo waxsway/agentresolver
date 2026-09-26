@@ -26,11 +26,19 @@ export function GET(req: Request) {
     $schema: "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
     name: "io.github.waxsway/agentresolver",
     version: "0.1.4",
-    title: "AgentResolver Guard — x402 Verify Before Pay",
-    description: "Paid x402 payment verification for autonomous agents: $0.001 USDC verify-before-pay Guard plus $0.001 Base USDC settlement-receipt verification, with free capability discovery and non-custodial provider routing.",
+    title: "AgentResolver — Agent Distribution for APIs & MCP",
+    description: "Seller-side agent distribution for API, MCP, x402, and agent-service providers: $5 launch artifacts, live route verification, provider routing, and supporting buyer-side x402 verification.",
     websiteUrl: "https://agentresolver.vercel.app",
     repository: { url: "https://github.com/waxsway/agentresolver", source: "github", id: "1370616809" },
     remotes: [{ type: "streamable-http", url: "https://agentresolver.vercel.app/mcp", supportedProtocolVersions: ["2026-07-28"] }],
+    sellerDistribution: {
+      landingPage: `${baseUrl}/distribution`,
+      distributionPack: `${baseUrl}/api/agent-distribution-pack`,
+      distributionPackPriceUsd: 5,
+      liveLaunchCheck: `${baseUrl}/api/provider-launch-check`,
+      liveLaunchCheckPriceUsd: 0.05,
+      implementationSprint: `${baseUrl}/mcp-sprint`
+    },
     providerNetwork: {
       registry: `${baseUrl}/api/providers`,
       execute: `${baseUrl}/api/execute`,
