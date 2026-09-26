@@ -190,6 +190,14 @@ export async function runProviderLaunchCheck(input: ProviderLaunchCheckInput) {
       verificationEndpoint: "https://agentresolver.vercel.app/api/provider-attribution-verify",
       settlementEndpoint: "https://agentresolver.vercel.app/api/provider-attribution-settle"
     },
+    next: {
+      distributionPack: {
+        capabilityId: "agent-distribution-pack",
+        endpoint: "https://agentresolver.vercel.app/api/agent-distribution-pack",
+        priceUsd: 5,
+        useWhen: "Use the full Distribution Pack when the seller needs API/MCP discoverability diagnosis, ready-to-commit launch artifacts, or a prioritized publication sequence."
+      }
+    },
     submission: {
       registryPath: "config/provider-partners.json",
       repository: "waxsway/agentresolver",
