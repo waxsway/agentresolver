@@ -30,7 +30,9 @@ export default function DistributionPage() {
         AgentResolver now focuses on the seller side of the agent economy.
         The paid Distribution Pack audits your live machine-readable surfaces,
         identifies the launch gaps, and returns ready-to-commit discovery
-        artifacts plus a concrete publication sequence.
+        artifacts plus a concrete publication sequence. If you already sell
+        through x402 and only need to verify the live route/payment contract,
+        the $0.05 Provider Launch Check is the lower-friction entry point.
       </p>
 
       <p className="actions">
@@ -84,12 +86,13 @@ export default function DistributionPage() {
         caller-authorized x402 USDC on Base or Solana.
       </p>
 
-      <h2>Then verify the live route</h2>
+      <h2>Two entry points, one seller funnel</h2>
       <p>
-        Once the discovery files are published, the existing $0.05 Provider
-        Launch Check verifies the seller's live route and x402 contract before
-        AgentResolver provider-network review. Distribution and verification are
-        now one seller funnel rather than unrelated products.
+        x402 sellers can start with the $0.05 Provider Launch Check when they
+        only need live route and payment-contract verification. Sellers that
+        need discoverability diagnosis or files to ship use the $5 Distribution
+        Pack. Both feed the same provider-network review and downstream
+        attribution path.
       </p>
 
       <p className="links">
