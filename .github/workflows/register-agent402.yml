@@ -146,7 +146,21 @@ jobs:
           for q in "${queries[@]}"; do
             encoded="$(python -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$q")"
             echo "=== QUERY: $q ==="
-            curl -fsS "https://agent402.tools/api/route?q=$encoded&include=external" -o /tmp/route.json
+            route_ok=false
+            for attempt in 1 2 3; do
+              if curl -fsS --connect-timeout 5 --max-time 20 \
+                "https://agent402.tools/api/route?q=$encoded&include=external" \
+                -o /tmp/route.json; then
+                route_ok=true
+                break
+              fi
+              echo "::warning::Agent402 route query failed for '$q' attempt $attempt/3"
+              sleep "$attempt"
+            done
+            if [ "$route_ok" != "true" ]; then
+              echo "{\"query\":\"$q\",\"agentresolverRank\":null,\"status\":\"upstream_unavailable\"}"
+              continue
+            fi
             python - "$q" /tmp/route.json <<'PY'
           import json,sys
           q=sys.argv[1]
