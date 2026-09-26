@@ -139,6 +139,8 @@ jobs:
             "API discoverability for AI agents"
             "provider launch check"
             "x402 settlement test"
+            "x402 settlement verify"
+            "payment receipt verification"
             "verify endpoint before paying"
           )
           for q in "${queries[@]}"; do
