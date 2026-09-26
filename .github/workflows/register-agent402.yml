@@ -38,6 +38,22 @@ jobs:
           assert any(str(item.get("amount")) == "1000" for item in accepts), "x402-ping $0.001 option missing"
           PY
 
+          pack_code=$(curl -sS -o /tmp/distribution-pack.json -w '%{http_code}' \
+            -X GET 'https://agentresolver.vercel.app/api/agent-distribution-pack' \
+            -H 'x-agentresolver-internal: 1')
+          test "$pack_code" = "402"
+          python3 - <<'PY'
+          import json
+          payload=json.load(open("/tmp/distribution-pack.json","r",encoding="utf-8"))
+          accepts=payload.get("accepts") or []
+          assert any(str(item.get("amount")) == "5000000" for item in accepts), "Distribution Pack $5 option missing"
+          PY
+          curl -fsS -H 'x-agentresolver-internal: 1'             'https://agentresolver.vercel.app/.well-known/x402' -o /tmp/x402.json
+          jq -e '
+            any(.services[]?; .id == "agent-distribution-pack" and .price_usdc == "5") and
+            any(.resources[]?; .resource == "POST /api/agent-distribution-pack")
+          ' /tmp/x402.json >/dev/null
+
       - name: Register origin with Agent402 free index
         id: register
         run: |
@@ -115,17 +131,15 @@ jobs:
         run: |
           set -euo pipefail
           queries=(
-            "api trust security preflight"
-            "x402 preflight"
+            "agent distribution"
+            "API agent distribution"
+            "MCP discoverability"
+            "MCP distribution"
+            "agent service launch"
+            "API discoverability for AI agents"
+            "provider launch check"
             "x402 settlement test"
-            "x402 settlement verify"
-            "payment receipt verification"
-            "payTo verification"
-            "endpoint safety"
-            "USDC payment check"
             "verify endpoint before paying"
-            "x402 transaction path payment gate"
-            "prepayment authorization gate"
           )
           for q in "${queries[@]}"; do
             encoded="$(python -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$q")"
