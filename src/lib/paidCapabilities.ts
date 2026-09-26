@@ -526,8 +526,8 @@ export const PAID_CAPABILITIES = {
     price: "$5.00",
     priceUsd: 5,
     atomicAmount: "5000000",
-    description: "Seller-side launch pack for API and MCP providers. Audits live machine-readable discovery surfaces, diagnoses missing launch signals, and returns ready-to-commit discovery artifacts plus a prioritized distribution sequence.",
-    useWhen: "An API, MCP server, or agent service is technically live but needs a concrete machine-distribution package rather than another generic readiness score.",
+    description: "Seller-side agent distribution pack for API agent distribution, API discoverability for AI agents, MCP discoverability, MCP distribution, and agent-service launch. Audits live machine-readable discovery surfaces, diagnoses missing launch signals, and returns ready-to-commit discovery artifacts plus a prioritized distribution sequence.",
+    useWhen: "An API, MCP server, x402 service, or agent service is technically live and needs agent distribution, MCP discoverability, API discoverability, launch artifacts, or a concrete machine-distribution sequence.",
     costClass: "bounded-network",
     tags: ["agent distribution", "mcp discoverability", "api discoverability", "llms.txt", "mcp registry", "seller launch", "provider growth"],
     inputSchema: {
@@ -561,7 +561,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "agent_distribution_pack",
       title: "Agent distribution pack — $5",
-      description: "Paid $5 USDC seller-side launch pack: live discovery audit, ready-to-commit agent-readable artifacts, and a prioritized API/MCP distribution sequence."
+      description: "Paid $5 USDC seller-side agent distribution pack for API/MCP discoverability: live discovery audit, ready-to-commit agent-readable artifacts, and a prioritized API/MCP distribution sequence."
     }
   },
   "provider-launch-check": {
@@ -572,10 +572,10 @@ export const PAID_CAPABILITIES = {
     price: "$0.05",
     priceUsd: 0.05,
     atomicAmount: "50000",
-    description: "Paid seller-side readiness and x402 contract verification for providers that want AgentResolver distribution. Produces a bounded registryEntry only after settlement and technical checks.",
-    useWhen: "A machine-service provider wants to join the AgentResolver provider network and needs a paid readiness/payment-contract check before submitting its registry entry.",
+    description: "Paid $0.05 low-friction x402 seller entry check for agent distribution. Verifies provider launch readiness and the live x402 contract before AgentResolver provider-network review; use the $5 Agent Distribution Pack when API/MCP discoverability artifacts or launch fixes are needed.",
+    useWhen: "An x402 machine-service seller wants a low-cost provider launch check before deeper agent distribution work, or wants to verify its payment route before AgentResolver provider-network review.",
     costClass: "bounded-network",
-    tags: ["provider onboarding", "seller verification", "agent distribution", "x402", "provider network", "launch check"],
+    tags: ["provider onboarding", "seller verification", "agent distribution", "api agent distribution", "mcp distribution", "agent service launch", "x402", "provider network", "launch check"],
     inputSchema: {
       type: "object",
       required: ["providerId", "providerName", "capabilityId", "name", "description", "origin", "endpoint", "priceUsd"],
@@ -611,7 +611,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "provider_launch_check",
       title: "Provider launch check — $0.05",
-      description: "Paid $0.05 USDC seller-side readiness and x402 contract verification before AgentResolver provider-network review."
+      description: "Paid $0.05 USDC seller-side agent-distribution entry check: verify provider readiness and the live x402 contract, then use the $5 Distribution Pack when discoverability artifacts or launch fixes are needed."
     }
   },
   "provider-attribution-settle": {
