@@ -43,3 +43,12 @@ test("distribution page exposes the free preview before the paid CTA", () => {
   assert.ok(paidIndex > previewIndex);
   assert.match(source, /Preview my distribution gaps — free/);
 });
+
+
+test("machine discovery keeps the free seller preview visible", () => {
+  const source = readFileSync("scripts/compact-public-paid-discovery.ts", "utf8");
+  assert.match(source, /agent-distribution-preview/);
+  assert.match(source, /agentDistributionPreview/);
+  assert.match(source, /priceUsd: 0/);
+  assert.match(source, /Generated files and the full launch sequence remain in the paid \$5 Agent Distribution Pack/);
+});
