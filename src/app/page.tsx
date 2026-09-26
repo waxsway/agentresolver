@@ -88,7 +88,7 @@ export default function Home() {
       </section>
 
       <section>
-        <div className="eyebrow">HOSTED MCP</div>
+        <div className="eyebrow">HOSTED MCP CONNECTOR</div>
         <h2>AgentResolver itself is callable over MCP.</h2>
         <p>
           Hosted endpoint: <code>https://agentresolver.vercel.app/mcp</code>.
@@ -106,7 +106,7 @@ export default function Home() {
         <div className="eyebrow">HIGHER-TOUCH OPTION</div>
         <h2>Need us to implement the first-party MCP layer?</h2>
         <p>
-          The fixed $1,000 MCP implementation sprint remains available for
+          The fixed $1,000 implementation sprint remains available for
           companies that want implementation rather than a self-serve
           distribution pack.
         </p>
