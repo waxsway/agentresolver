@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { NextRequest } from "next/server";
 import { parseAgentDistributionPackInput } from "../src/lib/agentDistributionPack";
+import { GET } from "../src/app/api/agent-distribution-pack/route";
 
 test("distribution pack accepts a bounded same-origin seller launch packet", () => {
   const parsed = parseAgentDistributionPackInput({
@@ -60,4 +62,17 @@ test("distribution pack survives focused public catalog compaction", () => {
     openapi.paths["/api/agent-distribution-pack"].post.operationId,
     "agentDistributionPack"
   );
+});
+
+
+test("distribution pack exposes a browser-safe unpaid GET quote", async () => {
+  const response = await GET(new NextRequest(
+    "https://agentresolver.vercel.app/api/agent-distribution-pack",
+    { headers: { "user-agent": "agentresolver-test" } }
+  ));
+  assert.equal(response.status, 402);
+  const body = await response.json() as any;
+  assert.equal(body.x402Version, 2);
+  assert.ok(Array.isArray(body.accepts));
+  assert.ok(body.accepts.some((item: any) => String(item.amount) === "5000000"));
 });
