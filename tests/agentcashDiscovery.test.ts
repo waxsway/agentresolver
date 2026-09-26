@@ -65,10 +65,11 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     .map((item: any) => item?.post)
     .filter((op: any) => op?.tags?.includes("Paid Agent Capabilities"));
 
-  assert.equal(paid.length, 12);
+  assert.equal(paid.length, 13);
   assert.deepEqual(
     Object.keys(openapi.paths || {}).sort(),
     [
+      "/api/agent-distribution-pack",
       "/api/api-trust-security-preflight",
       "/api/batch-verified-resolve",
       "/api/health",
@@ -105,12 +106,13 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
 });
 
 
-test("public discovery stays focused on the settlement-to-Guard revenue funnel", () => {
+test("public discovery leads with seller distribution while preserving the supporting buyer funnel", () => {
   const manifest = JSON.parse(readFileSync("public/.well-known/x402", "utf8"));
   const capabilities = JSON.parse(readFileSync("public/capabilities.json", "utf8"));
   const integrations = JSON.parse(readFileSync("public/integrations.json", "utf8"));
 
   const paidIds = new Set([
+    "agent-distribution-pack",
     "x402-ping",
     "x402-payment-preflight",
     "x402-settlement-verify",
@@ -127,6 +129,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   ]);
   const publicServiceIds = new Set([...paidIds, ...intentAliasIds]);
   const publicResourcePaths = new Set([
+    "/api/agent-distribution-pack",
     "/api/x402-ping",
     "/api/x402-payment-preflight",
     "/api/payment-guard",
@@ -159,6 +162,8 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   const integrationIds = (integrations.paidActions || []).map((item: any) => item.id);
   assert.deepEqual(integrationIds.sort(), [...paidIds].sort());
 
+  assert.match(manifest.instructions || "", /POST \/api\/agent-distribution-pack/i);
   assert.match(manifest.instructions || "", /intentionally omitted from public machine catalogs/i);
+  assert.match(openapi.info?.description || "", /Agent Distribution/i);
   assert.match(openapi.info?.description || "", /reduce unpaid crawler sweeps/i);
 });

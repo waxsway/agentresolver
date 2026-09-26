@@ -34,8 +34,8 @@ export default function DistributionPage() {
       </p>
 
       <p className="actions">
-        <a className="button" href="/api/agent-distribution-pack">
-          See the $5 USDC quote
+        <a className="button" href="/openapi.json">
+          View the $5 API contract
         </a>{" "}
         <a className="button secondary" href="/api/provider-launch-check">
           $0.05 live launch check
@@ -80,7 +80,9 @@ export default function DistributionPage() {
       <p>
         A current readiness baseline, missing-surface diagnosis, generated
         discovery artifacts, distribution-target status, and a prioritized
-        launch sequence. No account or subscription is required; payment is
+        launch sequence. Purchase through the hosted MCP tool
+        <code> agent_distribution_pack</code> or POST the documented API
+        contract. No account or subscription is required; payment is
         caller-authorized x402 USDC on Base or Solana.
       </p>
 

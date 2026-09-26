@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("MCP registry metadata leads with the paid Guard and keeps procurement discovery", () => {
+test("MCP registry metadata leads with seller distribution and keeps hosted MCP", () => {
   const server = JSON.parse(readFileSync("server.json", "utf8"));
   assert.equal(server.name, "io.github.waxsway/agentresolver");
-  assert.equal(server.title, "AgentResolver Guard — Verify x402 Before Paying");
-  assert.equal(server.version, "0.2.3");
+  assert.equal(server.title, "AgentResolver — Agent Distribution for APIs & MCP");
+  assert.equal(server.version, "0.2.4");
   assert.ok(server.description.length <= 100, "official MCP registry description must be <= 100 characters");
-  assert.match(server.description, /\$0\.001 x402 verify-before-pay Guard/i);
-  assert.match(server.description, /capability procurement/i);
+  assert.match(server.description, /seller-side agent distribution/i);
+  assert.match(server.description, /\$5 launch pack/i);
   assert.match(server.description, /provider routing/i);
   assert.equal(server.remotes?.[0]?.url, "https://agentresolver.vercel.app/mcp");
 });
@@ -26,9 +26,9 @@ test("runtime MCP identity, package, card and health agree on 0.1.4", () => {
   assert.equal(lock.packages?.[""]?.version, "0.1.4");
   assert.match(runtime, /new McpServer\(\{ name: "agentresolver", version: "0\.1\.4" \}/);
   assert.match(card, /version: "0\.1\.4"/);
-  assert.match(card, /AgentResolver Guard — x402 Verify Before Pay/);
+  assert.match(card, /AgentResolver — Agent Distribution for APIs & MCP/);
   assert.match(health, /version: "0\.1\.4"/);
-  assert.match(health, /\$0\.001 USDC non-custodial x402 verify-before-pay Guard/);
+  assert.match(health, /seller-side agent distribution for APIs\/MCP/i);
 });
 
 test("CI and production smoke expect the current release version", () => {
