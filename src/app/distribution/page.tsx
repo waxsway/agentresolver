@@ -35,6 +35,26 @@ export default function DistributionPage() {
         the $0.05 Provider Launch Check is the lower-friction entry point.
       </p>
 
+      <h2>See your gaps before you pay</h2>
+      <p>
+        Run a bounded free preview against your public origin. It shows the
+        current readiness score and the most important missing machine-readable
+        surfaces, but keeps the generated files and full launch sequence inside
+        the paid Distribution Pack.
+      </p>
+      <form className="actions" action="/api/agent-distribution-preview" method="get">
+        <input
+          aria-label="Public API or MCP origin"
+          name="origin"
+          type="url"
+          placeholder="https://api.example.com"
+          required
+        />{" "}
+        <button className="button" type="submit">
+          Preview my distribution gaps — free
+        </button>
+      </form>
+
       <p className="actions">
         <a className="button" href="/api/agent-distribution-pack">
           See the $5 USDC quote
