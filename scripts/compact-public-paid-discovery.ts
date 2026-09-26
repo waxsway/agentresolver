@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const KEEP_PAID_IDS = new Set([
+  "agent-distribution-pack",
   "x402-ping",
   "x402-payment-preflight",
   "x402-settlement-verify",
@@ -26,6 +27,7 @@ const KEEP_OPENAPI_PATHS = new Set([
   "/api/provider-success-fee-quote",
   "/api/provider-success-fee-verify",
   "/api/health",
+  "/api/agent-distribution-pack",
   "/api/x402-ping",
   "/api/x402-payment-preflight",
   "/api/payment-guard",
@@ -41,6 +43,7 @@ const KEEP_OPENAPI_PATHS = new Set([
 ]);
 
 const KEEP_RESOURCE_PATHS = new Set([
+  "/api/agent-distribution-pack",
   "/api/x402-ping",
   "/api/x402-payment-preflight",
   "/api/payment-guard",
@@ -90,7 +93,7 @@ for (const path of MANIFEST_PATHS) {
     resolve: "https://agentresolver.vercel.app/api/resolve"
   };
   manifest.instructions =
-    "Use POST /api/procure for free constrained capability procurement and POST /api/resolve for broad free discovery; resolver/MCP responses can return registered provider handoffs through /api/execute. Provider-network terms live at /api/providers and /provider-integration.json. Start with GET /api/x402-ping for the $0.001 USDC settlement canary. After a Base payment, use GET /api/x402-settlement-verify?txHash=<hash> for $0.001 independent on-chain receipt verification. Before any autonomous x402 spend, use AgentResolver Guard via GET /api/x402-payment-preflight?url=<https-endpoint> or GET /api/payment-guard?url=<https-endpoint> for $0.001 USDC. Exact buyer-intent aliases for the same Guard engine remain published. After a successful canary, use POST /api/verified-resolve ($0.02) for one live-verified capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4. Machine-service sellers can self-enroll by publishing /.well-known/agentresolver-provider.json on the same origin as their x402 route, then call /api/provider-bootstrap for bounded live verification and an immediate providerOrigins procurement seed. The manifest opts into a 2% provider success fee with a $0.001 minimum after independently verified routed commerce. GET /api/provider-launch-check ($0.05) remains an optional deeper technical verification, not an admission gate. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
+    "Primary seller workflow: API, MCP, x402 and agent-service providers should call POST /api/agent-distribution-pack for the $5 Agent Distribution Pack, publish the returned machine-readable launch artifacts, then use GET or POST /api/provider-launch-check ($0.05) for deeper live route verification. Provider-network terms live at /api/providers and /provider-integration.json. Free capability discovery remains available through POST /api/procure and POST /api/resolve. Supporting buyer infrastructure remains public: GET /api/x402-ping is the $0.001 USDC settlement canary; after a Base payment use GET /api/x402-settlement-verify?txHash=<hash> for receipt evidence; before autonomous x402 spend use GET /api/x402-payment-preflight?url=<https-endpoint> or /api/payment-guard for $0.001 payment verification. POST /api/verified-resolve ($0.02) and POST /api/batch-verified-resolve ($0.05) remain available for live-verified buyer decisions. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
   writeJson(path, manifest);
 }
 
@@ -137,8 +140,8 @@ openapi.paths = Object.fromEntries(
 openapi.info = {
   ...(openapi.info ?? {}),
   description:
-    "Focused machine catalog for x402 settlement testing, on-chain receipt verification, and pre-payment verification for autonomous buyers. Use GET /api/x402-ping for a $0.001 USDC settlement canary. Before an autonomous x402 purchase, use AgentResolver Guard via GET /api/payment-guard or canonical GET /api/x402-payment-preflight for a $0.001 fail-closed payment-path check. Exact buyer-intent Guard aliases and the seller-side Provider Launch Check remain published, while unrelated paid utilities stay live but are omitted from public machine discovery to reduce unpaid crawler sweeps. Free constrained capability procurement is available through POST /api/procure; free capability discovery remains available through POST /api/resolve.",
+    "Focused seller-first machine catalog for Agent Distribution. API, MCP, x402 and agent-service providers can purchase POST /api/agent-distribution-pack for a $5 launch audit plus machine-readable distribution artifacts, then use /api/provider-launch-check for live route verification. Supporting x402 settlement, receipt and payment verification remain public for autonomous buyers. Unrelated paid utilities stay live but are omitted from public machine discovery to reduce unpaid crawler sweeps. Free constrained capability procurement is available through POST /api/procure; free capability discovery remains available through POST /api/resolve.",
   "x-guidance":
-    "Prefer the shortest paid funnel: GET /api/x402-ping -> GET /api/x402-settlement-verify after Base settlement when receipt evidence is needed -> GET /api/payment-guard or GET /api/x402-payment-preflight -> POST /api/verified-resolve or /api/batch-verified-resolve when needed. Exact Guard buyer-intent aliases and GET/POST /api/provider-launch-check remain discoverable. Public discovery intentionally excludes unrelated paid utilities even though those routes remain live. Free constrained capability procurement is available through POST /api/procure; free capability discovery remains available through POST /api/resolve. Payment remains caller-authorized."
+    "Primary seller funnel: POST /api/agent-distribution-pack ($5) -> publish returned discovery artifacts -> GET or POST /api/provider-launch-check ($0.05). Supporting buyer funnel remains GET /api/x402-ping -> GET /api/x402-settlement-verify when receipt evidence is needed -> GET /api/payment-guard or GET /api/x402-payment-preflight -> POST /api/verified-resolve or /api/batch-verified-resolve when needed. Public discovery intentionally excludes unrelated paid utilities even though those routes remain live. Free constrained capability procurement is available through POST /api/procure; free capability discovery remains available through POST /api/resolve. Payment remains caller-authorized."
 };
 writeJson("public/openapi.json", openapi);
