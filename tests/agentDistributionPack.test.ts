@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { parseAgentDistributionPackInput } from "../src/lib/agentDistributionPack";
 
@@ -37,4 +38,26 @@ test("distribution pack rejects credential-bearing origins", () => {
     description: "Current structured data for autonomous agents.",
     origin: "https://user:pass@example.com"
   }), /public HTTPS URL/);
+});
+
+
+test("distribution pack survives focused public catalog compaction", () => {
+  const x402 = JSON.parse(readFileSync("public/.well-known/x402", "utf8"));
+  const capabilities = JSON.parse(readFileSync("public/capabilities.json", "utf8"));
+  const openapi = JSON.parse(readFileSync("public/openapi.json", "utf8"));
+
+  assert.ok(x402.services.some((item: { id?: string; price_usdc?: string }) =>
+    item.id === "agent-distribution-pack" && item.price_usdc === "5"
+  ));
+  assert.ok(x402.resources.some((item: { id?: string; resource?: string }) =>
+    item.id === "agent-distribution-pack" &&
+    item.resource === "POST /api/agent-distribution-pack"
+  ));
+  assert.ok(capabilities.capabilities.some((item: { id?: string; priceUsd?: number }) =>
+    item.id === "agent-distribution-pack" && item.priceUsd === 5
+  ));
+  assert.equal(
+    openapi.paths["/api/agent-distribution-pack"].post.operationId,
+    "agentDistributionPack"
+  );
 });
