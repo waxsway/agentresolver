@@ -65,10 +65,11 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
     .map((item: any) => item?.post)
     .filter((op: any) => op?.tags?.includes("Paid Agent Capabilities"));
 
-  assert.equal(paid.length, 12);
+  assert.equal(paid.length, 13);
   assert.deepEqual(
     Object.keys(openapi.paths || {}).sort(),
     [
+      "/api/agent-distribution-pack",
       "/api/api-trust-security-preflight",
       "/api/batch-verified-resolve",
       "/api/health",
@@ -105,7 +106,7 @@ test("OpenAPI exposes current AgentCash discovery metadata", () => {
 });
 
 
-test("public discovery stays focused on the settlement-to-Guard revenue funnel", () => {
+test("public discovery keeps the seller Distribution Pack in the focused revenue funnel", () => {
   const manifest = JSON.parse(readFileSync("public/.well-known/x402", "utf8"));
   const capabilities = JSON.parse(readFileSync("public/capabilities.json", "utf8"));
   const integrations = JSON.parse(readFileSync("public/integrations.json", "utf8"));
@@ -116,6 +117,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "x402-settlement-verify",
     "verified-resolve",
     "batch-verified-resolve",
+    "agent-distribution-pack",
     "provider-launch-check"
   ]);
   const intentAliasIds = new Set([
@@ -133,6 +135,7 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
     "/api/x402-settlement-verify",
     "/api/verified-resolve",
     "/api/batch-verified-resolve",
+    "/api/agent-distribution-pack",
     "/api/provider-launch-check",
     "/api/usdc-payment-check",
     "/api/x402-preflight",
@@ -159,6 +162,8 @@ test("public discovery stays focused on the settlement-to-Guard revenue funnel",
   const integrationIds = (integrations.paidActions || []).map((item: any) => item.id);
   assert.deepEqual(integrationIds.sort(), [...paidIds].sort());
 
+  assert.match(manifest.instructions || "", /agent-distribution-pack/i);
   assert.match(manifest.instructions || "", /intentionally omitted from public machine catalogs/i);
+  assert.match(openapi.info?.description || "", /seller-side agent distribution/i);
   assert.match(openapi.info?.description || "", /reduce unpaid crawler sweeps/i);
 });

@@ -11,6 +11,7 @@ test("production smoke enforces the focused public revenue catalog", () => {
   assert.match(smoke, /index\("x402-payment-preflight"\) != null/);
   assert.match(smoke, /index\("verified-resolve"\) != null/);
   assert.match(smoke, /index\("batch-verified-resolve"\) != null/);
+  assert.match(smoke, /index\("agent-distribution-pack"\) != null/);
   assert.match(smoke, /index\("provider-launch-check"\) != null/);
   assert.match(smoke, /index\("hash-encode"\) == null/);
   assert.match(smoke, /index\("mcp-probe"\) == null/);
@@ -35,4 +36,11 @@ test("production smoke requires the seller-side Provider Launch Check discovery 
   assert.match(smoke, /providerLaunchCheckGet/);
   assert.match(smoke, /check_402 'Provider Launch Check'/);
   assert.match(smoke, /'provider-launch-check' '50000'/);
+});
+
+
+test("production smoke requires the $5 seller Distribution Pack discovery and challenge", () => {
+  assert.match(smoke, /agentDistributionPack/);
+  assert.match(smoke, /check_402 'Agent Distribution Pack'/);
+  assert.match(smoke, /'agent-distribution-pack' '5000000'/);
 });

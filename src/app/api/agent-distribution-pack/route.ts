@@ -15,4 +15,5 @@ const route = createDeterministicPaidRoute(
 );
 
 export const POST = route.POST;
+export const GET = route.GET;
 export const OPTIONS = route.OPTIONS;

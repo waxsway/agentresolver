@@ -6,6 +6,7 @@ const KEEP_PAID_IDS = new Set([
   "x402-settlement-verify",
   "verified-resolve",
   "batch-verified-resolve",
+  "agent-distribution-pack",
   "provider-launch-check"
 ]);
 
@@ -32,6 +33,7 @@ const KEEP_OPENAPI_PATHS = new Set([
   "/api/x402-settlement-verify",
   "/api/verified-resolve",
   "/api/batch-verified-resolve",
+  "/api/agent-distribution-pack",
   "/api/provider-launch-check",
   "/api/usdc-payment-check",
   "/api/x402-preflight",
@@ -47,6 +49,7 @@ const KEEP_RESOURCE_PATHS = new Set([
   "/api/x402-settlement-verify",
   "/api/verified-resolve",
   "/api/batch-verified-resolve",
+  "/api/agent-distribution-pack",
   "/api/provider-launch-check",
   "/api/usdc-payment-check",
   "/api/x402-preflight",
@@ -83,6 +86,17 @@ for (const path of MANIFEST_PATHS) {
   manifest.resources = (manifest.resources ?? []).filter((item: any) =>
     KEEP_RESOURCE_PATHS.has(resourcePath(item))
   );
+  manifest.description =
+    "Seller-side agent distribution for API, MCP, x402, and agent-service providers. The $5 Agent Distribution Pack audits live machine-readable launch surfaces and returns ready-to-commit discovery artifacts plus a prioritized publication sequence; buyer-side settlement and payment verification utilities remain supporting infrastructure.";
+  manifest.tags = [
+    "agent-distribution",
+    "api-distribution",
+    "mcp-distribution",
+    "seller-launch",
+    "provider-growth",
+    "x402",
+    "payment-canary"
+  ];
   manifest.freeDiscovery = {
     ...(manifest.freeDiscovery ?? {}),
     mcp: "https://agentresolver.vercel.app/mcp",
@@ -90,7 +104,7 @@ for (const path of MANIFEST_PATHS) {
     resolve: "https://agentresolver.vercel.app/api/resolve"
   };
   manifest.instructions =
-    "Use POST /api/procure for free constrained capability procurement and POST /api/resolve for broad free discovery; resolver/MCP responses can return registered provider handoffs through /api/execute. Provider-network terms live at /api/providers and /provider-integration.json. Start with GET /api/x402-ping for the $0.001 USDC settlement canary. After a Base payment, use GET /api/x402-settlement-verify?txHash=<hash> for $0.001 independent on-chain receipt verification. Before any autonomous x402 spend, use AgentResolver Guard via GET /api/x402-payment-preflight?url=<https-endpoint> or GET /api/payment-guard?url=<https-endpoint> for $0.001 USDC. Exact buyer-intent aliases for the same Guard engine remain published. After a successful canary, use POST /api/verified-resolve ($0.02) for one live-verified capability decision or POST /api/batch-verified-resolve ($0.05) for 2–4. Machine-service sellers can self-enroll by publishing /.well-known/agentresolver-provider.json on the same origin as their x402 route, then call /api/provider-bootstrap for bounded live verification and an immediate providerOrigins procurement seed. The manifest opts into a 2% provider success fee with a $0.001 minimum after independently verified routed commerce. GET /api/provider-launch-check ($0.05) remains an optional deeper technical verification, not an admission gate. Other AgentResolver paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid discovery sweeps. A 402 is a quote, never spending authorization.";
+    "For API, MCP, and agent-service sellers, the primary paid funnel is POST /api/agent-distribution-pack ($5 USDC) for a live discoverability audit, ready-to-commit launch artifacts, and a prioritized publication sequence, followed by GET or POST /api/provider-launch-check ($0.05) for live route/payment-contract verification before provider-network review. Free capability discovery and procurement remain available through POST /api/resolve and POST /api/procure; free provider bootstrap remains at /api/provider-bootstrap. Buyer-side payment verification for autonomous buyers remains supporting infrastructure: GET /api/x402-ping for the settlement canary, GET /api/x402-settlement-verify after Base settlement, and GET /api/x402-payment-preflight before a target x402 purchase; POST remains supported where applicable. POST /api/verified-resolve and POST /api/batch-verified-resolve remain available for paid live-verified buyer decisions. Other paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid crawler sweeps and keep the seller funnel focused. A 402 is a quote, never spending authorization.";
   writeJson(path, manifest);
 }
 
@@ -136,9 +150,10 @@ openapi.paths = Object.fromEntries(
 );
 openapi.info = {
   ...(openapi.info ?? {}),
+  title: "AgentResolver — Agent Distribution + x402 Settlement Canary",
   description:
-    "Focused machine catalog for x402 settlement testing, on-chain receipt verification, and pre-payment verification for autonomous buyers. Use GET /api/x402-ping for a $0.001 USDC settlement canary. Before an autonomous x402 purchase, use AgentResolver Guard via GET /api/payment-guard or canonical GET /api/x402-payment-preflight for a $0.001 fail-closed payment-path check. Exact buyer-intent Guard aliases and the seller-side Provider Launch Check remain published, while unrelated paid utilities stay live but are omitted from public machine discovery to reduce unpaid crawler sweeps. Free constrained capability procurement is available through POST /api/procure; free capability discovery remains available through POST /api/resolve.",
+    "Seller-side agent distribution for API and MCP providers. The primary paid product is POST /api/agent-distribution-pack ($5 USDC), which audits live machine-readable discovery surfaces and returns ready-to-commit launch artifacts plus a prioritized distribution sequence. GET/POST /api/provider-launch-check ($0.05) verifies the live route and x402 contract as the next seller step. Buyer-side payment verification for autonomous buyers remains available as supporting infrastructure through the x402 settlement canary, on-chain receipt verification, and verify-before-pay Guard. Unrelated paid utilities stay live but are omitted from public machine discovery to reduce unpaid crawler sweeps and keep the commercial funnel focused.",
   "x-guidance":
-    "Prefer the shortest paid funnel: GET /api/x402-ping -> GET /api/x402-settlement-verify after Base settlement when receipt evidence is needed -> GET /api/payment-guard or GET /api/x402-payment-preflight -> POST /api/verified-resolve or /api/batch-verified-resolve when needed. Exact Guard buyer-intent aliases and GET/POST /api/provider-launch-check remain discoverable. Public discovery intentionally excludes unrelated paid utilities even though those routes remain live. Free constrained capability procurement is available through POST /api/procure; free capability discovery remains available through POST /api/resolve. Payment remains caller-authorized."
+    "Seller funnel: POST /api/agent-distribution-pack ($5) -> publish the returned discovery artifacts -> GET or POST /api/provider-launch-check ($0.05) for live verification -> provider bootstrap/review. Free capability discovery remains available through POST /api/resolve and free constrained procurement through POST /api/procure. Supporting buyer paths remain GET /api/x402-ping, GET /api/x402-settlement-verify, and GET /api/x402-payment-preflight before payment; POST /api/verified-resolve and POST /api/batch-verified-resolve remain available for live-verified decisions. Public discovery intentionally excludes unrelated paid utilities even though those routes remain live. Payment remains caller-authorized."
 };
 writeJson("public/openapi.json", openapi);
