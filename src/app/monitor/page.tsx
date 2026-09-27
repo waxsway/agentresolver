@@ -77,6 +77,21 @@ export default function MonitorPage() {
         </section>
       </div>
 
+      <section>
+        <div className="eyebrow">FREE RECURRING MONITORING</div>
+        <h2>Run it every day from GitHub Actions.</h2>
+        <p>
+          No AgentResolver account, API key, wallet, or secret is required.
+          Your repository owns the schedule; AgentResolver returns the current
+          discovery, MCP, and x402 health result.
+        </p>
+        <p className="actions">
+          <a className="button secondary" href="/docs/free-github-monitoring">
+            Copy the free GitHub Action
+          </a>
+        </p>
+      </section>
+
       <h2>Why monitor it?</h2>
       <p className="lead">
         Passing once is not the same as staying compatible. AgentResolver can
