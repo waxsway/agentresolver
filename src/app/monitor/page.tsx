@@ -1,95 +1,93 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "API + MCP Monitoring | AgentResolver",
+  title: "Agent Commerce Health Check | AgentResolver",
   description:
-    "Check whether an API, MCP server, or x402 service is still reachable, agent-compatible, and payment-ready, then detect drift from a prior snapshot."
+    "Run a free live check to see whether AI agents can still discover, call, and pay your API, MCP server, or x402 service."
 };
 
 export default function MonitorPage() {
   return (
     <main>
-      <div className="eyebrow">AGENT COMPATIBILITY MONITORING</div>
-      <h1>Know when AI agents can no longer use or pay your service.</h1>
+      <div className="eyebrow">FREE AGENT COMMERCE HEALTH CHECK</div>
+      <h1>Can AI agents still discover, call, and pay your service?</h1>
       <p className="lead">
-        AgentResolver checks the machine-readable surface, can perform a real MCP
-        initialize + tools/list exchange, can inspect a GET-safe x402 payment
-        contract, and returns a stable fingerprint you can compare over time.
+        Paste one public service URL. AgentResolver checks the machine-readable
+        surface immediately. Add your MCP or x402 endpoint only when you want
+        the deeper protocol checks.
       </p>
 
-      <h2>Run a live snapshot — free</h2>
-      <form className="actions" action="/api/service-monitor" method="get">
-        <input
-          aria-label="Public service origin"
-          name="origin"
-          type="url"
-          placeholder="https://api.example.com"
-          required
-        />{" "}
-        <input
-          aria-label="Optional MCP endpoint"
-          name="mcpEndpoint"
-          type="url"
-          placeholder="https://api.example.com/mcp"
-        />{" "}
-        <input
-          aria-label="Optional GET-safe x402 endpoint"
-          name="x402Endpoint"
-          type="url"
-          placeholder="https://api.example.com/paid"
-        />{" "}
-        <button className="button" type="submit">
-          Check service now
-        </button>
-      </form>
+      <section className="scanner">
+        <form action="/monitor/result" method="get">
+          <label htmlFor="origin">Public API, MCP, x402, or agent-service URL</label>
+          <div className="scan-row">
+            <input
+              id="origin"
+              aria-label="Public service origin"
+              name="origin"
+              type="url"
+              placeholder="https://api.example.com"
+              required
+            />
+            <button className="button" type="submit">
+              Check agent-commerce health — free
+            </button>
+          </div>
+          <details>
+            <summary>Optional deeper MCP + x402 checks</summary>
+            <div className="advanced-fields">
+              <input
+                aria-label="Optional MCP endpoint"
+                name="mcpEndpoint"
+                type="url"
+                placeholder="https://api.example.com/mcp"
+              />
+              <input
+                aria-label="Optional GET-safe x402 endpoint"
+                name="x402Endpoint"
+                type="url"
+                placeholder="https://api.example.com/paid"
+              />
+            </div>
+          </details>
+        </form>
+      </section>
 
       <div className="grid">
         <section>
-          <h2>API + discovery health</h2>
+          <h2>Discovery</h2>
           <p>
-            Tracks homepage reachability, llms.txt, OpenAPI, sitemap, MCP
-            metadata, crawler signals, and baseline security headers.
+            Checks whether machine-facing discovery surfaces are present and
+            reachable instead of assuming agents can interpret the website.
           </p>
         </section>
         <section>
-          <h2>Real MCP compatibility</h2>
+          <h2>Execution</h2>
           <p>
-            When you provide an MCP endpoint, AgentResolver performs an MCP
-            initialize exchange and tools/list, then fingerprints the tool
-            contract so schema drift can be detected.
+            With an MCP endpoint, performs a real initialize + tools/list
+            exchange and fingerprints the exposed tool contract.
           </p>
         </section>
         <section>
-          <h2>Payment-contract drift</h2>
+          <h2>Payment</h2>
           <p>
-            For a GET-safe x402 endpoint, AgentResolver watches the network,
-            asset, payTo recipient, resource binding, and quoted amount without
-            authorizing or spending customer funds.
+            With a GET-safe x402 endpoint, validates the unpaid 402 challenge,
+            payment recipient, network, asset, amount, and resource binding.
           </p>
         </section>
       </div>
 
-      <h2>Managed monitoring</h2>
-      <p>
-        The managed plan runs the same check hourly for 30 days and keeps a
-        durable status record. No wallet keys, API secrets, private endpoints,
-        or customer credentials are required. The first managed plan is
-        machine-paid with x402; card billing can be added after merchant
-        onboarding is complete.
-      </p>
-      <p className="actions">
-        <a className="button" href="/api/managed-monitor-30d">
-          See the $19 / 30-day managed quote
-        </a>{" "}
-        <a className="button secondary" href="/distribution">
-          Distribution tools
-        </a>
+      <h2>Why monitor it?</h2>
+      <p className="lead">
+        Passing once is not the same as staying compatible. AgentResolver can
+        run the same check hourly for 30 days and detect machine-readiness,
+        MCP-tool, and x402-payment drift.
       </p>
 
       <p className="links">
         <a href="/openapi.json">OpenAPI</a> ·{" "}
         <a href="/api/service-monitor?origin=https%3A%2F%2Fagentresolver.vercel.app&mcpEndpoint=https%3A%2F%2Fagentresolver.vercel.app%2Fmcp&x402Endpoint=https%3A%2F%2Fagentresolver.vercel.app%2Fapi%2Fx402-ping">
-          Live AgentResolver example
+          Raw API example
         </a>
       </p>
     </main>
