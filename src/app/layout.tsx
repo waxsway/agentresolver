@@ -3,9 +3,9 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://agentresolver.vercel.app"),
-  title: "AgentResolver — x402 Payment Preflight & PayTo Verification",
+  title: "AgentResolver — Agent Commerce Health for API, MCP & x402",
   description:
-    "Verify an x402 endpoint before paying: live payTo, USDC quote, network, asset, resource binding, TLS and endpoint safety for $0.001 on Base or Solana.",
+    "Continuously check whether AI agents can discover, call and pay your API, MCP server or x402 service. Free live checks and GitHub Action monitoring.",
   alternates: {
     canonical: "/"
   },
@@ -23,11 +23,24 @@ const structuredData = {
       url: "https://agentresolver.vercel.app",
       applicationCategory: "DeveloperApplication",
       operatingSystem: "Web",
-      isAccessibleForFree: false,
+      isAccessibleForFree: true,
       description:
-        "x402 payment preflight and payTo verification for autonomous agents, plus a free fallback capability resolver.",
+        "Agent commerce health and continuous compatibility monitoring for APIs, MCP servers and x402 services, with free live checks and optional paid managed monitoring.",
       codeRepository: "https://github.com/waxsway/agentresolver",
       license: "https://opensource.org/license/mit"
+    },
+    {
+      "@type": "WebAPI",
+      name: "AgentResolver Service Monitor",
+      url: "https://agentresolver.vercel.app/api/service-monitor",
+      documentation: "https://agentresolver.vercel.app/openapi.json",
+      description:
+        "Run a live machine-readiness check with optional MCP initialize/tools-list and x402 payment-contract verification.",
+      provider: {
+        "@type": "Organization",
+        name: "AgentResolver",
+        url: "https://agentresolver.vercel.app"
+      }
     },
     {
       "@type": "WebAPI",
