@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Free GitHub Agent Commerce Monitoring | AgentResolver",
   description:
-    "Run daily API, MCP, and x402 agent-commerce health checks from GitHub Actions with no AgentResolver account, API key, wallet, or secret."
+    "Run daily API, MCP, and x402 agent-commerce health checks from GitHub Actions with no AgentResolver account, API key, wallet, or secret.",
+  alternates: { canonical: "/docs/free-github-monitoring" }
 };
 
 const workflow = `name: Agent commerce health
