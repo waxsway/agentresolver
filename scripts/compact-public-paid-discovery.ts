@@ -93,7 +93,7 @@ for (const path of MANIFEST_PATHS) {
     KEEP_RESOURCE_PATHS.has(resourcePath(item))
   );
   manifest.description =
-    "Continuous API, MCP, and x402 compatibility monitoring for agent-service providers. Run a free live service snapshot, then use the $19 30-day managed monitor for hourly machine-readiness, MCP tool-contract, and x402 payment-contract drift checks. Distribution and buyer-side verification remain supporting tools.";
+    "Continuous API, MCP, and x402 compatibility monitoring for agent-service providers. Run a free live service snapshot, then use the $19 30-day managed monitor for hourly machine-readiness, MCP tool-contract, and x402 payment-contract drift checks. Agent Distribution remains available for launch work, and payment verification for autonomous buyers remains supporting infrastructure.";
   manifest.tags = [
     "api-monitoring",
     "mcp-monitoring",
@@ -102,7 +102,8 @@ for (const path of MANIFEST_PATHS) {
     "schema-drift",
     "payment-drift",
     "agent-distribution",
-    "x402"
+    "x402",
+    "payment-canary"
   ];
   manifest.freeDiscovery = {
     ...(manifest.freeDiscovery ?? {}),
@@ -117,7 +118,7 @@ for (const path of MANIFEST_PATHS) {
       "https://agentresolver.vercel.app/api/managed-monitor-status?id=mon_<monitor-id>"
   };
   manifest.instructions =
-    "For API, MCP, x402, and agent-service providers, start with free GET or POST /api/service-monitor to capture a current compatibility snapshot and drift fingerprint. POST /api/managed-monitor-30d ($19 USDC) activates 30 days of hourly managed checks with durable public status. The $5 Agent Distribution Pack and $0.05 Provider Launch Check remain available for launch/distribution work. Buyer-side settlement and payment verification remain supporting infrastructure through x402-ping, x402-settlement-verify, and x402-payment-preflight. A 402 is a quote, never spending authorization.";
+    "For API, MCP, x402, and agent-service providers, start with free GET or POST /api/service-monitor to capture a current compatibility snapshot and drift fingerprint. POST /api/managed-monitor-30d ($19 USDC) activates 30 days of hourly managed checks with durable public status. For launch/distribution work, start with GET or POST /api/provider-launch-check ($0.05), then use POST /api/agent-distribution-pack ($5) when discovery artifacts are needed. Free procurement remains at POST /api/procure. Buyer-side payment verification remains supporting infrastructure through GET /api/x402-ping, GET /api/x402-settlement-verify, and GET /api/x402-payment-preflight. A 402 is a quote, never spending authorization.";
   writeJson(path, manifest);
 }
 
@@ -283,10 +284,10 @@ openapi.paths["/api/agent-distribution-preview"] = {
 };
 openapi.info = {
   ...(openapi.info ?? {}),
-  title: "AgentResolver — Managed API/MCP Monitoring + Agent Infrastructure",
+  title: "AgentResolver — Managed API/MCP Monitoring + x402 Settlement Canary",
   description:
-    "Continuous compatibility monitoring for public API, MCP, x402, and agent services. Use free /api/service-monitor for a live snapshot and drift fingerprint, then /api/managed-monitor-30d ($19 USDC) for 30 days of hourly managed checks with durable status. Agent Distribution and buyer-side x402 verification remain supporting products.",
+    "Continuous compatibility monitoring for public API, MCP, x402, and agent services. Use free /api/service-monitor for a live snapshot and drift fingerprint, then /api/managed-monitor-30d ($19 USDC) for 30 days of hourly managed checks with durable status. Agent Distribution remains available for launch work, and payment verification for autonomous buyers remains supporting infrastructure.",
   "x-guidance":
-    "Monitoring funnel: start with free GET or POST /api/service-monitor. Supply same-origin mcpEndpoint and/or GET-safe x402Endpoint when relevant. Use POST /api/managed-monitor-30d ($19) for hourly managed monitoring over 30 days. Read current managed state at GET /api/managed-monitor-status?id=<monitorId>. Agent Distribution Pack ($5), Provider Launch Check ($0.05), free capability discovery, procurement, and buyer-side x402 verification remain available as supporting paths. Payment remains caller-authorized."
+    "Monitoring funnel: start with free GET or POST /api/service-monitor. Supply same-origin mcpEndpoint and/or GET-safe x402Endpoint when relevant. Use POST /api/managed-monitor-30d ($19) for hourly managed monitoring over 30 days. Read current managed state at GET /api/managed-monitor-status?id=<monitorId>. Agent Distribution Pack ($5), Provider Launch Check ($0.05), and free capability discovery remain available as supporting paths. Free constrained procurement remains at POST /api/procure. Supporting buyer paths remain GET /api/x402-ping, GET /api/x402-settlement-verify, and GET /api/x402-payment-preflight before payment. Payment remains caller-authorized."
 };
 writeJson("public/openapi.json", openapi);
