@@ -2,6 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://agentresolver.vercel.app/</loc></url>
   <url><loc>https://agentresolver.vercel.app/monitor</loc></url>
+  <url><loc>https://agentresolver.vercel.app/docs/free-github-monitoring</loc></url>
   <url><loc>https://agentresolver.vercel.app/distribution</loc></url>
   <url><loc>https://agentresolver.vercel.app/docs</loc></url>
   <url><loc>https://agentresolver.vercel.app/providers</loc></url>
