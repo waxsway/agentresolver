@@ -125,6 +125,18 @@ export default function Home() {
         </p>
       </section>
 
+      <section>
+        <div className="eyebrow">IMPLEMENTATION OPTION</div>
+        <h2>Need the MCP layer built for you?</h2>
+        <p>
+          The fixed $1,000 implementation sprint remains available for teams
+          that want implementation instead of self-serve setup.
+        </p>
+        <p className="actions">
+          <a className="button secondary" href="/mcp-sprint">See the MCP sprint</a>
+        </p>
+      </section>
+
       <p className="links">
         <a href="/monitor">Monitoring</a> ·{" "}
         <a href="/distribution">Agent Distribution</a> ·{" "}
