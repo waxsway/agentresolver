@@ -1,0 +1,96 @@
+name: AgentResolver Agent Commerce Health
+description: Check whether a public API, MCP server, or x402 service is still agent-compatible.
+author: AgentResolver
+
+inputs:
+  origin:
+    description: Public HTTPS origin to check.
+    required: true
+  mcp-endpoint:
+    description: Optional same-origin MCP endpoint for initialize + tools/list.
+    required: false
+    default: ""
+  x402-endpoint:
+    description: Optional same-origin GET-safe x402 endpoint.
+    required: false
+    default: ""
+  fail-on-degraded:
+    description: Fail the workflow when AgentResolver reports degraded or down.
+    required: false
+    default: "false"
+
+outputs:
+  monitor-id:
+    description: Stable AgentResolver monitor id for this target.
+    value: ${{ steps.check.outputs.monitor-id }}
+  health:
+    description: healthy, degraded, or down.
+    value: ${{ steps.check.outputs.health }}
+  readiness-score:
+    description: Machine-readiness score from 0 to 100.
+    value: ${{ steps.check.outputs.readiness-score }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: bash
+      env:
+        INPUT_ORIGIN: ${{ inputs.origin }}
+        INPUT_MCP: ${{ inputs.mcp-endpoint }}
+        INPUT_X402: ${{ inputs.x402-endpoint }}
+        FAIL_ON_DEGRADED: ${{ inputs.fail-on-degraded }}
+      run: |
+        set -euo pipefail
+        report="${RUNNER_TEMP}/agentresolver-monitor.json"
+
+        args=(
+          --silent
+          --show-error
+          --fail-with-body
+          --get
+          "https://agentresolver.vercel.app/api/service-monitor"
+          -H "User-Agent: AgentResolver-GitHub-Action/1.0"
+          --data-urlencode "source=github-action"
+          --data-urlencode "origin=${INPUT_ORIGIN}"
+        )
+        if [[ -n "${INPUT_MCP}" ]]; then
+          args+=(--data-urlencode "mcpEndpoint=${INPUT_MCP}")
+        fi
+        if [[ -n "${INPUT_X402}" ]]; then
+          args+=(--data-urlencode "x402Endpoint=${INPUT_X402}")
+        fi
+
+        curl "${args[@]}" > "${report}"
+
+        monitor_id="$(jq -r '.monitorId // empty' "${report}")"
+        health="$(jq -r '.health.status // empty' "${report}")"
+        score="$(jq -r '.snapshot.readiness.score // empty' "${report}")"
+
+        if [[ -z "${monitor_id}" || -z "${health}" || -z "${score}" ]]; then
+          echo "AgentResolver returned an unexpected response."
+          cat "${report}"
+          exit 1
+        fi
+
+        echo "monitor-id=${monitor_id}" >> "${GITHUB_OUTPUT}"
+        echo "health=${health}" >> "${GITHUB_OUTPUT}"
+        echo "readiness-score=${score}" >> "${GITHUB_OUTPUT}"
+
+        {
+          echo "## AgentResolver agent-commerce health"
+          echo
+          echo "- Health: **${health}**"
+          echo "- Machine readiness: **${score}/100**"
+          echo "- Monitor ID: \`${monitor_id}\`"
+          echo "- Target: \`${INPUT_ORIGIN}\`"
+          echo
+          echo "[Run the browser health check](https://agentresolver.vercel.app/monitor)"
+          echo
+          echo "Hosted hourly monitoring is available for \$19 / 30 days."
+        } >> "${GITHUB_STEP_SUMMARY}"
+
+        if [[ "${FAIL_ON_DEGRADED}" == "true" && "${health}" != "healthy" ]]; then
+          echo "AgentResolver health is ${health}; failing because fail-on-degraded=true."
+          exit 1
+        fi

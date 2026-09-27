@@ -1,10 +1,41 @@
-# AgentResolver Guard
+# AgentResolver
 
-**AgentResolver Guard is a pre-sign safety check for autonomous x402 payments.**
+**Continuous API, MCP, and x402 compatibility monitoring for services used by AI agents.**
 
-An agent is about to pay an unfamiliar or changed x402 endpoint. Before the target wallet signs, Guard reads the target's live payment challenge, validates the payment contract, and returns a fail-closed decision plus evidence the caller can bind to its own policy.
+AgentResolver answers a production question ordinary uptime monitors miss: **can an AI agent still discover, call, and pay this service right now?**
 
-**Production:** https://agentresolver.vercel.app
+**Production:** https://agentresolver.vercel.app  
+**Free browser check:** https://agentresolver.vercel.app/monitor
+
+## Free recurring monitoring with GitHub Actions
+
+Run the public-service check on your own GitHub schedule. No AgentResolver account, API key, wallet, or secret is required.
+
+```yaml
+name: Agent commerce health
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 8 * * *"
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: waxsway/agentresolver/.github/actions/agent-commerce-health@main
+        with:
+          origin: https://api.example.com
+          # Optional deeper checks:
+          # mcp-endpoint: https://api.example.com/mcp
+          # x402-endpoint: https://api.example.com/paid
+```
+
+The free Action reports current machine-readiness, optional live MCP initialize + tools/list compatibility, and optional GET-safe x402 payment-contract health. The hosted managed monitor is the $19 / 30-day option when you want AgentResolver to own the hourly schedule and durable status.
+
+Full setup: [free GitHub monitoring](docs/free-github-monitoring.md).
+
+## Buyer-side Guard
+
+AgentResolver Guard remains the pre-sign safety check for autonomous x402 payments. Before a target wallet signs, Guard reads the live payment challenge, validates the payment contract, and returns a fail-closed decision plus evidence the caller can bind to its own policy.
 
 ## What Guard checks
 

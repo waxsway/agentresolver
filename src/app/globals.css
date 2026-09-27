@@ -17,3 +17,16 @@ pre { overflow-x: auto; background: #11151c; border: 1px solid #242a33; padding:
 a { color: inherit; }
 .links { color: #aeb6c3; }
 @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+.scanner label { display: block; font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 650; margin-bottom: 10px; }
+.scan-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+.scan-row input, .advanced-fields input { flex: 1 1 280px; min-width: 0; border: 1px solid #3a4351; background: #090b0f; color: #f4f7fb; border-radius: 9px; padding: 12px 14px; font: inherit; }
+.scan-row input:focus, .advanced-fields input:focus { outline: 2px solid #737f91; outline-offset: 1px; }
+details { margin-top: 16px; color: #aeb6c3; }
+summary { cursor: pointer; }
+.advanced-fields { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.score-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 36px 0 24px; }
+.score-grid section { margin: 0; }
+.fine-print { color: #747e8c; font-size: 13px; line-height: 1.5; }
+section ul { color: #aeb6c3; line-height: 1.7; padding-left: 20px; }
+@media (max-width: 760px) { .score-grid { grid-template-columns: 1fr; } .scan-row .button { width: 100%; text-align: center; } }
