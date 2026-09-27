@@ -38,3 +38,13 @@ test("free recurring GitHub monitoring is accountless and non-custodial", () => 
   assert.doesNotMatch(action, /PRIVATE_KEY|WALLET_PRIVATE_KEY|PAYMENT-SIGNATURE/);
   assert.match(docs, /No AgentResolver account, API key, wallet, or secret/);
 });
+
+
+test("GitHub Action monitor traffic is attributable without identity data", () => {
+  const action = readFileSync(".github/actions/agent-commerce-health/action.yml", "utf8");
+  const route = readFileSync("src/app/api/service-monitor/route.ts", "utf8");
+  assert.match(action, /AgentResolver-GitHub-Action\/1\.0/);
+  assert.match(action, /source=github-action/);
+  assert.match(route, /acquisitionSource/);
+  assert.match(route, /service_monitor_completed/);
+});
