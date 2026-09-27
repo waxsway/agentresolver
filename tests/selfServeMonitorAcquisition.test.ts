@@ -19,3 +19,11 @@ test("monitor result keeps the live check and conversion boundary explicit", () 
   assert.match(page, /card checkout requires merchant onboarding and is not live yet/);
   assert.match(page, /robots: \{ index: false, follow: false \}/);
 });
+
+
+test("monitor acquisition page is included in both sitemap surfaces", () => {
+  const generated = readFileSync("src/app/sitemap.ts", "utf8");
+  const staticMap = readFileSync("public/sitemap.xml", "utf8");
+  assert.match(generated, /weekly\("\/monitor", 0\.98\)/);
+  assert.match(staticMap, /https:\/\/agentresolver\.vercel\.app\/monitor/);
+});
