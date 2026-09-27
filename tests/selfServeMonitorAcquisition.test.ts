@@ -27,3 +27,14 @@ test("monitor acquisition page is included in both sitemap surfaces", () => {
   assert.match(generated, /weekly\("\/monitor", 0\.98\)/);
   assert.match(staticMap, /https:\/\/agentresolver\.vercel\.app\/monitor/);
 });
+
+
+test("free recurring GitHub monitoring is accountless and non-custodial", () => {
+  const action = readFileSync(".github/actions/agent-commerce-health/action.yml", "utf8");
+  const docs = readFileSync("src/app/docs/free-github-monitoring/page.tsx", "utf8");
+  assert.match(action, /api\/service-monitor/);
+  assert.match(action, /fail-on-degraded/);
+  assert.match(action, /Hosted hourly monitoring is available/);
+  assert.doesNotMatch(action, /PRIVATE_KEY|WALLET_PRIVATE_KEY|PAYMENT-SIGNATURE/);
+  assert.match(docs, /No AgentResolver account, API key, wallet, or secret/);
+});
