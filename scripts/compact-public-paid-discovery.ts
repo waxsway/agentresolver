@@ -55,6 +55,7 @@ const KEEP_RESOURCE_PATHS = new Set([
   "/api/x402-settlement-verify",
   "/api/verified-resolve",
   "/api/batch-verified-resolve",
+  "/api/managed-monitor-30d",
   "/api/agent-distribution-pack",
   "/api/provider-launch-check",
   "/api/usdc-payment-check",
@@ -118,7 +119,7 @@ for (const path of MANIFEST_PATHS) {
       "https://agentresolver.vercel.app/api/managed-monitor-status?id=mon_<monitor-id>"
   };
   manifest.instructions =
-    "For API, MCP, x402, and agent-service providers, start with free GET or POST /api/service-monitor to capture a current compatibility snapshot and drift fingerprint. POST /api/managed-monitor-30d ($19 USDC) activates 30 days of hourly managed checks with durable public status. For launch/distribution work, start with GET or POST /api/provider-launch-check ($0.05), then use POST /api/agent-distribution-pack ($5) when discovery artifacts are needed. Free procurement remains at POST /api/procure. Buyer-side payment verification remains supporting infrastructure through GET /api/x402-ping, GET /api/x402-settlement-verify, and GET /api/x402-payment-preflight. A 402 is a quote, never spending authorization.";
+    "For API, MCP, x402, and agent-service providers, start with free GET or POST /api/service-monitor to capture a current compatibility snapshot and drift fingerprint. POST /api/managed-monitor-30d ($19 USDC) activates 30 days of hourly managed checks with durable public status. For launch/distribution work, start with GET or POST /api/provider-launch-check ($0.05), then use POST /api/agent-distribution-pack ($5) when discovery artifacts are needed. Free procurement remains at POST /api/procure. Buyer-side payment verification remains supporting infrastructure through GET /api/x402-ping, GET /api/x402-settlement-verify, and GET /api/x402-payment-preflight; POST /api/verified-resolve and POST /api/batch-verified-resolve remain available for paid live-verified decisions. A 402 is a quote, never spending authorization.";
   writeJson(path, manifest);
 }
 
