@@ -564,6 +564,41 @@ export const PAID_CAPABILITIES = {
       description: "Paid $5 USDC seller-side agent distribution pack for API/MCP discoverability: live discovery audit, ready-to-commit agent-readable artifacts, and a prioritized API/MCP distribution sequence."
     }
   },
+  "managed-monitor-30d": {
+    id: "managed-monitor-30d",
+    name: "Managed API + MCP Monitor — 30 Days",
+    operationId: "managedMonitor30d",
+    endpoint: "/api/managed-monitor-30d",
+    price: "$19.00",
+    priceUsd: 19,
+    atomicAmount: "19000000",
+    description: "Thirty days of hourly managed monitoring for one public API, MCP server, or x402 service. Tracks machine-readiness, optional live MCP compatibility/tool-contract drift, and optional GET-safe x402 payment-contract drift with a durable public status record.",
+    useWhen: "A provider wants AgentResolver to keep checking one public production service after launch instead of buying another one-time readiness report.",
+    costClass: "bounded-network",
+    tags: ["api monitoring", "mcp monitoring", "x402 monitoring", "agent compatibility", "schema drift", "payment drift", "uptime", "managed monitoring"],
+    inputSchema: {
+      type: "object",
+      required: ["origin"],
+      additionalProperties: false,
+      properties: {
+        label: { type: "string", maxLength: 120 },
+        origin: { type: "string", pattern: "^https://", maxLength: 500 },
+        mcpEndpoint: { type: "string", pattern: "^https://", maxLength: 500 },
+        x402Endpoint: { type: "string", pattern: "^https://", maxLength: 500 }
+      }
+    },
+    example: {
+      label: "Example API",
+      origin: "https://api.example.com",
+      mcpEndpoint: "https://api.example.com/mcp",
+      x402Endpoint: "https://api.example.com/paid"
+    },
+    quoteTool: {
+      name: "managed_monitor_30d",
+      title: "Managed API + MCP monitor — $19 / 30 days",
+      description: "Paid $19 USDC on Base or Solana for 30 days of hourly managed API/MCP/x402 compatibility monitoring with durable status and drift detection."
+    }
+  },
   "provider-launch-check": {
     id: "provider-launch-check",
     name: "Provider Launch Check",

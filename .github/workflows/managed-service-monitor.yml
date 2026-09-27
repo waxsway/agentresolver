@@ -1,0 +1,50 @@
+name: Managed Service Monitor
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: managed-service-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout monitor runner
+        uses: actions/checkout@v4
+
+      - name: Checkout durable monitor state
+        uses: actions/checkout@v4
+        with:
+          ref: monitoring-state
+          path: .managed-monitor-state
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run hourly managed checks
+        run: node scripts/run-managed-monitors.mjs .managed-monitor-state/monitoring/registry.json .managed-monitor-state/monitoring/status
+
+      - name: Persist managed status without production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .managed-monitor-state
+          git config user.name "agentresolver-monitor"
+          git config user.email "agentresolver-monitor@users.noreply.github.com"
+          git add monitoring/status
+          if git diff --cached --quiet; then
+            echo "No managed monitor state change."
+            exit 0
+          fi
+          git commit -m "Update managed monitor state"
+          git push origin HEAD:monitoring-state

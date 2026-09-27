@@ -6,6 +6,7 @@ const KEEP_PAID_IDS = new Set([
   "x402-settlement-verify",
   "verified-resolve",
   "batch-verified-resolve",
+  "managed-monitor-30d",
   "agent-distribution-pack",
   "provider-launch-check"
 ]);
@@ -27,6 +28,9 @@ const KEEP_OPENAPI_PATHS = new Set([
   "/api/provider-success-fee-quote",
   "/api/provider-success-fee-verify",
   "/api/health",
+  "/api/service-monitor",
+  "/api/managed-monitor-status",
+  "/api/managed-monitor-30d",
   "/api/agent-distribution-preview",
   "/api/x402-ping",
   "/api/x402-payment-preflight",
@@ -34,6 +38,7 @@ const KEEP_OPENAPI_PATHS = new Set([
   "/api/x402-settlement-verify",
   "/api/verified-resolve",
   "/api/batch-verified-resolve",
+  "/api/managed-monitor-30d",
   "/api/agent-distribution-pack",
   "/api/provider-launch-check",
   "/api/usdc-payment-check",
@@ -50,6 +55,7 @@ const KEEP_RESOURCE_PATHS = new Set([
   "/api/x402-settlement-verify",
   "/api/verified-resolve",
   "/api/batch-verified-resolve",
+  "/api/managed-monitor-30d",
   "/api/agent-distribution-pack",
   "/api/provider-launch-check",
   "/api/usdc-payment-check",
@@ -88,13 +94,15 @@ for (const path of MANIFEST_PATHS) {
     KEEP_RESOURCE_PATHS.has(resourcePath(item))
   );
   manifest.description =
-    "Seller-side agent distribution for API, MCP, x402, and agent-service providers. x402 sellers can start with the $0.05 Provider Launch Check for low-friction route/payment readiness, then use the $5 Agent Distribution Pack for API/MCP discoverability diagnosis, ready-to-commit artifacts, and a prioritized publication sequence; buyer-side settlement and payment verification utilities remain supporting infrastructure.";
+    "Continuous API, MCP, and x402 compatibility monitoring for agent-service providers. Run a free live service snapshot, then use the $19 30-day managed monitor for hourly machine-readiness, MCP tool-contract, and x402 payment-contract drift checks. Agent Distribution remains available for launch work, and payment verification for autonomous buyers remains supporting infrastructure.";
   manifest.tags = [
+    "api-monitoring",
+    "mcp-monitoring",
+    "x402-monitoring",
+    "agent-compatibility",
+    "schema-drift",
+    "payment-drift",
     "agent-distribution",
-    "api-distribution",
-    "mcp-distribution",
-    "seller-launch",
-    "provider-growth",
     "x402",
     "payment-canary"
   ];
@@ -104,10 +112,14 @@ for (const path of MANIFEST_PATHS) {
     procure: "https://agentresolver.vercel.app/api/procure",
     resolve: "https://agentresolver.vercel.app/api/resolve",
     distributionPreview:
-      "https://agentresolver.vercel.app/api/agent-distribution-preview?origin=https%3A%2F%2Fapi.example.com"
+      "https://agentresolver.vercel.app/api/agent-distribution-preview?origin=https%3A%2F%2Fapi.example.com",
+    serviceMonitor:
+      "https://agentresolver.vercel.app/api/service-monitor?origin=https%3A%2F%2Fapi.example.com",
+    managedMonitorStatus:
+      "https://agentresolver.vercel.app/api/managed-monitor-status?id=mon_<monitor-id>"
   };
   manifest.instructions =
-    "For API, MCP, and agent-service sellers, the primary paid funnel is POST /api/agent-distribution-pack ($5 USDC) for a live discoverability audit, ready-to-commit launch artifacts, and a prioritized publication sequence, followed by GET or POST /api/provider-launch-check ($0.05) for live route/payment-contract verification before provider-network review. Free capability discovery and procurement remain available through POST /api/resolve and POST /api/procure; free provider bootstrap remains at /api/provider-bootstrap. Buyer-side payment verification for autonomous buyers remains supporting infrastructure: GET /api/x402-ping for the settlement canary, GET /api/x402-settlement-verify after Base settlement, and GET /api/x402-payment-preflight before a target x402 purchase; POST remains supported where applicable. POST /api/verified-resolve and POST /api/batch-verified-resolve remain available for paid live-verified buyer decisions. Other paid utilities remain live but are intentionally omitted from public machine catalogs to reduce unpaid crawler sweeps and keep the seller funnel focused. A 402 is a quote, never spending authorization.";
+    "For API, MCP, x402, and agent-service providers, start with free GET or POST /api/service-monitor to capture a current compatibility snapshot and drift fingerprint. POST /api/managed-monitor-30d ($19 USDC) activates 30 days of hourly managed checks with durable public status. For launch/distribution work, start with GET or POST /api/provider-launch-check ($0.05), then use POST /api/agent-distribution-pack ($5) when discovery artifacts are needed. Free procurement remains at POST /api/procure. Buyer-side payment verification remains supporting infrastructure through GET /api/x402-ping, GET /api/x402-settlement-verify, and GET /api/x402-payment-preflight; POST /api/verified-resolve and POST /api/batch-verified-resolve remain available for paid live-verified decisions. A 402 is a quote, never spending authorization.";
   writeJson(path, manifest);
 }
 
@@ -127,6 +139,20 @@ if (!capabilities.capabilities.some((item: any) => item?.id === "agent-distribut
     mode: "owned",
     status: "live",
     endpoint: "/api/agent-distribution-preview",
+    method: "GET"
+  });
+}
+if (!capabilities.capabilities.some((item: any) => item?.id === "service-monitor")) {
+  capabilities.capabilities.unshift({
+    id: "service-monitor",
+    name: "API + MCP Service Monitor Snapshot",
+    description:
+      "Free bounded live snapshot for one public service: agent-readiness, optional MCP initialize/tools-list contract fingerprint, optional GET-safe x402 contract evidence, and drift comparison against a prior snapshot.",
+    tags: ["api monitoring", "mcp monitoring", "x402 monitoring", "schema drift", "agent compatibility"],
+    priceUsd: 0,
+    mode: "owned",
+    status: "live",
+    endpoint: "/api/service-monitor",
     method: "GET"
   });
 }
@@ -165,6 +191,75 @@ const openapi = readJson("public/openapi.json");
 openapi.paths = Object.fromEntries(
   Object.entries(openapi.paths ?? {}).filter(([path]) => KEEP_OPENAPI_PATHS.has(path))
 );
+openapi.paths["/api/service-monitor"] = {
+  get: {
+    operationId: "serviceMonitorSnapshot",
+    tags: ["Managed Monitoring"],
+    summary: "Capture a live API/MCP/x402 compatibility snapshot",
+    description:
+      "Free bounded snapshot for one public origin. Optionally performs a same-origin MCP initialize + tools/list and a same-origin GET-safe x402 contract inspection. Returns a stable fingerprint for drift detection.",
+    security: [],
+    parameters: [
+      { name: "origin", in: "query", required: true, schema: { type: "string", format: "uri" } },
+      { name: "mcpEndpoint", in: "query", required: false, schema: { type: "string", format: "uri" } },
+      { name: "x402Endpoint", in: "query", required: false, schema: { type: "string", format: "uri" } },
+      { name: "baselineFingerprint", in: "query", required: false, schema: { type: "string", pattern: "^[0-9a-f]{64}$" } }
+    ],
+    responses: {
+      "200": { description: "Current service snapshot and drift fingerprint." },
+      "400": { description: "Invalid, private, cross-origin, or malformed monitor request." }
+    }
+  },
+  post: {
+    operationId: "serviceMonitorSnapshotWithBaseline",
+    tags: ["Managed Monitoring"],
+    summary: "Capture a live service snapshot and compare an exact prior snapshot",
+    description:
+      "Same bounded monitor as GET, with an optional prior snapshot in the JSON body so AgentResolver can return field-level drift.",
+    security: [],
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            required: ["origin"],
+            additionalProperties: false,
+            properties: {
+              label: { type: "string", maxLength: 120 },
+              origin: { type: "string", format: "uri" },
+              mcpEndpoint: { type: "string", format: "uri" },
+              x402Endpoint: { type: "string", format: "uri" },
+              baselineFingerprint: { type: "string", pattern: "^[0-9a-f]{64}$" },
+              baselineSnapshot: { type: "object" }
+            }
+          }
+        }
+      }
+    },
+    responses: {
+      "200": { description: "Current service snapshot plus drift comparison." },
+      "400": { description: "Invalid monitor request." }
+    }
+  }
+};
+openapi.paths["/api/managed-monitor-status"] = {
+  get: {
+    operationId: "managedMonitorStatus",
+    tags: ["Managed Monitoring"],
+    summary: "Read the latest durable managed-monitor status",
+    description:
+      "Fetch the latest public status record for an activated managed monitor id. Managed status stores no wallet keys, API credentials, or customer contact information.",
+    security: [],
+    parameters: [
+      { name: "id", in: "query", required: true, schema: { type: "string", pattern: "^mon_[0-9a-f]{20}$" } }
+    ],
+    responses: {
+      "200": { description: "Latest durable managed-monitor record." },
+      "404": { description: "Monitor is not active or has not produced its first state record." }
+    }
+  }
+};
 openapi.paths["/api/agent-distribution-preview"] = {
   get: {
     operationId: "agentDistributionPreview",
@@ -190,10 +285,10 @@ openapi.paths["/api/agent-distribution-preview"] = {
 };
 openapi.info = {
   ...(openapi.info ?? {}),
-  title: "AgentResolver — Agent Distribution + x402 Settlement Canary",
+  title: "AgentResolver — Managed API/MCP Monitoring + x402 Settlement Canary",
   description:
-    "Seller-side agent distribution for API and MCP providers. The primary paid product is POST /api/agent-distribution-pack ($5 USDC), which audits live machine-readable discovery surfaces and returns ready-to-commit launch artifacts plus a prioritized distribution sequence. GET/POST /api/provider-launch-check ($0.05) verifies the live route and x402 contract as the next seller step. Buyer-side payment verification for autonomous buyers remains available as supporting infrastructure through the x402 settlement canary, on-chain receipt verification, and verify-before-pay Guard. Unrelated paid utilities stay live but are omitted from public machine discovery to reduce unpaid crawler sweeps and keep the commercial funnel focused.",
+    "Continuous compatibility monitoring for public API, MCP, x402, and agent services. Use free /api/service-monitor for a live snapshot and drift fingerprint, then /api/managed-monitor-30d ($19 USDC) for 30 days of hourly managed checks with durable status. Agent Distribution remains available for launch work, and payment verification for autonomous buyers remains supporting infrastructure.",
   "x-guidance":
-    "Seller funnel: x402 sellers may start with GET or POST /api/provider-launch-check ($0.05) for low-friction live route/payment verification; use POST /api/agent-distribution-pack ($5) when discoverability diagnosis and ready-to-commit launch artifacts are needed; then publish the returned artifacts and continue to provider bootstrap/review. Free capability discovery remains available through POST /api/resolve and free constrained procurement through POST /api/procure. Supporting buyer paths remain GET /api/x402-ping, GET /api/x402-settlement-verify, and GET /api/x402-payment-preflight before payment; POST /api/verified-resolve and POST /api/batch-verified-resolve remain available for live-verified decisions. Public discovery intentionally excludes unrelated paid utilities even though those routes remain live. Payment remains caller-authorized."
+    "Monitoring funnel: start with free GET or POST /api/service-monitor. Supply same-origin mcpEndpoint and/or GET-safe x402Endpoint when relevant. Use POST /api/managed-monitor-30d ($19) for hourly managed monitoring over 30 days. Read current managed state at GET /api/managed-monitor-status?id=<monitorId>. Agent Distribution Pack ($5), Provider Launch Check ($0.05), and free capability discovery remain available as supporting paths. Free constrained procurement remains at POST /api/procure. Supporting buyer paths remain GET /api/x402-ping, GET /api/x402-settlement-verify, and GET /api/x402-payment-preflight before payment; POST /api/verified-resolve and POST /api/batch-verified-resolve remain available for paid live-verified decisions. Payment remains caller-authorized."
 };
 writeJson("public/openapi.json", openapi);

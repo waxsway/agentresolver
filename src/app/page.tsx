@@ -1,3 +1,13 @@
+const monitorExample = `POST /api/service-monitor
+Content-Type: application/json
+
+{
+  "label": "Example API",
+  "origin": "https://api.example.com",
+  "mcpEndpoint": "https://api.example.com/mcp",
+  "x402Endpoint": "https://api.example.com/paid"
+}`;
+
 const distributionExample = `POST /api/agent-distribution-pack
 Content-Type: application/json
 
@@ -5,9 +15,6 @@ Content-Type: application/json
   "providerName": "Example API",
   "description": "Current structured data for autonomous agents.",
   "origin": "https://api.example.com",
-  "primaryEndpoint": "https://api.example.com/v1/search",
-  "openapiUrl": "https://api.example.com/openapi.json",
-  "mcpName": "com.example/api",
   "mcpEndpoint": "https://api.example.com/mcp"
 }`;
 
@@ -23,61 +30,77 @@ Content-Type: application/json
 export default function Home() {
   return (
     <main>
-      <div className="eyebrow">AGENT DISTRIBUTION FOR API + MCP PROVIDERS</div>
-      <h1>Make the software you already built discoverable to AI agents.</h1>
+      <div className="eyebrow">MANAGED API + MCP MONITORING FOR AGENT SERVICES</div>
+      <h1>Know when AI agents can no longer discover, call, or pay your service.</h1>
       <p className="lead">
-        AgentResolver is a seller-side distribution layer for APIs, MCP servers,
-        and agent services. It audits the live machine-readable surface,
-        generates the files agents and registries need, verifies callable
-        routes, and turns “we shipped it” into a measurable distribution
-        process.
+        AgentResolver continuously checks the machine-facing parts of a public
+        API, MCP server, x402 service, or agent product. Capture a free snapshot
+        now, then use managed monitoring to detect compatibility, tool-contract,
+        and payment-contract drift after launch.
       </p>
 
       <p className="actions">
-        <a className="button" href="/distribution">
-          Launch with the $5 Distribution Pack
+        <a className="button" href="/monitor">
+          Run a free monitoring snapshot
         </a>{" "}
-        <a className="button secondary" href="/api/provider-launch-check">
-          Run the $0.05 live launch check
+        <a className="button secondary" href="/api/managed-monitor-30d">
+          $19 / 30-day managed monitoring
         </a>
       </p>
 
       <div className="grid">
         <section>
-          <h2>Audit what agents can actually see</h2>
+          <h2>Catch compatibility drift</h2>
           <p>
-            Check llms.txt, OpenAPI, sitemap, MCP metadata, crawler signals,
-            and the canonical public origin instead of assuming deployment
-            equals discovery.
+            Re-check the public origin, discovery files, OpenAPI surface,
+            security signals, and optional live MCP handshake instead of
+            assuming yesterday&apos;s integration still works.
           </p>
         </section>
         <section>
-          <h2>Generate launch artifacts</h2>
+          <h2>Fingerprint the MCP contract</h2>
           <p>
-            Produce a ready-to-commit llms.txt, MCP Registry server.json when
-            applicable, crawler-discovery additions, and MCP client config.
+            AgentResolver can initialize the real MCP endpoint, list its tools,
+            and fingerprint the exposed tool contracts so tool/schema changes
+            become measurable drift.
           </p>
         </section>
         <section>
-          <h2>Verify the live route</h2>
+          <h2>Watch x402 payment terms</h2>
           <p>
-            Seller-side launch verification checks the public route and x402
-            payment contract before AgentResolver provider-network review.
+            For GET-safe paid routes, monitor HTTP 402 behavior, network, asset,
+            payTo recipient, amount, resource binding, and TLS without holding
+            wallet keys or authorizing spend.
           </p>
         </section>
       </div>
 
-      <h2>The paid seller workflow</h2>
-      <pre><code>{distributionExample}</code></pre>
+      <h2>The monitoring contract</h2>
+      <pre><code>{monitorExample}</code></pre>
 
       <section>
-        <div className="eyebrow">SUPPORTING INFRASTRUCTURE</div>
-        <h2>Verify-before-pay remains available for buyer agents.</h2>
+        <div className="eyebrow">LAUNCH + DISTRIBUTION</div>
+        <h2>Need to make the service agent-readable first?</h2>
         <p>
-          The existing x402 Guard is now supporting infrastructure rather than
-          the company&apos;s primary commercial thesis. Buyer agents can still
-          live-check payTo, quoted price, network, asset, resource binding, TLS,
-          and reachability before signing.
+          The existing Agent Distribution Pack remains available to diagnose
+          discovery gaps and generate launch artifacts. It is now supporting
+          the monitoring product rather than being the company&apos;s only
+          commercial bet.
+        </p>
+        <pre><code>{distributionExample}</code></pre>
+        <p className="actions">
+          <a className="button secondary" href="/distribution">
+            Agent Distribution
+          </a>
+        </p>
+      </section>
+
+      <section>
+        <div className="eyebrow">BUYER-SIDE INFRASTRUCTURE</div>
+        <h2>Verify-before-pay remains available for autonomous buyers.</h2>
+        <p>
+          Buyer agents can still live-check payTo, quoted price, network, asset,
+          resource binding, TLS, and reachability before signing.
         </p>
         <pre><code>{guardExample}</code></pre>
         <p className="actions">
@@ -92,9 +115,9 @@ export default function Home() {
         <h2>AgentResolver itself is callable over MCP.</h2>
         <p>
           Hosted endpoint: <code>https://agentresolver.vercel.app/mcp</code>.
-          Free discovery surfaces stay free; priced tools disclose their x402
-          USDC price before execution and require caller-controlled payment
-          authorization.
+          Free monitoring/discovery surfaces stay free; priced tools disclose
+          their x402 USDC price before execution and require caller-controlled
+          payment authorization.
         </p>
         <p className="actions">
           <a className="button secondary" href="/connector">Connector information</a>{" "}
@@ -103,12 +126,11 @@ export default function Home() {
       </section>
 
       <section>
-        <div className="eyebrow">HIGHER-TOUCH OPTION</div>
-        <h2>Need us to implement the first-party MCP layer?</h2>
+        <div className="eyebrow">IMPLEMENTATION OPTION</div>
+        <h2>Need the MCP layer built for you?</h2>
         <p>
-          The fixed $1,000 implementation sprint remains available for
-          companies that want implementation rather than a self-serve
-          distribution pack.
+          The fixed $1,000 implementation sprint remains available for teams
+          that want implementation instead of self-serve setup.
         </p>
         <p className="actions">
           <a className="button secondary" href="/mcp-sprint">See the MCP sprint</a>
@@ -116,11 +138,11 @@ export default function Home() {
       </section>
 
       <p className="links">
+        <a href="/monitor">Monitoring</a> ·{" "}
         <a href="/distribution">Agent Distribution</a> ·{" "}
         <a href="/openapi.json">OpenAPI</a> ·{" "}
         <a href="/mcp/server-card">MCP Server Card</a> ·{" "}
         <a href="/.well-known/x402">x402 manifest</a> ·{" "}
-        <a href="/llms.txt">llms.txt</a> ·{" "}
         <a href="/privacy">Privacy</a> ·{" "}
         <a href="/terms">Terms</a> ·{" "}
         <a href="/support">Support</a>

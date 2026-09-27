@@ -44,3 +44,15 @@ test("production smoke requires the $5 seller Distribution Pack discovery and ch
   assert.match(smoke, /check_402 'Agent Distribution Pack'/);
   assert.match(smoke, /'agent-distribution-pack' '5000000'/);
 });
+
+
+test("production smoke verifies the recurring monitoring product without spending", () => {
+  assert.match(smoke, /serviceMonitorSnapshot/);
+  assert.match(smoke, /managedMonitor30d/);
+  assert.match(smoke, /index\("service-monitor"\) != null/);
+  assert.match(smoke, /index\("managed-monitor-30d"\) != null/);
+  assert.match(smoke, /api\/service-monitor\?origin=/);
+  assert.match(smoke, /AgentResolver Service Monitor/);
+  assert.match(smoke, /check_402 'Managed API MCP Monitor'/);
+  assert.match(smoke, /'managed-monitor-30d' '19000000'/);
+});
