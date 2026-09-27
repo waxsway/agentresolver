@@ -50,6 +50,8 @@ runs:
           --fail-with-body
           --get
           "https://agentresolver.vercel.app/api/service-monitor"
+          -H "User-Agent: AgentResolver-GitHub-Action/1.0"
+          --data-urlencode "source=github-action"
           --data-urlencode "origin=${INPUT_ORIGIN}"
         )
         if [[ -n "${INPUT_MCP}" ]]; then
