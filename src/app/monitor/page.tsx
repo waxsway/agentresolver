@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Agent Commerce Health Check | AgentResolver",
   description:
-    "Run a free live check to see whether AI agents can still discover, call, and pay your API, MCP server, or x402 service."
+    "Run a free live check to see whether AI agents can still discover, call, and pay your API, MCP server, or x402 service.",
+  alternates: { canonical: "/monitor" }
 };
 
 export default function MonitorPage() {
