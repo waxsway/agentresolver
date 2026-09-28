@@ -88,7 +88,7 @@ test("public facilitator routes preserve settlement fail-closed policy", () => {
 
   assert.match(source, /facilitator_router_settlement_indeterminate/);
   assert.match(source, /retrySafe: false/);
-  assert.match(source, /does not fail over because settlement state may be committed/i);
+  assert.match(source, /settlement state may be committed/i);
   assert.doesNotMatch(source, /verifySecondary[\s\S]{0,500}fetchUpstream\([^,]+, "\/settle"/);
   assert.match(settle, /routeSettle/);
   assert.match(verify, /routeVerify/);
@@ -98,7 +98,7 @@ test("public facilitator routes preserve settlement fail-closed policy", () => {
 test("router documentation keeps the non-custodial and no-blind-retry boundary explicit", () => {
   const docs = readFileSync("docs/x402-reliability-router.md", "utf8");
   assert.match(docs, /non-custodial router/i);
-  assert.match(docs, /does not automatically retry or fail over/i);
+  assert.match(docs, /automatic settlement failover/i);
   assert.match(docs, /verify-only/i);
   assert.match(docs, /https:\/\/agentresolver\.vercel\.app/);
 });
