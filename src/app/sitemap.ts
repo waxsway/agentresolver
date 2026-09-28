@@ -22,6 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 1
     },
+    weekly("/facilitator", 0.99),
     weekly("/monitor", 0.98),
     weekly("/docs/free-github-monitoring", 0.9),
     weekly("/distribution", 0.8),
