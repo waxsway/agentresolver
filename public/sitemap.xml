@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://agentresolver.vercel.app/</loc></url>
+  <url><loc>https://agentresolver.vercel.app/facilitator</loc></url>
   <url><loc>https://agentresolver.vercel.app/monitor</loc></url>
   <url><loc>https://agentresolver.vercel.app/docs/free-github-monitoring</loc></url>
   <url><loc>https://agentresolver.vercel.app/distribution</loc></url>

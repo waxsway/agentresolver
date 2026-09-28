@@ -7,6 +7,29 @@ AgentResolver answers a production question ordinary uptime monitors miss: **can
 **Production:** https://agentresolver.vercel.app  
 **Free browser check:** https://agentresolver.vercel.app/monitor
 
+## x402 Reliability Router
+
+Existing x402 resource servers can route their standard facilitator traffic through AgentResolver without changing the merchant `payTo` address:
+
+```ts
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const facilitator = new HTTPFacilitatorClient({
+  url: "https://agentresolver.vercel.app",
+  timeoutMs: 10_000
+});
+```
+
+Standard facilitator surface:
+
+```text
+GET  /supported
+POST /verify
+POST /settle
+```
+
+Verification is read-only and may use an explicitly configured secondary. Settlement is submitted to exactly one upstream facilitator; ambiguous timeout/5xx outcomes are marked non-retry-safe instead of being blindly failed over. Full integration guide: [x402 Reliability Router](docs/x402-reliability-router.md).
+
 ## Free recurring monitoring with GitHub Actions
 
 Run the public-service check on your own GitHub schedule. No AgentResolver account, API key, wallet, or secret is required.

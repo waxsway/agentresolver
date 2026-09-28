@@ -96,6 +96,21 @@ export default function Home() {
       </section>
 
       <section>
+        <div className="eyebrow">HIGH-FREQUENCY X402 INFRASTRUCTURE</div>
+        <h2>Route existing x402 verify + settle traffic through AgentResolver.</h2>
+        <p>
+          Existing sellers can point their facilitator client at
+          <code> https://agentresolver.vercel.app</code>. AgentResolver exposes
+          the standard /supported, /verify, and /settle surface, measures real
+          routed settlement volume, and fails closed when settlement state is
+          ambiguous instead of blindly retrying.
+        </p>
+        <p className="actions">
+          <a className="button" href="/facilitator">Use the reliability router</a>
+        </p>
+      </section>
+
+      <section>
         <div className="eyebrow">BUYER-SIDE INFRASTRUCTURE</div>
         <h2>Verify-before-pay remains available for autonomous buyers.</h2>
         <p>
@@ -138,6 +153,7 @@ export default function Home() {
       </section>
 
       <p className="links">
+        <a href="/facilitator">x402 Router</a> ·{" "}
         <a href="/monitor">Monitoring</a> ·{" "}
         <a href="/distribution">Agent Distribution</a> ·{" "}
         <a href="/openapi.json">OpenAPI</a> ·{" "}
