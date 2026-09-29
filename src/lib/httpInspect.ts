@@ -353,6 +353,37 @@ export function assessX402Payment(
   };
 }
 
+export function applyObservedX402PaymentChallenge(
+  report: HttpInspectReport,
+  paymentRequired: unknown,
+  options: HttpInspectOptions = {}
+): HttpInspectReport {
+  if (!paymentRequired || typeof paymentRequired !== "object" || Array.isArray(paymentRequired)) {
+    throw new Error("observedPaymentRequired must be an x402 payment challenge object.");
+  }
+
+  const encoded = Buffer.from(JSON.stringify(paymentRequired), "utf8").toString("base64");
+  const x402 = assessX402Payment(402, report.url, encoded, options);
+  const infrastructureScore = report.trust.infrastructureScore;
+  const score = x402.score === null
+    ? infrastructureScore
+    : Math.round((infrastructureScore * 0.4) + (x402.score * 0.6));
+
+  return {
+    ...report,
+    status: 402,
+    ok: false,
+    x402,
+    trust: {
+      ...report.trust,
+      score,
+      x402Score: x402.score,
+      grade: gradeFor(score),
+      verdict: score >= 80 ? "strong" : score >= 60 ? "mixed" : "weak"
+    }
+  };
+}
+
 export async function inspectHttpResource(input: string, options: HttpInspectOptions = {}): Promise<HttpInspectReport> {
   const url = validateHttpInspectTarget(input);
   const resolved = await resolvePublicAddress(url.hostname);
@@ -508,3 +539,4 @@ export async function inspectHttpResource(input: string, options: HttpInspectOpt
     req.end();
   });
 }
+
