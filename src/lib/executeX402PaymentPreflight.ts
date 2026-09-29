@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
-import { inspectHttpResource } from "@/lib/httpInspect";
+import {
+  applyObservedX402PaymentChallenge,
+  inspectHttpResource,
+  type HttpInspectReport
+} from "@/lib/httpInspect";
 import { buildX402PaymentGuardResult } from "@/lib/x402PaymentGuard";
 
 type PreflightInput = {
@@ -10,6 +14,8 @@ type PreflightInput = {
   method?: unknown;
   body?: unknown;
   allowUnpaidPostProbe?: unknown;
+  observedStatus?: unknown;
+  observedPaymentRequired?: unknown;
 };
 
 function queryInput(req: NextRequest): PreflightInput {
@@ -48,12 +54,55 @@ export async function executeX402PaymentPreflight(req: NextRequest) {
     expectedNetwork: typeof body?.expectedNetwork === "string" ? body.expectedNetwork.trim() : undefined
   };
 
-  const report = await inspectHttpResource(url, {
-    ...constraints,
-    method,
-    body: req.method === "GET" ? undefined : body?.body,
-    allowUnpaidPostProbe: body?.allowUnpaidPostProbe === true
-  });
+  let report: HttpInspectReport;
+  let observation: {
+    mode: "caller-observed-challenge";
+    observedStatus: 402;
+    originalMethod: "GET" | "HEAD" | "POST";
+    safeProbeMethod: "HEAD";
+    safeProbeStatus: number;
+    targetRequestReplayed: false;
+  } | null = null;
+
+  if (body?.observedPaymentRequired !== undefined) {
+    if (body.observedStatus !== undefined && body.observedStatus !== 402) {
+      throw new Error("observedStatus must be 402 when observedPaymentRequired is supplied.");
+    }
+
+    const serializedObservedChallenge = JSON.stringify(body.observedPaymentRequired);
+    if (Buffer.byteLength(serializedObservedChallenge, "utf8") > 32_768) {
+      throw new Error("observedPaymentRequired must be 32 KB or smaller.");
+    }
+
+    const safeProbe = await inspectHttpResource(url, { method: "HEAD" });
+    if (safeProbe.status < 200 || safeProbe.status >= 500) {
+      throw new Error(
+        `Target is not currently reachable for safe verification (HTTP ${safeProbe.status}).`
+      );
+    }
+
+    report = applyObservedX402PaymentChallenge(
+      safeProbe,
+      body.observedPaymentRequired,
+      constraints
+    );
+    observation = {
+      mode: "caller-observed-challenge",
+      observedStatus: 402,
+      originalMethod: method,
+      safeProbeMethod: "HEAD",
+      safeProbeStatus: safeProbe.status,
+      targetRequestReplayed: false
+    };
+  } else {
+    report = await inspectHttpResource(url, {
+      ...constraints,
+      method,
+      body: req.method === "GET" ? undefined : body?.body,
+      allowUnpaidPostProbe: body?.allowUnpaidPostProbe === true
+    });
+  }
+
   const result = buildX402PaymentGuardResult(report, constraints);
 
   console.log(JSON.stringify({
@@ -74,5 +123,5 @@ export async function executeX402PaymentPreflight(req: NextRequest) {
     prepaymentReasonCodes: result.prepaymentDecision.reasons
   }));
 
-  return result;
+  return observation ? { ...result, observation } : result;
 }
