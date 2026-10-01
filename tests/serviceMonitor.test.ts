@@ -111,6 +111,10 @@ test("managed monitoring stays state-branch based and does not require customer 
   assert.doesNotMatch(paidRoute, /managed_monitor_activation_requested/);
   assert.match(paidRoute, /managed_monitor_activation_settled/);
   assert.match(paidRoute, /onConfirmedSettlement/);
+  assert.match(paidRoute, /cadence: "scheduled"/);
+  assert.match(paidRoute, /targetIntervalMinutes: 60/);
+  assert.match(paidRoute, /scheduleGuaranteed: false/);
+  assert.doesNotMatch(paidRoute, /cadence: "hourly"/);
   assert.match(paidRoute, /storesCredentials: false/);
   assert.match(paidRoute, /storesWalletKeys: false/);
   assert.match(paidRoute, /storesCustomerContactInfo: false/);
