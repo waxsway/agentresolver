@@ -12,7 +12,7 @@ before making material architecture, pricing, payment-rail, discovery, distribut
 
 These rules are mandatory unless the canonical private project state explicitly records a later owner-approved strategic change.
 
-1. **Agent Commerce Health is the primary commercial product.** AgentResolver monitors whether public API, MCP, x402, and agent-service surfaces remain discoverable, callable, and payable by agents. The free snapshot and the $19 / 30-day managed hourly monitor are the primary self-serve funnel.
+1. **Agent Commerce Health is the primary commercial product.** AgentResolver monitors whether public API, MCP, x402, and agent-service surfaces remain discoverable, callable, and payable by agents. The free snapshot and the $19 / 30-day recurring managed monitor (target hourly cadence, no exact-run-time SLA) are the primary self-serve funnel.
 2. **Keep the validation gate fixed.** The current expansion gate is five substantive operator replies, three confirming a painful uncovered problem, and one paid pilot or activation. Do not weaken that gate because traffic, probes, directory activity, or compliments look encouraging.
 3. **Build only from evidence.** Make product/runtime changes only when verified customer evidence or a demonstrated conversion/delivery defect justifies them. Do not invent speculative tiers or features to manufacture demand.
 4. **No new commodity utilities.** Do not add another paid utility, deterministic microservice, or generic capability merely to create another place for AgentResolver to exist.
