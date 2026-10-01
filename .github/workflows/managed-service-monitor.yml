@@ -63,7 +63,7 @@ jobs:
           : > /tmp/agentresolver-managed-monitor-logs.jsonl
           vercel logs \
             --environment production \
-            --query 'managed_monitor_activation_requested' \
+            --query 'managed_monitor_activation_settled' \
             --since 24h \
             --json \
             --token="$VERCEL_TOKEN" \
