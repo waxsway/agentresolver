@@ -17,11 +17,13 @@ test("hourly managed monitoring imports paid activations before delivery", () =>
   const workflow = readFileSync(".github/workflows/managed-service-monitor.yml", "utf8");
   const paidRoute = readFileSync("src/app/api/managed-monitor-30d/route.ts", "utf8");
 
-  assert.match(paidRoute, /managed_monitor_activation_requested/);
+  assert.doesNotMatch(paidRoute, /managed_monitor_activation_requested/);
+  assert.match(paidRoute, /managed_monitor_activation_settled/);
+  assert.match(paidRoute, /onConfirmedSettlement/);
   assert.match(paidRoute, /billable: true/);
 
   assert.match(workflow, /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}/);
-  assert.match(workflow, /--query 'managed_monitor_activation_requested'/);
+  assert.match(workflow, /--query 'managed_monitor_activation_settled'/);
   assert.match(workflow, /import-managed-monitor-activations\.mjs/);
   assert.match(workflow, /--registry \.managed-monitor-state\/monitoring\/registry\.json/);
   assert.match(workflow, /git add monitoring\/registry\.json monitoring\/status/);
