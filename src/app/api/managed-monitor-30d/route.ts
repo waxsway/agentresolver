@@ -35,7 +35,9 @@ const route = createDeterministicPaidRoute(
     return {
       product: "AgentResolver Managed Monitor — 30 days",
       managed: true,
-      cadence: "hourly",
+      cadence: "scheduled",
+      targetIntervalMinutes: 60,
+      scheduleGuaranteed: false,
       monitorId: initial.monitorId,
       activationId,
       activatedAt: activatedAt.toISOString(),
