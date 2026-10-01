@@ -7,6 +7,12 @@ AgentResolver answers a production question ordinary uptime monitors miss: **can
 **Production:** https://agentresolver.vercel.app  
 **Free browser check:** https://agentresolver.vercel.app/monitor
 
+## Agent Commerce Health monitoring
+
+Start with the free public-service snapshot at `GET` or `POST /api/service-monitor`. It checks machine-facing discovery and can optionally run a real MCP `initialize` + `tools/list` exchange and a GET-safe x402 payment-contract inspection for same-origin public endpoints.
+
+When an operator wants AgentResolver to own the schedule, `POST /api/managed-monitor-30d` is **$19 USDC for 30 days of hourly monitoring** with a durable public status record. Managed monitoring stores public target URLs and health snapshots only; it does not store wallet keys, API credentials, or customer contact information.
+
 ## x402 Reliability Router
 
 Existing x402 resource servers can route their standard facilitator traffic through AgentResolver without changing the merchant `payTo` address:
@@ -182,7 +188,7 @@ AgentResolver still exposes supporting infrastructure used by integrations, test
 - machine-readable manifests, OpenAPI, skills, and discovery metadata
 - legacy deterministic utilities retained for compatibility and evidence
 
-New utility endpoints, passive directory submissions, and speculative marketplace-specific builds are not product strategy. Guard is the product; supporting infrastructure exists to help agents reach and use it safely.
+New utility endpoints, passive directory submissions, and speculative marketplace-specific builds are not product strategy. Agent Commerce Health monitoring is the primary commercial product; Guard and the reliability router remain supporting buyer-side/payment infrastructure.
 
 ## Machine-readable surfaces
 
