@@ -16,11 +16,17 @@ test("managed monitor paid-activation importer validates and deduplicates events
 test("hourly managed monitoring imports paid activations before delivery", () => {
   const workflow = readFileSync(".github/workflows/managed-service-monitor.yml", "utf8");
   const paidRoute = readFileSync("src/app/api/managed-monitor-30d/route.ts", "utf8");
+  const paidWrapper = readFileSync("src/lib/createDeterministicPaidRoute.ts", "utf8");
+  const telemetry = readFileSync("src/lib/telemetry.ts", "utf8");
 
   assert.doesNotMatch(paidRoute, /managed_monitor_activation_requested/);
   assert.match(paidRoute, /managed_monitor_activation_settled/);
   assert.match(paidRoute, /onConfirmedSettlement/);
   assert.match(paidRoute, /billable: true/);
+  assert.match(paidWrapper, /const confirmedSettlement = logX402Settlement/);
+  assert.match(paidWrapper, /confirmedSettlement && options\.onConfirmedSettlement/);
+  assert.match(telemetry, /if \(!receipt\) return false/);
+  assert.match(telemetry, /return settled/);
 
   assert.match(workflow, /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}/);
   assert.match(workflow, /--query 'managed_monitor_activation_settled'/);
