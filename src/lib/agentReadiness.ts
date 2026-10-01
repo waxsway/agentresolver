@@ -25,6 +25,7 @@ type SmallResponse = {
   status: number | null;
   text: string;
   headers: Headers | null;
+  truncated?: boolean;
 };
 
 const MAX_BYTES = 128_000;
@@ -242,18 +243,6 @@ async function requestPublicUrl(
         return;
       }
 
-      const declaredLength = Number(res.headers["content-length"] || "0");
-      if (Number.isFinite(declaredLength) && declaredLength > MAX_BYTES) {
-        res.resume();
-        finish({
-          ok: status !== null && status >= 200 && status < 300,
-          status,
-          text: "",
-          headers
-        });
-        return;
-      }
-
       const chunks: Buffer[] = [];
       let bytes = 0;
 
@@ -261,20 +250,36 @@ async function requestPublicUrl(
         if (settled) return;
 
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        bytes += buffer.length;
+        const remaining = MAX_BYTES - bytes;
 
-        if (bytes > MAX_BYTES) {
+        if (remaining <= 0) {
           res.destroy();
           finish({
             ok: status !== null && status >= 200 && status < 300,
             status,
-            text: Buffer.concat(chunks).toString("utf8").slice(0, MAX_BYTES),
-            headers
+            text: Buffer.concat(chunks).toString("utf8"),
+            headers,
+            truncated: true
+          });
+          return;
+        }
+
+        if (buffer.length > remaining) {
+          chunks.push(buffer.subarray(0, remaining));
+          bytes += remaining;
+          res.destroy();
+          finish({
+            ok: status !== null && status >= 200 && status < 300,
+            status,
+            text: Buffer.concat(chunks).toString("utf8"),
+            headers,
+            truncated: true
           });
           return;
         }
 
         chunks.push(buffer);
+        bytes += buffer.length;
       });
 
       res.on("end", () => {
@@ -339,6 +344,30 @@ async function fetchSmall(url: URL): Promise<SmallResponse> {
   }
 }
 
+export function describeOpenApiDocument(
+  text: string,
+  truncated = false
+): string {
+  try {
+    const parsed = JSON.parse(text);
+    return parsed?.openapi
+      ? `OpenAPI ${String(parsed.openapi)} found.`
+      : "OpenAPI path responded but no version field was detected.";
+  } catch {
+    if (truncated) {
+      const version = text
+        .slice(0, 16_384)
+        .match(/"openapi"\s*:\s*"([^"]+)"/i)?.[1];
+
+      return version
+        ? `OpenAPI ${version} found (large document; version verified from bounded prefix).`
+        : "OpenAPI path responded; document exceeds the bounded inspection limit before a version could be verified.";
+    }
+
+    return "OpenAPI path responded but did not contain valid JSON.";
+  }
+}
+
 function gradeFor(score: number): AgentReadinessReport["grade"] {
   if (score >= 90) return "A";
   if (score >= 75) return "B";
@@ -386,17 +415,12 @@ export async function auditAgentReadiness(
             ? `ARD manifest found with ${parsed.entries.length} entr${parsed.entries.length === 1 ? "y" : "ies"}.`
             : "ARD manifest found but entries were not detected.";
         } catch {
-          note = "ARD path responded but did not contain valid JSON.";
+          note = result.truncated
+            ? "ARD manifest found; document exceeds the bounded inspection limit."
+            : "ARD path responded but did not contain valid JSON.";
         }
       } else if (id === "openapi" && result.ok) {
-        try {
-          const parsed = JSON.parse(result.text);
-          note = parsed?.openapi
-            ? `OpenAPI ${String(parsed.openapi)} found.`
-            : "OpenAPI path responded but no version field was detected.";
-        } catch {
-          note = "OpenAPI path responded but did not contain valid JSON.";
-        }
+        note = describeOpenApiDocument(result.text, Boolean(result.truncated));
       }
 
       return {
