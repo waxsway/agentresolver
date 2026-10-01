@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 
-const EVENT_NAME = "managed_monitor_activation_requested";
+const EVENT_NAME = "managed_monitor_activation_settled";
 const CAPABILITY_ID = "managed-monitor-30d";
 const SOURCE = "managed-monitor-30d";
 const MAX_DEPTH = 8;
