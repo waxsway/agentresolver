@@ -572,7 +572,7 @@ export const PAID_CAPABILITIES = {
     price: "$19.00",
     priceUsd: 19,
     atomicAmount: "19000000",
-    description: "Thirty days of hourly managed monitoring for one public API, MCP server, or x402 service. Tracks machine-readiness, optional live MCP compatibility/tool-contract drift, and optional GET-safe x402 payment-contract drift with a durable public status record.",
+    description: "Thirty days of recurring managed monitoring for one public API, MCP server, or x402 service, targeting an hourly cadence without guaranteeing exact run times. Tracks machine-readiness, optional live MCP compatibility/tool-contract drift, and optional GET-safe x402 payment-contract drift with a durable public status record.",
     useWhen: "A provider wants AgentResolver to keep checking one public production service after launch instead of buying another one-time readiness report.",
     costClass: "bounded-network",
     tags: ["api monitoring", "mcp monitoring", "x402 monitoring", "agent compatibility", "schema drift", "payment drift", "uptime", "managed monitoring"],
@@ -596,7 +596,7 @@ export const PAID_CAPABILITIES = {
     quoteTool: {
       name: "managed_monitor_30d",
       title: "Managed API + MCP monitor — $19 / 30 days",
-      description: "Paid $19 USDC on Base or Solana for 30 days of hourly managed API/MCP/x402 compatibility monitoring with durable status and drift detection."
+      description: "Paid $19 USDC on Base or Solana for 30 days of recurring managed API/MCP/x402 compatibility monitoring, targeting hourly checks without an exact-run-time SLA, with durable status and drift detection."
     }
   },
   "provider-launch-check": {
