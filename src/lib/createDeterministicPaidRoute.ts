@@ -206,6 +206,12 @@ export type BasePaymentRail = "payai" | "coinbase-cdp";
 export type DeterministicPaidRouteOptions = Readonly<{
   paidGet?: boolean;
   endpoint?: string;
+  onConfirmedSettlement?: (context: Readonly<{
+    request: NextRequest;
+    response: NextResponse<unknown>;
+    requestId: string;
+    attributionId: string | null;
+  }>) => Promise<void> | void;
   /**
    * Optional route-local x402 price override. Use only when a facilitator has
    * a stricter minimum than the canonical capability price.
@@ -547,8 +553,31 @@ export function createDeterministicPaidRoute(
         compatibleResponse.headers.set("cdn-cache-control", "public, max-age=30");
         compatibleResponse.headers.set("vercel-cdn-cache-control", "public, max-age=30");
       }
-      logX402Settlement(compatibleResponse, capabilityId, requestId, paymentRailEnv);
+      const confirmedSettlement = logX402Settlement(
+        compatibleResponse,
+        capabilityId,
+        requestId,
+        paymentRailEnv
+      );
       logAttributedSettlement(compatibleResponse, capabilityId, attributionId);
+      if (confirmedSettlement && options.onConfirmedSettlement) {
+        try {
+          await options.onConfirmedSettlement({
+            request: req,
+            response: compatibleResponse,
+            requestId,
+            attributionId
+          });
+        } catch (error) {
+          console.error(JSON.stringify({
+            event: "paid_capability_post_settlement_hook_failed",
+            at: new Date().toISOString(),
+            capabilityId,
+            requestId,
+            message: error instanceof Error ? error.message : "Post-settlement hook failed."
+          }));
+        }
+      }
       return compatibleResponse;
     } catch (error) {
       console.error(JSON.stringify({

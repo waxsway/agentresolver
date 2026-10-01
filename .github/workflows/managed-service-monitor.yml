@@ -15,6 +15,11 @@ concurrency:
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERCEL_ORG_ID: team_ciQJak0lFZjXNgqry88ZDIKN
+      VERCEL_PROJECT_ID: prj_uJKVWBawxKkEjIWV5EQkbkQPIABD
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - name: Checkout monitor runner
         uses: actions/checkout@v4
@@ -31,6 +36,42 @@ jobs:
         with:
           node-version: 22
 
+      - name: Verify paid-activation importer invariants
+        run: node scripts/import-managed-monitor-activations.mjs --self-test
+
+      - name: Require Vercel read credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.6.2 --no-audit --no-fund
+
+      - name: Link read-only project context
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .vercel
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Import verified paid managed-monitor activations
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/agentresolver-managed-monitor-logs.jsonl
+          vercel logs \
+            --environment production \
+            --query 'managed_monitor_activation_settled' \
+            --since 24h \
+            --json \
+            --token="$VERCEL_TOKEN" \
+            > /tmp/agentresolver-managed-monitor-logs.jsonl
+          node scripts/import-managed-monitor-activations.mjs \
+            --registry .managed-monitor-state/monitoring/registry.json \
+            --logs /tmp/agentresolver-managed-monitor-logs.jsonl
+
       - name: Run hourly managed checks
         run: node scripts/run-managed-monitors.mjs .managed-monitor-state/monitoring/registry.json .managed-monitor-state/monitoring/status
 
@@ -41,7 +82,7 @@ jobs:
           cd .managed-monitor-state
           git config user.name "agentresolver-monitor"
           git config user.email "agentresolver-monitor@users.noreply.github.com"
-          git add monitoring/status
+          git add monitoring/registry.json monitoring/status
           if git diff --cached --quiet; then
             echo "No managed monitor state change."
             exit 0

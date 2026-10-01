@@ -58,7 +58,7 @@ export default function FreeGithubMonitoringPage() {
       <section>
         <h2>Want AgentResolver to own the schedule?</h2>
         <p>
-          The managed plan runs hourly for 30 days and keeps durable status.
+          The managed plan runs on a recurring schedule for 30 days, targets an hourly cadence without guaranteeing exact run times, and keeps durable status.
           Current paid activation is x402 machine-paid; normal card checkout is
           not live until merchant onboarding is complete.
         </p>

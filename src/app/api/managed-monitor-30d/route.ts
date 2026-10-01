@@ -32,16 +32,12 @@ const route = createDeterministicPaidRoute(
       activationId
     };
 
-    console.log(JSON.stringify({
-      event: "managed_monitor_activation_requested",
-      capabilityId: "managed-monitor-30d",
-      ...registryEntry
-    }));
-
     return {
       product: "AgentResolver Managed Monitor — 30 days",
       managed: true,
-      cadence: "hourly",
+      cadence: "scheduled",
+      targetIntervalMinutes: 60,
+      scheduleGuaranteed: false,
       monitorId: initial.monitorId,
       activationId,
       activatedAt: activatedAt.toISOString(),
@@ -64,6 +60,43 @@ const route = createDeterministicPaidRoute(
       note:
         "Managed registry activation is asynchronous. The status URL may return MONITOR_NOT_ACTIVE until the activation processor records the paid monitor."
     };
+  },
+  {
+    onConfirmedSettlement: async ({ response, requestId }) => {
+      const body = await response.clone().json().catch(() => null) as Record<string, unknown> | null;
+      if (
+        !body ||
+        body.product !== "AgentResolver Managed Monitor — 30 days" ||
+        body.managed !== true ||
+        body.activationStatus !== "queued_for_managed_registry"
+      ) {
+        throw new Error("Managed monitor settlement response did not contain activation metadata.");
+      }
+
+      console.log(JSON.stringify({
+        event: "managed_monitor_activation_settled",
+        capabilityId: "managed-monitor-30d",
+        requestId,
+        id: body.monitorId,
+        label: body.current && typeof body.current === "object"
+          ? ((body.current as Record<string, unknown>).target as Record<string, unknown> | undefined)?.label ?? null
+          : null,
+        origin: body.current && typeof body.current === "object"
+          ? ((body.current as Record<string, unknown>).target as Record<string, unknown> | undefined)?.origin ?? null
+          : null,
+        mcpEndpoint: body.current && typeof body.current === "object"
+          ? ((body.current as Record<string, unknown>).target as Record<string, unknown> | undefined)?.mcpEndpoint ?? null
+          : null,
+        x402Endpoint: body.current && typeof body.current === "object"
+          ? ((body.current as Record<string, unknown>).target as Record<string, unknown> | undefined)?.x402Endpoint ?? null
+          : null,
+        activatedAt: body.activatedAt,
+        activeUntil: body.activeUntil,
+        billable: true,
+        source: "managed-monitor-30d",
+        activationId: body.activationId
+      }));
+    }
   }
 );
 

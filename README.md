@@ -11,7 +11,7 @@ AgentResolver answers a production question ordinary uptime monitors miss: **can
 
 Start with the free public-service snapshot at `GET` or `POST /api/service-monitor`. It checks machine-facing discovery and can optionally run a real MCP `initialize` + `tools/list` exchange and a GET-safe x402 payment-contract inspection for same-origin public endpoints.
 
-When an operator wants AgentResolver to own the schedule, `POST /api/managed-monitor-30d` is **$19 USDC for 30 days of hourly monitoring** with a durable public status record. Managed monitoring stores public target URLs and health snapshots only; it does not store wallet keys, API credentials, or customer contact information.
+When an operator wants AgentResolver to own the schedule, `POST /api/managed-monitor-30d` is **$19 USDC for 30 days of recurring monitoring that targets an hourly cadence** with a durable public status record. Managed monitoring stores public target URLs and health snapshots only; it does not store wallet keys, API credentials, or customer contact information.
 
 ## x402 Reliability Router
 
@@ -58,7 +58,7 @@ jobs:
           # x402-endpoint: https://api.example.com/paid
 ```
 
-The free Action reports current machine-readiness, optional live MCP initialize + tools/list compatibility, and optional GET-safe x402 payment-contract health. The hosted managed monitor is the $19 / 30-day option when you want AgentResolver to own the hourly schedule and durable status.
+The free Action reports current machine-readiness, optional live MCP initialize + tools/list compatibility, and optional GET-safe x402 payment-contract health. The hosted managed monitor is the $19 / 30-day option when you want AgentResolver to own the recurring schedule and durable status.
 
 Full setup: [free GitHub monitoring](docs/free-github-monitoring.md).
 

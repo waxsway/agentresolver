@@ -100,13 +100,21 @@ test("managed monitoring stays state-branch based and does not require customer 
   assert.match(workflow, /cron: "17 \* \* \* \*"/);
   assert.match(workflow, /ref: monitoring-state/);
   assert.match(workflow, /git push origin HEAD:monitoring-state/);
-  assert.doesNotMatch(workflow, /vercel/i);
+  assert.match(workflow, /managed_monitor_activation_settled/);
+  assert.match(workflow, /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}/);
+  assert.doesNotMatch(workflow, /PRIVATE_KEY|SEED_PHRASE|WALLET_PRIVATE_KEY/);
 
   assert.match(runner, /api\/service-monitor/);
   assert.match(runner, /baselineSnapshot/);
   assert.match(statusRoute, /raw\.githubusercontent\.com\/waxsway\/agentresolver\/monitoring-state/);
 
-  assert.match(paidRoute, /managed_monitor_activation_requested/);
+  assert.doesNotMatch(paidRoute, /managed_monitor_activation_requested/);
+  assert.match(paidRoute, /managed_monitor_activation_settled/);
+  assert.match(paidRoute, /onConfirmedSettlement/);
+  assert.match(paidRoute, /cadence: "scheduled"/);
+  assert.match(paidRoute, /targetIntervalMinutes: 60/);
+  assert.match(paidRoute, /scheduleGuaranteed: false/);
+  assert.doesNotMatch(paidRoute, /cadence: "hourly"/);
   assert.match(paidRoute, /storesCredentials: false/);
   assert.match(paidRoute, /storesWalletKeys: false/);
   assert.match(paidRoute, /storesCustomerContactInfo: false/);

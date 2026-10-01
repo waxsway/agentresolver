@@ -268,7 +268,7 @@ export function logX402Settlement(
   env: Readonly<Record<string, string | undefined>> = process.env
 ) {
   const receipt = parseX402SettlementHeader(response.headers.get("payment-response"));
-  if (!receipt) return;
+  if (!receipt) return false;
   const settled = receipt.success && Boolean(receipt.transaction);
   console.log(JSON.stringify({
     event: settled ? "paid_capability_settled" : "paid_capability_settlement_unconfirmed",
@@ -289,4 +289,5 @@ export function logX402Settlement(
     responseSha256: response.headers.get("x-agentresolver-response-sha256"),
     deploymentCommitSha: response.headers.get("x-agentresolver-deployment")
   }));
+  return settled;
 }
