@@ -103,9 +103,9 @@ export default async function MonitorResultPage({
 
         <section>
           <div className="eyebrow">KEEP THIS FROM BREAKING</div>
-          <h2>Turn this snapshot into hourly monitoring.</h2>
+          <h2>Turn this snapshot into recurring managed monitoring.</h2>
           <p>
-            The $19 managed monitor reruns this contract hourly for 30 days,
+            The $19 managed monitor reruns this contract on a recurring schedule for 30 days, with a target hourly cadence; scheduler delays can occur,
             records drift, and keeps a durable status record. It stores no
             wallet keys or customer credentials.
           </p>
