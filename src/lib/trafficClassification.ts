@@ -1,4 +1,4 @@
-import { callerHash, safeUserAgent } from "@/lib/telemetry";
+import { callerHash, callerNetworkHash, requestCountry, safeUserAgent } from "@/lib/telemetry";
 
 export type TrafficClass =
   | "internal_test"
@@ -162,6 +162,8 @@ export function classifyTraffic(
 export function trafficLogFields(req: Request, classification: TrafficClassification) {
   return {
     callerHash: callerHash(req),
+    callerNetworkHash: callerNetworkHash(req),
+    ipCountry: requestCountry(req),
     userAgent: safeUserAgent(req),
     trafficClass: classification.trafficClass,
     external: classification.external,
