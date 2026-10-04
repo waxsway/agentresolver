@@ -39,6 +39,18 @@ export async function GET(req: Request) {
     ...trafficLogFields(req, traffic)
   }));
 
+  if (source === "x402-challenge" && capabilityId) {
+    console.log(JSON.stringify({
+      event: "buyer_funnel_stage",
+      stage: "challenge_setup_viewed",
+      at: new Date().toISOString(),
+      surface: "http",
+      capabilityId,
+      setupMode,
+      ...trafficLogFields(req, traffic)
+    }));
+  }
+
   const capability = capabilityId
     ? PAID_CAPABILITIES[capabilityId as keyof typeof PAID_CAPABILITIES]
     : null;

@@ -1,4 +1,4 @@
-import { callerHash, safeUserAgent } from "@/lib/telemetry";
+import { callerHash, callerNetworkHash, requestCountry, safeUserAgent } from "@/lib/telemetry";
 
 export type TrafficClass =
   | "internal_test"
@@ -36,7 +36,15 @@ const DIRECTORY_UA = [
   "pulsefeed",
   "x402lens",
   "402explorer",
-  "payai-bazaar"
+  "payai-bazaar",
+  "coinbasebazaardiscovery",
+  "agent-tools.cloud-crawler",
+  "agentindexbot",
+  "easy402-indexer",
+  "brickbluebot",
+  "zerobot",
+  "agentexchange-bazaar",
+  "allow402-quote"
 ];
 
 const LIVENESS_UA = [
@@ -51,7 +59,29 @@ const LIVENESS_UA = [
   "liveness",
   "health-check",
   "healthcheck",
-  "uptime"
+  "uptime",
+  "carbonmonitor",
+  "mako-pulse-prober",
+  "x402-observer",
+  "lumiere-paycheck-prober",
+  "forum-labs-trust-prober",
+  "settledprobe",
+  "x402watch",
+  "x402-census-probe",
+  "analoghubris-trustindex",
+  "x402-reliability-probe",
+  "mainstreethealthprobe",
+  "payapi-healthcheck",
+  "payapi-desk-probe",
+  "probe402",
+  "touchstone-probe",
+  "nitrograph",
+  "x402-doctor",
+  "wknipe-x402-status",
+  "mizan",
+  "toolassay",
+  "ferulcrawler",
+  "entropy-daemon-trust-oracle"
 ];
 
 const DISCOVERY_METHODS = new Set([
@@ -132,6 +162,8 @@ export function classifyTraffic(
 export function trafficLogFields(req: Request, classification: TrafficClassification) {
   return {
     callerHash: callerHash(req),
+    callerNetworkHash: callerNetworkHash(req),
+    ipCountry: requestCountry(req),
     userAgent: safeUserAgent(req),
     trafficClass: classification.trafficClass,
     external: classification.external,

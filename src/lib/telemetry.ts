@@ -53,12 +53,39 @@ export function configuredPaymentRail(
   return "payai";
 }
 
-export function callerHash(req: Request): string {
-  const ip =
+function requestIp(req: Request): string {
+  return (
+    req.headers.get("x-vercel-forwarded-for") ||
     req.headers.get("x-real-ip") ||
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown";
-  return shortHash(ip);
+    "unknown"
+  );
+}
+
+export function callerHash(req: Request): string {
+  return shortHash(requestIp(req));
+}
+
+export function callerNetworkHash(req: Request): string | null {
+  const ip = requestIp(req);
+  if (!ip || ip === "unknown") return null;
+
+  const ipv4 = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    return shortHash(`ipv4:${ipv4[1]}.${ipv4[2]}.${ipv4[3]}.0/24`);
+  }
+
+  if (ip.includes(":")) {
+    const prefix = ip.split(":").slice(0, 4).join(":").toLowerCase();
+    return prefix ? shortHash(`ipv6:${prefix}::/64`) : null;
+  }
+
+  return null;
+}
+
+export function requestCountry(req: Request): string | null {
+  const country = req.headers.get("x-vercel-ip-country")?.trim().toUpperCase() || "";
+  return /^[A-Z]{2}$/.test(country) ? country : null;
 }
 
 export function safeUserAgent(req: Request): string {
@@ -124,6 +151,8 @@ export function logPaidCapabilityAttempt(
     capabilityId,
     requestId: requestId || null,
     callerHash: callerHash(req),
+    callerNetworkHash: callerNetworkHash(req),
+    ipCountry: requestCountry(req),
     userAgent: safeUserAgent(req),
     referrerHost: referrerHost(req),
     configuredPaymentRail: configuredPaymentRail(capabilityId, env),
@@ -139,6 +168,28 @@ export function logPaidCapabilityAttempt(
       trafficClassReason: traffic.reason
     } : {})
   }));
+
+  if (paymentAttempt.hasPaymentAttempt) {
+    console.log(JSON.stringify({
+      event: "buyer_funnel_stage",
+      stage: "payment_submitted",
+      at: new Date().toISOString(),
+      capabilityId,
+      requestId: requestId || null,
+      callerHash: callerHash(req),
+      callerNetworkHash: callerNetworkHash(req),
+      ipCountry: requestCountry(req),
+      userAgent: safeUserAgent(req),
+      configuredPaymentRail: configuredPaymentRail(capabilityId, env),
+      paymentHeader: paymentAttempt.paymentHeader,
+      paymentX402Version: paymentAttempt.paymentX402Version,
+      ...(traffic ? {
+        trafficClass: traffic.trafficClass,
+        external: traffic.external,
+        trafficClassReason: traffic.reason
+      } : {})
+    }));
+  }
 }
 
 export type X402SettlementReceipt = {
