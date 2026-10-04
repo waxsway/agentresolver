@@ -50,6 +50,16 @@ test("observed ecosystem probes are excluded from commercial traffic", () => {
   }
 });
 
+test("self-declared no-payment probes cannot masquerade as buyer traffic", () => {
+  const traffic = classifyTraffic(new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "user-agent": "agent-market-probe/0.1 (+measures reachability only; no payment, no auth)" }
+  }));
+
+  assert.equal(traffic.trafficClass, "liveness_crawler");
+  assert.equal(traffic.sponsorEligible, false);
+  assert.equal(traffic.reason, "self_declared_non_buyer_user_agent");
+});
+
 test("caller grouping is privacy-safe and stable across an IPv4 /24", () => {
   const a = new Request("https://agentresolver.vercel.app/api/x402-ping", {
     headers: {
