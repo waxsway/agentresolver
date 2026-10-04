@@ -84,6 +84,15 @@ const LIVENESS_UA = [
   "entropy-daemon-trust-oracle"
 ];
 
+const SELF_DECLARED_NON_BUYER_UA = [
+  "no payment",
+  "never settles",
+  "reachability only",
+  "read-only probe",
+  "unpaid liveness",
+  "liveness check"
+];
+
 const DISCOVERY_METHODS = new Set([
   "initialize",
   "tools/list",
@@ -136,6 +145,10 @@ export function classifyTraffic(
 
   if (LIVENESS_UA.some((token) => ua.includes(token))) {
     return { trafficClass: "liveness_crawler", external: true, sponsorEligible: false, reason: "known_liveness_user_agent" };
+  }
+
+  if (SELF_DECLARED_NON_BUYER_UA.some((token) => ua.includes(token))) {
+    return { trafficClass: "liveness_crawler", external: true, sponsorEligible: false, reason: "self_declared_non_buyer_user_agent" };
   }
 
   if (
