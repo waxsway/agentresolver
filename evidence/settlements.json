@@ -5,27 +5,27 @@
   "evidenceType": "independently-verifiable-x402-settlement-history",
   "sourceEvent": "paid_capability_settled",
   "interpretation": "Successful x402 settlement telemetry is admitted only after an independent public-chain check confirms a USDC transfer to AgentResolver on the stated network. This is verifiable usage history, not a synthetic reputation score.",
-  "lastUpdatedAt": "2026-09-24T15:07:49.009Z",
-  "settlementCount": 21,
-  "independentlyVerifiedSettlementCount": 21,
-  "successfulVerifiedExecutionCount": 21,
+  "lastUpdatedAt": "2026-10-08T08:59:00.824Z",
+  "settlementCount": 26,
+  "independentlyVerifiedSettlementCount": 26,
+  "successfulVerifiedExecutionCount": 26,
   "verifiedButNon2xxOrIncompleteCount": 0,
   "unverifiedLegacySettlementCount": 0,
   "firstVerifiedSettlementAt": "2026-09-17T04:41:01.614Z",
-  "latestVerifiedSettlementAt": "2026-09-24T12:01:36.541Z",
-  "uniqueVerifiedTransactionCount": 21,
+  "latestVerifiedSettlementAt": "2026-10-08T06:09:34.661Z",
+  "uniqueVerifiedTransactionCount": 26,
   "byNetwork": {
-    "eip155:8453": 21
+    "eip155:8453": 26
   },
   "byCapability": {
-    "x402-ping": 6,
-    "x402-payment-preflight": 6,
-    "x402-settlement-verify": 6,
-    "hash-encode": 1,
+    "x402-ping": 8,
+    "x402-payment-preflight": 7,
+    "x402-settlement-verify": 7,
+    "hash-encode": 2,
     "provider-launch-check": 2
   },
   "verifiedAmountsByNetwork": {
-    "eip155:8453": "122000"
+    "eip155:8453": "128000"
   },
   "settlements": [
     {
@@ -571,6 +571,136 @@
         "observedTransferAmountAtomic": "2000"
       },
       "reportedPaymentRail": "coinbase-cdp"
+    },
+    {
+      "eventId": "68cfc9c3b4a9f0df3002a6568035d8179a07eab2b67785a675603f9a360e8783",
+      "observedAt": "2026-10-08T06:09:30.307Z",
+      "verifiedAt": "2026-10-08T08:59:00.761Z",
+      "capabilityId": "x402-payment-preflight",
+      "network": "eip155:8453",
+      "amount": null,
+      "responseStatus": 200,
+      "transactionFingerprint": "721263fd82a7cdaa",
+      "transactionReference": "0x8558f6db3f6db1aa9ee624c0b14ec5a2ff4ea661d327d15a2d2bc216c335e4f3",
+      "executionId": "0d8b524c-8be7-4ed9-87ea-3e2f3a9f883b",
+      "responseSha256": "df59b64f89ce06d10ecb39442d06c3213fe00dd1398bbbcd57c4450da234a790",
+      "deploymentCommitSha": "65394845e6ebf433a5581ffc7ded17aaeea8daab",
+      "deliveryEvidenceComplete": true,
+      "onchainVerification": {
+        "verified": true,
+        "method": "base-usdc-transfer-log",
+        "network": "eip155:8453",
+        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        "blockReference": "0x31e6b5c",
+        "blockTime": "2026-10-08T06:09:31.000Z",
+        "observedTransferAmountAtomic": "1000"
+      },
+      "reportedPaymentRail": "payai"
+    },
+    {
+      "eventId": "012d146cccb7a4cc83922ac99d9d080857e181e2c8aafcfa2604442221bf7025",
+      "observedAt": "2026-10-08T06:09:31.291Z",
+      "verifiedAt": "2026-10-08T08:59:00.698Z",
+      "capabilityId": "x402-settlement-verify",
+      "network": "eip155:8453",
+      "amount": null,
+      "responseStatus": 200,
+      "transactionFingerprint": "2af3d80c6cf33bfe",
+      "transactionReference": "0x6009fab679e608ac8abe2a78f838a96b41e4885c15c5b83c40bd200b881a7f09",
+      "executionId": "2ab7683b-56e8-41d3-9d11-5e8d02027f2d",
+      "responseSha256": "3f0134420ec887aafe78f8582dd087c6795d94d67512ad80842bccdf9080a95b",
+      "deploymentCommitSha": "65394845e6ebf433a5581ffc7ded17aaeea8daab",
+      "deliveryEvidenceComplete": true,
+      "onchainVerification": {
+        "verified": true,
+        "method": "base-usdc-transfer-log",
+        "network": "eip155:8453",
+        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        "blockReference": "0x31e6b5d",
+        "blockTime": "2026-10-08T06:09:33.000Z",
+        "observedTransferAmountAtomic": "1000"
+      },
+      "reportedPaymentRail": "payai"
+    },
+    {
+      "eventId": "b90fb486d1258e2a79c0244c5c1661ea57fe747430c4c7971ad3c3da81657929",
+      "observedAt": "2026-10-08T06:09:31.946Z",
+      "verifiedAt": "2026-10-08T08:59:00.604Z",
+      "capabilityId": "x402-ping",
+      "network": "eip155:8453",
+      "amount": null,
+      "responseStatus": 200,
+      "transactionFingerprint": "7550ad84171420c7",
+      "transactionReference": "0x348400545af2046b6b0e2d010838f83a9e4d834a548ef87d29f3fec77fdfb0d9",
+      "executionId": "a4f85b12-6da6-4a96-ab76-71911bbd4d1b",
+      "responseSha256": "80b4aaf9b2091d7f807b43c0da58f18e890b61ae49d3cbf5a99504514519e77c",
+      "deploymentCommitSha": "65394845e6ebf433a5581ffc7ded17aaeea8daab",
+      "deliveryEvidenceComplete": true,
+      "onchainVerification": {
+        "verified": true,
+        "method": "base-usdc-transfer-log",
+        "network": "eip155:8453",
+        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        "blockReference": "0x31e6b5d",
+        "blockTime": "2026-10-08T06:09:33.000Z",
+        "observedTransferAmountAtomic": "1000"
+      },
+      "reportedPaymentRail": "payai"
+    },
+    {
+      "eventId": "786f6e735212689ccbe7e88d0f1d7831421e7201a176deb190c970809b76683c",
+      "observedAt": "2026-10-08T06:09:33.321Z",
+      "verifiedAt": "2026-10-08T08:59:00.496Z",
+      "capabilityId": "x402-ping",
+      "network": "eip155:8453",
+      "amount": null,
+      "responseStatus": 200,
+      "transactionFingerprint": "acd09c8d4677b7a5",
+      "transactionReference": "0xdf4bfb91564243c1ff03f1728afc9f585033d29518a5518f45f02b600c01cbe6",
+      "executionId": "60ea7aa1-163b-489e-9a50-9fb4f5682c22",
+      "responseSha256": "9975d90f2514c3cba62358a7a66d9889de26dbe87bb75caf5007b5b3cc181bee",
+      "deploymentCommitSha": "65394845e6ebf433a5581ffc7ded17aaeea8daab",
+      "deliveryEvidenceComplete": true,
+      "onchainVerification": {
+        "verified": true,
+        "method": "base-usdc-transfer-log",
+        "network": "eip155:8453",
+        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        "blockReference": "0x31e6b5e",
+        "blockTime": "2026-10-08T06:09:35.000Z",
+        "observedTransferAmountAtomic": "2000"
+      },
+      "reportedPaymentRail": "coinbase-cdp"
+    },
+    {
+      "eventId": "d9ffe9b9b5797aa6389ca1f1ea2f2b44390b609366aa4c63b85694c931c6bfb5",
+      "observedAt": "2026-10-08T06:09:34.661Z",
+      "verifiedAt": "2026-10-08T08:59:00.216Z",
+      "capabilityId": "hash-encode",
+      "network": "eip155:8453",
+      "amount": null,
+      "responseStatus": 200,
+      "transactionFingerprint": "b62b9a21f70a94e0",
+      "transactionReference": "0xda7e9cd788f175ae80c407f178d8ccf368fc56fecdfcc8e0fc76f7d56dadceae",
+      "executionId": "a91be656-3835-4826-aa34-75eedae8a557",
+      "responseSha256": "0c865f5ce604c5f09e7c93525c7a3314bac09728e7bd8e0b0f75bed693858d28",
+      "deploymentCommitSha": "65394845e6ebf433a5581ffc7ded17aaeea8daab",
+      "deliveryEvidenceComplete": true,
+      "onchainVerification": {
+        "verified": true,
+        "method": "base-usdc-transfer-log",
+        "network": "eip155:8453",
+        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        "blockReference": "0x31e6b5e",
+        "blockTime": "2026-10-08T06:09:35.000Z",
+        "observedTransferAmountAtomic": "1000"
+      },
+      "reportedPaymentRail": "payai"
     }
   ],
   "privacy": {
@@ -615,5 +745,11 @@
     "The Git history is operated by the repository owner and is not immutable, but every published verified transaction reference can be rechecked independently on its network.",
     "A verified past settlement and successful delivery do not prove third-party provider legitimacy or guarantee future behavior or fulfillment.",
     "Older first-party entries lacking a public transaction reference, if any, remain visible as unverifiedLegacySettlementCount and never increase independently verified counts."
-  ]
+  ],
+  "paymentRailProvenance": {
+    "field": "reportedPaymentRail",
+    "source": "AgentResolver runtime configuration telemetry attached to the settled request",
+    "independentlyVerified": false,
+    "interpretation": "reportedPaymentRail identifies the facilitator configuration AgentResolver reports as active for that request. Public-chain verification independently proves the USDC transfer and delivery evidence, but does not prove facilitator identity."
+  }
 }
