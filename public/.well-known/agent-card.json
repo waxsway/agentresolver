@@ -1,0 +1,144 @@
+{
+  "name": "AgentResolver",
+  "description": "Machine-payable verification infrastructure for autonomous agents: verify unfamiliar x402 payment requirements before signing, verify Base USDC settlement receipts after payment, live-preflight public MCP servers, and resolve capabilities with bounded live evidence.",
+  "supportedInterfaces": [
+    {
+      "url": "https://agentresolver.vercel.app",
+      "protocolBinding": "https://spec.openapis.org/oas/v3.1.0",
+      "protocolVersion": "3.1.0"
+    }
+  ],
+  "provider": {
+    "organization": "AgentResolver",
+    "url": "https://agentresolver.vercel.app"
+  },
+  "version": "0.1.3",
+  "documentationUrl": "https://agentresolver.vercel.app/openapi.json",
+  "iconUrl": "https://agentresolver.vercel.app/favicon.svg",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "extendedAgentCard": false
+  },
+  "defaultInputModes": [
+    "application/json",
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "verify-x402-payment-before-paying",
+      "name": "Verify x402 Payment Before Paying",
+      "description": "Call GET or POST /api/x402-payment-preflight (alias /api/payment-guard) to verify the live amount, asset, network, payTo recipient, scheme and resource binding before a caller separately authorizes the target payment. AgentResolver Guard costs $0.001 USDC per call.",
+      "tags": [
+        "x402",
+        "payment-preflight",
+        "payment-guard",
+        "wallet-safety",
+        "payto-verification",
+        "usdc"
+      ],
+      "examples": [
+        "Verify this unfamiliar x402 endpoint before my wallet signs.",
+        "Check that the quoted payTo, network and price match policy."
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "verify-x402-settlement-receipt",
+      "name": "Verify x402 Settlement Receipt",
+      "description": "Call GET or POST /api/x402-settlement-verify after a Base payment to independently verify the USDC settlement transaction, recipient and optional expected atomic amount. Costs $0.001 USDC per call.",
+      "tags": [
+        "x402",
+        "settlement",
+        "receipt",
+        "base",
+        "usdc",
+        "payment-evidence"
+      ],
+      "examples": [
+        "Verify this Base x402 transaction hash actually settled to the expected recipient."
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "verified-capability-resolve",
+      "name": "Resolve and Live-Verify an Agent Capability",
+      "description": "Call /api/verified-resolve to resolve one missing capability and live-check top MCP/x402 candidates before returning evidence-backed recommendations. Costs $0.02 USDC per call.",
+      "tags": [
+        "agents",
+        "capability-discovery",
+        "mcp",
+        "x402",
+        "provider-verification"
+      ],
+      "examples": [
+        "Find and live-verify a machine-payable API that can satisfy this capability."
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "mcp-live-preflight",
+      "name": "Live-Preflight a Public MCP Server",
+      "description": "Call /api/mcp-probe to check one public MCP HTTP endpoint for reachability, compatibility, latency, server metadata and tool inventory before depending on it. Costs $0.001 USDC per call.",
+      "tags": [
+        "mcp",
+        "preflight",
+        "liveness",
+        "tool-discovery",
+        "agent-safety"
+      ],
+      "examples": [
+        "Check this MCP server before adding it to an autonomous workflow."
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "agent-readiness-audit",
+      "name": "Audit Agent Readiness",
+      "description": "Call /api/agent-readiness to audit a public website for AI-agent discoverability and machine-readable integration signals. Costs $0.005 USDC per call.",
+      "tags": [
+        "agents",
+        "discovery",
+        "readiness",
+        "openapi",
+        "mcp",
+        "x402"
+      ],
+      "examples": [
+        "Audit whether this API is ready for autonomous-agent discovery and payment."
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    }
+  ]
+}
