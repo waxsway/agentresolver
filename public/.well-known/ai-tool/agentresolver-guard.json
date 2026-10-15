@@ -1,0 +1,152 @@
+{
+  "type": "https://ercs.ethereum.org/ERCS/erc-8257#tool-manifest-v1",
+  "name": "AgentResolver Guard",
+  "description": "Verify a live x402 payment challenge before an autonomous wallet signs. Returns a fail-closed eligible or blocked decision with evidence for payTo, amount, network, asset, scheme, and resource binding.",
+  "version": "1.0.0",
+  "endpoint": "https://agentresolver.vercel.app/api/cdp-payment-guard",
+  "tags": [
+    "x402",
+    "payment-security",
+    "preflight",
+    "wallet-safety",
+    "agents"
+  ],
+  "inputs": {
+    "type": "object",
+    "required": [
+      "url"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "url": {
+        "type": "string",
+        "format": "uri",
+        "description": "Public HTTPS x402 endpoint to inspect before payment."
+      },
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET",
+          "HEAD",
+          "POST"
+        ],
+        "default": "GET",
+        "description": "Unpaid probe method for the target endpoint."
+      },
+      "maxPriceUsd": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Optional maximum acceptable target price in USD."
+      },
+      "expectedPayTo": {
+        "type": "string",
+        "description": "Optional expected target payment recipient."
+      },
+      "expectedNetwork": {
+        "type": "string",
+        "description": "Optional expected CAIP-2 target network."
+      },
+      "body": {
+        "description": "Optional target POST body when method is POST."
+      },
+      "allowUnpaidPostProbe": {
+        "type": "boolean",
+        "default": false,
+        "description": "Explicit opt-in when an unpaid POST probe is known to be side-effect safe."
+      }
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "required": [
+      "guard",
+      "prepaymentDecision",
+      "evidenceReceipt"
+    ],
+    "additionalProperties": true,
+    "properties": {
+      "guard": {
+        "type": "object",
+        "required": [
+          "product",
+          "decision",
+          "eligibleForCallerAuthorization",
+          "reasonCodes",
+          "evidenceDigestSha256",
+          "paymentIdentityFingerprint",
+          "paymentTermsFingerprint"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "product": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "eligible",
+              "blocked"
+            ]
+          },
+          "eligibleForCallerAuthorization": {
+            "type": "boolean"
+          },
+          "reasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidenceDigestSha256": {
+            "type": "string"
+          },
+          "paymentIdentityFingerprint": {
+            "type": "string"
+          },
+          "paymentTermsFingerprint": {
+            "type": "string"
+          }
+        }
+      },
+      "prepaymentDecision": {
+        "type": "object",
+        "required": [
+          "decision",
+          "eligibleForCallerAuthorization"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "eligible",
+              "blocked"
+            ]
+          },
+          "eligibleForCallerAuthorization": {
+            "type": "boolean"
+          }
+        }
+      },
+      "evidenceReceipt": {
+        "type": "object"
+      }
+    }
+  },
+  "creatorAddress": "0x66e19457ffc829e8ed74706f5c1399c6f6466de8",
+  "pricing": [
+    {
+      "amount": "2000",
+      "asset": "eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "recipient": "eip155:8453:0x66e19457ffc829e8ed74706f5c1399c6f6466de8",
+      "protocol": "x402"
+    }
+  ],
+  "verifiability": {
+    "tier": "self-attested",
+    "execution": "standard",
+    "description": "Open-source AgentResolver route with live x402 challenge validation and deterministic evidence receipts.",
+    "dataRetention": "metadata-only",
+    "sourceVisibility": "open-source"
+  }
+}
