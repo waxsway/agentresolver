@@ -169,6 +169,85 @@ test("payment-response failure reason takes precedence over response body", asyn
   });
 });
 
+test("x402 v2 header-only rejection exposes an allowlisted reason without logging challenge metadata", async () => {
+  const privateMetadata = "do-not-log-resource-secret";
+  const required = Buffer.from(JSON.stringify({
+    x402Version: 2,
+    error: "invalid_exact_evm_payload_signature",
+    resource: { url: `https://example.com/private?token=${privateMetadata}` },
+    accepts: [{ payTo: "0x1111111111111111111111111111111111111111", extra: { error: "metadata_must_not_win" } }]
+  }), "utf8").toString("base64url");
+  const response = new Response(null, {
+    status: 402,
+    headers: { "payment-required": required }
+  });
+  assert.deepEqual(await extractX402FailureReason(response), {
+    reason: "invalid_exact_evm_payload_signature",
+    source: "payment_required"
+  });
+
+  const signature = "secret-payment-signature";
+  const request = new Request("https://agentresolver.vercel.app/api/x402-ping", {
+    headers: { "payment-signature": signature }
+  });
+  const original = console.log;
+  let output = "";
+  console.log = (...args: unknown[]) => { output += args.map(String).join(" "); };
+  try {
+    await logPaidRetryRejection(request, response, "x402-ping", "header-only-rejection");
+  } finally {
+    console.log = original;
+  }
+  const event = JSON.parse(output);
+  assert.equal(event.event, "paid_capability_paid_retry_rejected");
+  assert.equal(event.reason, "invalid_exact_evm_payload_signature");
+  assert.equal(event.reasonSource, "payment_required");
+  assert.equal(output.includes(required), false);
+  assert.equal(output.includes(signature), false);
+  assert.equal(output.includes(privateMetadata), false);
+  assert.equal(output.includes("0x1111111111111111111111111111111111111111"), false);
+  assert.equal(output.includes("metadata_must_not_win"), false);
+});
+
+test("failure reason precedence favors settlement receipt then challenge then body", async () => {
+  const challenge = Buffer.from(JSON.stringify({
+    x402Version: 2,
+    error: "invalid_network"
+  }), "utf8").toString("base64url");
+  const receipt = Buffer.from(JSON.stringify({
+    success: false,
+    errorReason: "insufficient_funds"
+  }), "utf8").toString("base64url");
+  const body = JSON.stringify({ invalidReason: "body_fallback" });
+
+  assert.deepEqual(await extractX402FailureReason(new Response(body, {
+    status: 402,
+    headers: { "payment-required": challenge, "payment-response": receipt }
+  })), { reason: "insufficient_funds", source: "payment_response" });
+
+  assert.deepEqual(await extractX402FailureReason(new Response(body, {
+    status: 402,
+    headers: { "payment-required": challenge }
+  })), { reason: "invalid_network", source: "payment_required" });
+
+  assert.deepEqual(await extractX402FailureReason(new Response(body, {
+    status: 402,
+    headers: { "payment-required": "not-base64-json" }
+  })), { reason: "body_fallback", source: "response_body" });
+});
+
+test("x402 challenge does not expose nested payee or arbitrary extension metadata as a failure", async () => {
+  const challenge = Buffer.from(JSON.stringify({
+    x402Version: 2,
+    accepts: [{ extra: { error: "arbitrary_extension_secret" } }],
+    resource: { error: "private_resource_error" }
+  }), "utf8").toString("base64url");
+  assert.deepEqual(await extractX402FailureReason(new Response(null, {
+    status: 402,
+    headers: { "payment-required": challenge }
+  })), { reason: null, source: null });
+});
+
 test("signed retry rejection telemetry never logs the signature, payer, or raw body", async () => {
   const secretSignature = "signed-payment-payload-secret";
   const payer = "0x1111111111111111111111111111111111111111";
