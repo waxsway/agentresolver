@@ -267,13 +267,46 @@ export function paymentFailureReasonFromJson(value: unknown, depth = 0): string 
   return null;
 }
 
+/**
+ * x402 v2 can return the rejection explanation in PAYMENT-REQUIRED without a
+ * JSON response body. Decode only allowlisted error fields: the challenge also
+ * contains resource, payee, pricing and arbitrary extension metadata that must
+ * never be treated as a loggable failure reason.
+ */
+function paymentRequiredFailureReason(header: string | null): string | null {
+  if (!header || header.length > 16_384) return null;
+
+  try {
+    const normalized = header.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const parsed: unknown = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+    const data = parsed as Record<string, unknown>;
+    return paymentFailureReasonFromJson({
+      error: data.error,
+      errorReason: data.errorReason,
+      invalidReason: data.invalidReason,
+      verifyResponse: data.verifyResponse
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function extractX402FailureReason(response: Response): Promise<{
   reason: string | null;
-  source: "payment_response" | "response_body" | null;
+  source: "payment_response" | "payment_required" | "response_body" | null;
 }> {
   const receipt = parseX402SettlementHeader(response.headers.get("payment-response"));
-  if (receipt?.errorReason) {
-    return { reason: boundedFailureReason(receipt.errorReason), source: "payment_response" };
+  const receiptReason = boundedFailureReason(receipt?.errorReason);
+  if (receiptReason) {
+    return { reason: receiptReason, source: "payment_response" };
+  }
+
+  const challengeReason = paymentRequiredFailureReason(response.headers.get("payment-required"));
+  if (challengeReason) {
+    return { reason: challengeReason, source: "payment_required" };
   }
 
   try {
