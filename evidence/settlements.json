@@ -5,27 +5,27 @@
   "evidenceType": "independently-verifiable-x402-settlement-history",
   "sourceEvent": "paid_capability_settled",
   "interpretation": "Successful x402 settlement telemetry is admitted only after an independent public-chain check confirms a USDC transfer to AgentResolver on the stated network. This is verifiable usage history, not a synthetic reputation score.",
-  "lastUpdatedAt": "2026-11-22T19:41:30.729Z",
-  "settlementCount": 40,
-  "independentlyVerifiedSettlementCount": 40,
-  "successfulVerifiedExecutionCount": 40,
+  "lastUpdatedAt": "2026-11-25T22:33:37.165Z",
+  "settlementCount": 41,
+  "independentlyVerifiedSettlementCount": 41,
+  "successfulVerifiedExecutionCount": 41,
   "verifiedButNon2xxOrIncompleteCount": 0,
   "unverifiedLegacySettlementCount": 0,
   "firstVerifiedSettlementAt": "2026-09-17T04:41:01.614Z",
-  "latestVerifiedSettlementAt": "2026-11-22T16:08:33.616Z",
-  "uniqueVerifiedTransactionCount": 40,
+  "latestVerifiedSettlementAt": "2026-11-25T19:26:34.313Z",
+  "uniqueVerifiedTransactionCount": 41,
   "byNetwork": {
-    "eip155:8453": 40
+    "eip155:8453": 41
   },
   "byCapability": {
-    "x402-ping": 14,
+    "x402-ping": 15,
     "x402-payment-preflight": 11,
     "x402-settlement-verify": 9,
     "hash-encode": 3,
     "provider-launch-check": 3
   },
   "verifiedAmountsByNetwork": {
-    "eip155:8453": "195000"
+    "eip155:8453": "197000"
   },
   "settlements": [
     {
@@ -1065,6 +1065,32 @@
         "observedTransferAmountAtomic": "1000"
       },
       "reportedPaymentRail": "payai"
+    },
+    {
+      "eventId": "cfed9beff9d8a3fa96597a7f8688c6630f4ef77fd546615dc309904b48c8431f",
+      "observedAt": "2026-11-25T19:26:34.313Z",
+      "verifiedAt": "2026-11-25T22:33:37.024Z",
+      "capabilityId": "x402-ping",
+      "network": "eip155:8453",
+      "amount": null,
+      "responseStatus": 200,
+      "transactionFingerprint": "de0a46e8dd7d51cf",
+      "transactionReference": "0x0cf1044dd76baeb382560490253a397c36c9d4578424de55393c9c8c22cef33a",
+      "executionId": "0da19aa8-354d-47cc-9752-6fc388f9895f",
+      "responseSha256": "12354f9dfde6fe602ac8a8e1becb74abb12cc5e534cb663d712ff3362152bedc",
+      "deploymentCommitSha": "7b3cc11ac7684de831be310fd1613e24174477d7",
+      "deliveryEvidenceComplete": true,
+      "onchainVerification": {
+        "verified": true,
+        "method": "base-usdc-transfer-log",
+        "network": "eip155:8453",
+        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "payTo": "0x66E19457fFC829E8Ed74706f5c1399C6F6466dE8",
+        "blockReference": "0x3b56f0d",
+        "blockTime": "2026-11-25T19:26:34.000Z",
+        "observedTransferAmountAtomic": "2000"
+      },
+      "reportedPaymentRail": "coinbase-cdp"
     }
   ],
   "privacy": {
@@ -1109,5 +1135,11 @@
     "The Git history is operated by the repository owner and is not immutable, but every published verified transaction reference can be rechecked independently on its network.",
     "A verified past settlement and successful delivery do not prove third-party provider legitimacy or guarantee future behavior or fulfillment.",
     "Older first-party entries lacking a public transaction reference, if any, remain visible as unverifiedLegacySettlementCount and never increase independently verified counts."
-  ]
+  ],
+  "paymentRailProvenance": {
+    "field": "reportedPaymentRail",
+    "source": "AgentResolver runtime configuration telemetry attached to the settled request",
+    "independentlyVerified": false,
+    "interpretation": "reportedPaymentRail identifies the facilitator configuration AgentResolver reports as active for that request. Public-chain verification independently proves the USDC transfer and delivery evidence, but does not prove facilitator identity."
+  }
 }
